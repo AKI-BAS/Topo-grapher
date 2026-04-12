@@ -376,7 +376,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 </div>
 
 
-<div class="main" style="padding-top:0;padding-bottom:0;">
+<div style="display:none"><div class="main" style="padding-top:0;padding-bottom:0;">
   <div class="card" id="contour-panel">
     <div class="card-label">// Terrain preview<span id="contour-source-badge" style="margin-left:10px;font-size:10px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;"></span></div>
 
@@ -393,7 +393,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
     <canvas id="contour-canvas" style="width:100%;height:320px;display:none;border-radius:4px;"></canvas>
     <div style="font-size:11px;color:var(--text-soft);margin-top:8px;text-align:center;letter-spacing:.06em;min-height:16px;" id="contour-label"></div>
   </div>
-</div>
+</div></div>
 <div class="main" id="pro" style="padding-top:0">
 
   <!-- Tier comparison header -->
@@ -1062,15 +1062,34 @@ async function convert(){
       y:parseFloat((p.northing-oN).toFixed(3)),
       z:parseFloat(p.alt.toFixed(3))
     }));
-    csvData = 'X,Y,Z\n'+out.map(p=>`${p.x},${p.y},${p.z}`).join('\n');
+    // Snap points to clean orthogonal grid to fix Revit interpolation issues
+    // Our UTM grid has slight diagonal drift — snap to nearest spacing interval
+    const snapGrid = (pts, spacing) => {
+      return pts.map(p => ({
+        x: parseFloat((Math.round(p.x / spacing) * spacing).toFixed(3)),
+        y: parseFloat((Math.round(p.y / spacing) * spacing).toFixed(3)),
+        z: p.z
+      }));
+    };
+    const snapped = snapGrid(out, selectedSpacing);
+    // Deduplicate — if two points snap to same grid cell, keep highest Z
+    const gridMap = new Map();
+    snapped.forEach(p => {
+      const key = p.x + ',' + p.y;
+      if(!gridMap.has(key) || p.z > gridMap.get(key).z) gridMap.set(key, p);
+    });
+    const cleanOut = Array.from(gridMap.values())
+      .sort((a,b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
+    csvData = 'X,Y,Z\n'+cleanOut.map(p=>`${p.x},${p.y},${p.z}`).join('\n');
     if (!isProUnlocked()) { incrementGenerationsToday(); updateLimitBadge(); }
     setSiteContourData(out);
 
-    const alts = out.map(p=>p.z).filter(z=>z!==0&&isFinite(z)&&!isNaN(z));
-    const xs=out.map(p=>p.x), ys=out.map(p=>p.y);
+    const displayPts = typeof cleanOut !== 'undefined' ? cleanOut : out;
+    const alts = displayPts.map(p=>p.z).filter(z=>z!==0&&isFinite(z)&&!isNaN(z));
+    const xs=displayPts.map(p=>p.x), ys=displayPts.map(p=>p.y);
     const xR=Math.max(...xs)-Math.min(...xs), yR=Math.max(...ys)-Math.min(...ys);
 
-    document.getElementById('stat-points').textContent=out.length.toLocaleString();
+    document.getElementById('stat-points').textContent=displayPts.length.toLocaleString();
     document.getElementById('stat-spacing').textContent=`${selectedSpacing}m`;
     document.getElementById('stat-range').textContent=alts.length?`${Math.min(...alts).toFixed(0)}–${Math.max(...alts).toFixed(0)}`:'—';
     document.getElementById('stat-area').textContent=Math.round(xR*yR).toLocaleString();
@@ -1087,13 +1106,13 @@ async function convert(){
       `<tr><td colspan="3" style="color:var(--text-soft);font-size:11px;padding-top:6px">… ${out.length.toLocaleString()} total rows in CSV</td></tr>`;
 
     setProgress(1,'Done — terrain data ready.','');
-    const altsForWire = out.map(p=>p.z).filter(z=>isFinite(z)&&!isNaN(z));
+    const altsForWire = displayPts.map(p=>p.z).filter(z=>isFinite(z)&&!isNaN(z));
     const wMinZ = altsForWire.length ? Math.min(...altsForWire) : 0;
     const wMaxZ = altsForWire.length ? Math.max(...altsForWire) : 0;
     setTimeout(()=>{
       showProgress(false);
       showResult(true);
-      showWireframe(out, wMinZ, wMaxZ);
+      showWireframe(displayPts, wMinZ, wMaxZ);
       document.getElementById('result-card').scrollIntoView({behavior:'smooth',block:'start'});
     },400);
 
@@ -1237,46 +1256,55 @@ document.addEventListener('DOMContentLoaded',()=>{
 let wireframePoints = null, wireframeAnim = null, wireframeAngle = 0;
 
 function buildWireframeGrid(points) {
-  // points is flat array of {x,y,z} — reconstruct 2D grid
-  const xs = [...new Set(points.map(p => p.x))].sort((a,b)=>a-b);
-  const ys = [...new Set(points.map(p => p.y))].sort((a,b)=>a-b);
+  // Sort points into a 2D grid by binning X and Y values
+  const xVals = points.map(p=>p.x);
+  const yVals = points.map(p=>p.y);
+  const minX=Math.min(...xVals), maxX=Math.max(...xVals);
+  const minY=Math.min(...yVals), maxY=Math.max(...yVals);
 
-  // Downsample if too many points — max 60x60 grid for performance
-  const MAX = 60;
-  const xStep = Math.max(1, Math.floor(xs.length / MAX));
-  const yStep = Math.max(1, Math.floor(ys.length / MAX));
-  const xSampled = xs.filter((_,i) => i % xStep === 0);
-  const ySampled = ys.filter((_,i) => i % yStep === 0);
+  // Target display grid size — max 55x55 for performance
+  const TARGET = 55;
+  const COLS = Math.min(TARGET, Math.ceil(Math.sqrt(points.length * (maxX-minX||1) / (maxY-minY||1))));
+  const ROWS = Math.min(TARGET, Math.ceil(points.length / COLS));
 
-  // Build lookup
-  const lookup = {};
-  points.forEach(p => { lookup[p.x + ',' + p.y] = p.z; });
+  const rangeX = maxX - minX || 1;
+  const rangeY = maxY - minY || 1;
 
-  // Build grid — fill gaps with neighbours
+  // Bin each point into grid cell
   const grid = [];
-  for (let r = 0; r < ySampled.length; r++) {
-    grid[r] = [];
-    for (let c = 0; c < xSampled.length; c++) {
-      grid[r][c] = lookup[xSampled[c] + ',' + ySampled[r]] ?? null;
-    }
+  const counts = [];
+  for(let r=0;r<ROWS;r++){
+    grid[r] = new Float32Array(COLS);
+    counts[r] = new Uint16Array(COLS);
   }
 
-  // Fill nulls with average of neighbours
-  for (let r = 0; r < grid.length; r++)
-    for (let c = 0; c < grid[r].length; c++)
-      if (grid[r][c] === null) {
-        const nb = [
-          grid[r-1]?.[c], grid[r+1]?.[c],
-          grid[r]?.[c-1], grid[r]?.[c+1]
-        ].filter(v => v !== null && v !== undefined);
-        grid[r][c] = nb.length ? nb.reduce((a,b)=>a+b,0)/nb.length : 0;
-      }
+  points.forEach(p => {
+    const c = Math.min(COLS-1, Math.floor((p.x-minX)/rangeX * COLS));
+    const r = Math.min(ROWS-1, Math.floor((p.y-minY)/rangeY * ROWS));
+    grid[r][c] += p.z;
+    counts[r][c]++;
+  });
 
-  const zVals = grid.flat().filter(v => v !== null);
-  const minZ = Math.min(...zVals), maxZ = Math.max(...zVals);
-  const rangeZ = maxZ - minZ || 1;
+  // Average filled cells
+  for(let r=0;r<ROWS;r++)
+    for(let c=0;c<COLS;c++)
+      if(counts[r][c]>0) grid[r][c] /= counts[r][c];
 
-  return { grid, rows: grid.length, cols: grid[0].length, minZ, maxZ, rangeZ };
+  // Fill empty cells by spreading from neighbours
+  for(let pass=0;pass<6;pass++)
+    for(let r=0;r<ROWS;r++)
+      for(let c=0;c<COLS;c++)
+        if(counts[r][c]===0){
+          const nb=[grid[r-1]?.[c],grid[r+1]?.[c],grid[r]?.[c-1],grid[r]?.[c+1]].filter(v=>v!=null&&v!==0);
+          if(nb.length) grid[r][c]=nb.reduce((a,b)=>a+b,0)/nb.length;
+        }
+
+  const zVals = Array.from({length:ROWS}, (_,r)=>Array.from(grid[r])).flat().filter(v=>v>0);
+  const minZ = zVals.length ? Math.min(...zVals) : 0;
+  const maxZ = zVals.length ? Math.max(...zVals) : 1;
+  const rangeZ = Math.max(maxZ - minZ, 3); // min 3m range for visual clarity
+
+  return { grid, rows:ROWS, cols:COLS, minZ, maxZ, rangeZ };
 }
 
 function drawWireframe(angle) {
