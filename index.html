@@ -1666,11 +1666,11 @@ async function sendNotify() {
   const { error } = await _sb.from('notify_signups').insert({ email, plan });
   if (error && error.code === '23505') {
     // Already signed up
-    document.getElementById('notify-success').textContent = 'You're already on the list!';
+    document.getElementById('notify-success').textContent = "You're already on the list!";
   } else if (error) {
     document.getElementById('notify-success').textContent = 'Something went wrong — try again.';
   } else {
-    document.getElementById('notify-success').textContent = '✓ You're on the list. We'll email you when Pro launches — early signups get the first month free.';
+    document.getElementById('notify-success').textContent = "✓ You're on the list. We'll email you when Pro launches — early signups get the first month free.";
   }
   document.getElementById('notify-success').classList.add('show');
   btn.textContent = 'Notify me →';
