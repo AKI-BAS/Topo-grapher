@@ -251,7 +251,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 #wireframe-card { display:none; }
 #wireframe-card.show { display:block; }
 #wireframe-canvas {
-  width:100%; height:340px; display:block; border-radius:6px;
+  width:100%; height:500px; display:block; border-radius:6px;
   background:var(--bg-input);
 }
 .wireframe-label {
@@ -377,7 +377,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 
   <div class="card" id="wireframe-card" style="max-width:1400px;margin:0 auto 12px;padding:22px;">
     <div class="card-label">// 3D terrain preview</div>
-    <canvas id="wireframe-canvas" style="width:100%;height:340px;display:block;border-radius:6px;background:var(--bg-input);"></canvas>
+    <canvas id="wireframe-canvas" style="width:100%;height:500px;display:block;border-radius:6px;background:var(--bg-input);"></canvas>
     <div style="font-size:11px;color:var(--text-soft);text-align:center;margin-top:8px;letter-spacing:.08em;" id="wireframe-label"></div>
   </div>
 
@@ -597,7 +597,19 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function looksLikeFailure(e){return e.filter(v=>v===0||v==null).length/e.length>0.8;}
 
 // Cloudflare Worker proxy — dedicated IP, no rate limits, full CORS
-const WORKER_URL = 'https://dark-queen-7d87.svanur300.workers.dev';
+// Multiple workers — round-robin to spread load across different IPs
+// Add more worker URLs here as you create them in Cloudflare
+const WORKER_URLS = [
+  'https://dark-queen-7d87.svanur300.workers.dev',
+  'https://spring-water-d186.svanur300.workers.dev',
+  'https://autumn-rice-5e21.svanur300.workers.dev',
+];
+let _workerIdx = 0;
+function nextWorker() {
+  const url = WORKER_URLS[_workerIdx % WORKER_URLS.length];
+  _workerIdx++;
+  return url;
+}
 
 async function tryWorkerProxy(pts){
   // Use GET with query params — worker passes them straight to Open-Meteo
@@ -607,8 +619,9 @@ async function tryWorkerProxy(pts){
     const b = pts.slice(i,i+CHUNK);
     const lats = b.map(p=>p.lat.toFixed(6)).join(',');
     const lons = b.map(p=>p.lon.toFixed(6)).join(',');
-    const url = WORKER_URL + '?latitude=' + encodeURIComponent(lats) + '&longitude=' + encodeURIComponent(lons);
-    const r = await fetch(url);
+    const workerBase = nextWorker();
+    const workerUrl = workerBase + '?latitude=' + encodeURIComponent(lats) + '&longitude=' + encodeURIComponent(lons);
+    const r = await fetch(workerUrl);
     if(!r.ok){
       const txt = await r.text().catch(()=>'');
       throw new Error('proxy-' + r.status + ': ' + txt.slice(0,120));
@@ -617,7 +630,7 @@ async function tryWorkerProxy(pts){
     if(d.error) throw new Error('proxy-error: ' + (d.reason||JSON.stringify(d).slice(0,80)));
     if(!Array.isArray(d.elevation)) throw new Error('proxy-format: ' + JSON.stringify(d).slice(0,80));
     d.elevation.forEach((v,j)=>{ e[i+j]=v; });
-    if(i+CHUNK<pts.length) await sleep(1200); // rate limit protection
+    if(i+CHUNK<pts.length) await sleep(600); // spread across multiple workers
   }
   if(looksLikeFailure(e)) throw new Error('proxy returned zeros');
   return e;
@@ -1331,20 +1344,28 @@ function drawWireframe(angle) {
 
   const { grid, rows, cols, rangeZ } = wireframePoints;
 
-  // Isometric projection params
-  const tileW = Math.min(W / (cols + rows) * 1.8, 18);
-  const tileH = tileW * 0.5;
-  const zScale = tileW * 3.5;
-  const offsetX = W * 0.5 + Math.sin(angle) * tileW * cols * 0.15;
-  const offsetY = H * 0.72;
+  // Isometric projection — properly centred, equal proportions
+  const span = Math.max(cols, rows);
+  const tileW = Math.min((W * 0.68) / span, 15);
+  const tileH = tileW * 0.55;
+  const zScale = tileW * 7;
 
-  // Project grid cell to screen
+  // Compute projected extents to centre perfectly
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  function projXY(r, c) {
+    const dx = c - cols/2, dy = r - rows/2;
+    return [dx*cos - dy*sin, dx*sin + dy*cos];
+  }
+  const corners = [[0,0],[0,cols-1],[rows-1,0],[rows-1,cols-1]];
+  const pcs = corners.map(([r,c]) => projXY(r,c));
+  const midPX = (Math.min(...pcs.map(p=>p[0])) + Math.max(...pcs.map(p=>p[0]))) / 2;
+  const midPY = (Math.min(...pcs.map(p=>p[1])) + Math.max(...pcs.map(p=>p[1]))) / 2;
+  const cx = W/2 - midPX * tileW;
+  const cy = H * 0.62 - midPY * tileH;
+
   function project(r, c, z) {
-    const nx = (c - cols/2) * Math.cos(angle) - (r - rows/2) * Math.sin(angle);
-    const ny = (c - cols/2) * Math.sin(angle) + (r - rows/2) * Math.cos(angle);
-    const sx = offsetX + nx * tileW;
-    const sy = offsetY + ny * tileH - (z / wireframePoints.rangeZ) * zScale;
-    return [sx, sy];
+    const [px, py] = projXY(r, c);
+    return [cx + px*tileW, cy + py*tileH - z*zScale];
   }
 
   const lineAlpha = isDark ? 0.7 : 0.75;
