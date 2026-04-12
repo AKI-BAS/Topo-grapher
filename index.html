@@ -302,7 +302,14 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   <div class="nav-right">
     <a class="nav-link" href="#tool">Tool</a>
     <a class="nav-link" href="#pro">Pro</a>
-    <span class="beta-pill" id="pro-status-badge" onclick="showUnlockPrompt()" style="cursor:pointer;" title="Click to enter Pro access code">Free Beta</span>
+    <div class="user-menu" id="user-menu-wrap">
+      <button class="beta-pill" id="nav-auth-btn" onclick="openAuth()">Sign in</button>
+      <div class="user-dropdown" id="user-dropdown">
+        <span style="display:block;padding:10px 14px;font-size:12px;color:var(--text-soft);border-bottom:1px solid var(--border);" id="user-email-display"></span>
+        <a href="#pro">Upgrade to Pro</a>
+        <button onclick="signOut()">Sign out</button>
+      </div>
+    </div>
     <div id="pro-unlock-wrap" style="display:none;position:absolute;top:58px;right:32px;background:var(--bg-card);border:1px solid var(--border-md);border-radius:6px;padding:12px 14px;gap:8px;align-items:center;z-index:2000;box-shadow:0 4px 16px rgba(0,0,0,.25);">
       <input type="password" id="pro-code-input" placeholder="Enter access code…" style="width:200px;" onkeydown="if(event.key==='Enter'){const ok=tryUnlockPro(this.value);if(!ok){this.style.borderColor='var(--danger)';setTimeout(()=>this.style.borderColor='',1000);}}" />
       <button onclick="const ok=tryUnlockPro(document.getElementById('pro-code-input').value);if(!ok){document.getElementById('pro-code-input').style.borderColor='var(--danger)';setTimeout(()=>document.getElementById('pro-code-input').style.borderColor='',1000);}" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:8px 14px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;white-space:nowrap;">Unlock</button>
@@ -1628,11 +1635,14 @@ function switchTab(tab) {
 async function submitAuth(type) {
   const errEl = document.getElementById(type + '-error');
   errEl.textContent = '';
+  errEl.style.color = 'var(--danger,#e25555)';
   if (type === 'signin') {
     const email = document.getElementById('signin-email').value.trim();
     const password = document.getElementById('signin-password').value;
     if (!email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
-    const { error } = await _sb.auth.signInWithPassword({ email, password });
+    console.log('Signing in:', email);
+    const { data, error } = await _sb.auth.signInWithPassword({ email, password });
+    console.log('Signin result:', { data, error });
     if (error) { errEl.textContent = error.message; return; }
     closeAuth();
   } else {
@@ -1640,7 +1650,12 @@ async function submitAuth(type) {
     const password = document.getElementById('signup-password').value;
     if (!email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
     if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
-    const { error } = await _sb.auth.signUp({ email, password, options: { emailRedirectTo: 'https://topo-grapher.com' } });
+    console.log('Signing up:', email);
+    const { data, error } = await _sb.auth.signUp({
+      email, password,
+      options: { emailRedirectTo: 'https://topo-grapher.com' }
+    });
+    console.log('Signup result:', { data, error });
     if (error) { errEl.textContent = error.message; return; }
     errEl.style.color = 'var(--accent)';
     errEl.textContent = 'Check your email to confirm your account.';
