@@ -133,10 +133,10 @@ textarea { resize:vertical; width:100%; }
 /* PROGRESS */
 #progress-card { display:none; }
 #progress-card.show { display:block; }
-.progress-track { background:var(--bg-input); border-radius:100px; height:3px; margin:11px 0 7px; overflow:hidden; }
-.progress-fill { height:100%; background:var(--accent-md); border-radius:100px; transition:width .4s; width:0%; }
-.progress-label { font-size:13px; color:var(--text); }
-.progress-sub { font-size:13px; color:var(--text-mid); margin-top:4px; min-height:16px; }
+.progress-track { background:var(--bg-input); border-radius:100px; height:4px; margin:6px 0 4px; overflow:hidden; }
+.progress-fill { height:100%; background:linear-gradient(90deg,var(--forest),var(--accent)); border-radius:100px; transition:width .5s cubic-bezier(.4,0,.2,1); width:0%; }
+.progress-label { font-size:14px; color:var(--text); font-weight:600; }
+.progress-sub { font-size:12px; color:var(--text-mid); min-height:16px; }
 
 /* RESULT */
 #result-card { display:none; }
@@ -348,9 +348,15 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   <div id="error-msg"></div>
 
   <div class="card" id="progress-card">
-    <div class="progress-label" id="progress-label">Starting…</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+      <div class="progress-label" id="progress-label">Starting…</div>
+      <div style="font-size:12px;color:var(--text-soft);font-family:'DM Mono',monospace;" id="progress-time"></div>
+    </div>
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
-    <div class="progress-sub" id="progress-sub"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+      <div class="progress-sub" id="progress-sub"></div>
+      <div style="font-size:11px;color:var(--text-soft);font-family:'DM Mono',monospace;" id="progress-pct">0%</div>
+    </div>
   </div>
 
   <div class="card" id="result-card">
@@ -933,14 +939,34 @@ function updateConvertBtn(){
 }
 
 // ── UI ─────────────────────────────────────────────────────────────────────
+let _progressStart = 0;
+
 function setProgress(f,l,s){
   document.getElementById('progress-fill').style.width=(f*100)+'%';
-  if(l!==undefined) document.getElementById('progress-label').textContent=l;
-  if(s!==undefined) document.getElementById('progress-sub').textContent=s;
+  document.getElementById('progress-pct').textContent=Math.round(f*100)+'%';
+  if(l!==undefined&&l!==null) document.getElementById('progress-label').textContent=l;
+  if(s!==undefined&&s!==null) document.getElementById('progress-sub').textContent=s;
+  // Time estimate
+  const elapsed = (Date.now()-_progressStart)/1000;
+  const timeEl = document.getElementById('progress-time');
+  if(timeEl && f > 0.05 && f < 1){
+    const total = elapsed/f;
+    const remaining = Math.max(0, Math.round(total - elapsed));
+    timeEl.textContent = remaining > 0 ? '~'+remaining+'s remaining' : 'almost done…';
+  } else if(timeEl && f >= 1){
+    timeEl.textContent = Math.round(elapsed)+'s total';
+  }
 }
 function showError(m){ const el=document.getElementById('error-msg'); el.innerHTML='⚠ '+m; el.classList.add('show'); }
 function hideError(){ document.getElementById('error-msg').classList.remove('show'); }
-function showProgress(v){ document.getElementById('progress-card').classList.toggle('show',v); }
+function showProgress(v){
+  document.getElementById('progress-card').classList.toggle('show',v);
+  if(v){
+    _progressStart = Date.now();
+    document.getElementById('progress-time').textContent = '';
+    document.getElementById('progress-pct').textContent = '0%';
+  }
+}
 function showResult(v){ document.getElementById('result-card').classList.toggle('show',v); }
 
 let csvData='', projectName='';
@@ -1036,7 +1062,7 @@ async function convert(){
   if(!polygonLatLngs || polygonLatLngs.length===0){ showError('Draw a site area on the map first.'); return; }
 
   document.getElementById('convert-btn').disabled=true;
-  showProgress(true); setProgress(0.04,'Generating point grid…','');
+  showProgress(true); setProgress(0.02,'Preparing…','Setting up coordinate grid');
 
   try{
     // Free tier limits
@@ -1066,7 +1092,8 @@ async function convert(){
       }
     }
 
-    setProgress(0.1,`${grid.length} points — fetching elevation…`,'');
+    const estSecs = Math.ceil(grid.length / 50 * 0.6);
+    setProgress(0.1,`Fetching elevation data…`,`${grid.length.toLocaleString()} points — est. ${estSecs}s`);
     const {elevations,source} = await fetchElevations(grid,(f,l,s)=>setProgress(0.1+f*0.78,l,s));
 
     setProgress(0.9,'Calculating coordinates…','');
@@ -1325,13 +1352,15 @@ function buildWireframeGrid(points) {
 
 function drawWireframe(angle) {
   const canvas = document.getElementById('wireframe-canvas');
-  if (!canvas || !wireframePoints || !canvas.offsetWidth) return;
-
+  if (!canvas || !wireframePoints) return;
+  const W = canvas.offsetWidth || canvas.width || 780;
+  const H = canvas.offsetHeight || canvas.height || 500;
+  if (W === 0 || H === 0) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const W = canvas.offsetWidth || 780;
-  const H = canvas.offsetHeight || 340;
-  canvas.width = W * dpr;
-  canvas.height = H * dpr;
+  if (canvas.width !== W * dpr || canvas.height !== H * dpr) {
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+  }
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
@@ -1341,11 +1370,11 @@ function drawWireframe(angle) {
 
   const { grid, rows, cols, rangeZ } = wireframePoints;
 
-  // Isometric projection — properly centred, equal proportions
+  // Isometric projection — fill canvas properly
   const span = Math.max(cols, rows);
-  const tileW = Math.min((W * 0.68) / span, 15);
-  const tileH = tileW * 0.55;
-  const zScale = tileW * 7;
+  const tileW = Math.min((W * 0.72) / span, 18);
+  const tileH = tileW * 0.52;
+  const zScale = (H * 0.35) / wireframePoints.rangeZ;
 
   // Compute projected extents to centre perfectly
   const cos = Math.cos(angle), sin = Math.sin(angle);
@@ -1402,12 +1431,11 @@ function drawWireframe(angle) {
 
 function startWireframeAnim() {
   if (wireframeAnim) cancelAnimationFrame(wireframeAnim);
-  // Slow gentle rotation
   let lastTime = 0;
   function frame(ts) {
-    if (ts - lastTime > 50) { // ~20fps — gentle
+    if (ts - lastTime > 50) {
       wireframeAngle += 0.004;
-      drawWireframe(wireframeAngle);
+      try { drawWireframe(wireframeAngle); } catch(e) { console.warn('wireframe draw error:', e); }
       lastTime = ts;
     }
     wireframeAnim = requestAnimationFrame(frame);
@@ -1419,18 +1447,53 @@ function showWireframe(points, minZ, maxZ) {
   const wCard = document.getElementById('wireframe-card');
   if(!wCard) return;
   wCard.classList.add('show');
+
   wireframePoints = buildWireframeGrid(points);
-  // If flat terrain, boost zScale artificially so mesh is still visible
-  if(maxZ - minZ < 3) wireframePoints.rangeZ = 3; // exaggerate for display
-  wireframeAngle = -0.4; // nice starting angle
+  if(!wireframePoints) return;
+  // Always exaggerate Z for visual clarity — multiply range by 4 minimum
+  wireframePoints.rangeZ = Math.max(wireframePoints.rangeZ * 4, 8);
+
+  wireframeAngle = -0.5;
   document.getElementById('wireframe-label').textContent =
     'TERRAIN MESH · ' + points.length.toLocaleString() + ' pts · ' +
     minZ.toFixed(0) + 'm – ' + maxZ.toFixed(0) + 'm elevation';
-  startWireframeAnim();
-  // Redraw on theme toggle
-  document.getElementById('theme-toggle').addEventListener('click', () => {
-    setTimeout(() => drawWireframe(wireframeAngle), 60);
+
+  const canvas = document.getElementById('wireframe-canvas');
+
+  // Use ResizeObserver for reliable dimension detection
+  let started = false;
+  const ro = new ResizeObserver(() => {
+    if(!started && canvas.offsetWidth > 50 && canvas.offsetHeight > 50) {
+      started = true;
+      ro.disconnect();
+      if(wireframeAnim) cancelAnimationFrame(wireframeAnim);
+      // Force canvas pixel dimensions explicitly
+      canvas.width = canvas.offsetWidth * Math.min(devicePixelRatio||1,2);
+      canvas.height = canvas.offsetHeight * Math.min(devicePixelRatio||1,2);
+      startWireframeAnim();
+    }
   });
+  ro.observe(canvas);
+  // Also try immediately in case already visible
+  setTimeout(() => {
+    if(!started && canvas.offsetWidth > 50) {
+      started = true;
+      ro.disconnect();
+      if(wireframeAnim) cancelAnimationFrame(wireframeAnim);
+      canvas.width = canvas.offsetWidth * Math.min(devicePixelRatio||1,2);
+      canvas.height = canvas.offsetHeight * Math.min(devicePixelRatio||1,2);
+      startWireframeAnim();
+    }
+  }, 200);
+
+  // Redraw on theme toggle
+  const themeBtn = document.getElementById('theme-toggle');
+  if(themeBtn && !themeBtn._wireframeListener) {
+    themeBtn._wireframeListener = true;
+    themeBtn.addEventListener('click', () => {
+      setTimeout(() => { if(wireframeAnim){cancelAnimationFrame(wireframeAnim); startWireframeAnim();} }, 60);
+    });
+  }
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
