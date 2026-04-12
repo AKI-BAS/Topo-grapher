@@ -578,6 +578,36 @@ function generateGrid(poly,spacing){
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function looksLikeFailure(e){return e.filter(v=>v===0||v==null).length/e.length>0.8;}
 
+// Cloudflare Worker proxy — dedicated IP, no rate limits, full CORS
+const WORKER_URL = 'https://dark-queen-7d87.svanur300.workers.dev/';
+
+async function tryWorkerProxy(pts){
+  const CHUNK = 1000;
+  const e = new Array(pts.length);
+  for(let i=0;i<pts.length;i+=CHUNK){
+    const b = pts.slice(i,i+CHUNK);
+    const r = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        latitude:  b.map(p=>parseFloat(p.lat.toFixed(6))),
+        longitude: b.map(p=>parseFloat(p.lon.toFixed(6)))
+      })
+    });
+    if(!r.ok){
+      const txt = await r.text().catch(()=>'');
+      throw new Error('proxy-' + r.status + ': ' + txt.slice(0,120));
+    }
+    const d = await r.json();
+    if(d.error) throw new Error('proxy-error: ' + (d.reason||JSON.stringify(d).slice(0,80)));
+    if(!Array.isArray(d.elevation)) throw new Error('proxy-format: ' + JSON.stringify(d).slice(0,80));
+    d.elevation.forEach((v,j)=>{ e[i+j]=v; });
+    if(i+CHUNK<pts.length) await sleep(200);
+  }
+  if(looksLikeFailure(e)) throw new Error('proxy returned zeros');
+  return e;
+}
+
 // API 1: Open-Meteo elevation — POST with JSON body (no URL length limit)
 async function tryOpenMeteo(pts){
   const CHUNK = 1000; // POST has no URL limit — large chunks = fewer requests
@@ -672,12 +702,19 @@ async function tryOpenElevation(pts){
 
 async function fetchElevations(pts,onP){
   // Try Open-Meteo first — most reliable free elevation API
-  let err1='';
+  let err0='', err1='';
+  // Primary: Cloudflare Worker proxy — bypasses rate limits and CORS issues
   try{
-    onP(0,'Fetching elevation data…',`open-meteo.com · ${pts.length} pts`);
+    onP(0,'Fetching elevation data…',`Cloudflare proxy · ${pts.length} pts`);
+    const e=await tryWorkerProxy(pts);
+    return {elevations:e,source:'open-meteo.com via proxy (90m DEM)'};
+  }catch(e){ err0=e.message; onP(0.2,'Trying direct API…',e.message.slice(0,60)); }
+
+  try{
+    onP(0.25,'Fetching elevation data…',`open-meteo.com · ${pts.length} pts`);
     const e=await tryOpenMeteo(pts);
     return {elevations:e,source:'open-meteo.com (90m DEM)'};
-  }catch(e){ err1=e.message; onP(0.3,'Trying secondary source…',e.message.slice(0,60)); }
+  }catch(e){ err1=e.message; onP(0.45,'Trying secondary source…',e.message.slice(0,60)); }
 
   let err2='';
 
@@ -694,7 +731,7 @@ async function fetchElevations(pts,onP){
     return {elevations:e,source:'open-elevation.com (SRTM)'};
   }catch(e){ err3=e.message; }
 
-  throw new Error(`All 3 elevation APIs failed — [OpenMeteo] ${err1} | [OpenTopo] ${err2} | [OpenElev] ${err3}`);
+  throw new Error(`All elevation sources failed — [Proxy] ${err0} | [OpenMeteo] ${err1} | [OpenTopo] ${err2} | [OpenElev] ${err3}`);
 }
 
 // ── Map ────────────────────────────────────────────────────────────────────
