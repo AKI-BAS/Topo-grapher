@@ -583,7 +583,7 @@ const WORKER_URL = 'https://dark-queen-7d87.svanur300.workers.dev';
 
 async function tryWorkerProxy(pts){
   // Use GET with query params — worker passes them straight to Open-Meteo
-  const CHUNK = 100; // Open-Meteo hard limit is 100 coordinates per request
+  const CHUNK = 50; // Keep URL short — 50 coords per request through proxy
   const e = new Array(pts.length);
   for(let i=0;i<pts.length;i+=CHUNK){
     const b = pts.slice(i,i+CHUNK);
