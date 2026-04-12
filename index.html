@@ -1377,10 +1377,20 @@ function buildWireframeGrid(points) {
         }
   }
 
-  const zVals = grid.flat().filter(v=>v!==0&&isFinite(v));
+  // Get real Z stats from filled cells only
+  const zVals = [];
+  for(let r=0;r<ROWS;r++)
+    for(let c=0;c<COLS;c++)
+      if(cnts[r][c]>0) zVals.push(grid[r][c]);
+
   const minZ = zVals.length ? Math.min(...zVals) : 0;
   const maxZ = zVals.length ? Math.max(...zVals) : 1;
-  const rangeZ = Math.max(maxZ-minZ, 2);
+  const rangeZ = Math.max(maxZ-minZ, 0.5);
+
+  // Replace remaining zeros with minZ so they don't create fake cliffs
+  for(let r=0;r<ROWS;r++)
+    for(let c=0;c<COLS;c++)
+      if(cnts[r][c]===0 && grid[r][c]===0) grid[r][c] = minZ;
 
   return {grid, rows:ROWS, cols:COLS, minZ, maxZ, rangeZ};
 }
@@ -1541,12 +1551,16 @@ let _currentUser = null;
 let _currentProfile = null;
 
 async function initAuth() {
-  const { data: { session } } = await _sb.auth.getSession();
-  if (session) await handleSession(session);
-  _sb.auth.onAuthStateChange(async (event, session) => {
+  try {
+    const { data: { session } } = await _sb.auth.getSession();
     if (session) await handleSession(session);
-    else handleSignOut();
-  });
+    _sb.auth.onAuthStateChange(async (event, session) => {
+      if (session) await handleSession(session);
+      else handleSignOut();
+    });
+  } catch(e) {
+    console.warn('Auth init error:', e.message);
+  }
 }
 
 async function handleSession(session) {
@@ -1571,17 +1585,20 @@ function updateNavUI() {
   const btn = document.getElementById('nav-auth-btn');
   const dropdown = document.getElementById('user-dropdown');
   const emailDisplay = document.getElementById('user-email-display');
+  if (!btn || !dropdown) return; // DOM not ready yet
   if (_currentUser) {
     btn.textContent = _currentUser.email.split('@')[0];
-    if (_currentProfile?.plan !== 'free') {
+    if (_currentProfile?.plan && _currentProfile.plan !== 'free') {
       btn.textContent += ' ✓';
     }
     if (emailDisplay) emailDisplay.textContent = _currentUser.email;
     btn.onclick = () => dropdown.classList.toggle('show');
-    // Close dropdown on outside click
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#user-menu-wrap')) dropdown.classList.remove('show');
-    }, { once: false });
+    if (!document._authClickListener) {
+      document._authClickListener = true;
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#user-menu-wrap')) dropdown.classList.remove('show');
+      });
+    }
   } else {
     btn.textContent = 'Sign in';
     btn.onclick = openAuth;
