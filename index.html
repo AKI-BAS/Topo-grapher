@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topo-grapher — Terrain Intelligence for BIM</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<!-- Leaflet Draw -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+<!-- Geocoder -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"/>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+[data-theme="dark"] {
+  --bg:        #111110;
+  --bg-card:   #1c1b19;
+  --bg-input:  #141412;
+  --border:    #2c2b28;
+  --border-md: #383733;
+  --text:      #f0ede8;
+  --text-mid:  #a09890;
+  --text-soft: #5e5550;
+  --accent:    #9aba6a;
+  --accent-md: #5E6631;
+  --accent-dk: #2e3318;
+  --green:     #1C4D33;
+  --green-lt:  #2a6647;
+  --danger:    #e05050;
+}
+[data-theme="light"] {
+  --bg:        #EEECEA;
+  --bg-card:   #F4F2EF;
+  --bg-input:  #E8E6E2;
+  --border:    #D0CEC9;
+  --border-md: #C2C0BB;
+  --text:      #1a1a18;
+  --text-mid:  #484846;
+  --text-soft: #787876;
+  --accent:    #5E6631;
+  --accent-md: #4a5228;
+  --accent-dk: #dde4be;
+  --green:     #1C4D33;
+  --green-lt:  #2a6647;
+  --danger:    #c0392b;
+}
+
+html { scroll-behavior: smooth; }
+body { background:var(--bg); color:var(--text); font-family:'DM Mono',monospace; min-height:100vh; transition:background .2s,color .2s; }
+
+/* NAV */
+nav { background:var(--bg-card); border-bottom:1px solid var(--border); padding:0 32px; height:70px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:1000; transition:background .2s,border-color .2s; }
+.nav-brand { display:flex; align-items:center; gap:14px; text-decoration:none; }
+.nav-logo { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:var(--text); letter-spacing:-.01em; }
+.nav-logo em { color:var(--accent); font-style:normal; }
+.nav-sep { width:1px; height:16px; background:var(--border-md); }
+.nav-tag { font-size:13px; color:var(--text-mid); letter-spacing:.06em; text-transform:uppercase; }
+.nav-right { display:flex; align-items:center; gap:12px; }
+.nav-link { font-size:11px; color:var(--text-mid); text-decoration:none; letter-spacing:.08em; text-transform:uppercase; transition:color .15s; }
+.nav-link:hover { color:var(--text); }
+.beta-pill { background:var(--accent-dk); border:1px solid var(--accent-md); color:var(--accent); font-size:10px; letter-spacing:.1em; text-transform:uppercase; padding:4px 10px; border-radius:3px; }
+.theme-btn { background:var(--bg-input); border:1px solid var(--border-md); color:var(--text-mid); width:32px; height:32px; border-radius:4px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+.theme-btn:hover { border-color:var(--accent-md); color:var(--text); }
+
+/* HERO */
+.hero { background:var(--bg-card); padding:44px 32px 40px; border-bottom:1px solid var(--border); transition:background .2s; }
+.hero-inner { max-width:1400px; margin:0 auto; }
+.hero-kicker { font-size:12px; color:var(--text-soft); letter-spacing:.18em; text-transform:uppercase; margin-bottom:12px; }
+.hero h1 { font-family:'Syne',sans-serif; font-size:clamp(40px,5.5vw,62px); font-weight:800; line-height:1; color:var(--text); letter-spacing:-.02em; margin-bottom:16px; }
+.hero h1 em { color:var(--accent); font-style:normal; }
+.hero-flow { display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
+.hero-step { font-size:13px; color:var(--text-mid); display:flex; align-items:center; gap:6px; }
+.hero-step-n { width:18px; height:18px; border:1px solid var(--accent-md); border-radius:2px; display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--accent); flex-shrink:0; }
+.hero-arr { color:var(--text-soft); margin:0 8px; font-size:11px; }
+
+/* LAYOUT */
+.main { max-width:1400px; margin:0 auto; padding:24px 32px 64px; }
+
+/* CARDS */
+.card { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:22px; margin-bottom:10px; transition:background .2s,border-color .2s; }
+.card-label { font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-mid); margin-bottom:16px; display:flex; align-items:center; gap:9px; }
+.card-label::before { content:''; display:block; width:3px; height:13px; background:var(--accent-md); border-radius:2px; flex-shrink:0; }
+
+/* FORM */
+.option-row { display:flex; align-items:center; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--border); gap:16px; }
+.option-row:last-child { border-bottom:none; padding-bottom:0; }
+.option-row:first-child { padding-top:0; }
+.option-label { font-size:14px; color:var(--text); font-weight:600; }
+.option-desc { font-size:13px; color:var(--text-mid); margin-top:2px; }
+
+input[type="text"], input[type="email"], select, textarea {
+  background:var(--bg-input); border:1px solid var(--border-md); color:var(--text);
+  font-family:'DM Mono',monospace; font-size:13px; padding:8px 12px; border-radius:4px;
+  outline:none; transition:border-color .2s,background .2s,color .2s; flex-shrink:0;
+}
+input[type="text"]:focus, input[type="email"]:focus, select:focus, textarea:focus { border-color:var(--accent-md); }
+input[type="text"].error { border-color:var(--danger) !important; }
+select { cursor:pointer; }
+textarea { resize:vertical; width:100%; }
+
+/* MAP */
+.map-toolbar { display:flex; gap:7px; margin-bottom:10px; flex-wrap:wrap; align-items:center; }
+.tool-btn { background:var(--bg-input); border:1px solid var(--border-md); color:var(--text-mid); font-family:'DM Mono',monospace; font-size:12px; padding:7px 14px; border-radius:4px; cursor:pointer; transition:all .15s; letter-spacing:.03em; white-space:nowrap; }
+.tool-btn:hover { border-color:var(--accent-md); color:var(--text); }
+.tool-btn.active { background:var(--accent-dk); border-color:var(--accent-md); color:var(--accent); }
+.tool-btn.danger:hover { border-color:var(--danger); color:var(--danger); }
+#map-wrap { border-radius:6px; overflow:hidden; border:1px solid var(--border); }
+#map { height:600px; width:100%; background:#111; }
+.map-hint { font-size:13px; color:var(--text-mid); margin-top:8px; line-height:1.5; }
+
+/* ACCURACY */
+.accuracy-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.acc-btn { background:var(--bg-input); border:1px solid var(--border-md); border-radius:6px; padding:14px 10px; cursor:pointer; transition:all .18s; text-align:center; }
+.acc-btn:hover { border-color:var(--accent-md); }
+.acc-btn.selected { background:var(--accent-dk); border-color:var(--accent-md); }
+.acc-m { font-family:'Syne',sans-serif; font-size:24px; font-weight:800; color:var(--text); margin-bottom:6px; }
+.acc-btn.selected .acc-m { color:var(--accent); }
+.acc-d { font-size:12px; color:var(--text-mid); line-height:1.4; }
+.acc-p { font-size:13px; color:var(--accent); margin-top:6px; font-weight:500; min-height:18px; }
+.acc-btn.selected .acc-p { color:var(--accent); }
+.acc-note { font-size:13px; color:var(--text-mid); margin-top:12px; line-height:1.5; }
+
+/* CONVERT BTN */
+.btn-main { width:100%; padding:16px; background:var(--green); color:#EFE3D8; border:1px solid var(--green-lt); border-radius:6px; font-family:'DM Mono',monospace; font-size:13px; cursor:pointer; transition:all .18s; letter-spacing:.08em; text-transform:uppercase; margin-bottom:10px; }
+.btn-main:hover { background:var(--green-lt); }
+.btn-main:disabled { opacity:.35; cursor:not-allowed; }
+
+/* PROGRESS */
+#progress-card { display:none; }
+#progress-card.show { display:block; }
+.progress-track { background:var(--bg-input); border-radius:100px; height:3px; margin:11px 0 7px; overflow:hidden; }
+.progress-fill { height:100%; background:var(--accent-md); border-radius:100px; transition:width .4s; width:0%; }
+.progress-label { font-size:13px; color:var(--text); }
+.progress-sub { font-size:13px; color:var(--text-mid); margin-top:4px; min-height:16px; }
+
+/* RESULT */
+#result-card { display:none; }
+#result-card.show { display:block; }
+.stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px; }
+.stat-box { background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:14px; text-align:center; }
+.stat-n { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; color:var(--accent); line-height:1; margin-bottom:4px; }
+.stat-l { font-size:12px; color:var(--text-mid); text-transform:uppercase; letter-spacing:.08em; }
+.stat-s { font-size:12px; color:var(--text-mid); margin-top:3px; }
+
+.preview-table { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:16px; }
+.preview-table th { text-align:left; padding:8px 12px; background:var(--bg-input); color:var(--accent); font-size:11px; letter-spacing:.12em; text-transform:uppercase; border-bottom:1px solid var(--border); }
+.preview-table td { padding:7px 12px; border-bottom:1px solid var(--border); color:var(--text); font-size:13px; }
+.preview-table tr:last-child td { border-bottom:none; }
+.preview-table td:first-child { color:var(--text); }
+
+.origin-box { background:var(--accent-dk); border:1px solid var(--accent-md); border-radius:6px; padding:13px 16px; font-size:13px; color:var(--text); margin-bottom:16px; line-height:1.9; }
+.origin-box strong { color:var(--text); font-size:14px; }
+
+.btn-dl { background:var(--accent-md); color:#EFE3D8; border:1px solid var(--accent); padding:14px 24px; border-radius:6px; font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; transition:all .18s; width:100%; letter-spacing:.06em; text-transform:uppercase; }
+.btn-dl:hover { background:var(--accent); color:#1a1208; }
+
+/* ERROR */
+#error-msg { display:none; background:rgba(192,57,43,.08); border:1px solid rgba(192,57,43,.35); color:var(--danger); padding:12px 16px; border-radius:6px; font-size:13px; width:100%; margin-bottom:10px; line-height:1.7; }
+#error-msg.show { display:block; }
+
+/* PRO */
+.pro-card { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:26px; margin-bottom:10px; transition:background .2s; }
+.pro-head { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:18px; gap:16px; }
+.pro-pill { background:var(--green); border:1px solid var(--green-lt); color:#EFE3D8; font-size:10px; letter-spacing:.12em; text-transform:uppercase; padding:4px 10px; border-radius:3px; white-space:nowrap; margin-top:4px; flex-shrink:0; }
+.pro-title { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; color:var(--text); letter-spacing:-.01em; margin-bottom:6px; }
+.pro-title em { color:var(--accent); font-style:normal; }
+.pro-sub { font-size:14px; color:var(--text); line-height:1.7; }
+.pro-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:20px; }
+.pro-feat { background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:14px; }
+.pro-feat-t { font-size:13px; font-weight:500; color:var(--text); margin-bottom:4px; }
+.pro-feat-d { font-size:13px; color:var(--text-mid); line-height:1.5; }
+.pro-feat-tag { font-size:11px; color:var(--accent-md); margin-top:6px; letter-spacing:.06em; }
+
+/* NOTIFY FORM */
+.notify-form { display:flex; gap:8px; align-items:stretch; }
+.notify-form input { flex:1; min-width:0; }
+.btn-notify-send { background:var(--accent-md); color:#EFE3D8; border:1px solid var(--accent); padding:8px 18px; border-radius:4px; font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; transition:all .18s; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; }
+.btn-notify-send:hover { background:var(--accent); color:#1a1208; }
+.notify-success { font-size:12px; color:var(--accent); margin-top:8px; display:none; }
+.notify-success.show { display:block; }
+
+/* FOOTER */
+footer { background:var(--bg-card); border-top:1px solid var(--border); padding:24px 32px; text-align:center; transition:background .2s; }
+.footer-logo { font-family:'Syne',sans-serif; font-size:15px; font-weight:800; color:var(--text); margin-bottom:5px; }
+.footer-logo em { color:var(--accent); font-style:normal; }
+.footer-sub { font-size:13px; color:var(--text-mid); letter-spacing:.04em; }
+
+/* LEAFLET OVERRIDES */
+.leaflet-container { background:#111; }
+.leaflet-bar a { background:var(--bg-card) !important; border-color:var(--border) !important; color:var(--text-mid) !important; font-size:16px !important; }
+.leaflet-bar a:hover { background:var(--border) !important; color:var(--text) !important; }
+/* Geocoder */
+.leaflet-control-geocoder { background:var(--bg-card) !important; border:1px solid var(--border-md) !important; border-radius:4px !important; box-shadow:0 2px 8px rgba(0,0,0,.3) !important; min-width:240px; }
+.leaflet-control-geocoder-form { display:flex !important; align-items:center; }
+.leaflet-control-geocoder-form input { background:var(--bg-input) !important; color:var(--text) !important; border:none !important; font-family:'DM Mono',monospace !important; font-size:12px !important; padding:7px 10px !important; width:100% !important; outline:none !important; border-radius:4px !important; }
+.leaflet-control-geocoder-form button { background:transparent !important; border:none !important; color:var(--text-soft) !important; cursor:pointer !important; padding:0 8px !important; }
+.leaflet-control-geocoder-alternatives { background:var(--bg-card) !important; border:1px solid var(--border) !important; border-top:none !important; list-style:none !important; margin:0 !important; padding:0 !important; }
+.leaflet-control-geocoder-alternatives li a { color:var(--text-mid) !important; font-size:12px !important; font-family:'DM Mono',monospace !important; padding:8px 12px !important; display:block !important; text-decoration:none !important; }
+.leaflet-control-geocoder-alternatives li a:hover { background:var(--border) !important; color:var(--text) !important; }
+/* Draw toolbar */
+.leaflet-draw-toolbar a { background-color:var(--bg-card) !important; border-color:var(--border) !important; }
+
+/* ── TIERS ────────────────────────────────────────────────────────────────── */
+.tier-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:0; }
+@media(max-width:860px){ .tier-grid { grid-template-columns:1fr; } }
+
+.tier-card { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:24px; display:flex; flex-direction:column; position:relative; transition:background .2s,border-color .2s; }
+/* Pro card: dark background with HIGH contrast text — not green-on-green */
+.tier-card--pro { border-color:var(--accent-md); border-width:2px; background:var(--bg-card); }
+
+.tier-badge { position:absolute; top:-1px; right:20px; background:var(--forest); color:#EFE3D8; font-size:10px; letter-spacing:.1em; text-transform:uppercase; padding:4px 10px; border-radius:0 0 4px 4px; }
+
+.tier-head { margin-bottom:20px; }
+.tier-name { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; color:var(--text); margin-bottom:6px; }
+/* Pro name: accent colour but only the name, rest stays readable */
+.tier-card--pro .tier-name { color:var(--accent); }
+.tier-price { font-family:'Syne',sans-serif; font-size:32px; font-weight:800; color:var(--text); line-height:1; margin-bottom:8px; }
+.tier-per { font-family:'DM Mono',monospace; font-size:13px; color:var(--text-soft); font-weight:400; }
+.tier-desc { font-size:13px; color:var(--text); line-height:1.6; }
+
+.tier-features { list-style:none; margin-bottom:20px; flex:1; display:flex; flex-direction:column; gap:8px; }
+.tier-features li { font-size:14px; padding-left:20px; position:relative; line-height:1.5; }
+/* All feature text: full --text colour for maximum readability */
+.feat-ok { color:var(--text); }
+.feat-ok::before { content:'✓'; position:absolute; left:0; color:var(--accent-md); font-size:11px; top:1px; }
+.feat-no { color:var(--text-soft); }
+.feat-no::before { content:'–'; position:absolute; left:0; color:var(--text-soft); }
+.feat-add { color:var(--accent); }
+.feat-add::before { content:'+'; position:absolute; left:0; color:var(--accent); }
+
+/* CTA buttons — forest green, cream text, always readable */
+.tier-cta { background:var(--green); color:#EFE3D8; border:1px solid var(--green-lt); padding:13px 18px; border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; transition:all .18s; letter-spacing:.05em; text-transform:uppercase; width:100%; }
+.tier-cta:hover { background:var(--green-lt); }
+/* Pro CTA same style — consistent, readable */
+.tier-card--pro .tier-cta { background:var(--green); border-color:var(--green-lt); color:#EFE3D8; }
+.tier-card--pro .tier-cta:hover { background:var(--green-lt); }
+.tier-cta-free { font-size:12px; color:var(--text-soft); text-align:center; padding:13px; border:1px solid var(--border); border-radius:5px; letter-spacing:.05em; text-transform:uppercase; }
+
+/* Divider between head and features */
+.tier-divider { height:1px; background:var(--border); margin-bottom:16px; }
+
+.addon-pill { background:var(--bg-input); border:1px solid var(--border-md); border-radius:5px; padding:12px 16px; font-size:12px; color:var(--text-mid); text-align:center; }
+.addon-pill span { display:block; color:var(--accent); font-size:14px; font-family:'Syne',sans-serif; font-weight:800; margin-top:4px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="#">
+    <span class="nav-logo">Topo<em>-grapher</em></span>
+    <span class="nav-sep"></span>
+    <span class="nav-tag">Terrain Intelligence for BIM</span>
+  </a>
+  <div class="nav-right">
+    <a class="nav-link" href="#tool">Tool</a>
+    <a class="nav-link" href="#pro">Pro</a>
+    <span class="beta-pill">Free Beta</span>
+    <button class="theme-btn" id="theme-toggle" title="Toggle theme">☀</button>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-kicker">// terrain → BIM pipeline</div>
+    <h1>Real terrain.<br><em>BIM-ready.</em></h1>
+    <div class="hero-flow">
+      <div class="hero-step"><div class="hero-step-n">1</div>Draw site on map</div>
+      <span class="hero-arr">→</span>
+      <div class="hero-step"><div class="hero-step-n">2</div>Pick accuracy</div>
+      <span class="hero-arr">→</span>
+      <div class="hero-step"><div class="hero-step-n">3</div>Elevation fetched automatically</div>
+      <span class="hero-arr">→</span>
+      <div class="hero-step"><div class="hero-step-n">4</div>Import CSV to your BIM software</div>
+    </div>
+  </div>
+</div>
+
+<div class="main" id="tool">
+
+  <div class="card">
+    <div class="card-label">01 — Project name</div>
+    <div class="option-row" style="border:none;padding:0">
+      <div><div class="option-label">Project name</div><div class="option-desc">Required — names your output CSV file</div></div>
+      <input type="text" id="project-name" placeholder="e.g. Harbour_Site_Oslo" style="width:220px">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">02 — Draw your site area</div>
+    <div class="map-toolbar">
+      <button class="tool-btn" id="btn-polygon" onclick="activateTool('polygon')">✏ Draw polygon</button>
+      <button class="tool-btn" id="btn-rect" onclick="activateTool('rect')">⬜ Draw rectangle</button>
+      <div class="search-wrap">
+        <input type="text" id="map-search" placeholder="Search location or address…" onkeydown="if(event.key==='Enter')doSearch()" style="width:260px;border-color:var(--accent-md)">
+        <button class="tool-btn" onclick="doSearch()" style="border-color:var(--accent-md);color:var(--accent)">⌕ Search</button>
+      </div>
+      <button class="tool-btn danger" onclick="clearArea()" style="margin-left:auto">✕ Clear</button>
+    </div>
+    <div id="map-wrap"><div id="map"></div></div>
+    <div class="map-hint" id="map-hint">Use the search box (top-right of map) to find your site. Then draw a polygon or rectangle. Double-click to finish a polygon.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">03 — Point spacing</div>
+    <div class="accuracy-grid">
+      <div class="acc-btn" id="acc-3" onclick="setAccuracy(3)"><div class="acc-m">3m</div><div class="acc-d">Highest detail — small or complex sites</div><div class="acc-p" id="pts-3">— pts</div><div style="font-size:10px;color:var(--accent-md);margin-top:4px;letter-spacing:.06em">// Pro</div></div>
+      <div class="acc-btn" id="acc-6" onclick="setAccuracy(6)"><div class="acc-m">6m</div><div class="acc-d">Recommended for most sites</div><div class="acc-p" id="pts-6">— pts</div><div style="font-size:10px;color:var(--accent-md);margin-top:4px;letter-spacing:.06em">// Pro</div></div>
+      <div class="acc-btn selected" id="acc-12" onclick="setAccuracy(12)"><div class="acc-m">12m</div><div class="acc-d">Free tier — up to 500×500m</div><div class="acc-p" id="pts-12">— pts</div><div style="font-size:10px;color:var(--text-soft);margin-top:4px;letter-spacing:.06em">// Free</div></div>
+      <div class="acc-btn" id="acc-20" onclick="setAccuracy(20)"><div class="acc-m">20m</div><div class="acc-d">Low — very large areas</div><div class="acc-p" id="pts-20">— pts</div><div style="font-size:10px;color:var(--text-soft);margin-top:4px;letter-spacing:.06em">// Free</div></div>
+    </div>
+    <div class="acc-note">⚠ Points above ~2,000 take longer to fetch. Use 12m or 20m for large sites.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">04 — Options</div>
+    <div class="option-row">
+      <div><div class="option-label">Local origin point</div><div class="option-desc">Which point becomes X=0, Y=0 in your model</div></div>
+      <select id="origin-select">
+        <option value="first">First grid point (bottom-left)</option>
+        <option value="centroid">Centroid of site area</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="btn-main" id="convert-btn" disabled>Generate Terrain CSV</button>
+  <div id="daily-limit-badge" style="font-size:11px;text-align:center;margin-top:-4px;margin-bottom:8px;color:var(--text-soft);"></div>
+  <div id="error-msg"></div>
+
+  <div class="card" id="progress-card">
+    <div class="progress-label" id="progress-label">Starting…</div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="progress-sub" id="progress-sub"></div>
+  </div>
+
+  <div class="card" id="result-card">
+    <div class="card-label">05 — Result</div>
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-n" id="stat-points">—</div><div class="stat-l">Points</div></div>
+      <div class="stat-box"><div class="stat-n" id="stat-spacing">—</div><div class="stat-l">Spacing</div></div>
+      <div class="stat-box"><div class="stat-n" id="stat-range">—</div><div class="stat-l">Elev. range (m)</div></div>
+      <div class="stat-box"><div class="stat-n" id="stat-area">—</div><div class="stat-l">m²</div><div class="stat-s" id="stat-dims">—</div></div>
+    </div>
+    <div class="origin-box" id="origin-info"></div>
+    <table class="preview-table">
+      <thead><tr><th>X (m)</th><th>Y (m)</th><th>Z (m)</th></tr></thead>
+      <tbody id="preview-body"></tbody>
+    </table>
+    <button class="btn-dl" id="download-btn">↓ Download CSV for Revit</button>
+  </div>
+
+  <p style="font-size:13px;color:var(--text-mid);text-align:center;max-width:540px;margin:12px auto 0;line-height:1.7">
+    Import the CSV into Revit (Toposolid → Create from Import), SketchUp (Sandbox → From Contours), ArchiCAD, Rhino, or any BIM/CAD tool that accepts XYZ point data.<br>
+    Use the UTM origin coordinates above to georeference your model accurately.
+  </p>
+</div>
+
+
+<div style="display:none"><div class="main" style="padding-top:0;padding-bottom:0;">
+  <div class="card" id="contour-panel">
+    <div class="card-label">// Terrain preview<span id="contour-source-badge" style="margin-left:10px;font-size:10px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;"></span></div>
+
+    <div id="contour-placeholder" style="width:100%;height:320px;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px dashed var(--border-md);gap:14px;">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.35">
+        <ellipse cx="24" cy="30" rx="18" ry="6" stroke="currentColor" stroke-width="1"/>
+        <ellipse cx="24" cy="24" rx="13" ry="5" stroke="currentColor" stroke-width="1"/>
+        <ellipse cx="24" cy="19" rx="8" ry="3.5" stroke="currentColor" stroke-width="1"/>
+        <ellipse cx="24" cy="15" rx="4" ry="2" stroke="currentColor" stroke-width="1"/>
+        <ellipse cx="24" cy="12" rx="1.5" ry="1" stroke="currentColor" stroke-width="1"/>
+      </svg>
+      <span style="font-size:12px;color:var(--text-soft);letter-spacing:.08em;text-align:center;max-width:220px;line-height:1.6">Draw your site on the map above to see a contour preview here</span>
+    </div>
+    <canvas id="contour-canvas" style="width:100%;height:320px;display:none;border-radius:4px;"></canvas>
+    <div style="font-size:11px;color:var(--text-soft);margin-top:8px;text-align:center;letter-spacing:.06em;min-height:16px;" id="contour-label"></div>
+  </div>
+</div></div>
+<div class="main" id="pro" style="padding-top:0">
+
+  <!-- Tier comparison header -->
+  <div style="margin-bottom:10px">
+    <div class="card-label" style="margin-bottom:0;padding-bottom:16px">// Plans &amp; pricing</div>
+  </div>
+
+  <!-- Three tier cards -->
+  <div class="tier-grid">
+
+    <!-- Free -->
+    <div class="tier-card">
+      <div class="tier-head">
+        <div class="tier-name">Free</div>
+        <div class="tier-price">£0<span class="tier-per">/month</span></div>
+        <div class="tier-desc">For individuals evaluating the tool or working on small residential sites.</div>
+      </div>
+      <div class="tier-divider"></div>
+      <ul class="tier-features">
+        <li class="feat-ok">Unlimited site generations</li>
+        <li class="feat-ok">Up to 500 × 500m per site</li>
+        <li class="feat-ok">12m point spacing</li>
+        <li class="feat-ok">CSV export for Revit, SketchUp, ArchiCAD, Rhino &amp; more</li>
+        <li class="feat-no">3m &amp; 6m precision</li>
+        <li class="feat-no">Sites up to 2 × 2km</li>
+        <li class="feat-no">Project history</li>
+        <li class="feat-no">LiDAR elevation (1m)</li>
+      </ul>
+      <div class="tier-cta-free">Current plan</div>
+    </div>
+
+    <!-- Pro -->
+    <div class="tier-card tier-card--pro">
+      <div class="tier-badge">Most popular</div>
+      <div class="tier-head">
+        <div class="tier-name">Pro</div>
+        <div class="tier-price">£25<span class="tier-per">/month</span></div>
+        <div class="tier-desc">For individual architects and technologists working on real projects.</div>
+      </div>
+      <div class="tier-divider"></div>
+      <ul class="tier-features">
+        <li class="feat-ok">Everything in Free</li>
+        <li class="feat-ok">3m, 6m, 12m, 20m spacing</li>
+        <li class="feat-ok">Sites up to 2 × 2km</li>
+        <li class="feat-ok">Project history &amp; saved sites</li>
+        <li class="feat-ok">LiDAR elevation where available</li>
+        <li class="feat-ok">Contour preview before export</li>
+        <li class="feat-ok">Priority support</li>
+        <li class="feat-add">Large site add-on available</li>
+      </ul>
+      <button class="tier-cta" onclick="document.getElementById('notify-email').focus();document.getElementById('notify-section').scrollIntoView({behavior:'smooth'})">Get notified at launch →</button>
+    </div>
+
+    <!-- Company -->
+    <div class="tier-card">
+      <div class="tier-head">
+        <div class="tier-name">Company</div>
+        <div class="tier-price">£19.99<span class="tier-per">/seat/month</span></div>
+        <div class="tier-desc">For practices and studios. Scales with your team — billed by registered users.</div>
+      </div>
+      <div class="tier-divider"></div>
+      <ul class="tier-features">
+        <li class="feat-ok">Everything in Pro</li>
+        <li class="feat-ok">Per-seat billing — pay for who you add</li>
+        <li class="feat-ok">Scales from 2 to unlimited seats</li>
+        <li class="feat-ok">Shared project library</li>
+        <li class="feat-ok">Team admin panel</li>
+        <li class="feat-ok">Usage dashboard</li>
+        <li class="feat-ok">Invoiced billing available</li>
+        <li class="feat-add">Large site add-on available</li>
+      </ul>
+      <button class="tier-cta" onclick="document.getElementById('notify-email').focus();document.getElementById('notify-section').scrollIntoView({behavior:'smooth'})">Get notified at launch →</button>
+    </div>
+
+  </div>
+
+  <!-- Large site add-on -->
+  <div class="card" style="margin-top:10px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap;">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--text);margin-bottom:6px;">Large Site Add-on <em style="color:var(--accent);font-style:normal;">// Pro &amp; Company</em></div>
+        <div style="font-size:14px;color:var(--text-mid);line-height:1.7;max-width:520px;">For masterplans, landscape architecture, and infrastructure projects beyond 2×2km. Charged per generation — not per user.</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-shrink:0;flex-wrap:wrap;align-items:flex-start;">
+        <div class="addon-pill">Up to 5 km² <span>£5 / generation</span></div>
+        <div class="addon-pill">Up to 20 km² <span>£15 / generation</span></div>
+        <div class="addon-pill">Above 20 km² <span>Contact us</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notify section -->
+  <div class="card" id="notify-section" style="margin-top:10px">
+    <div style="max-width:560px;">
+      <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);margin-bottom:6px;">Be first to know when Pro launches</div>
+      <div style="font-size:14px;color:var(--text-mid);line-height:1.7;margin-bottom:16px;">Leave your email and we'll notify you the moment Pro goes live. Early signups get the first month free.</div>
+      <div class="notify-form">
+        <input type="email" id="notify-email" placeholder="your@email.com" style="flex:1;min-width:0;">
+        <select id="notify-plan" style="width:160px;">
+          <option value="pro">Pro — £25/mo</option>
+          <option value="company">Company — £19.99/seat</option>
+        </select>
+        <button class="btn-notify-send" onclick="sendNotify()">Notify me →</button>
+      </div>
+      <div class="notify-success" id="notify-success">✓ You're on the list. We'll email you when Pro launches — early signups get the first month free.</div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-logo">Topo<em>-grapher</em></div>
+  <div class="footer-sub">Terrain Intelligence for BIM &nbsp;·&nbsp; Free Beta</div>
+</footer>
+
+<!-- Scripts — load order matters: Leaflet first, then Draw, then Geocoder -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script>
+
+// ── Theme ──────────────────────────────────────────────────────────────────
+const html = document.documentElement;
+const themeBtn = document.getElementById('theme-toggle');
+function setTheme(t) {
+  html.setAttribute('data-theme', t);
+  themeBtn.textContent = t === 'dark' ? '☀' : '🌙';
+  localStorage.setItem('topo-theme', t);
+}
+themeBtn.addEventListener('click', () => setTheme(html.dataset.theme === 'dark' ? 'light' : 'dark'));
+const savedTheme = localStorage.getItem('topo-theme');
+if (savedTheme) setTheme(savedTheme);
+
+// ── Notify ─────────────────────────────────────────────────────────────────
+function sendNotify() {
+  const email = document.getElementById('notify-email').value.trim();
+  if (!email || !email.includes('@')) {
+    document.getElementById('notify-email').style.borderColor = 'var(--danger)';
+    return;
+  }
+  document.getElementById('notify-email').style.borderColor = '';
+  // In production: POST to your backend here
+  // For now, store locally and show confirmation
+  const emails = JSON.parse(localStorage.getItem('topo-notify') || '[]');
+  if (!emails.includes(email)) emails.push(email);
+  localStorage.setItem('topo-notify', JSON.stringify(emails));
+  document.getElementById('notify-success').classList.add('show');
+  document.getElementById('notify-email').value = '';
+}
+
+// ── UTM ────────────────────────────────────────────────────────────────────
+function latLonToUTM(lat,lon){
+  const a=6378137,f=1/298.257223563,b=a*(1-f),e2=1-(b*b)/(a*a),k0=0.9996,ep2=(a*a-b*b)/(b*b);
+  const zn=Math.floor((lon+180)/6)+1,lo=(zn-1)*6-180+3;
+  const lr=lat*Math.PI/180,nr=lon*Math.PI/180,l0=lo*Math.PI/180;
+  const N=a/Math.sqrt(1-e2*Math.sin(lr)**2),T=Math.tan(lr)**2,C=ep2*Math.cos(lr)**2,A=Math.cos(lr)*(nr-l0);
+  const e4=e2*e2,e6=e2*e4;
+  const M=a*((1-e2/4-3*e4/64-5*e6/256)*lr-(3*e2/8+3*e4/32+45*e6/1024)*Math.sin(2*lr)+(15*e4/256+45*e6/1024)*Math.sin(4*lr)-(35*e6/3072)*Math.sin(6*lr));
+  let e=k0*N*(A+(1-T+C)*A**3/6+(5-18*T+T**2+72*C-58*ep2)*A**5/120)+500000;
+  let n=k0*(M+N*Math.tan(lr)*(A**2/2+(5-T+9*C+4*C**2)*A**4/24+(61-58*T+T**2+600*C-330*ep2)*A**6/720));
+  if(lat<0) n+=10000000;
+  const zl='CDEFGHJKLMNPQRSTUVWXX'[Math.max(0,Math.min(Math.floor((lat+80)/8),20))];
+  return {easting:e,northing:n,zone:`${zn}${zl}`};
+}
+
+function metresPerDeg(lat){
+  const r=lat*Math.PI/180;
+  return {lat:111132.92-559.82*Math.cos(2*r)+1.175*Math.cos(4*r), lon:111412.84*Math.cos(r)-93.5*Math.cos(3*r)};
+}
+
+function pointInPoly(lat,lon,poly){
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i].lat,yi=poly[i].lng,xj=poly[j].lat,yj=poly[j].lng;
+    if(((yi>lon)!==(yj>lon))&&(lat<(xj-xi)*(lon-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+
+function generateGrid(poly,spacing){
+  const lats=poly.map(p=>p.lat),lons=poly.map(p=>p.lng);
+  const minLat=Math.min(...lats),maxLat=Math.max(...lats);
+  const minLon=Math.min(...lons),maxLon=Math.max(...lons);
+  const mpd=metresPerDeg((minLat+maxLat)/2);
+  const dLat=spacing/mpd.lat,dLon=spacing/mpd.lon;
+  const pts=[];
+  for(let lat=minLat;lat<=maxLat+dLat*0.5;lat+=dLat)
+    for(let lon=minLon;lon<=maxLon+dLon*0.5;lon+=dLon)
+      if(pointInPoly(lat,lon,poly)) pts.push({lat,lon});
+  return pts;
+}
+
+// ── Elevation ──────────────────────────────────────────────────────────────
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function looksLikeFailure(e){return e.filter(v=>v===0||v==null).length/e.length>0.8;}
+
+async function tryOpenElevation(pts){
+  const B=100,e=new Array(pts.length);
+  for(let i=0;i<pts.length;i+=B){
+    const b=pts.slice(i,i+B);
+    const r=await fetch('https://api.open-elevation.com/api/v1/lookup',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({locations:b.map(p=>({latitude:p.lat,longitude:p.lon}))})});
+    if(!r.ok) throw new Error(`oe-${r.status}`);
+    const d=await r.json();
+    d.results.forEach((v,j)=>{e[i+j]=v.elevation;});
+    if(i+B<pts.length) await sleep(300);
+  }
+  if(looksLikeFailure(e)) throw new Error('zeros');
+  return e;
+}
+
+async function tryOpenTopoData(pts){
+  const B=100,e=new Array(pts.length);
+  for(let i=0;i<pts.length;i+=B){
+    const b=pts.slice(i,i+B);
+    const r=await fetch(`https://api.opentopodata.org/v1/srtm30m?locations=${encodeURIComponent(b.map(p=>`${p.lat},${p.lon}`).join('|'))}`);
+    if(!r.ok) throw new Error(`otd-${r.status}`);
+    const d=await r.json();
+    if(d.status!=='OK') throw new Error(d.status);
+    d.results.forEach((v,j)=>{e[i+j]=v.elevation??0;});
+    if(i+B<pts.length) await sleep(400);
+  }
+  if(looksLikeFailure(e)) throw new Error('zeros');
+  return e;
+}
+
+async function fetchElevations(pts,onP){
+  try{
+    onP(0,'Fetching elevation data…',`open-elevation.com · ${pts.length} pts`);
+    const e=await tryOpenElevation(pts);
+    return {elevations:e,source:'open-elevation.com (SRTM)'};
+  }catch(e){ onP(0.35,'Trying secondary source…',''); }
+  try{
+    onP(0.4,'Fetching elevation data…',`opentopodata.org · ${pts.length} pts`);
+    const e=await tryOpenTopoData(pts);
+    return {elevations:e,source:'opentopodata.org (SRTM 30m)'};
+  }catch(e){}
+  throw new Error('All elevation sources unavailable. This tool works best hosted online — opening as a local file blocks API access. Try hosting on GitHub Pages.');
+}
+
+// ── Map ────────────────────────────────────────────────────────────────────
+let map, drawnItems, currentTool=null, polygonLatLngs=null, selectedSpacing=12;
+
+function initMap(){
+  map = L.map('map',{
+    center:[54.5,-2], zoom:6,
+    worldCopyJump:false,
+    maxBounds:[[-85,-180],[85,180]],
+    maxBoundsViscosity:1.0,
+    minZoom:3
+  });
+
+  // Satellite imagery
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+    attribution:'© Esri', maxZoom:19, noWrap:true
+  }).addTo(map);
+
+  // Street name labels overlay (CartoDB labels only — shows roads, streets, city names)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{
+    attribution:'© CartoDB', maxZoom:19, opacity:1.0, noWrap:true
+  }).addTo(map);
+
+  // Search box — using unpkg version with correct API
+  window._geocoder = L.Control.Geocoder.nominatim();
+
+  drawnItems = new L.FeatureGroup().addTo(map);
+
+  // Listen for completed shapes
+  map.on(L.Draw.Event.CREATED, function(ev){
+    drawnItems.clearLayers();
+    drawnItems.addLayer(ev.layer);
+    const raw = ev.layer.getLatLngs();
+    // getLatLngs returns nested array for polygon, flat for rectangle
+    const ll = Array.isArray(raw[0]) ? raw[0] : raw;
+    polygonLatLngs = ll;
+    currentTool = null;
+    document.getElementById('btn-polygon').classList.remove('active');
+    document.getElementById('btn-rect').classList.remove('active');
+    updatePtCounts();
+    updateHint();
+    updateConvertBtn();
+  });
+
+  map.on(L.Draw.Event.DRAWSTART, ()=>{
+    document.getElementById('map-hint').textContent = 'Click to place points. Double-click to finish the polygon.';
+  });
+
+  map.on(L.Draw.Event.DRAWSTOP, ()=>{
+    updateHint();
+  });
+}
+
+function activateTool(t){
+  // Cancel any in-progress draw first
+  if(currentTool){ currentTool.disable(); currentTool=null; }
+  const opts = { shapeOptions:{ color:'#5E6631', fillColor:'#1C4D33', fillOpacity:0.2, weight:2 } };
+  currentTool = t==='polygon' ? new L.Draw.Polygon(map,opts) : new L.Draw.Rectangle(map,opts);
+  currentTool.enable();
+  document.getElementById('btn-polygon').classList.toggle('active', t==='polygon');
+  document.getElementById('btn-rect').classList.toggle('active', t==='rect');
+}
+
+function clearArea(){
+  if(currentTool){ currentTool.disable(); currentTool=null; }
+  drawnItems.clearLayers();
+  polygonLatLngs = null;
+  document.getElementById('btn-polygon').classList.remove('active');
+  document.getElementById('btn-rect').classList.remove('active');
+  updatePtCounts();
+  updateHint();
+  updateConvertBtn();
+  document.getElementById('result-card').classList.remove('show');
+  if(typeof clearSiteContourData==='function') clearSiteContourData();
+}
+
+function updateHint(){
+  const el = document.getElementById('map-hint');
+  if(polygonLatLngs && polygonLatLngs.length > 0){
+    const c = generateGrid(polygonLatLngs, selectedSpacing).length;
+    el.textContent = `Area set — ${c.toLocaleString()} points at ${selectedSpacing}m spacing. Adjust spacing below or click Generate.`;
+    return;
+  }
+  el.textContent = 'Use the search box (top-right of map) to find your site. Draw a polygon or rectangle to define the boundary. Double-click to finish a polygon.';
+}
+
+function updatePtCounts(){
+  [3,6,12,20].forEach(s=>{
+    const el = document.getElementById(`pts-${s}`);
+    if(!polygonLatLngs || polygonLatLngs.length===0){ el.textContent='— pts'; el.style.color=''; return; }
+    const c = generateGrid(polygonLatLngs, s).length;
+    el.textContent = `~${c.toLocaleString()} pts`;
+    el.style.color = c>2000 ? 'var(--danger)' : '';
+  });
+}
+
+function setAccuracy(s){
+  selectedSpacing = s;
+  [3,6,12,20].forEach(v=>document.getElementById(`acc-${v}`).classList.toggle('selected',v===s));
+  updateHint();
+}
+
+function updateConvertBtn(){
+  document.getElementById('convert-btn').disabled = !(document.getElementById('project-name').value.trim() && polygonLatLngs && polygonLatLngs.length>0);
+}
+
+// ── UI ─────────────────────────────────────────────────────────────────────
+function setProgress(f,l,s){
+  document.getElementById('progress-fill').style.width=(f*100)+'%';
+  if(l!==undefined) document.getElementById('progress-label').textContent=l;
+  if(s!==undefined) document.getElementById('progress-sub').textContent=s;
+}
+function showError(m){ const el=document.getElementById('error-msg'); el.innerHTML='⚠ '+m; el.classList.add('show'); }
+function hideError(){ document.getElementById('error-msg').classList.remove('show'); }
+function showProgress(v){ document.getElementById('progress-card').classList.toggle('show',v); }
+function showResult(v){ document.getElementById('result-card').classList.toggle('show',v); }
+
+let csvData='', projectName='';
+
+
+// ── Daily generation limit (soft — localStorage) ───────────────────────────
+const FREE_DAILY_LIMIT = 3;
+
+function getTodayKey() {
+  return 'topo-gens-' + new Date().toISOString().slice(0, 10); // e.g. "topo-gens-2026-04-12"
+}
+
+function getGenerationsToday() {
+  return parseInt(localStorage.getItem(getTodayKey()) || '0', 10);
+}
+
+function incrementGenerationsToday() {
+  const key = getTodayKey();
+  localStorage.setItem(key, getGenerationsToday() + 1);
+  // Clean up yesterday's keys to avoid localStorage bloat
+  Object.keys(localStorage)
+    .filter(k => k.startsWith('topo-gens-') && k !== key)
+    .forEach(k => localStorage.removeItem(k));
+}
+
+function checkDailyLimit() {
+  const used = getGenerationsToday();
+  if (used >= FREE_DAILY_LIMIT) {
+    throw new Error(
+      `Free tier limit reached — ${FREE_DAILY_LIMIT} generations per day. ` +
+      `Resets at midnight. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.`
+    );
+  }
+}
+
+function updateLimitBadge() {
+  const used = getGenerationsToday();
+  const remaining = Math.max(0, FREE_DAILY_LIMIT - used);
+  const el = document.getElementById('daily-limit-badge');
+  if (el) {
+    el.textContent = `${remaining} of ${FREE_DAILY_LIMIT} free generations remaining today`;
+    el.style.color = remaining === 0 ? 'var(--danger)' : remaining === 1 ? '#e0a050' : 'var(--text-soft)';
+  }
+}
+
+async function convert(){
+  hideError(); showResult(false);
+  const nEl = document.getElementById('project-name');
+  projectName = nEl.value.trim();
+  if(!projectName){ nEl.classList.add('error'); nEl.focus(); showError('Enter a project name first.'); return; }
+  nEl.classList.remove('error');
+  if(!polygonLatLngs || polygonLatLngs.length===0){ showError('Draw a site area on the map first.'); return; }
+
+  document.getElementById('convert-btn').disabled=true;
+  showProgress(true); setProgress(0.04,'Generating point grid…','');
+
+  try{
+    // Free tier limits
+    const FREE_MAX_M = 500; // 500m x 500m max area
+    const FREE_MAX_SPACING = 12; // 12m minimum spacing
+    const lats=polygonLatLngs.map(p=>p.lat),lons=polygonLatLngs.map(p=>p.lng);
+    const mpd=metresPerDeg((Math.min(...lats)+Math.max(...lats))/2);
+    const siteW=(Math.max(...lons)-Math.min(...lons))*mpd.lon;
+    const siteH=(Math.max(...lats)-Math.min(...lats))*mpd.lat;
+    if(siteW>FREE_MAX_M||siteH>FREE_MAX_M){
+      throw new Error('Free tier is limited to 500 × 500m sites. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for sites up to 2 × 2km.');
+    }
+    if(selectedSpacing<FREE_MAX_SPACING){
+      throw new Error('Free tier supports 12m spacing only. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for 3m and 6m precision.');
+    }
+    checkDailyLimit();
+    const grid = generateGrid(polygonLatLngs, selectedSpacing);
+    if(grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
+    if(grid.length>8000) throw new Error(`${grid.length.toLocaleString()} points is too many at once. Use 12m or 20m spacing, or draw a smaller area.`);
+
+    setProgress(0.1,`${grid.length} points — fetching elevation…`,'');
+    const {elevations,source} = await fetchElevations(grid,(f,l,s)=>setProgress(0.1+f*0.78,l,s));
+
+    setProgress(0.9,'Calculating coordinates…','');
+    const utm = grid.map((p,i)=>({...latLonToUTM(p.lat,p.lon), alt:elevations[i]}));
+    const mode = document.getElementById('origin-select').value;
+    let oE,oN;
+    if(mode==='first'){ oE=utm[0].easting; oN=utm[0].northing; }
+    else{ oE=utm.reduce((s,p)=>s+p.easting,0)/utm.length; oN=utm.reduce((s,p)=>s+p.northing,0)/utm.length; }
+
+    const out = utm.map(p=>({
+      x:parseFloat((p.easting-oE).toFixed(3)),
+      y:parseFloat((p.northing-oN).toFixed(3)),
+      z:parseFloat(p.alt.toFixed(3))
+    }));
+    csvData = 'X,Y,Z\n'+out.map(p=>`${p.x},${p.y},${p.z}`).join('\n');
+    incrementGenerationsToday();
+    updateLimitBadge();
+    setSiteContourData(out);
+
+    const alts = out.map(p=>p.z).filter(z=>z!==0&&isFinite(z)&&!isNaN(z));
+    const xs=out.map(p=>p.x), ys=out.map(p=>p.y);
+    const xR=Math.max(...xs)-Math.min(...xs), yR=Math.max(...ys)-Math.min(...ys);
+
+    document.getElementById('stat-points').textContent=out.length.toLocaleString();
+    document.getElementById('stat-spacing').textContent=`${selectedSpacing}m`;
+    document.getElementById('stat-range').textContent=alts.length?`${Math.min(...alts).toFixed(0)}–${Math.max(...alts).toFixed(0)}`:'—';
+    document.getElementById('stat-area').textContent=Math.round(xR*yR).toLocaleString();
+    document.getElementById('stat-dims').textContent=`${xR.toFixed(0)}m × ${yR.toFixed(0)}m`;
+
+    document.getElementById('origin-info').innerHTML=
+      `<strong>Local origin (0,0) · ${projectName}</strong><br>`+
+      `UTM Easting: ${oE.toFixed(2)} &nbsp;|&nbsp; Northing: ${oN.toFixed(2)} &nbsp;|&nbsp; Zone: ${utm[0].zone}<br>`+
+      `Elevation source: ${source}<br>`+
+      `<span style="opacity:.7;font-size:11px">Set Revit Survey Point to UTM coordinates above for georeferenced placement.</span>`;
+
+    document.getElementById('preview-body').innerHTML=
+      out.slice(0,6).map(p=>`<tr><td>${p.x}</td><td>${p.y}</td><td>${p.z}</td></tr>`).join('')+
+      `<tr><td colspan="3" style="color:var(--text-soft);font-size:11px;padding-top:6px">… ${out.length.toLocaleString()} total rows in CSV</td></tr>`;
+
+    setProgress(1,'Done — terrain data ready.','');
+    setTimeout(()=>{ showProgress(false); showResult(true); document.getElementById('result-card').scrollIntoView({behavior:'smooth',block:'start'}); },400);
+
+  }catch(err){
+    showProgress(false);
+    showError(err.message);
+  }finally{
+    document.getElementById('convert-btn').disabled=false;
+  }
+}
+
+function downloadCSV(){
+  if(!csvData) return;
+  const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csvData],{type:'text/csv'}));
+  a.download = `${safe}_toposolid.csv`;
+  a.click();
+}
+
+
+// ── Contour renderer ────────────────────────────────────────────────────────
+let animFrame=null, animT=0;
+let siteFieldData=null;
+
+function setSiteContourData(points){
+  const xs=points.map(p=>p.x),ys=points.map(p=>p.y),zs=points.map(p=>p.z);
+  const minX=Math.min(...xs),maxX=Math.max(...xs);
+  const minY=Math.min(...ys),maxY=Math.max(...ys);
+  const minZ=Math.min(...zs),maxZ=Math.max(...zs);
+  const rangeX=maxX-minX||1,rangeY=maxY-minY||1,rangeZ=maxZ-minZ||1;
+  const COLS=100,ROWS=66;
+  const field=[];
+  const counts=[];
+  for(let r=0;r<=ROWS;r++){field[r]=new Float32Array(COLS+1);counts[r]=new Uint16Array(COLS+1);}
+  points.forEach(p=>{
+    const c=Math.round((p.x-minX)/rangeX*COLS);
+    const r=Math.round((1-(p.y-minY)/rangeY)*ROWS);
+    if(c>=0&&c<=COLS&&r>=0&&r<=ROWS){field[r][c]+=(p.z-minZ)/rangeZ;counts[r][c]++;}
+  });
+  for(let r=0;r<=ROWS;r++)
+    for(let c=0;c<=COLS;c++)
+      if(counts[r][c]>0) field[r][c]/=counts[r][c];
+  for(let pass=0;pass<8;pass++)
+    for(let r=1;r<ROWS;r++)
+      for(let c=1;c<COLS;c++)
+        if(counts[r][c]===0){
+          const n=field[r-1]?.[c]||0,s=field[r+1]?.[c]||0,w=field[r][c-1]||0,e=field[r][c+1]||0;
+          field[r][c]=(n+s+w+e)/4;
+        }
+  siteFieldData={field,COLS,ROWS,minZ,maxZ};
+  document.getElementById('contour-source-badge').textContent='↳ your site';
+  document.getElementById('contour-label').textContent='YOUR SITE — elevation '+minZ.toFixed(0)+'m – '+maxZ.toFixed(0)+'m';
+  document.getElementById('contour-placeholder').style.display='none';
+  document.getElementById('contour-canvas').style.display='block';
+  if(animFrame) cancelAnimationFrame(animFrame);
+  animT=0;
+  drawContour();
+}
+
+function clearSiteContourData(){
+  siteFieldData=null;
+  document.getElementById('contour-source-badge').textContent='';
+  document.getElementById('contour-label').textContent='';
+  document.getElementById('contour-canvas').style.display='none';
+  document.getElementById('contour-placeholder').style.display='flex';
+  if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}
+}
+
+function drawContour(){
+  const canvas=document.getElementById('contour-canvas');
+  if(!canvas||!siteFieldData) return;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const W=canvas.offsetWidth||800,H=canvas.offsetHeight||320;
+  canvas.width=W*dpr;canvas.height=H*dpr;
+  const ctx=canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  ctx.fillStyle=isDark?'#0d0d0c':'#f5f0ea';
+  ctx.fillRect(0,0,W,H);
+  const {field,COLS,ROWS}=siteFieldData;
+  const lineColor=isDark?'rgba(154,186,106,':'rgba(94,102,49,';
+  const LEVELS=32;
+  for(let li=0;li<LEVELS;li++){
+    const t=li/LEVELS,level=t;
+    const alpha=isDark?(0.12+t*0.65):(0.18+t*0.55);
+    ctx.strokeStyle=lineColor+alpha+')';
+    ctx.lineWidth=t>0.65?0.9:0.5;
+    ctx.beginPath();
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const v00=field[r][c],v10=field[r][c+1]||0;
+        const v01=field[r+1]?.[c]||0,v11=field[r+1]?.[c+1]||0;
+        const x0=c/COLS*W,x1=(c+1)/COLS*W,y0=r/ROWS*H,y1=(r+1)/ROWS*H;
+        const edges=[];
+        if((v00<level)!==(v10<level)){const f=(level-v00)/((v10-v00)||1e-9);edges.push([x0+f*(x1-x0),y0]);}
+        if((v10<level)!==(v11<level)){const f=(level-v10)/((v11-v10)||1e-9);edges.push([x1,y0+f*(y1-y0)]);}
+        if((v01<level)!==(v11<level)){const f=(level-v01)/((v11-v01)||1e-9);edges.push([x0+f*(x1-x0),y1]);}
+        if((v00<level)!==(v01<level)){const f=(level-v00)/((v01-v00)||1e-9);edges.push([x0,y0+f*(y1-y0)]);}
+        if(edges.length>=2){ctx.moveTo(edges[0][0],edges[0][1]);ctx.lineTo(edges[1][0],edges[1][1]);}
+      }
+    }
+    ctx.stroke();
+  }
+  const scanY=(animT%1)*H;
+  const g=ctx.createLinearGradient(0,scanY-30,0,scanY+30);
+  g.addColorStop(0,'rgba(154,186,106,0)');
+  g.addColorStop(0.5,isDark?'rgba(154,186,106,0.07)':'rgba(94,102,49,0.05)');
+  g.addColorStop(1,'rgba(154,186,106,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,scanY-30,W,60);
+  animT+=0.003;
+  animFrame=requestAnimationFrame(drawContour);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const ro=new ResizeObserver(()=>{
+    if(siteFieldData&&animFrame){cancelAnimationFrame(animFrame);animT=0;drawContour();}
+  });
+  const c=document.getElementById('contour-canvas');
+  if(c) ro.observe(c);
+  document.getElementById('theme-toggle').addEventListener('click',()=>{
+    if(siteFieldData) setTimeout(()=>{if(animFrame){cancelAnimationFrame(animFrame);animT=0;drawContour();}},60);
+  });
+});
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  initMap();
+  updateLimitBadge();
+  document.getElementById('project-name').addEventListener('input', function(){ this.classList.remove('error'); updateConvertBtn(); });
+  document.getElementById('convert-btn').addEventListener('click', convert);
+  document.getElementById('download-btn').addEventListener('click', downloadCSV);
+  document.getElementById('notify-email').addEventListener('keydown', function(e){ if(e.key==='Enter') sendNotify(); });
+});
+</script>
+</body>
+</html>
