@@ -590,6 +590,7 @@ async function tryWorkerProxy(pts){
     const lats = b.map(p=>p.lat.toFixed(6)).join(',');
     const lons = b.map(p=>p.lon.toFixed(6)).join(',');
     const url = WORKER_URL + '?latitude=' + encodeURIComponent(lats) + '&longitude=' + encodeURIComponent(lons);
+    onP(null, null, `Batch ${Math.floor(i/50)+1} of ${Math.ceil(pts.length/50)}…`);
     const r = await fetch(url);
     if(!r.ok){
       const txt = await r.text().catch(()=>'');
@@ -599,7 +600,7 @@ async function tryWorkerProxy(pts){
     if(d.error) throw new Error('proxy-error: ' + (d.reason||JSON.stringify(d).slice(0,80)));
     if(!Array.isArray(d.elevation)) throw new Error('proxy-format: ' + JSON.stringify(d).slice(0,80));
     d.elevation.forEach((v,j)=>{ e[i+j]=v; });
-    if(i+CHUNK<pts.length) await sleep(200);
+    if(i+CHUNK<pts.length) await sleep(1200); // rate limit protection
   }
   if(looksLikeFailure(e)) throw new Error('proxy returned zeros');
   return e;
@@ -702,7 +703,8 @@ async function fetchElevations(pts,onP){
   let err0='', err1='';
   // Primary: Cloudflare Worker proxy — bypasses rate limits and CORS issues
   try{
-    onP(0,'Fetching elevation data…',`Cloudflare proxy · ${pts.length} pts`);
+    const totalBatches = Math.ceil(pts.length/50);
+    onP(0,'Fetching elevation data…',`${pts.length} points · ${totalBatches} batches · ~${Math.ceil(totalBatches*1.2)}s`);
     const e=await tryWorkerProxy(pts);
     return {elevations:e,source:'open-meteo.com via proxy (90m DEM)'};
   }catch(e){ err0=e.message; onP(0.2,'Trying direct API…',e.message.slice(0,60)); }
