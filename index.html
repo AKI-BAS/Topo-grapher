@@ -679,19 +679,22 @@ async function fetchElevations(pts,onP){
     return {elevations:e,source:'open-meteo.com (90m DEM)'};
   }catch(e){ err1=e.message; onP(0.3,'Trying secondary source…',e.message.slice(0,60)); }
 
+  let err2='';
+
   try{
     onP(0.35,'Fetching elevation data…',`opentopodata.org · ${pts.length} pts`);
     const e=await tryOpenTopoData(pts);
     return {elevations:e,source:'opentopodata.org (SRTM 30m)'};
-  }catch(e){ onP(0.65,'Trying tertiary source…',''); }
+  }catch(e){ err2=e.message; onP(0.65,'Trying tertiary source…',e.message.slice(0,50)); }
 
+  let err3='';
   try{
     onP(0.7,'Fetching elevation data…',`open-elevation.com · ${pts.length} pts`);
     const e=await tryOpenElevation(pts);
     return {elevations:e,source:'open-elevation.com (SRTM)'};
-  }catch(e){}
+  }catch(e){ err3=e.message; }
 
-  throw new Error('Elevation data could not be fetched. This is usually a temporary issue with the free elevation APIs. Please wait 30 seconds and try again. If it keeps failing, try a smaller area or different spacing.');
+  throw new Error(`All 3 elevation APIs failed — [OpenMeteo] ${err1} | [OpenTopo] ${err2} | [OpenElev] ${err3}`);
 }
 
 // ── Map ────────────────────────────────────────────────────────────────────
