@@ -246,6 +246,18 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 
 .addon-pill { background:var(--bg-input); border:1px solid var(--border-md); border-radius:5px; padding:12px 16px; font-size:12px; color:var(--text-mid); text-align:center; }
 .addon-pill span { display:block; color:var(--accent); font-size:14px; font-family:'Syne',sans-serif; font-weight:800; margin-top:4px; }
+
+/* ── WIREFRAME ────────────────────────────────────────────────────────────── */
+#wireframe-card { display:none; }
+#wireframe-card.show { display:block; }
+#wireframe-canvas {
+  width:100%; height:340px; display:block; border-radius:6px;
+  background:var(--bg-input);
+}
+.wireframe-label {
+  font-size:11px; color:var(--text-soft); text-align:center;
+  margin-top:8px; letter-spacing:.08em;
+}
 </style>
 </head>
 <body>
@@ -1076,7 +1088,15 @@ async function convert(){
       `<tr><td colspan="3" style="color:var(--text-soft);font-size:11px;padding-top:6px">… ${out.length.toLocaleString()} total rows in CSV</td></tr>`;
 
     setProgress(1,'Done — terrain data ready.','');
-    setTimeout(()=>{ showProgress(false); showResult(true); document.getElementById('result-card').scrollIntoView({behavior:'smooth',block:'start'}); },400);
+    const altsForWire = out.map(p=>p.z).filter(z=>isFinite(z)&&!isNaN(z));
+    const wMinZ = altsForWire.length ? Math.min(...altsForWire) : 0;
+    const wMaxZ = altsForWire.length ? Math.max(...altsForWire) : 0;
+    setTimeout(()=>{
+      showProgress(false);
+      showResult(true);
+      if(wMaxZ - wMinZ > 1) showWireframe(out, wMinZ, wMaxZ);
+      document.getElementById('result-card').scrollIntoView({behavior:'smooth',block:'start'});
+    },400);
 
   }catch(err){
     showProgress(false);
@@ -1199,6 +1219,151 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(siteFieldData) setTimeout(()=>{if(animFrame){cancelAnimationFrame(animFrame);animT=0;drawContour();}},60);
   });
 });
+
+
+// ── 3D Wireframe renderer ───────────────────────────────────────────────────
+let wireframePoints = null, wireframeAnim = null, wireframeAngle = 0;
+
+function buildWireframeGrid(points) {
+  // points is flat array of {x,y,z} — reconstruct 2D grid
+  const xs = [...new Set(points.map(p => p.x))].sort((a,b)=>a-b);
+  const ys = [...new Set(points.map(p => p.y))].sort((a,b)=>a-b);
+
+  // Downsample if too many points — max 60x60 grid for performance
+  const MAX = 60;
+  const xStep = Math.max(1, Math.floor(xs.length / MAX));
+  const yStep = Math.max(1, Math.floor(ys.length / MAX));
+  const xSampled = xs.filter((_,i) => i % xStep === 0);
+  const ySampled = ys.filter((_,i) => i % yStep === 0);
+
+  // Build lookup
+  const lookup = {};
+  points.forEach(p => { lookup[p.x + ',' + p.y] = p.z; });
+
+  // Build grid — fill gaps with neighbours
+  const grid = [];
+  for (let r = 0; r < ySampled.length; r++) {
+    grid[r] = [];
+    for (let c = 0; c < xSampled.length; c++) {
+      grid[r][c] = lookup[xSampled[c] + ',' + ySampled[r]] ?? null;
+    }
+  }
+
+  // Fill nulls with average of neighbours
+  for (let r = 0; r < grid.length; r++)
+    for (let c = 0; c < grid[r].length; c++)
+      if (grid[r][c] === null) {
+        const nb = [
+          grid[r-1]?.[c], grid[r+1]?.[c],
+          grid[r]?.[c-1], grid[r]?.[c+1]
+        ].filter(v => v !== null && v !== undefined);
+        grid[r][c] = nb.length ? nb.reduce((a,b)=>a+b,0)/nb.length : 0;
+      }
+
+  const zVals = grid.flat().filter(v => v !== null);
+  const minZ = Math.min(...zVals), maxZ = Math.max(...zVals);
+  const rangeZ = maxZ - minZ || 1;
+
+  return { grid, rows: grid.length, cols: grid[0].length, minZ, maxZ, rangeZ };
+}
+
+function drawWireframe(angle) {
+  const canvas = document.getElementById('wireframe-canvas');
+  if (!canvas || !wireframePoints) return;
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = canvas.offsetWidth || 780;
+  const H = canvas.offsetHeight || 340;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  ctx.fillStyle = isDark ? '#0d0d0c' : '#f0ede8';
+  ctx.fillRect(0, 0, W, H);
+
+  const { grid, rows, cols, rangeZ } = wireframePoints;
+
+  // Isometric projection params
+  const tileW = Math.min(W / (cols + rows) * 1.8, 18);
+  const tileH = tileW * 0.5;
+  const zScale = tileW * 3.5;
+  const offsetX = W * 0.5 + Math.sin(angle) * tileW * cols * 0.15;
+  const offsetY = H * 0.72;
+
+  // Project grid cell to screen
+  function project(r, c, z) {
+    const nx = (c - cols/2) * Math.cos(angle) - (r - rows/2) * Math.sin(angle);
+    const ny = (c - cols/2) * Math.sin(angle) + (r - rows/2) * Math.cos(angle);
+    const sx = offsetX + nx * tileW;
+    const sy = offsetY + ny * tileH - (z / wireframePoints.rangeZ) * zScale;
+    return [sx, sy];
+  }
+
+  const lineAlpha = isDark ? 0.7 : 0.75;
+
+  // Draw rows (left-right lines)
+  for (let r = 0; r < rows; r++) {
+    const t = r / rows;
+    ctx.strokeStyle = isDark
+      ? `rgba(154,186,106,${0.15 + t * lineAlpha})`
+      : `rgba(94,102,49,${0.12 + t * lineAlpha})`;
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    for (let c = 0; c < cols; c++) {
+      const z = (grid[r][c] - wireframePoints.minZ);
+      const [sx, sy] = project(r, c, z);
+      c === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+  }
+
+  // Draw columns (front-back lines)
+  for (let c = 0; c < cols; c++) {
+    const t = c / cols;
+    ctx.strokeStyle = isDark
+      ? `rgba(154,186,106,${0.08 + t * lineAlpha * 0.6})`
+      : `rgba(94,102,49,${0.06 + t * lineAlpha * 0.6})`;
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    for (let r = 0; r < rows; r++) {
+      const z = (grid[r][c] - wireframePoints.minZ);
+      const [sx, sy] = project(r, c, z);
+      r === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+  }
+}
+
+function startWireframeAnim() {
+  if (wireframeAnim) cancelAnimationFrame(wireframeAnim);
+  // Slow gentle rotation
+  let lastTime = 0;
+  function frame(ts) {
+    if (ts - lastTime > 50) { // ~20fps — gentle
+      wireframeAngle += 0.004;
+      drawWireframe(wireframeAngle);
+      lastTime = ts;
+    }
+    wireframeAnim = requestAnimationFrame(frame);
+  }
+  wireframeAnim = requestAnimationFrame(frame);
+}
+
+function showWireframe(points, minZ, maxZ) {
+  document.getElementById('wireframe-card').classList.add('show');
+  wireframePoints = buildWireframeGrid(points);
+  wireframeAngle = -0.4; // nice starting angle
+  document.getElementById('wireframe-label').textContent =
+    'TERRAIN MESH · ' + points.length.toLocaleString() + ' pts · ' +
+    minZ.toFixed(0) + 'm – ' + maxZ.toFixed(0) + 'm elevation';
+  startWireframeAnim();
+  // Redraw on theme toggle
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    setTimeout(() => drawWireframe(wireframeAngle), 60);
+  });
+}
 
 document.addEventListener('DOMContentLoaded', ()=>{
   initMap();
