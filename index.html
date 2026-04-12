@@ -1703,9 +1703,11 @@ async function checkDailyLimit() {
 
 
 document.addEventListener('DOMContentLoaded', ()=>{
-  initAuth();
+  // Init map first — don't wait for auth
   initMap();
   updateLimitBadge();
+  // Init auth after a tick so it doesn't block map rendering
+  setTimeout(() => initAuth(), 0);
   if (isProUnlocked()) applyProUI();
   document.getElementById('project-name').addEventListener('input', function(){ this.classList.remove('error'); updateConvertBtn(); });
   document.getElementById('convert-btn').addEventListener('click', convert);
