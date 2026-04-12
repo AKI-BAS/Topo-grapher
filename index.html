@@ -259,7 +259,11 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   <div class="nav-right">
     <a class="nav-link" href="#tool">Tool</a>
     <a class="nav-link" href="#pro">Pro</a>
-    <span class="beta-pill">Free Beta</span>
+    <span class="beta-pill" id="pro-status-badge" onclick="showUnlockPrompt()" style="cursor:pointer;" title="Click to enter Pro access code">Free Beta</span>
+    <div id="pro-unlock-wrap" style="display:none;position:absolute;top:58px;right:32px;background:var(--bg-card);border:1px solid var(--border-md);border-radius:6px;padding:12px 14px;gap:8px;align-items:center;z-index:2000;box-shadow:0 4px 16px rgba(0,0,0,.25);">
+      <input type="password" id="pro-code-input" placeholder="Enter access code…" style="width:200px;" onkeydown="if(event.key==='Enter'){const ok=tryUnlockPro(this.value);if(!ok){this.style.borderColor='var(--danger)';setTimeout(()=>this.style.borderColor='',1000);}}" />
+      <button onclick="const ok=tryUnlockPro(document.getElementById('pro-code-input').value);if(!ok){document.getElementById('pro-code-input').style.borderColor='var(--danger)';setTimeout(()=>document.getElementById('pro-code-input').style.borderColor='',1000);}" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:8px 14px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;white-space:nowrap;">Unlock</button>
+    </div>
     <button class="theme-btn" id="theme-toggle" title="Toggle theme">☀</button>
   </div>
 </nav>
@@ -672,7 +676,32 @@ function initMap(){
 function activateTool(t){
   // Cancel any in-progress draw first
   if(currentTool){ currentTool.disable(); currentTool=null; }
-  const opts = { shapeOptions:{ color:'#5E6631', fillColor:'#1C4D33', fillOpacity:0.2, weight:2 } };
+  // Inject stripe pattern into the map SVG layer if not already there
+  if (!document.getElementById('topo-stripe-pattern')) {
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('width', '0'); svg.setAttribute('height', '0');
+    svg.style.position = 'absolute';
+    svg.innerHTML = `
+      <defs>
+        <pattern id="topo-stripe-pattern" x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="12" height="12" fill="rgba(154,186,106,0.18)"/>
+          <line x1="0" y1="0" x2="0" y2="12" stroke="#9aba6a" stroke-width="4" stroke-opacity="0.55"/>
+        </pattern>
+      </defs>`;
+    document.getElementById('map').appendChild(svg);
+  }
+
+  const opts = {
+    shapeOptions:{
+      color: '#9aba6a',
+      fillColor: 'url(#topo-stripe-pattern)',
+      fillOpacity: 1,
+      weight: 3,
+      opacity: 1,
+      dashArray: null
+    }
+  };
   currentTool = t==='polygon' ? new L.Draw.Polygon(map,opts) : new L.Draw.Rectangle(map,opts);
   currentTool.enable();
   document.getElementById('btn-polygon').classList.toggle('active', t==='polygon');
@@ -757,6 +786,7 @@ function incrementGenerationsToday() {
 }
 
 function checkDailyLimit() {
+  if (isProUnlocked()) return; // Pro users have no limit
   const used = getGenerationsToday();
   if (used >= FREE_DAILY_LIMIT) {
     throw new Error(
@@ -774,6 +804,46 @@ function updateLimitBadge() {
     el.textContent = `${remaining} of ${FREE_DAILY_LIMIT} free generations remaining today`;
     el.style.color = remaining === 0 ? 'var(--danger)' : remaining === 1 ? '#e0a050' : 'var(--text-soft)';
   }
+}
+
+
+// ── Pro unlock (owner access via secret code) ──────────────────────────────
+const PRO_SECRET = 'topo-pro-2024';  // change this to something only you know
+
+function isProUnlocked() {
+  return localStorage.getItem('topo-pro-unlocked') === 'true';
+}
+
+function tryUnlockPro(code) {
+  if (code.trim() === PRO_SECRET) {
+    localStorage.setItem('topo-pro-unlocked', 'true');
+    applyProUI();
+    return true;
+  }
+  return false;
+}
+
+function applyProUI() {
+  if (!isProUnlocked()) return;
+  // Show pro badge in nav
+  const badge = document.getElementById('pro-status-badge');
+  if (badge) { badge.textContent = 'Pro ✓'; badge.style.background = 'var(--forest)'; badge.style.color = '#EFE3D8'; badge.style.borderColor = 'var(--green-lt)'; }
+  // Unlock spacing buttons — remove // Pro labels, enable selection
+  ['acc-3','acc-6'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
+  });
+  // Hide the daily limit badge
+  const lb = document.getElementById('daily-limit-badge');
+  if (lb) lb.style.display = 'none';
+  // Hide unlock prompt if visible
+  const up = document.getElementById('pro-unlock-wrap');
+  if (up) up.style.display = 'none';
+}
+
+function showUnlockPrompt() {
+  const wrap = document.getElementById('pro-unlock-wrap');
+  if (wrap) wrap.style.display = wrap.style.display === 'none' ? 'flex' : 'none';
 }
 
 async function convert(){
@@ -795,11 +865,13 @@ async function convert(){
     const mpd=metresPerDeg((Math.min(...lats)+Math.max(...lats))/2);
     const siteW=(Math.max(...lons)-Math.min(...lons))*mpd.lon;
     const siteH=(Math.max(...lats)-Math.min(...lats))*mpd.lat;
-    if(siteW>FREE_MAX_M||siteH>FREE_MAX_M){
-      throw new Error('Free tier is limited to 500 × 500m sites. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for sites up to 2 × 2km.');
-    }
-    if(selectedSpacing<FREE_MAX_SPACING){
-      throw new Error('Free tier supports 12m spacing only. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for 3m and 6m precision.');
+    if(!isProUnlocked()){
+      if(siteW>FREE_MAX_M||siteH>FREE_MAX_M){
+        throw new Error('Free tier is limited to 500 × 500m sites. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for sites up to 2 × 2km.');
+      }
+      if(selectedSpacing<FREE_MAX_SPACING){
+        throw new Error('Free tier supports 12m spacing only. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for 3m and 6m precision.');
+      }
     }
     checkDailyLimit();
     const grid = generateGrid(polygonLatLngs, selectedSpacing);
@@ -822,8 +894,7 @@ async function convert(){
       z:parseFloat(p.alt.toFixed(3))
     }));
     csvData = 'X,Y,Z\n'+out.map(p=>`${p.x},${p.y},${p.z}`).join('\n');
-    incrementGenerationsToday();
-    updateLimitBadge();
+    if (!isProUnlocked()) { incrementGenerationsToday(); updateLimitBadge(); }
     setSiteContourData(out);
 
     const alts = out.map(p=>p.z).filter(z=>z!==0&&isFinite(z)&&!isNaN(z));
@@ -974,6 +1045,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 document.addEventListener('DOMContentLoaded', ()=>{
   initMap();
   updateLimitBadge();
+  if (isProUnlocked()) applyProUI();
   document.getElementById('project-name').addEventListener('input', function(){ this.classList.remove('error'); updateConvertBtn(); });
   document.getElementById('convert-btn').addEventListener('click', convert);
   document.getElementById('download-btn').addEventListener('click', downloadCSV);
