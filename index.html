@@ -578,20 +578,27 @@ function generateGrid(poly,spacing){
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function looksLikeFailure(e){return e.filter(v=>v===0||v==null).length/e.length>0.8;}
 
-async function tryOpenElevation(pts){
-  const B=100,e=new Array(pts.length);
+// API 1: Open-Meteo elevation — well-funded, production-grade, explicit CORS
+async function tryOpenMeteo(pts){
+  const B=100, e=new Array(pts.length);
   for(let i=0;i<pts.length;i+=B){
     const b=pts.slice(i,i+B);
-    const r=await fetch('https://api.open-elevation.com/api/v1/lookup',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({locations:b.map(p=>({latitude:p.lat,longitude:p.lon}))})});
-    if(!r.ok) throw new Error(`oe-${r.status}`);
+    const lats=b.map(p=>p.lat.toFixed(6)).join(',');
+    const lons=b.map(p=>p.lon.toFixed(6)).join(',');
+    const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`);
+    if(!r.ok) throw new Error(`om-${r.status}`);
     const d=await r.json();
-    d.results.forEach((v,j)=>{e[i+j]=v.elevation;});
-    if(i+B<pts.length) await sleep(300);
+    // Returns {elevation:[...]} array
+    const elevArr = d.elevation || d;
+    if(!Array.isArray(elevArr)) throw new Error('om-format');
+    elevArr.forEach((v,j)=>{e[i+j]=v;});
+    if(i+B<pts.length) await sleep(150);
   }
   if(looksLikeFailure(e)) throw new Error('zeros');
   return e;
 }
 
+// API 2: Open Topo Data SRTM (fallback)
 async function tryOpenTopoData(pts){
   const B=100,e=new Array(pts.length);
   for(let i=0;i<pts.length;i+=B){
@@ -607,18 +614,42 @@ async function tryOpenTopoData(pts){
   return e;
 }
 
+// API 3: open-elevation.com (last resort)
+async function tryOpenElevation(pts){
+  const B=100,e=new Array(pts.length);
+  for(let i=0;i<pts.length;i+=B){
+    const b=pts.slice(i,i+B);
+    const r=await fetch('https://api.open-elevation.com/api/v1/lookup',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({locations:b.map(p=>({latitude:p.lat,longitude:p.lon}))})});
+    if(!r.ok) throw new Error(`oe-${r.status}`);
+    const d=await r.json();
+    d.results.forEach((v,j)=>{e[i+j]=v.elevation;});
+    if(i+B<pts.length) await sleep(300);
+  }
+  if(looksLikeFailure(e)) throw new Error('zeros');
+  return e;
+}
+
 async function fetchElevations(pts,onP){
+  // Try Open-Meteo first — most reliable free elevation API
   try{
-    onP(0,'Fetching elevation data…',`open-elevation.com · ${pts.length} pts`);
-    const e=await tryOpenElevation(pts);
-    return {elevations:e,source:'open-elevation.com (SRTM)'};
-  }catch(e){ onP(0.35,'Trying secondary source…',''); }
+    onP(0,'Fetching elevation data…',`open-meteo.com · ${pts.length} pts`);
+    const e=await tryOpenMeteo(pts);
+    return {elevations:e,source:'open-meteo.com (90m DEM)'};
+  }catch(e){ onP(0.3,'Trying secondary source…',''); }
+
   try{
-    onP(0.4,'Fetching elevation data…',`opentopodata.org · ${pts.length} pts`);
+    onP(0.35,'Fetching elevation data…',`opentopodata.org · ${pts.length} pts`);
     const e=await tryOpenTopoData(pts);
     return {elevations:e,source:'opentopodata.org (SRTM 30m)'};
+  }catch(e){ onP(0.65,'Trying tertiary source…',''); }
+
+  try{
+    onP(0.7,'Fetching elevation data…',`open-elevation.com · ${pts.length} pts`);
+    const e=await tryOpenElevation(pts);
+    return {elevations:e,source:'open-elevation.com (SRTM)'};
   }catch(e){}
-  throw new Error('All elevation sources unavailable. This tool works best hosted online — opening as a local file blocks API access. Try hosting on GitHub Pages.');
+
+  throw new Error('All elevation sources are currently unavailable. Please try again in a few minutes — these are free community APIs that occasionally go offline.');
 }
 
 // ── Map ────────────────────────────────────────────────────────────────────
