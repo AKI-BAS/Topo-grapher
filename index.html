@@ -7,6 +7,7 @@
 
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- Leaflet Draw -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
 <!-- Geocoder -->
@@ -258,6 +259,37 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   font-size:11px; color:var(--text-soft); text-align:center;
   margin-top:8px; letter-spacing:.08em;
 }
+
+/* ── AUTH MODAL ───────────────────────────────────────────────────────────── */
+.auth-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:9000; align-items:center; justify-content:center; }
+.auth-overlay.show { display:flex; }
+.auth-modal { background:var(--bg-card); border:1px solid var(--border-md); border-radius:10px; padding:32px; width:100%; max-width:400px; margin:20px; }
+.auth-modal h2 { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; color:var(--text); margin-bottom:6px; }
+.auth-modal p { font-size:13px; color:var(--text-soft); margin-bottom:24px; line-height:1.6; }
+.auth-tabs { display:flex; gap:0; margin-bottom:24px; border-bottom:1px solid var(--border); }
+.auth-tab { font-family:'DM Mono',monospace; font-size:12px; padding:8px 16px; cursor:pointer; color:var(--text-soft); border-bottom:2px solid transparent; margin-bottom:-1px; background:none; border-top:none; border-left:none; border-right:none; letter-spacing:.06em; text-transform:uppercase; }
+.auth-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.auth-field { margin-bottom:14px; }
+.auth-field label { display:block; font-size:12px; color:var(--text-soft); margin-bottom:5px; letter-spacing:.06em; text-transform:uppercase; }
+.auth-field input { width:100%; background:var(--bg-input); border:1px solid var(--border-md); border-radius:5px; padding:10px 12px; font-family:'DM Mono',monospace; font-size:13px; color:var(--text); outline:none; box-sizing:border-box; }
+.auth-field input:focus { border-color:var(--accent-md); }
+.auth-submit { width:100%; background:var(--green); color:#EFE3D8; border:1px solid var(--green-lt); padding:12px; border-radius:5px; font-family:'DM Mono',monospace; font-size:13px; cursor:pointer; letter-spacing:.06em; text-transform:uppercase; margin-top:4px; }
+.auth-submit:hover { background:var(--green-lt); }
+.auth-error { font-size:12px; color:var(--danger,#e25555); margin-top:10px; min-height:16px; }
+.auth-close { position:absolute; top:16px; right:20px; background:none; border:none; color:var(--text-soft); font-size:20px; cursor:pointer; line-height:1; }
+.auth-modal-wrap { position:relative; }
+.auth-divider { text-align:center; font-size:11px; color:var(--text-soft); margin:16px 0; }
+.auth-google { width:100%; background:var(--bg-input); border:1px solid var(--border-md); color:var(--text); padding:11px; border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; letter-spacing:.04em; margin-bottom:4px; }
+.auth-google:hover { border-color:var(--accent-md); }
+
+/* User menu in nav */
+.user-menu { position:relative; }
+.user-btn { font-family:'DM Mono',monospace; font-size:11px; background:var(--bg-input); border:1px solid var(--border-md); color:var(--text); padding:6px 12px; border-radius:4px; cursor:pointer; letter-spacing:.06em; }
+.user-dropdown { display:none; position:absolute; right:0; top:calc(100% + 6px); background:var(--bg-card); border:1px solid var(--border-md); border-radius:6px; min-width:180px; z-index:1000; overflow:hidden; }
+.user-dropdown.show { display:block; }
+.user-dropdown a, .user-dropdown button { display:block; width:100%; text-align:left; padding:10px 14px; font-family:'DM Mono',monospace; font-size:12px; color:var(--text-mid); background:none; border:none; cursor:pointer; text-decoration:none; }
+.user-dropdown a:hover, .user-dropdown button:hover { background:var(--bg-input); color:var(--text); }
+.user-plan-badge { font-size:10px; padding:2px 6px; border-radius:3px; background:var(--accent-dk); color:var(--accent); letter-spacing:.08em; margin-left:6px; }
 </style>
 </head>
 <body>
@@ -1080,7 +1112,7 @@ async function convert(){
         throw new Error('Free tier supports 12m spacing only. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for 3m and 6m precision.');
       }
     }
-    checkDailyLimit();
+    await checkDailyLimit();
     const grid = generateGrid(polygonLatLngs, selectedSpacing);
     if(grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
     const POINT_CAP = isProUnlocked() ? 15000 : 2000;
@@ -1128,6 +1160,9 @@ async function convert(){
       .sort((a,b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
     csvData = 'X,Y,Z\n'+cleanOut.map(p=>`${p.x},${p.y},${p.z}`).join('\n');
     if (!isProUnlocked()) { incrementGenerationsToday(); updateLimitBadge(); }
+    // Log to Supabase if signed in
+    const _siteArea = parseFloat(document.getElementById('stat-area')?.textContent?.replace(/[^0-9.]/g,'')) || 0;
+    logGeneration(projectName, cleanOut.length, selectedSpacing, _siteArea, source||'unknown');
     setSiteContourData(out);
 
     const displayPts = typeof cleanOut !== 'undefined' ? cleanOut : out;
@@ -1496,7 +1531,179 @@ function showWireframe(points, minZ, maxZ) {
   }
 }
 
+
+// ── Supabase Auth ──────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://lkhdwgltwzaxslspxgcx.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxraGR3Z2x0d3pheHNsc3B4Z2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMDk1OTYsImV4cCI6MjA5MTU4NTU5Nn0.nDy7pWgYkr-NFNh5wpIFmfu4tXsLPoPqrdtvzY3__4Q';
+const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let _currentUser = null;
+let _currentProfile = null;
+
+async function initAuth() {
+  const { data: { session } } = await _sb.auth.getSession();
+  if (session) await handleSession(session);
+  _sb.auth.onAuthStateChange(async (event, session) => {
+    if (session) await handleSession(session);
+    else handleSignOut();
+  });
+}
+
+async function handleSession(session) {
+  _currentUser = session.user;
+  // Load profile
+  const { data } = await _sb.from('profiles').select('*').eq('id', _currentUser.id).single();
+  _currentProfile = data;
+  updateNavUI();
+  // Apply pro if plan is pro or company
+  if (_currentProfile && (_currentProfile.plan === 'pro' || _currentProfile.plan === 'company')) {
+    applyProUI();
+  }
+}
+
+function handleSignOut() {
+  _currentUser = null;
+  _currentProfile = null;
+  updateNavUI();
+}
+
+function updateNavUI() {
+  const btn = document.getElementById('nav-auth-btn');
+  const dropdown = document.getElementById('user-dropdown');
+  const emailDisplay = document.getElementById('user-email-display');
+  if (_currentUser) {
+    btn.textContent = _currentUser.email.split('@')[0];
+    if (_currentProfile?.plan !== 'free') {
+      btn.textContent += ' ✓';
+    }
+    if (emailDisplay) emailDisplay.textContent = _currentUser.email;
+    btn.onclick = () => dropdown.classList.toggle('show');
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#user-menu-wrap')) dropdown.classList.remove('show');
+    }, { once: false });
+  } else {
+    btn.textContent = 'Sign in';
+    btn.onclick = openAuth;
+    dropdown.classList.remove('show');
+  }
+}
+
+function openAuth(mode) {
+  document.getElementById('auth-overlay').classList.add('show');
+  if (mode === 'signup') switchTab('signup');
+  else switchTab('signin');
+}
+
+function closeAuth() {
+  document.getElementById('auth-overlay').classList.remove('show');
+  document.getElementById('signin-error').textContent = '';
+  document.getElementById('signup-error').textContent = '';
+}
+
+function switchTab(tab) {
+  document.getElementById('auth-form-signin').style.display = tab === 'signin' ? 'block' : 'none';
+  document.getElementById('auth-form-signup').style.display = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('tab-signin').classList.toggle('active', tab === 'signin');
+  document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+}
+
+async function submitAuth(type) {
+  const errEl = document.getElementById(type + '-error');
+  errEl.textContent = '';
+  if (type === 'signin') {
+    const email = document.getElementById('signin-email').value.trim();
+    const password = document.getElementById('signin-password').value;
+    if (!email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
+    const { error } = await _sb.auth.signInWithPassword({ email, password });
+    if (error) { errEl.textContent = error.message; return; }
+    closeAuth();
+  } else {
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    if (!email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
+    if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+    const { error } = await _sb.auth.signUp({ email, password, options: { emailRedirectTo: 'https://topo-grapher.com' } });
+    if (error) { errEl.textContent = error.message; return; }
+    errEl.style.color = 'var(--accent)';
+    errEl.textContent = 'Check your email to confirm your account.';
+  }
+}
+
+async function signOut() {
+  await _sb.auth.signOut();
+  document.getElementById('user-dropdown').classList.remove('show');
+  location.reload();
+}
+
+// Close auth modal on overlay click
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('auth-overlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('auth-overlay')) closeAuth();
+  });
+});
+
+// ── Log generation to Supabase ─────────────────────────────────────────────
+async function logGeneration(projectName, pointCount, spacing, areaM2, elevSource) {
+  if (!_currentUser) return; // only log for signed-in users
+  await _sb.from('generations').insert({
+    user_id: _currentUser.id,
+    project_name: projectName,
+    point_count: pointCount,
+    spacing: spacing,
+    area_m2: areaM2,
+    elevation_source: elevSource
+  });
+}
+
+// ── Save notify signup to Supabase ─────────────────────────────────────────
+async function sendNotify() {
+  const email = document.getElementById('notify-email').value.trim();
+  const plan = document.getElementById('notify-plan').value;
+  if (!email) return;
+  const btn = document.querySelector('.btn-notify-send');
+  btn.textContent = '…';
+  const { error } = await _sb.from('notify_signups').insert({ email, plan });
+  if (error && error.code === '23505') {
+    // Already signed up
+    document.getElementById('notify-success').textContent = 'You're already on the list!';
+  } else if (error) {
+    document.getElementById('notify-success').textContent = 'Something went wrong — try again.';
+  } else {
+    document.getElementById('notify-success').textContent = '✓ You're on the list. We'll email you when Pro launches — early signups get the first month free.';
+  }
+  document.getElementById('notify-success').classList.add('show');
+  btn.textContent = 'Notify me →';
+}
+
+// Check daily limit — use Supabase for logged-in users, localStorage for guests
+async function checkDailyLimit() {
+  if (isProUnlocked()) return;
+  if (_currentUser && _currentProfile?.plan === 'pro') return;
+  if (_currentUser && _currentProfile?.plan === 'company') return;
+
+  if (_currentUser) {
+    // Check server-side generation count for today
+    const today = new Date().toISOString().slice(0, 10);
+    const { count } = await _sb.from('generations')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', _currentUser.id)
+      .gte('created_at', today + 'T00:00:00Z');
+    if (count >= FREE_DAILY_LIMIT) {
+      throw new Error('Free tier limit reached — ' + FREE_DAILY_LIMIT + ' generations per day. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.');
+    }
+  } else {
+    // Guest — use localStorage
+    const used = getGenerationsToday();
+    if (used >= FREE_DAILY_LIMIT) {
+      throw new Error('Free tier limit reached. <a href="#" onclick="openAuth()" style="color:var(--accent)">Sign in</a> or <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.');
+    }
+  }
+}
+
+
 document.addEventListener('DOMContentLoaded', ()=>{
+  initAuth();
   initMap();
   updateLimitBadge();
   if (isProUnlocked()) applyProUI();
@@ -1506,5 +1713,32 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('notify-email').addEventListener('keydown', function(e){ if(e.key==='Enter') sendNotify(); });
 });
 </script>
+
+<!-- Auth Modal -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-modal-wrap">
+    <div class="auth-modal" id="auth-modal">
+      <button class="auth-close" onclick="closeAuth()">✕</button>
+      <h2 id="auth-title">Sign in</h2>
+      <p id="auth-subtitle">Access your projects and Pro features.</p>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-signin" onclick="switchTab('signin')">Sign in</button>
+        <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Create account</button>
+      </div>
+      <div id="auth-form-signin">
+        <div class="auth-field"><label>Email</label><input type="email" id="signin-email" placeholder="aki@topo-grapher.com"/></div>
+        <div class="auth-field"><label>Password</label><input type="password" id="signin-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitAuth('signin')"/></div>
+        <button class="auth-submit" onclick="submitAuth('signin')">Sign in →</button>
+        <div class="auth-error" id="signin-error"></div>
+      </div>
+      <div id="auth-form-signup" style="display:none">
+        <div class="auth-field"><label>Email</label><input type="email" id="signup-email" placeholder="you@yourfirm.com"/></div>
+        <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="Min. 8 characters" onkeydown="if(event.key==='Enter')submitAuth('signup')"/></div>
+        <button class="auth-submit" onclick="submitAuth('signup')">Create account →</button>
+        <div class="auth-error" id="signup-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
