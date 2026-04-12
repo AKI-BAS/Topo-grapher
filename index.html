@@ -602,7 +602,6 @@ async function tryWorkerProxy(pts){
     const lats = b.map(p=>p.lat.toFixed(6)).join(',');
     const lons = b.map(p=>p.lon.toFixed(6)).join(',');
     const url = WORKER_URL + '?latitude=' + encodeURIComponent(lats) + '&longitude=' + encodeURIComponent(lons);
-    onP(null, null, `Batch ${Math.floor(i/50)+1} of ${Math.ceil(pts.length/50)}…`);
     const r = await fetch(url);
     if(!r.ok){
       const txt = await r.text().catch(()=>'');
@@ -1094,7 +1093,7 @@ async function convert(){
     setTimeout(()=>{
       showProgress(false);
       showResult(true);
-      if(wMaxZ - wMinZ > 1) showWireframe(out, wMinZ, wMaxZ);
+      showWireframe(out, wMinZ, wMaxZ);
       document.getElementById('result-card').scrollIntoView({behavior:'smooth',block:'start'});
     },400);
 
@@ -1121,6 +1120,19 @@ let animFrame=null, animT=0;
 let siteFieldData=null;
 
 function setSiteContourData(points){
+  // If terrain is too flat, hide contour panel gracefully
+  const zz = points.map(p=>p.z).filter(z=>z!==0&&isFinite(z)&&!isNaN(z));
+  const zRange = zz.length ? Math.max(...zz) - Math.min(...zz) : 0;
+  if(zRange < 3){
+    document.getElementById('contour-placeholder').style.display='flex';
+    document.getElementById('contour-canvas').style.display='none';
+    document.getElementById('contour-source-badge').textContent='';
+    document.getElementById('contour-label').textContent='';
+    // Update placeholder text for flat terrain
+    const span = document.querySelector('#contour-placeholder span');
+    if(span) span.textContent = 'Terrain too flat for contour preview — elevation range is only ' + zRange.toFixed(1) + 'm';
+    return;
+  }
   const xs=points.map(p=>p.x),ys=points.map(p=>p.y),zs=points.map(p=>p.z);
   const minX=Math.min(...xs),maxX=Math.max(...xs);
   const minY=Math.min(...ys),maxY=Math.max(...ys);
@@ -1269,7 +1281,7 @@ function buildWireframeGrid(points) {
 
 function drawWireframe(angle) {
   const canvas = document.getElementById('wireframe-canvas');
-  if (!canvas || !wireframePoints) return;
+  if (!canvas || !wireframePoints || !canvas.offsetWidth) return;
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const W = canvas.offsetWidth || 780;
@@ -1352,8 +1364,12 @@ function startWireframeAnim() {
 }
 
 function showWireframe(points, minZ, maxZ) {
-  document.getElementById('wireframe-card').classList.add('show');
+  const wCard = document.getElementById('wireframe-card');
+  if(!wCard) return;
+  wCard.classList.add('show');
   wireframePoints = buildWireframeGrid(points);
+  // If flat terrain, boost zScale artificially so mesh is still visible
+  if(maxZ - minZ < 3) wireframePoints.rangeZ = 3; // exaggerate for display
   wireframeAngle = -0.4; // nice starting angle
   document.getElementById('wireframe-label').textContent =
     'TERRAIN MESH · ' + points.length.toLocaleString() + ' pts · ' +
