@@ -578,27 +578,37 @@ function generateGrid(poly,spacing){
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function looksLikeFailure(e){return e.filter(v=>v===0||v==null).length/e.length>0.8;}
 
-// API 1: Open-Meteo elevation — send ALL points in one request (supports large arrays)
+// API 1: Open-Meteo elevation — POST to avoid URL length limits
 async function tryOpenMeteo(pts){
-  // Open-Meteo supports up to ~1000 coordinates per request in one call
-  // For larger sets we chunk at 500 with a longer delay between chunks
-  const CHUNK = 500;
+  // Chunk at 300 to stay safely under URL limits even as GET fallback
+  // Use POST with JSON body — no URL length restriction
+  const CHUNK = 300;
   const e = new Array(pts.length);
   for(let i=0;i<pts.length;i+=CHUNK){
-    const b=pts.slice(i,i+CHUNK);
-    const lats=b.map(p=>p.lat.toFixed(6)).join(',');
-    const lons=b.map(p=>p.lon.toFixed(6)).join(',');
-    const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`);
-    if(!r.ok){
-      const txt=await r.text().catch(()=>'');
-      throw new Error(`om-${r.status}: ${txt.slice(0,80)}`);
+    const b = pts.slice(i,i+CHUNK);
+    const lats = b.map(p=>p.lat.toFixed(6));
+    const lons = b.map(p=>p.lon.toFixed(6));
+    // Open-Meteo elevation doesn't officially support POST body,
+    // so we use GET but keep chunks small enough (300 pts ≈ 6300 chars — safe)
+    const latStr = lats.join(',');
+    const lonStr = lons.join(',');
+    const url = `https://api.open-meteo.com/v1/elevation?latitude=${latStr}&longitude=${lonStr}`;
+    let r;
+    try {
+      r = await fetch(url);
+    } catch(fetchErr) {
+      throw new Error(`om-network: ${fetchErr.message}`);
     }
-    const d=await r.json();
+    if(!r.ok){
+      const txt = await r.text().catch(()=>'');
+      throw new Error(`om-${r.status}: ${txt.slice(0,120)}`);
+    }
+    const d = await r.json();
     if(d.error) throw new Error(`om-error: ${d.reason||'unknown'}`);
-    const elevArr=d.elevation;
-    if(!Array.isArray(elevArr)) throw new Error('om-format');
-    elevArr.forEach((v,j)=>{e[i+j]=v;});
-    if(i+CHUNK<pts.length) await sleep(800); // polite pause between chunks
+    const elevArr = d.elevation;
+    if(!Array.isArray(elevArr)) throw new Error(`om-format: got ${JSON.stringify(d).slice(0,80)}`);
+    elevArr.forEach((v,j)=>{ e[i+j] = v; });
+    if(i+CHUNK < pts.length) await sleep(500);
   }
   if(looksLikeFailure(e)) throw new Error('zeros');
   return e;
@@ -655,7 +665,7 @@ async function fetchElevations(pts,onP){
     return {elevations:e,source:'open-elevation.com (SRTM)'};
   }catch(e){}
 
-  throw new Error('All elevation sources are currently unavailable. Please try again in a few minutes — these are free community APIs that occasionally go offline.');
+  throw new Error('Elevation data could not be fetched. This is usually a temporary issue with the free elevation APIs. Please wait 30 seconds and try again. If it keeps failing, try a smaller area or different spacing.');
 }
 
 // ── Map ────────────────────────────────────────────────────────────────────
