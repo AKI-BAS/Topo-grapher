@@ -913,7 +913,14 @@ async function convert(){
     checkDailyLimit();
     const grid = generateGrid(polygonLatLngs, selectedSpacing);
     if(grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
-    if(grid.length>5000) throw new Error(`${grid.length.toLocaleString()} points is too many for the free elevation API. Try a larger spacing or smaller area.`);
+    const POINT_CAP = isProUnlocked() ? 15000 : 2000;
+    if(grid.length>POINT_CAP){
+      if(isProUnlocked()){
+        throw new Error(`${grid.length.toLocaleString()} points exceeds the Pro limit of 15,000. Use a larger spacing or smaller area, or contact us about the large site add-on.`);
+      } else {
+        throw new Error(`${grid.length.toLocaleString()} points exceeds the free limit of 2,000. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for up to 15,000 points, or use a smaller area.`);
+      }
+    }
 
     setProgress(0.1,`${grid.length} points — fetching elevation…`,'');
     const {elevations,source} = await fetchElevations(grid,(f,l,s)=>setProgress(0.1+f*0.78,l,s));
