@@ -364,7 +364,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 </div>
 
 
-<div style="display:none"><div class="main" style="padding-top:0;padding-bottom:0;">
+<div class="main" style="padding-top:0;padding-bottom:0;">
   <div class="card" id="contour-panel">
     <div class="card-label">// Terrain preview<span id="contour-source-badge" style="margin-left:10px;font-size:10px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;"></span></div>
 
@@ -381,7 +381,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
     <canvas id="contour-canvas" style="width:100%;height:320px;display:none;border-radius:4px;"></canvas>
     <div style="font-size:11px;color:var(--text-soft);margin-top:8px;text-align:center;letter-spacing:.06em;min-height:16px;" id="contour-label"></div>
   </div>
-</div></div>
+</div>
 <div class="main" id="pro" style="padding-top:0">
 
   <!-- Tier comparison header -->
@@ -578,21 +578,27 @@ function generateGrid(poly,spacing){
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function looksLikeFailure(e){return e.filter(v=>v===0||v==null).length/e.length>0.8;}
 
-// API 1: Open-Meteo elevation — well-funded, production-grade, explicit CORS
+// API 1: Open-Meteo elevation — send ALL points in one request (supports large arrays)
 async function tryOpenMeteo(pts){
-  const B=100, e=new Array(pts.length);
-  for(let i=0;i<pts.length;i+=B){
-    const b=pts.slice(i,i+B);
+  // Open-Meteo supports up to ~1000 coordinates per request in one call
+  // For larger sets we chunk at 500 with a longer delay between chunks
+  const CHUNK = 500;
+  const e = new Array(pts.length);
+  for(let i=0;i<pts.length;i+=CHUNK){
+    const b=pts.slice(i,i+CHUNK);
     const lats=b.map(p=>p.lat.toFixed(6)).join(',');
     const lons=b.map(p=>p.lon.toFixed(6)).join(',');
     const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`);
-    if(!r.ok) throw new Error(`om-${r.status}`);
+    if(!r.ok){
+      const txt=await r.text().catch(()=>'');
+      throw new Error(`om-${r.status}: ${txt.slice(0,80)}`);
+    }
     const d=await r.json();
-    // Returns {elevation:[...]} array
-    const elevArr = d.elevation || d;
+    if(d.error) throw new Error(`om-error: ${d.reason||'unknown'}`);
+    const elevArr=d.elevation;
     if(!Array.isArray(elevArr)) throw new Error('om-format');
     elevArr.forEach((v,j)=>{e[i+j]=v;});
-    if(i+B<pts.length) await sleep(150);
+    if(i+CHUNK<pts.length) await sleep(800); // polite pause between chunks
   }
   if(looksLikeFailure(e)) throw new Error('zeros');
   return e;
@@ -907,7 +913,7 @@ async function convert(){
     checkDailyLimit();
     const grid = generateGrid(polygonLatLngs, selectedSpacing);
     if(grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
-    if(grid.length>8000) throw new Error(`${grid.length.toLocaleString()} points is too many at once. Use 12m or 20m spacing, or draw a smaller area.`);
+    if(grid.length>5000) throw new Error(`${grid.length.toLocaleString()} points is too many for the free elevation API. Try a larger spacing or smaller area.`);
 
     setProgress(0.1,`${grid.length} points — fetching elevation…`,'');
     const {elevations,source} = await fetchElevations(grid,(f,l,s)=>setProgress(0.1+f*0.78,l,s));
