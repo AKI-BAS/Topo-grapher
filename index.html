@@ -578,26 +578,31 @@ function generateGrid(poly,spacing){
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function looksLikeFailure(e){return e.filter(v=>v===0||v==null).length/e.length>0.8;}
 
-// API 1: Open-Meteo elevation — POST to avoid URL length limits
+// API 1: Open-Meteo elevation — POST with JSON body (no URL length limit)
 async function tryOpenMeteo(pts){
-  // Chunk at 300 to stay safely under URL limits even as GET fallback
-  // Use POST with JSON body — no URL length restriction
-  const CHUNK = 300;
+  const CHUNK = 1000; // POST has no URL limit — large chunks = fewer requests
   const e = new Array(pts.length);
   for(let i=0;i<pts.length;i+=CHUNK){
     const b = pts.slice(i,i+CHUNK);
-    const lats = b.map(p=>p.lat.toFixed(6));
-    const lons = b.map(p=>p.lon.toFixed(6));
-    // Open-Meteo elevation doesn't officially support POST body,
-    // so we use GET but keep chunks small enough (300 pts ≈ 6300 chars — safe)
-    const latStr = lats.join(',');
-    const lonStr = lons.join(',');
-    const url = `https://api.open-meteo.com/v1/elevation?latitude=${latStr}&longitude=${lonStr}`;
+    const lats = b.map(p=>parseFloat(p.lat.toFixed(6)));
+    const lons = b.map(p=>parseFloat(p.lon.toFixed(6)));
     let r;
     try {
-      r = await fetch(url);
+      // Use POST with JSON body — supported since Open-Meteo v1 and has no URL length limit
+      r = await fetch('https://api.open-meteo.com/v1/elevation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude: lats, longitude: lons })
+      });
     } catch(fetchErr) {
-      throw new Error(`om-network: ${fetchErr.message}`);
+      // Network error — try GET as fallback with small chunk
+      const latStr = b.map(p=>p.lat.toFixed(6)).join(',');
+      const lonStr = b.map(p=>p.lon.toFixed(6)).join(',');
+      try {
+        r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${latStr}&longitude=${lonStr}`);
+      } catch(e2) {
+        throw new Error(`om-network: ${e2.message}`);
+      }
     }
     if(!r.ok){
       const txt = await r.text().catch(()=>'');
@@ -606,9 +611,9 @@ async function tryOpenMeteo(pts){
     const d = await r.json();
     if(d.error) throw new Error(`om-error: ${d.reason||'unknown'}`);
     const elevArr = d.elevation;
-    if(!Array.isArray(elevArr)) throw new Error(`om-format: got ${JSON.stringify(d).slice(0,80)}`);
+    if(!Array.isArray(elevArr)) throw new Error(`om-format: ${JSON.stringify(d).slice(0,80)}`);
     elevArr.forEach((v,j)=>{ e[i+j] = v; });
-    if(i+CHUNK < pts.length) await sleep(500);
+    if(i+CHUNK < pts.length) await sleep(300);
   }
   if(looksLikeFailure(e)) throw new Error('zeros');
   return e;
