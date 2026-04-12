@@ -1275,55 +1275,52 @@ document.addEventListener('DOMContentLoaded',()=>{
 let wireframePoints = null, wireframeAnim = null, wireframeAngle = 0;
 
 function buildWireframeGrid(points) {
-  // Sort points into a 2D grid by binning X and Y values
+  if(!points || points.length === 0) return null;
   const xVals = points.map(p=>p.x);
   const yVals = points.map(p=>p.y);
   const minX=Math.min(...xVals), maxX=Math.max(...xVals);
   const minY=Math.min(...yVals), maxY=Math.max(...yVals);
+  const rangeX = maxX-minX || 1;
+  const rangeY = maxY-minY || 1;
 
-  // Target display grid size — max 55x55 for performance
-  const TARGET = 55;
-  const COLS = Math.min(TARGET, Math.ceil(Math.sqrt(points.length * (maxX-minX||1) / (maxY-minY||1))));
-  const ROWS = Math.min(TARGET, Math.ceil(points.length / COLS));
+  // Fixed 40x40 display grid regardless of point count or shape
+  const COLS=40, ROWS=40;
 
-  const rangeX = maxX - minX || 1;
-  const rangeY = maxY - minY || 1;
+  const sums  = Array.from({length:ROWS}, ()=>new Float32Array(COLS));
+  const cnts  = Array.from({length:ROWS}, ()=>new Uint8Array(COLS));
 
-  // Bin each point into grid cell
-  const grid = [];
-  const counts = [];
-  for(let r=0;r<ROWS;r++){
-    grid[r] = new Float32Array(COLS);
-    counts[r] = new Uint16Array(COLS);
-  }
-
-  points.forEach(p => {
-    const c = Math.min(COLS-1, Math.floor((p.x-minX)/rangeX * COLS));
-    const r = Math.min(ROWS-1, Math.floor((p.y-minY)/rangeY * ROWS));
-    grid[r][c] += p.z;
-    counts[r][c]++;
+  points.forEach(p=>{
+    const c = Math.min(COLS-1, Math.floor((p.x-minX)/rangeX*(COLS-0.01)));
+    const r = Math.min(ROWS-1, Math.floor((p.y-minY)/rangeY*(ROWS-0.01)));
+    sums[r][c] += p.z;
+    cnts[r][c]++;
   });
 
   // Average filled cells
-  for(let r=0;r<ROWS;r++)
-    for(let c=0;c<COLS;c++)
-      if(counts[r][c]>0) grid[r][c] /= counts[r][c];
+  const grid = Array.from({length:ROWS}, (_,r)=>
+    Float32Array.from({length:COLS}, (_,c)=> cnts[r][c]>0 ? sums[r][c]/cnts[r][c] : 0)
+  );
 
-  // Fill empty cells by spreading from neighbours
-  for(let pass=0;pass<6;pass++)
+  // Fill empty cells — multiple passes, spread from any non-zero neighbour
+  for(let pass=0;pass<12;pass++){
     for(let r=0;r<ROWS;r++)
       for(let c=0;c<COLS;c++)
-        if(counts[r][c]===0){
-          const nb=[grid[r-1]?.[c],grid[r+1]?.[c],grid[r]?.[c-1],grid[r]?.[c+1]].filter(v=>v!=null&&v!==0);
+        if(cnts[r][c]===0){
+          const nb=[];
+          if(r>0&&grid[r-1][c]!==0) nb.push(grid[r-1][c]);
+          if(r<ROWS-1&&grid[r+1][c]!==0) nb.push(grid[r+1][c]);
+          if(c>0&&grid[r][c-1]!==0) nb.push(grid[r][c-1]);
+          if(c<COLS-1&&grid[r][c+1]!==0) nb.push(grid[r][c+1]);
           if(nb.length) grid[r][c]=nb.reduce((a,b)=>a+b,0)/nb.length;
         }
+  }
 
-  const zVals = Array.from({length:ROWS}, (_,r)=>Array.from(grid[r])).flat().filter(v=>v>0);
+  const zVals = grid.flat().filter(v=>v!==0&&isFinite(v));
   const minZ = zVals.length ? Math.min(...zVals) : 0;
   const maxZ = zVals.length ? Math.max(...zVals) : 1;
-  const rangeZ = Math.max(maxZ - minZ, 3); // min 3m range for visual clarity
+  const rangeZ = Math.max(maxZ-minZ, 2);
 
-  return { grid, rows:ROWS, cols:COLS, minZ, maxZ, rangeZ };
+  return {grid, rows:ROWS, cols:COLS, minZ, maxZ, rangeZ};
 }
 
 function drawWireframe(angle) {
