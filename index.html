@@ -1559,6 +1559,26 @@ function showWireframe(points, minZ, maxZ) {
 
 
 // ── Settings ───────────────────────────────────────────────────────────────
+
+function applyAccessCode() {
+  const code = document.getElementById('settings-access-code').value.trim();
+  const msgEl = document.getElementById('access-code-msg');
+  const ok = tryUnlockPro(code);
+  if (ok) {
+    msgEl.style.color = 'var(--accent)';
+    msgEl.textContent = '✓ Pro access unlocked.';
+    document.getElementById('settings-plan').textContent = 'Pro';
+    document.getElementById('settings-plan').style.background = 'var(--forest)';
+    document.getElementById('settings-plan').style.color = '#EFE3D8';
+    document.getElementById('settings-free-cta').style.display = 'none';
+    document.getElementById('settings-pro-info').style.display = 'block';
+    applyProUI();
+  } else {
+    msgEl.style.color = 'var(--danger,#e25555)';
+    msgEl.textContent = 'Invalid access code.';
+  }
+}
+
 function openSettings() {
   if (!_currentUser) { openAuth(); return; }
   document.getElementById('settings-overlay').classList.add('show');
@@ -1865,6 +1885,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
       </div>
 
       <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Access code</div>
+        <div style="display:flex;gap:8px;">
+          <input type="password" id="settings-access-code" placeholder="Enter access code…" style="flex:1;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;padding:9px 12px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;" onkeydown="if(event.key==='Enter')applyAccessCode()"/>
+          <button onclick="applyAccessCode()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:9px 16px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;white-space:nowrap;">Apply</button>
+        </div>
+        <div id="access-code-msg" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
         <button onclick="signOut();closeSettings();" style="background:none;border:none;color:var(--danger,#e25555);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;padding:0;letter-spacing:.06em;">Sign out</button>
       </div>
     </div>
