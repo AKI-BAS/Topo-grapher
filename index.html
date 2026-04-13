@@ -326,9 +326,9 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 
 .section { max-width: min(76vw, 1200px); margin-left: auto; margin-right: auto; }
 .hero-inner { max-width: min(76vw, 1000px); margin: 0 auto; }
-#tool { width: min(105vw, 1200px); margin: 0 auto; }
+#tool { width: min(76vw, 1200px); margin: 0 auto; }
 #map-wrap { width: 100%; }
-#map { height: clamp(380px, 70vh, 620px); width: 100%; }
+#map { height: clamp(380px, 55vh, 620px); width: 100%; }
 
 /* ── RESPONSIVE ────────────────────────────────────────────────────────── */
 * { box-sizing: border-box; }
@@ -390,7 +390,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
       <div class="user-dropdown" id="user-dropdown">
         <span style="display:block;padding:10px 14px;font-size:12px;color:var(--text-soft);border-bottom:1px solid var(--border);" id="user-email-display"></span>
         <button onclick="openSettings()">Account settings</button>
-        <a href="#pro">Upgrade to Pro</a>
+        <a href="#pro" onclick="document.getElementById('user-dropdown').classList.remove('show');startCheckout('pro')">Upgrade to Pro →</a>
         <button onclick="signOut()">Sign out</button>
       </div>
     </div>
