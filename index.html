@@ -306,6 +306,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
       <button class="beta-pill" id="nav-auth-btn" onclick="openAuth()">Sign in</button>
       <div class="user-dropdown" id="user-dropdown">
         <span style="display:block;padding:10px 14px;font-size:12px;color:var(--text-soft);border-bottom:1px solid var(--border);" id="user-email-display"></span>
+        <button onclick="openSettings()">Account settings</button>
         <a href="#pro">Upgrade to Pro</a>
         <button onclick="signOut()">Sign out</button>
       </div>
@@ -548,7 +549,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
         </select>
         <button class="btn-notify-send" onclick="sendNotify()">Notify me →</button>
       </div>
-      <div class="notify-success" id="notify-success">✓ You're on the list. We'll email you when Pro launches — early signups get the first month free.</div>
+      <div class="notify-success" id="notify-success"></div>
     </div>
   </div>
 
@@ -578,22 +579,7 @@ themeBtn.addEventListener('click', () => setTheme(html.dataset.theme === 'dark' 
 const savedTheme = localStorage.getItem('topo-theme');
 if (savedTheme) setTheme(savedTheme);
 
-// ── Notify ─────────────────────────────────────────────────────────────────
-function sendNotify() {
-  const email = document.getElementById('notify-email').value.trim();
-  if (!email || !email.includes('@')) {
-    document.getElementById('notify-email').style.borderColor = 'var(--danger)';
-    return;
-  }
-  document.getElementById('notify-email').style.borderColor = '';
-  // In production: POST to your backend here
-  // For now, store locally and show confirmation
-  const emails = JSON.parse(localStorage.getItem('topo-notify') || '[]');
-  if (!emails.includes(email)) emails.push(email);
-  localStorage.setItem('topo-notify', JSON.stringify(emails));
-  document.getElementById('notify-success').classList.add('show');
-  document.getElementById('notify-email').value = '';
-}
+// ── Notify handled by Supabase version below ──────────────────────────────
 
 // ── UTM ────────────────────────────────────────────────────────────────────
 function latLonToUTM(lat,lon){
@@ -1571,6 +1557,43 @@ function showWireframe(points, minZ, maxZ) {
 }
 
 
+
+// ── Settings ───────────────────────────────────────────────────────────────
+function openSettings() {
+  if (!_currentUser) { openAuth(); return; }
+  document.getElementById('settings-overlay').classList.add('show');
+  document.getElementById('settings-email').textContent = _currentUser.email;
+  document.getElementById('user-dropdown').classList.remove('show');
+  const plan = _currentProfile?.plan || 'free';
+  const planBadge = document.getElementById('settings-plan');
+  planBadge.textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
+  planBadge.style.background = plan !== 'free' ? 'var(--forest)' : 'var(--accent-dk)';
+  planBadge.style.color = plan !== 'free' ? '#EFE3D8' : 'var(--accent)';
+  document.getElementById('settings-free-cta').style.display = plan === 'free' ? 'block' : 'none';
+  document.getElementById('settings-pro-info').style.display = plan !== 'free' ? 'block' : 'none';
+}
+
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.remove('show');
+  document.getElementById('password-msg').textContent = '';
+}
+
+async function changePassword() {
+  const newPwd = document.getElementById('new-password').value;
+  const confirmPwd = document.getElementById('confirm-password').value;
+  const msgEl = document.getElementById('password-msg');
+  msgEl.style.color = 'var(--danger,#e25555)';
+  if (!newPwd) { msgEl.textContent = 'Please enter a new password.'; return; }
+  if (newPwd.length < 8) { msgEl.textContent = 'Password must be at least 8 characters.'; return; }
+  if (newPwd !== confirmPwd) { msgEl.textContent = 'Passwords do not match.'; return; }
+  const { error } = await _sb.auth.updateUser({ password: newPwd });
+  if (error) { msgEl.textContent = error.message; return; }
+  msgEl.style.color = 'var(--accent)';
+  msgEl.textContent = '✓ Password updated successfully.';
+  document.getElementById('new-password').value = '';
+  document.getElementById('confirm-password').value = '';
+}
+
 // ── Supabase Auth ──────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://lkhdwgltwzaxslspxgcx.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxraGR3Z2x0d3pheHNsc3B4Z2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMDk1OTYsImV4cCI6MjA5MTU4NTU5Nn0.nDy7pWgYkr-NFNh5wpIFmfu4tXsLPoPqrdtvzY3__4Q';
@@ -1695,6 +1718,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('auth-overlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('auth-overlay')) closeAuth();
   });
+  const settingsOverlay = document.getElementById('settings-overlay');
+  if (settingsOverlay) {
+    settingsOverlay.addEventListener('click', (e) => {
+      if (e.target === settingsOverlay) closeSettings();
+    });
+  }
 });
 
 // ── Log generation to Supabase ─────────────────────────────────────────────
@@ -1782,7 +1811,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Create account</button>
       </div>
       <div id="auth-form-signin">
-        <div class="auth-field"><label>Email</label><input type="email" id="signin-email" placeholder="aki@topo-grapher.com"/></div>
+        <div class="auth-field"><label>Email</label><input type="email" id="signin-email" placeholder="your@email.com"/></div>
         <div class="auth-field"><label>Password</label><input type="password" id="signin-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitAuth('signin')"/></div>
         <button class="auth-submit" onclick="submitAuth('signin')">Sign in →</button>
         <div class="auth-error" id="signin-error"></div>
@@ -1792,6 +1821,51 @@ document.addEventListener('DOMContentLoaded', ()=>{
         <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="Min. 8 characters" onkeydown="if(event.key==='Enter')submitAuth('signup')"/></div>
         <button class="auth-submit" onclick="submitAuth('signup')">Create account →</button>
         <div class="auth-error" id="signup-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="auth-overlay" id="settings-overlay">
+  <div class="auth-modal-wrap">
+    <div class="auth-modal" style="max-width:480px;">
+      <button class="auth-close" onclick="closeSettings()">✕</button>
+      <h2>Account settings</h2>
+      <p>Manage your account and subscription.</p>
+
+      <div style="margin-bottom:20px;padding:14px;background:var(--bg-input);border-radius:6px;border:1px solid var(--border);">
+        <div style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;">Signed in as</div>
+        <div style="font-size:14px;color:var(--text);" id="settings-email">—</div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;">Plan</span>
+          <span class="user-plan-badge" id="settings-plan">Free</span>
+        </div>
+      </div>
+
+      <!-- Change password -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Change password</div>
+        <div class="auth-field"><label>New password</label><input type="password" id="new-password" placeholder="Min. 8 characters"/></div>
+        <div class="auth-field"><label>Confirm password</label><input type="password" id="confirm-password" placeholder="Repeat new password"/></div>
+        <button class="auth-submit" onclick="changePassword()" style="margin-top:4px;">Update password →</button>
+        <div class="auth-error" id="password-msg" style="min-height:16px;"></div>
+      </div>
+
+      <!-- Subscription -->
+      <div style="border-top:1px solid var(--border);padding-top:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Subscription</div>
+        <div id="settings-free-cta" style="display:none;">
+          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">Upgrade to Pro for unlimited generations, 3m precision, and LiDAR accuracy in Denmark and the UK.</p>
+          <button class="tier-cta" onclick="closeSettings();document.getElementById('pro').scrollIntoView({behavior:'smooth'})">Upgrade to Pro →</button>
+        </div>
+        <div id="settings-pro-info" style="display:none;">
+          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">You have an active Pro subscription. To manage billing, cancel, or change your plan contact us at <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
+        <button onclick="signOut();closeSettings();" style="background:none;border:none;color:var(--danger,#e25555);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;padding:0;letter-spacing:.06em;">Sign out</button>
       </div>
     </div>
   </div>
