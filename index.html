@@ -133,10 +133,41 @@ textarea { resize:vertical; width:100%; }
 /* PROGRESS */
 #progress-card { display:none; }
 #progress-card.show { display:block; }
-.progress-track { background:var(--bg-input); border-radius:100px; height:4px; margin:6px 0 4px; overflow:hidden; }
-.progress-fill { height:100%; background:linear-gradient(90deg,var(--forest),var(--accent)); border-radius:100px; transition:width .5s cubic-bezier(.4,0,.2,1); width:0%; }
-.progress-label { font-size:14px; color:var(--text); font-weight:600; }
+.progress-track {
+  background:var(--bg-input);
+  border-radius:4px;
+  height:14px;
+  margin:10px 0 6px;
+  overflow:hidden;
+  border:1px solid var(--border-md);
+  position:relative;
+}
+.progress-fill {
+  height:100%;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--forest) 0px,
+    var(--forest) 12px,
+    var(--accent) 12px,
+    var(--accent) 24px
+  );
+  background-size: 34px 100%;
+  border-radius:3px;
+  transition:width .5s cubic-bezier(.4,0,.2,1);
+  width:0%;
+  animation: progress-stripes 1s linear infinite;
+  position:relative;
+}
+@keyframes progress-stripes {
+  0% { background-position: 0 0; }
+  100% { background-position: 34px 0; }
+}
+.progress-label { font-size:15px; color:var(--text); font-weight:700; letter-spacing:.02em; }
 .progress-sub { font-size:12px; color:var(--text-mid); min-height:16px; }
+#progress-card {
+  border:1px solid var(--accent-md) !important;
+  background: var(--bg-card) !important;
+}
 
 /* RESULT */
 #result-card { display:none; }
@@ -437,15 +468,15 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   <div id="daily-limit-badge" style="font-size:11px;text-align:center;margin-top:-4px;margin-bottom:8px;color:var(--text-soft);"></div>
   <div id="error-msg"></div>
 
-  <div class="card" id="progress-card">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+  <div class="card" id="progress-card" style="padding:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
       <div class="progress-label" id="progress-label">Starting…</div>
-      <div style="font-size:12px;color:var(--text-soft);font-family:'DM Mono',monospace;" id="progress-time"></div>
+      <div style="font-family:'DM Mono',monospace;" id="progress-time"></div>
     </div>
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
       <div class="progress-sub" id="progress-sub"></div>
-      <div style="font-size:11px;color:var(--text-soft);font-family:'DM Mono',monospace;" id="progress-pct">0%</div>
+      <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:'DM Mono',monospace;" id="progress-pct">0%</div>
     </div>
   </div>
 
@@ -1030,9 +1061,26 @@ function setProgress(f,l,s){
   if(timeEl && f > 0.05 && f < 1){
     const total = elapsed/f;
     const remaining = Math.max(0, Math.round(total - elapsed));
-    timeEl.textContent = remaining > 0 ? '~'+remaining+'s remaining' : 'almost done…';
+    let timeStr;
+    if(remaining >= 120) {
+      timeStr = '~' + Math.ceil(remaining/60) + ' min remaining';
+    } else if(remaining >= 60) {
+      timeStr = '~1 min remaining';
+    } else if(remaining > 0) {
+      timeStr = '~' + remaining + 's remaining';
+    } else {
+      timeStr = 'almost done…';
+    }
+    timeEl.textContent = timeStr;
+    timeEl.style.fontSize = '14px';
+    timeEl.style.fontWeight = '600';
+    timeEl.style.color = 'var(--accent)';
   } else if(timeEl && f >= 1){
-    timeEl.textContent = Math.round(elapsed)+'s total';
+    const totalStr = elapsed >= 60
+      ? Math.floor(elapsed/60) + 'm ' + Math.round(elapsed%60) + 's total'
+      : Math.round(elapsed) + 's total';
+    timeEl.textContent = totalStr;
+    timeEl.style.color = 'var(--text-soft)';
   }
 }
 function showError(m){ const el=document.getElementById('error-msg'); el.innerHTML='⚠ '+m; el.classList.add('show'); }
