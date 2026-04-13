@@ -290,6 +290,13 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 .user-dropdown a:hover, .user-dropdown button:hover { background:var(--bg-input); color:var(--text); }
 .user-plan-badge { font-size:10px; padding:2px 6px; border-radius:3px; background:var(--accent-dk); color:var(--accent); letter-spacing:.08em; margin-left:6px; }
 
+
+/* Map responsive constraints */
+#map-wrap { max-width: 100%; border-radius: 6px; overflow: hidden; }
+#map { height: clamp(280px, 45vw, 520px) !important; }
+.section { max-width: 960px; margin-left: auto; margin-right: auto; }
+.hero-inner { max-width: 800px; margin: 0 auto; }
+
 /* ── RESPONSIVE ────────────────────────────────────────────────────────── */
 * { box-sizing: border-box; }
 
@@ -1249,7 +1256,6 @@ async function convert(){
       const warn = document.getElementById('elevation-quality-warn');
       if (warn) warn.style.display = 'none';
     }
-    if (!isProUnlocked()) { incrementGenerationsToday(); updateLimitBadge(); }
     // Log to Supabase if signed in
     const _siteArea = parseFloat(document.getElementById('stat-area')?.textContent?.replace(/[^0-9.]/g,'')) || 0;
     logGeneration(projectName, cleanOut.length, selectedSpacing, _siteArea, source||'unknown');
@@ -1277,6 +1283,11 @@ async function convert(){
       out.slice(0,6).map(p=>`<tr><td>${p.x}</td><td>${p.y}</td><td>${p.z}</td></tr>`).join('')+
       `<tr><td colspan="3" style="color:var(--text-soft);font-size:11px;padding-top:6px">… ${out.length.toLocaleString()} total rows in CSV</td></tr>`;
 
+    // Only count generation on SUCCESS — not on error
+    if (!isProUnlocked() && !(_currentProfile && _currentProfile.plan !== 'free')) {
+      incrementGenerationsToday();
+      updateLimitBadge();
+    }
     setProgress(1,'Done — terrain data ready.','');
     const altsForWire = displayPts.map(p=>p.z).filter(z=>isFinite(z)&&!isNaN(z));
     const wMinZ = altsForWire.length ? Math.min(...altsForWire) : 0;
