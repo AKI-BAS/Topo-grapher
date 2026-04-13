@@ -289,6 +289,50 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 .user-dropdown a, .user-dropdown button { display:block; width:100%; text-align:left; padding:10px 14px; font-family:'DM Mono',monospace; font-size:12px; color:var(--text-mid); background:none; border:none; cursor:pointer; text-decoration:none; }
 .user-dropdown a:hover, .user-dropdown button:hover { background:var(--bg-input); color:var(--text); }
 .user-plan-badge { font-size:10px; padding:2px 6px; border-radius:3px; background:var(--accent-dk); color:var(--accent); letter-spacing:.08em; margin-left:6px; }
+
+/* ── RESPONSIVE ────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+@media (max-width: 768px) {
+  .nav { padding: 0 16px; height: 52px; }
+  .nav-logo { font-size: 18px; }
+  .nav-link { display: none; }
+  .hero { padding: 60px 16px 40px; }
+  .hero h1 { font-size: clamp(28px, 8vw, 48px); }
+  .hero p { font-size: 14px; }
+  .section { padding: 40px 16px; }
+  .card { padding: 16px; }
+  #map { height: 300px !important; }
+  .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .stat-row { grid-template-columns: repeat(2, 1fr) !important; }
+  .tier-grid { grid-template-columns: 1fr !important; }
+  .addon-grid { grid-template-columns: 1fr !important; }
+  .tool-header { flex-direction: column; gap: 8px; align-items: flex-start !important; }
+  .draw-controls { flex-wrap: wrap; gap: 6px; }
+  .draw-controls input { width: 100% !important; min-width: 0 !important; }
+  .auth-modal { padding: 24px 16px; }
+  .wireframe-card canvas { height: 260px !important; }
+  .result-actions { flex-direction: column; }
+  .result-actions button, .result-actions a { width: 100%; text-align: center; }
+  #progress-card { padding: 14px; }
+}
+
+@media (max-width: 480px) {
+  .hero h1 { font-size: 26px; }
+  .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .stat-row { grid-template-columns: repeat(2, 1fr) !important; }
+  .nav-right gap { gap: 6px; }
+}
+
+/* Make map container fluid */
+#map-wrap, #map { width: 100% !important; }
+
+/* Fluid cards */
+.card { width: 100%; }
+
+/* Fluid tool section */
+#tool { max-width: 100%; }
+
 </style>
 </head>
 <body>
@@ -495,7 +539,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
         <li class="feat-ok">Priority support</li>
         <li class="feat-add">Large site add-on available</li>
       </ul>
-      <button class="tier-cta" onclick="document.getElementById('notify-email').focus();document.getElementById('notify-section').scrollIntoView({behavior:'smooth'})">Get notified at launch →</button>
+      <button class="tier-cta" id="checkout-btn-pro" onclick="startCheckout('pro')">Get Pro →</button>
     </div>
 
     <!-- Company -->
@@ -516,7 +560,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
         <li class="feat-ok">Invoiced billing available</li>
         <li class="feat-add">Large site add-on available</li>
       </ul>
-      <button class="tier-cta" onclick="document.getElementById('notify-email').focus();document.getElementById('notify-section').scrollIntoView({behavior:'smooth'})">Get notified at launch →</button>
+      <button class="tier-cta" id="checkout-btn-company" onclick="startCheckout('company')">Get Company →</button>
     </div>
 
   </div>
@@ -565,6 +609,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://js.stripe.com/v3/"></script>
 <script>
 
 // ── Theme ──────────────────────────────────────────────────────────────────
@@ -1098,7 +1143,9 @@ async function convert(){
     const mpd=metresPerDeg((Math.min(...lats)+Math.max(...lats))/2);
     const siteW=(Math.max(...lons)-Math.min(...lons))*mpd.lon;
     const siteH=(Math.max(...lats)-Math.min(...lats))*mpd.lat;
-    if(!isProUnlocked()){
+    const isPro = isProUnlocked() || (_currentProfile && _currentProfile.plan !== 'free');
+
+    if(!isPro){
       if(siteW>FREE_MAX_M||siteH>FREE_MAX_M){
         throw new Error('Free tier is limited to 500 × 500m sites. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for sites up to 2 × 2km.');
       }
@@ -1106,15 +1153,43 @@ async function convert(){
         throw new Error('Free tier supports 12m spacing only. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for 3m and 6m precision.');
       }
     }
+
+    // Pro area limits with add-on tiers
+    const siteAreaM2 = siteW * siteH;
+    const siteAreaKm2 = siteAreaM2 / 1000000;
+    const PRO_BASE_MAX_M = 2000; // 2km × 2km base Pro limit
+
+    if(isPro) {
+      if(siteAreaKm2 > 20) {
+        throw new Error('Site area exceeds 20 km². Please <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">contact us</a> for large site pricing.');
+      } else if(siteAreaKm2 > 5) {
+        // 5–20 km² → £15 add-on
+        const confirmed = await showAddonPrompt(siteAreaKm2, 15);
+        if(!confirmed) {
+          showProgress(false);
+          document.getElementById('convert-btn').disabled = false;
+          return;
+        }
+      } else if(siteAreaKm2 > 4 || siteW > PRO_BASE_MAX_M || siteH > PRO_BASE_MAX_M) {
+        // 2×2km–5 km² → £5 add-on
+        const confirmed = await showAddonPrompt(siteAreaKm2, 5);
+        if(!confirmed) {
+          showProgress(false);
+          document.getElementById('convert-btn').disabled = false;
+          return;
+        }
+      }
+    }
+
     await checkDailyLimit();
     const grid = generateGrid(polygonLatLngs, selectedSpacing);
     if(grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
-    const POINT_CAP = isProUnlocked() ? 15000 : 2000;
+    const POINT_CAP = isPro ? 50000 : 2000;
     if(grid.length>POINT_CAP){
-      if(isProUnlocked()){
-        throw new Error(`${grid.length.toLocaleString()} points exceeds the Pro limit of 15,000. Use a larger spacing or smaller area, or contact us about the large site add-on.`);
+      if(isPro){
+        throw new Error(`${grid.length.toLocaleString()} points exceeds the limit of ${POINT_CAP.toLocaleString()}. Use a larger spacing or smaller area.`);
       } else {
-        throw new Error(`${grid.length.toLocaleString()} points exceeds the free limit of 2,000. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for up to 15,000 points, or use a smaller area.`);
+        throw new Error(`${grid.length.toLocaleString()} points exceeds the free limit of 2,000. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for larger areas.`);
       }
     }
 
@@ -1178,6 +1253,7 @@ async function convert(){
     // Log to Supabase if signed in
     const _siteArea = parseFloat(document.getElementById('stat-area')?.textContent?.replace(/[^0-9.]/g,'')) || 0;
     logGeneration(projectName, cleanOut.length, selectedSpacing, _siteArea, source||'unknown');
+    saveProMemory(projectName, selectedSpacing, csvData, source||'unknown');
     setSiteContourData(out);
 
     const displayPts = typeof cleanOut !== 'undefined' ? cleanOut : out;
@@ -1614,6 +1690,130 @@ async function changePassword() {
   document.getElementById('confirm-password').value = '';
 }
 
+
+// ── Large site add-on prompt ───────────────────────────────────────────────
+function showAddonPrompt(areaKm2, price) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('addon-overlay');
+    const areaEl = document.getElementById('addon-area');
+    const priceEl = document.getElementById('addon-price');
+    const noteEl = document.getElementById('addon-note');
+    if(areaEl) areaEl.textContent = areaKm2.toFixed(2) + ' km²';
+    if(priceEl) priceEl.textContent = '£' + price;
+    if(noteEl) noteEl.textContent = price === 5
+      ? 'Up to 5 km² — £5 per generation'
+      : 'Up to 20 km² — £15 per generation';
+    overlay.classList.add('show');
+    document.getElementById('addon-confirm').onclick = () => {
+      overlay.classList.remove('show');
+      resolve(true);
+    };
+    document.getElementById('addon-cancel').onclick = () => {
+      overlay.classList.remove('show');
+      resolve(false);
+    };
+  });
+}
+
+
+
+// ── Pro Memory — save/restore last generation ─────────────────────────────
+async function saveProMemory(projectName, spacing, csvData, source) {
+  if (!_currentUser) return;
+  if (!_currentProfile || _currentProfile.plan === 'free') return;
+  // Save to Supabase generations table — already logged
+  // Also save to localStorage for quick restore
+  try {
+    localStorage.setItem('topo-last-project', JSON.stringify({
+      projectName, spacing, source,
+      timestamp: Date.now(),
+      userId: _currentUser.id
+    }));
+  } catch(e) {}
+}
+
+function restoreProMemory() {
+  if (!_currentUser) return;
+  if (!_currentProfile || _currentProfile.plan === 'free') return;
+  try {
+    const saved = JSON.parse(localStorage.getItem('topo-last-project') || 'null');
+    if (!saved || saved.userId !== _currentUser.id) return;
+    // Restore project name and spacing
+    const nameEl = document.getElementById('project-name');
+    if (nameEl && saved.projectName) nameEl.value = saved.projectName;
+    if (saved.spacing) {
+      const spacingBtns = document.querySelectorAll('.acc-btn');
+      spacingBtns.forEach(btn => {
+        if (btn.id === 'acc-' + saved.spacing) btn.click();
+      });
+    }
+    // Show restore notice
+    const notice = document.getElementById('memory-notice');
+    if (notice) {
+      const ago = Math.round((Date.now() - saved.timestamp) / 60000);
+      const agoStr = ago < 60 ? ago + 'm ago' : Math.round(ago/60) + 'h ago';
+      notice.textContent = '↩ Last project restored (' + agoStr + ')';
+      notice.style.display = 'block';
+      setTimeout(() => notice.style.display = 'none', 4000);
+    }
+  } catch(e) {}
+}
+
+// ── Stripe Checkout ────────────────────────────────────────────────────────
+const STRIPE_PUBLISHABLE_KEY = 'pk_test_51TLe6rKXM4y6g0qioCUHJWfzl6G5NwOh4I3pcwQCH7Jlt4GhqfwMUmJuuiSsWBxqidYGxIcU6nKL4b2yYV9d6GYh00j4F9wMpM';
+const STRIPE_PRICE_PRO = 'price_1TLmxaKXM4y6g0qiXfoZKZmn';
+const STRIPE_PRICE_COMPANY = 'price_1TLmz0KXM4y6g0qitL1cu0Ij';
+const WEBHOOK_WORKER = 'https://odd-king-7b02.svanur300.workers.dev';
+
+async function startCheckout(plan) {
+  if (!_currentUser) {
+    openAuth();
+    return;
+  }
+  const priceId = plan === 'company' ? STRIPE_PRICE_COMPANY : STRIPE_PRICE_PRO;
+  const btn = document.getElementById('checkout-btn-' + plan);
+  if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
+
+  try {
+    // Create checkout session via webhook worker
+    const res = await fetch(WEBHOOK_WORKER + '/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        priceId,
+        email: _currentUser.email,
+        plan,
+        successUrl: 'https://topo-grapher.com?upgraded=true',
+        cancelUrl: 'https://topo-grapher.com#pro'
+      })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error(data.error || 'Failed to create checkout session');
+    }
+  } catch (err) {
+    alert('Checkout error: ' + err.message);
+    if (btn) { btn.textContent = plan === 'pro' ? 'Get Pro →' : 'Get Company →'; btn.disabled = false; }
+  }
+}
+
+// Check for successful upgrade on page load
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.location.search.includes('upgraded=true')) {
+    setTimeout(() => {
+      const msg = document.createElement('div');
+      msg.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--forest);color:#EFE3D8;padding:14px 24px;border-radius:6px;font-family:DM Mono,monospace;font-size:13px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);';
+      msg.textContent = '✓ Welcome to Pro! Your account has been upgraded.';
+      document.body.appendChild(msg);
+      setTimeout(() => msg.remove(), 5000);
+      // Clean URL
+      window.history.replaceState({}, '', '/');
+    }, 1000);
+  }
+});
+
 // ── Supabase Auth ──────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://lkhdwgltwzaxslspxgcx.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxraGR3Z2x0d3pheHNsc3B4Z2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMDk1OTYsImV4cCI6MjA5MTU4NTU5Nn0.nDy7pWgYkr-NFNh5wpIFmfu4tXsLPoPqrdtvzY3__4Q';
@@ -1644,6 +1844,7 @@ async function handleSession(session) {
   // Apply pro if plan is pro or company
   if (_currentProfile && (_currentProfile.plan === 'pro' || _currentProfile.plan === 'company')) {
     applyProUI();
+    setTimeout(restoreProMemory, 500);
   }
 }
 
@@ -1895,6 +2096,39 @@ document.addEventListener('DOMContentLoaded', ()=>{
       <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
         <button onclick="signOut();closeSettings();" style="background:none;border:none;color:var(--danger,#e25555);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;padding:0;letter-spacing:.06em;">Sign out</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Large site add-on modal -->
+<div class="auth-overlay" id="addon-overlay">
+  <div class="auth-modal-wrap">
+    <div class="auth-modal" style="max-width:420px;text-align:center;">
+      <h2>Large site add-on</h2>
+      <p style="margin-bottom:6px;">Your site is <strong id="addon-area">—</strong>, which exceeds the standard Pro limit.</p>
+      <p style="margin-bottom:24px;" id="addon-note"></p>
+      <div style="background:var(--bg-input);border:1px solid var(--border-md);border-radius:8px;padding:20px;margin-bottom:24px;">
+        <div style="font-size:32px;font-family:'Syne',sans-serif;font-weight:800;color:var(--accent);" id="addon-price">£5</div>
+        <div style="font-size:12px;color:var(--text-soft);margin-top:4px;">per generation · charged separately</div>
+      </div>
+      <p style="font-size:12px;color:var(--text-soft);margin-bottom:20px;">Payment will be handled via invoice. By proceeding you agree to be charged for this generation.</p>
+      <div style="display:flex;gap:10px;">
+        <button id="addon-cancel" style="flex:1;background:var(--bg-input);border:1px solid var(--border-md);color:var(--text);padding:12px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Cancel</button>
+        <button id="addon-confirm" style="flex:2;background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:12px;border-radius:5px;font-family:'DM Mono',monospace;font-size:13px;cursor:pointer;font-weight:600;">Proceed → Generate CSV</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Download sign-in prompt -->
+<div class="auth-overlay" id="download-signin-overlay">
+  <div class="auth-modal-wrap">
+    <div class="auth-modal" style="max-width:420px;text-align:center;">
+      <button class="auth-close" onclick="document.getElementById('download-signin-overlay').classList.remove('show')">✕</button>
+      <h2>Sign in to download</h2>
+      <p>Create a free account to download your terrain CSV. It takes 30 seconds and your data is ready immediately.</p>
+      <button class="auth-submit" onclick="document.getElementById('download-signin-overlay').classList.remove('show');openAuth('signup');" style="margin-bottom:10px;">Create free account →</button>
+      <button onclick="document.getElementById('download-signin-overlay').classList.remove('show');openAuth('signin');" style="width:100%;background:none;border:1px solid var(--border-md);color:var(--text-mid);padding:11px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Sign in</button>
     </div>
   </div>
 </div>
