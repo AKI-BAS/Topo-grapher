@@ -665,7 +665,8 @@ async function tryWorkerProxy(pts){
     const lats = b.map(p=>p.lat.toFixed(6)).join(',');
     const lons = b.map(p=>p.lon.toFixed(6)).join(',');
     const workerBase = nextWorker();
-    const workerUrl = workerBase + '?latitude=' + encodeURIComponent(lats) + '&longitude=' + encodeURIComponent(lons);
+    const isPro = (isProUnlocked() || (_currentProfile && _currentProfile.plan !== 'free'));
+    const workerUrl = workerBase + '?latitude=' + encodeURIComponent(lats) + '&longitude=' + encodeURIComponent(lons) + (isPro ? '&pro=true' : '');
     const r = await fetch(workerUrl);
     if(!r.ok){
       const txt = await r.text().catch(()=>'');
@@ -1166,6 +1167,27 @@ async function convert(){
     const cleanOut = Array.from(gridMap.values())
       .sort((a,b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
     csvData = 'X,Y,Z\n'+cleanOut.map(p=>`${p.x},${p.y},${p.z}`).join('\n');
+
+    // Flat elevation detector — warn if data quality is poor
+    const zValsOut = cleanOut.map(p=>p.z).filter(z=>isFinite(z)&&z!==0);
+    const uniqueZ = new Set(zValsOut.map(z=>Math.round(z))).size;
+    const allIntegers = zValsOut.every(z => z === Math.round(z));
+    const flatRatio = uniqueZ / Math.max(zValsOut.length, 1);
+    if (allIntegers && flatRatio < 0.05) {
+      // Less than 5% unique values and all whole numbers — low resolution data
+      setTimeout(() => {
+        const warn = document.getElementById('elevation-quality-warn');
+        if (warn) {
+          warn.style.display = 'block';
+          warn.innerHTML = '⚠ Low resolution elevation detected (' + uniqueZ + ' unique values across ' + cleanOut.length + ' points). ' +
+            'For better accuracy, consider importing a KMZ file from Google Earth. ' +
+            '<a href="#tool" style="color:var(--accent)">Learn more</a>';
+        }
+      }, 600);
+    } else {
+      const warn = document.getElementById('elevation-quality-warn');
+      if (warn) warn.style.display = 'none';
+    }
     if (!isProUnlocked()) { incrementGenerationsToday(); updateLimitBadge(); }
     // Log to Supabase if signed in
     const _siteArea = parseFloat(document.getElementById('stat-area')?.textContent?.replace(/[^0-9.]/g,'')) || 0;
