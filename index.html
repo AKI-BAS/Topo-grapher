@@ -109,8 +109,8 @@ textarea { resize:vertical; width:100%; }
 .tool-btn:hover { border-color:var(--accent-md); color:var(--text); }
 .tool-btn.active { background:var(--accent-dk); border-color:var(--accent-md); color:var(--accent); }
 .tool-btn.danger:hover { border-color:var(--danger); color:var(--danger); }
-#map-wrap { border-radius:6px; overflow:hidden; border:1px solid var(--border); }
-#map { height:600px; width:100%; background:#111; }
+#map-wrap { border-radius:6px; overflow:hidden; border:1px solid var(--border); width:100%; }
+#map { height:500px; width:100%; background:#111; }
 .map-hint { font-size:13px; color:var(--text-mid); margin-top:8px; line-height:1.5; }
 
 /* ACCURACY */
@@ -323,10 +323,12 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 
 
 /* Map responsive constraints */
-#map-wrap { max-width: 100%; border-radius: 6px; overflow: hidden; }
-#map { height: clamp(280px, 45vw, 520px) !important; }
+
 .section { max-width: 960px; margin-left: auto; margin-right: auto; }
 .hero-inner { max-width: 800px; margin: 0 auto; }
+#tool { width: min(88vw, 960px); margin: 0 auto; }
+#map-wrap { width: 100%; }
+#map { height: clamp(300px, 50vh, 520px); width: 100%; }
 
 /* ── RESPONSIVE ────────────────────────────────────────────────────────── */
 * { box-sizing: border-box; }
@@ -340,7 +342,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   .hero p { font-size: 14px; }
   .section { padding: 40px 16px; }
   .card { padding: 16px; }
-  #map { height: 300px !important; }
+  #map { height: 280px; }
   .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .stat-row { grid-template-columns: repeat(2, 1fr) !important; }
   .tier-grid { grid-template-columns: 1fr !important; }
@@ -363,7 +365,6 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 }
 
 /* Make map container fluid */
-#map-wrap, #map { width: 100% !important; }
 
 /* Fluid cards */
 .card { width: 100%; }
@@ -1853,7 +1854,16 @@ async function startCheckout(plan) {
       throw new Error(data.error || 'Failed to create checkout session');
     }
   } catch (err) {
-    alert('Checkout error: ' + err.message);
+    console.error('Checkout error full:', err);
+    // Show friendly error in UI instead of alert
+    const errDiv = document.getElementById('checkout-error-msg');
+    if (errDiv) {
+      errDiv.textContent = 'Payment error: ' + err.message + ' — please try again or contact aki@topo-grapher.com';
+      errDiv.style.display = 'block';
+      setTimeout(() => errDiv.style.display = 'none', 8000);
+    } else {
+      alert('Checkout error: ' + err.message);
+    }
     if (btn) { btn.textContent = plan === 'pro' ? 'Get Pro →' : 'Get Company →'; btn.disabled = false; }
   }
 }
