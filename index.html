@@ -334,31 +334,61 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 * { box-sizing: border-box; }
 
 @media (max-width: 768px) {
-  .nav { padding: 0 16px; height: 52px; }
-  .nav-logo { font-size: 18px; }
+  .nav { padding: 0 12px; height: 52px; }
+  .nav-logo { font-size: 16px; }
+  .nav-tag { display: none; }
   .nav-link { display: none; }
-  .hero { padding: 60px 16px 40px; }
-  .hero h1 { font-size: clamp(28px, 8vw, 48px); }
-  .hero p { font-size: 14px; }
-  .section { padding: 40px 16px; }
-  .card { padding: 16px; }
-  #map { height: 280px; }
+  .hero { padding: 56px 16px 32px; }
+  .hero h1 { font-size: clamp(26px, 7vw, 42px); }
+  .hero p { font-size: 13px; }
+  .section { padding: 32px 16px; }
+  .card { padding: 14px; }
+  #tool { width: 100% !important; padding: 0 12px; box-sizing: border-box; }
+  #map { height: 260px; }
   .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .stat-row { grid-template-columns: repeat(2, 1fr) !important; }
   .tier-grid { grid-template-columns: 1fr !important; }
   .addon-grid { grid-template-columns: 1fr !important; }
   .tool-header { flex-direction: column; gap: 8px; align-items: flex-start !important; }
   .draw-controls { flex-wrap: wrap; gap: 6px; }
   .draw-controls input { width: 100% !important; min-width: 0 !important; }
-  .auth-modal { padding: 24px 16px; }
-  .wireframe-card canvas { height: 260px !important; }
-  .result-actions { flex-direction: column; }
-  .result-actions button, .result-actions a { width: 100%; text-align: center; }
+  .option-row { flex-direction: column; align-items: flex-start !important; gap: 8px; }
+  .option-row select { width: 100%; }
+  #scatter-row { flex-direction: column; align-items: flex-start !important; gap: 8px; }
+  #scatter-row select { width: 100%; }
+  .auth-modal { padding: 20px 16px !important; margin: 16px !important; }
+  .auth-modal h2 { font-size: 20px; }
+  .tier-card { padding: 16px; }
+  .pro-grid { grid-template-columns: 1fr !important; }
+  .notify-row { flex-direction: column; gap: 8px; }
+  .notify-row select, .notify-row input { width: 100%; }
+  .btn-notify-send { width: 100%; }
+  .footer-inner { flex-direction: column; gap: 8px; text-align: center; }
+  canvas { max-width: 100% !important; }
+  .preview-table { font-size: 11px; }
+  .stats-grid .stat-n { font-size: 18px; }
   #progress-card { padding: 14px; }
+  .hero-steps { flex-direction: column; gap: 8px; }
+  .hero-step { font-size: 12px; }
+  .large-addon-cards { flex-direction: column !important; }
 }
 
 @media (max-width: 480px) {
-  .hero h1 { font-size: 26px; }
+  .nav-logo { font-size: 15px; }
+  .hero h1 { font-size: 24px; }
+  .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .acc-btn { padding: 10px 8px; }
+  .acc-m { font-size: 16px; }
+  .acc-d { font-size: 10px; }
+  .btn-main { font-size: 12px; padding: 14px; }
+  .btn-dl { font-size: 11px; padding: 12px; }
+  #map { height: 220px; }
+  .tier-cta { font-size: 11px; padding: 11px 14px; }
+  .beta-pill { font-size: 9px; padding: 3px 8px; }
+  .user-btn { font-size: 10px; padding: 5px 9px; }
+}
+
   .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .stat-row { grid-template-columns: repeat(2, 1fr) !important; }
   .nav-right gap { gap: 6px; }
@@ -1066,6 +1096,36 @@ function checkDrawnAreaWarning() {
   }
 }
 
+function checkDrawnAreaWarning() {
+  if(!polygonLatLngs) return;
+  const hintEl = document.getElementById('map-hint');
+  const lats=polygonLatLngs.map(p=>p.lat), lons=polygonLatLngs.map(p=>p.lng);
+  const mpd=metresPerDeg((Math.min(...lats)+Math.max(...lats))/2);
+  const siteW=(Math.max(...lons)-Math.min(...lons))*mpd.lon;
+  const siteH=(Math.max(...lats)-Math.min(...lats))*mpd.lat;
+  const areaKm2=(siteW*siteH)/1e6;
+  const isPro=isProUnlocked()||(_currentProfile&&_currentProfile.plan!=='free');
+  if(!isPro&&(siteW>500||siteH>500)) {
+    hintEl.innerHTML='⚠ Free tier limit is 500×500m. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for larger sites.';
+    hintEl.style.color='var(--warning,#e2a255)';
+  } else if(isPro&&areaKm2>100) {
+    hintEl.innerHTML='⚠ Exceeds 100 km² maximum. <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">Contact us</a>.';
+    hintEl.style.color='var(--warning,#e2a255)';
+  } else if(isPro&&areaKm2>20) {
+    const tot=(15+(areaKm2-20)*0.90).toFixed(2);
+    hintEl.textContent='⚠ '+areaKm2.toFixed(1)+' km² — add-on: £15 base + £'+((areaKm2-20)*0.90).toFixed(2)+' = £'+tot+' total.';
+    hintEl.style.color='var(--warning,#e2a255)';
+  } else if(isPro&&areaKm2>5) {
+    hintEl.textContent='⚠ '+areaKm2.toFixed(1)+' km² — £15 large site add-on will apply.';
+    hintEl.style.color='var(--warning,#e2a255)';
+  } else if(isPro&&(areaKm2>4||siteW>2000||siteH>2000)) {
+    hintEl.textContent='⚠ '+areaKm2.toFixed(1)+' km² — £5 large site add-on will apply.';
+    hintEl.style.color='var(--warning,#e2a255)';
+  } else {
+    hintEl.style.color='';
+  }
+}
+
 function updateHint(){
   const el = document.getElementById('map-hint');
   if(polygonLatLngs && polygonLatLngs.length > 0){
@@ -1100,8 +1160,7 @@ function updateConvertBtn(){
 let _progressStart = 0;
 
 function setProgress(f,l,s){
-  document.getElementById('progress-fill').style.width=(f*100)+'%';
-  document.getElementById('progress-pct').textContent=Math.round(f*100)+'%';
+  if(f!==null&&f!==undefined){document.getElementById('progress-fill').style.width=(f*100)+'%';document.getElementById('progress-pct').textContent=Math.round(f*100)+'%';}
   if(l!==undefined&&l!==null) document.getElementById('progress-label').textContent=l;
   if(s!==undefined&&s!==null) document.getElementById('progress-sub').textContent=s;
   // Time estimate
@@ -1243,6 +1302,7 @@ function showUnlockPrompt() {
 async function convert(){
   hideError(); showResult(false);
   window._isGenerating = true;
+  window._isGenerating = true;
   const nEl = document.getElementById('project-name');
   projectName = nEl.value.trim();
   if(!projectName){ nEl.classList.add('error'); nEl.focus(); showError('Enter a project name first.'); return; }
@@ -1323,8 +1383,11 @@ async function convert(){
     }
 
     const estSecs = Math.ceil(grid.length / 50 * 0.6);
-    setProgress(0.1,`Fetching elevation data…`,`${grid.length.toLocaleString()} points — est. ${estSecs}s`);
-    const {elevations,source} = await fetchElevations(grid,(f,l,s)=>setProgress(0.1+f*0.78,l,s));
+    setProgress(0.1,'Extracting data…',`${grid.length.toLocaleString()} points — est. ${estSecs}s`);
+    const _t1=setTimeout(()=>setProgress(null,'Exposing contours…',null),20000);
+    const _t2=setTimeout(()=>setProgress(null,'Almost done…',null),30000);
+    const {elevations,source} = await fetchElevations(grid,(f,l,s)=>setProgress(0.1+f*0.78,null,s));
+    clearTimeout(_t1);clearTimeout(_t2);
 
     setProgress(0.9,'Calculating coordinates…','');
     const utm = grid.map((p,i)=>({...latLonToUTM(p.lat,p.lon), alt:elevations[i]}));
@@ -1413,6 +1476,1024 @@ async function convert(){
       updateLimitBadge();
     }
     setProgress(1,'Done — terrain data ready.','');
+    window._isGenerating = false;
+    window._isGenerating = false;
+    const altsForWire = displayPts.map(p=>p.z).filter(z=>isFinite(z)&&!isNaN(z));
+    const wMinZ = altsForWire.length ? Math.min(...altsForWire) : 0;
+    const wMaxZ = altsForWire.length ? Math.max(...altsForWire) : 0;
+    setTimeout(()=>{
+      showProgress(false);
+      showResult(true);
+      showWireframe(displayPts, wMinZ, wMaxZ);
+      document.getElementById('result-card').scrollIntoView({behavior:'smooth',block:'start'});
+    },400);
+
+  }catch(err){
+    showProgress(false);
+    showError(err.message);
+  }finally{
+    document.getElementById('convert-btn').disabled=false;
+  }
+}
+
+function downloadCSV(){
+  if(!csvData) return;
+  const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csvData],{type:'text/csv'}));
+  a.download = `${safe}_toposolid.csv`;
+  a.click();
+}
+
+
+// ── Contour renderer ────────────────────────────────────────────────────────
+let animFrame=null, animT=0;
+let siteFieldData=null;
+
+function setSiteContourData(points){
+  // If terrain is too flat, hide contour panel gracefully
+  const zz = points.map(p=>p.z).filter(z=>z!==0&&isFinite(z)&&!isNaN(z));
+  const zRange = zz.length ? Math.max(...zz) - Math.min(...zz) : 0;
+  if(zRange < 3){
+    document.getElementById('contour-placeholder').style.display='flex';
+    document.getElementById('contour-canvas').style.display='none';
+    document.getElementById('contour-source-badge').textContent='';
+    document.getElementById('contour-label').textContent='';
+    // Update placeholder text for flat terrain
+    const span = document.querySelector('#contour-placeholder span');
+    if(span) span.textContent = 'Terrain too flat for contour preview — elevation range is only ' + zRange.toFixed(1) + 'm';
+    return;
+  }
+  const xs=points.map(p=>p.x),ys=points.map(p=>p.y),zs=points.map(p=>p.z);
+  const minX=Math.min(...xs),maxX=Math.max(...xs);
+  const minY=Math.min(...ys),maxY=Math.max(...ys);
+  const minZ=Math.min(...zs),maxZ=Math.max(...zs);
+  const rangeX=maxX-minX||1,rangeY=maxY-minY||1,rangeZ=maxZ-minZ||1;
+  const COLS=100,ROWS=66;
+  const field=[];
+  const counts=[];
+  for(let r=0;r<=ROWS;r++){field[r]=new Float32Array(COLS+1);counts[r]=new Uint16Array(COLS+1);}
+  points.forEach(p=>{
+    const c=Math.round((p.x-minX)/rangeX*COLS);
+    const r=Math.round((1-(p.y-minY)/rangeY)*ROWS);
+    if(c>=0&&c<=COLS&&r>=0&&r<=ROWS){field[r][c]+=(p.z-minZ)/rangeZ;counts[r][c]++;}
+  });
+  for(let r=0;r<=ROWS;r++)
+    for(let c=0;c<=COLS;c++)
+      if(counts[r][c]>0) field[r][c]/=counts[r][c];
+  for(let pass=0;pass<8;pass++)
+    for(let r=1;r<ROWS;r++)
+      for(let c=1;c<COLS;c++)
+        if(counts[r][c]===0){
+          const n=field[r-1]?.[c]||0,s=field[r+1]?.[c]||0,w=field[r][c-1]||0,e=field[r][c+1]||0;
+          field[r][c]=(n+s+w+e)/4;
+        }
+  siteFieldData={field,COLS,ROWS,minZ,maxZ};
+  document.getElementById('contour-source-badge').textContent='↳ your site';
+  document.getElementById('contour-label').textContent='YOUR SITE — elevation '+minZ.toFixed(0)+'m – '+maxZ.toFixed(0)+'m';
+  document.getElementById('contour-placeholder').style.display='none';
+  document.getElementById('contour-canvas').style.display='block';
+  if(animFrame) cancelAnimationFrame(animFrame);
+  animT=0;
+  drawContour();
+}
+
+function clearSiteContourData(){
+  siteFieldData=null;
+  document.getElementById('contour-source-badge').textContent='';
+  document.getElementById('contour-label').textContent='';
+  document.getElementById('contour-canvas').style.display='none';
+  document.getElementById('contour-placeholder').style.display='flex';
+  if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}
+}
+
+function drawContour(){
+  const canvas=document.getElementById('contour-canvas');
+  if(!canvas||!siteFieldData) return;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const W=canvas.offsetWidth||800,H=canvas.offsetHeight||320;
+  canvas.width=W*dpr;canvas.height=H*dpr;
+  const ctx=canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  ctx.fillStyle=isDark?'#0d0d0c':'#f5f0ea';
+  ctx.fillRect(0,0,W,H);
+  const {field,COLS,ROWS}=siteFieldData;
+  const lineColor=isDark?'rgba(154,186,106,':'rgba(94,102,49,';
+  const LEVELS=32;
+  for(let li=0;li<LEVELS;li++){
+    const t=li/LEVELS,level=t;
+    const alpha=isDark?(0.12+t*0.65):(0.18+t*0.55);
+    ctx.strokeStyle=lineColor+alpha+')';
+    ctx.lineWidth=t>0.65?0.9:0.5;
+    ctx.beginPath();
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const v00=field[r][c],v10=field[r][c+1]||0;
+        const v01=field[r+1]?.[c]||0,v11=field[r+1]?.[c+1]||0;
+        const x0=c/COLS*W,x1=(c+1)/COLS*W,y0=r/ROWS*H,y1=(r+1)/ROWS*H;
+        const edges=[];
+        if((v00<level)!==(v10<level)){const f=(level-v00)/((v10-v00)||1e-9);edges.push([x0+f*(x1-x0),y0]);}
+        if((v10<level)!==(v11<level)){const f=(level-v10)/((v11-v10)||1e-9);edges.push([x1,y0+f*(y1-y0)]);}
+        if((v01<level)!==(v11<level)){const f=(level-v01)/((v11-v01)||1e-9);edges.push([x0+f*(x1-x0),y1]);}
+        if((v00<level)!==(v01<level)){const f=(level-v00)/((v01-v00)||1e-9);edges.push([x0,y0+f*(y1-y0)]);}
+        if(edges.length>=2){ctx.moveTo(edges[0][0],edges[0][1]);ctx.lineTo(edges[1][0],edges[1][1]);}
+      }
+    }
+    ctx.stroke();
+  }
+  const scanY=(animT%1)*H;
+  const g=ctx.createLinearGradient(0,scanY-30,0,scanY+30);
+  g.addColorStop(0,'rgba(154,186,106,0)');
+  g.addColorStop(0.5,isDark?'rgba(154,186,106,0.07)':'rgba(94,102,49,0.05)');
+  g.addColorStop(1,'rgba(154,186,106,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,scanY-30,W,60);
+  animT+=0.003;
+  animFrame=requestAnimationFrame(drawContour);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const ro=new ResizeObserver(()=>{
+    if(siteFieldData&&animFrame){cancelAnimationFrame(animFrame);animT=0;drawContour();}
+  });
+  const c=document.getElementById('contour-canvas');
+  if(c) ro.observe(c);
+  document.getElementById('theme-toggle').addEventListener('click',()=>{
+    if(siteFieldData) setTimeout(()=>{if(animFrame){cancelAnimationFrame(animFrame);animT=0;drawContour();}},60);
+  });
+});
+
+
+// ── 3D Wireframe renderer ───────────────────────────────────────────────────
+let wireframePoints = null, wireframeAnim = null, wireframeAngle = 0;
+
+function buildWireframeGrid(points) {
+  if(!points || points.length === 0) return null;
+  const xVals = points.map(p=>p.x);
+  const yVals = points.map(p=>p.y);
+  const minX=Math.min(...xVals), maxX=Math.max(...xVals);
+  const minY=Math.min(...yVals), maxY=Math.max(...yVals);
+  const rangeX = maxX-minX || 1;
+  const rangeY = maxY-minY || 1;
+
+  // Fixed 40x40 display grid regardless of point count or shape
+  const COLS=40, ROWS=40;
+
+  const sums  = Array.from({length:ROWS}, ()=>new Float32Array(COLS));
+  const cnts  = Array.from({length:ROWS}, ()=>new Uint8Array(COLS));
+
+  points.forEach(p=>{
+    const c = Math.min(COLS-1, Math.floor((p.x-minX)/rangeX*(COLS-0.01)));
+    const r = Math.min(ROWS-1, Math.floor((p.y-minY)/rangeY*(ROWS-0.01)));
+    sums[r][c] += p.z;
+    cnts[r][c]++;
+  });
+
+  // Average filled cells
+  const grid = Array.from({length:ROWS}, (_,r)=>
+    Float32Array.from({length:COLS}, (_,c)=> cnts[r][c]>0 ? sums[r][c]/cnts[r][c] : 0)
+  );
+
+  // Fill empty cells — multiple passes, spread from any non-zero neighbour
+  for(let pass=0;pass<12;pass++){
+    for(let r=0;r<ROWS;r++)
+      for(let c=0;c<COLS;c++)
+        if(cnts[r][c]===0){
+          const nb=[];
+          if(r>0&&grid[r-1][c]!==0) nb.push(grid[r-1][c]);
+          if(r<ROWS-1&&grid[r+1][c]!==0) nb.push(grid[r+1][c]);
+          if(c>0&&grid[r][c-1]!==0) nb.push(grid[r][c-1]);
+          if(c<COLS-1&&grid[r][c+1]!==0) nb.push(grid[r][c+1]);
+          if(nb.length) grid[r][c]=nb.reduce((a,b)=>a+b,0)/nb.length;
+        }
+  }
+
+  // Get real Z stats from filled cells only
+  const zVals = [];
+  for(let r=0;r<ROWS;r++)
+    for(let c=0;c<COLS;c++)
+      if(cnts[r][c]>0) zVals.push(grid[r][c]);
+
+  const minZ = zVals.length ? Math.min(...zVals) : 0;
+  const maxZ = zVals.length ? Math.max(...zVals) : 1;
+  const rangeZ = Math.max(maxZ-minZ, 0.5);
+
+  // Replace remaining zeros with minZ so they don't create fake cliffs
+  for(let r=0;r<ROWS;r++)
+    for(let c=0;c<COLS;c++)
+      if(cnts[r][c]===0 && grid[r][c]===0) grid[r][c] = minZ;
+
+  return {grid, rows:ROWS, cols:COLS, minZ, maxZ, rangeZ};
+}
+
+function drawWireframe(angle) {
+  const canvas = document.getElementById('wireframe-canvas');
+  if (!canvas || !wireframePoints) return;
+  const W = canvas.offsetWidth || canvas.width || 780;
+  const H = canvas.offsetHeight || canvas.height || 500;
+  if (W === 0 || H === 0) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (canvas.width !== W * dpr || canvas.height !== H * dpr) {
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  ctx.fillStyle = isDark ? '#0d0d0c' : '#f0ede8';
+  ctx.fillRect(0, 0, W, H);
+
+  const { grid, rows, cols, rangeZ } = wireframePoints;
+
+  // Isometric projection — fill canvas properly
+  const span = Math.max(cols, rows);
+  const tileW = Math.min((W * 0.72) / span, 18);
+  const tileH = tileW * 0.52;
+  const zScale = (H * 0.35) / wireframePoints.rangeZ;
+
+  // Compute projected extents to centre perfectly
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  function projXY(r, c) {
+    const dx = c - cols/2, dy = r - rows/2;
+    return [dx*cos - dy*sin, dx*sin + dy*cos];
+  }
+  const corners = [[0,0],[0,cols-1],[rows-1,0],[rows-1,cols-1]];
+  const pcs = corners.map(([r,c]) => projXY(r,c));
+  const midPX = (Math.min(...pcs.map(p=>p[0])) + Math.max(...pcs.map(p=>p[0]))) / 2;
+  const midPY = (Math.min(...pcs.map(p=>p[1])) + Math.max(...pcs.map(p=>p[1]))) / 2;
+  const cx = W/2 - midPX * tileW;
+  const cy = H * 0.62 - midPY * tileH;
+
+  function project(r, c, z) {
+    const [px, py] = projXY(r, c);
+    return [cx + px*tileW, cy + py*tileH - z*zScale];
+  }
+
+  const lineAlpha = isDark ? 0.7 : 0.75;
+
+  // Draw rows (left-right lines)
+  for (let r = 0; r < rows; r++) {
+    const t = r / rows;
+    ctx.strokeStyle = isDark
+      ? `rgba(154,186,106,${0.15 + t * lineAlpha})`
+      : `rgba(94,102,49,${0.12 + t * lineAlpha})`;
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    for (let c = 0; c < cols; c++) {
+      const z = (grid[r][c] - wireframePoints.minZ);
+      const [sx, sy] = project(r, c, z);
+      c === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+  }
+
+  // Draw columns (front-back lines)
+  for (let c = 0; c < cols; c++) {
+    const t = c / cols;
+    ctx.strokeStyle = isDark
+      ? `rgba(154,186,106,${0.08 + t * lineAlpha * 0.6})`
+      : `rgba(94,102,49,${0.06 + t * lineAlpha * 0.6})`;
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    for (let r = 0; r < rows; r++) {
+      const z = (grid[r][c] - wireframePoints.minZ);
+      const [sx, sy] = project(r, c, z);
+      r === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+  }
+}
+
+function startWireframeAnim() {
+  if (wireframeAnim) cancelAnimationFrame(wireframeAnim);
+  let lastTime = 0;
+  function frame(ts) {
+    if (ts - lastTime > 50) {
+      wireframeAngle += 0.004;
+      try { drawWireframe(wireframeAngle); } catch(e) { console.warn('wireframe draw error:', e); }
+      lastTime = ts;
+    }
+    wireframeAnim = requestAnimationFrame(frame);
+  }
+  wireframeAnim = requestAnimationFrame(frame);
+}
+
+function showWireframe(points, minZ, maxZ) {
+  const wCard = document.getElementById('wireframe-card');
+  if(!wCard) return;
+  wCard.classList.add('show');
+
+  wireframePoints = buildWireframeGrid(points);
+  if(!wireframePoints) return;
+  // Always exaggerate Z for visual clarity — multiply range by 4 minimum
+  wireframePoints.rangeZ = Math.max(wireframePoints.rangeZ * 4, 8);
+
+  wireframeAngle = -0.5;
+  document.getElementById('wireframe-label').textContent =
+    'TERRAIN MESH · ' + points.length.toLocaleString() + ' pts · ' +
+    minZ.toFixed(0) + 'm – ' + maxZ.toFixed(0) + 'm elevation';
+
+  const canvas = document.getElementById('wireframe-canvas');
+
+  // Use ResizeObserver for reliable dimension detection
+  let started = false;
+  const ro = new ResizeObserver(() => {
+    if(!started && canvas.offsetWidth > 50 && canvas.offsetHeight > 50) {
+      started = true;
+      ro.disconnect();
+      if(wireframeAnim) cancelAnimationFrame(wireframeAnim);
+      // Force canvas pixel dimensions explicitly
+      canvas.width = canvas.offsetWidth * Math.min(devicePixelRatio||1,2);
+      canvas.height = canvas.offsetHeight * Math.min(devicePixelRatio||1,2);
+      startWireframeAnim();
+    }
+  });
+  ro.observe(canvas);
+  // Also try immediately in case already visible
+  setTimeout(() => {
+    if(!started && canvas.offsetWidth > 50) {
+      started = true;
+      ro.disconnect();
+      if(wireframeAnim) cancelAnimationFrame(wireframeAnim);
+      canvas.width = canvas.offsetWidth * Math.min(devicePixelRatio||1,2);
+      canvas.height = canvas.offsetHeight * Math.min(devicePixelRatio||1,2);
+      startWireframeAnim();
+    }
+  }, 200);
+
+  // Redraw on theme toggle
+  const themeBtn = document.getElementById('theme-toggle');
+  if(themeBtn && !themeBtn._wireframeListener) {
+    themeBtn._wireframeListener = true;
+    themeBtn.addEventListener('click', () => {
+      setTimeout(() => { if(wireframeAnim){cancelAnimationFrame(wireframeAnim); startWireframeAnim();} }, 60);
+    });
+  }
+}
+
+
+
+// ── Settings ───────────────────────────────────────────────────────────────
+
+function applyAccessCode() {
+  const code = document.getElementById('settings-access-code').value.trim();
+  const msgEl = document.getElementById('access-code-msg');
+  const ok = tryUnlockPro(code);
+  if (ok) {
+    msgEl.style.color = 'var(--accent)';
+    msgEl.textContent = '✓ Pro access unlocked.';
+    document.getElementById('settings-plan').textContent = 'Pro';
+    document.getElementById('settings-plan').style.background = 'var(--forest)';
+    document.getElementById('settings-plan').style.color = '#EFE3D8';
+    document.getElementById('settings-free-cta').style.display = 'none';
+    document.getElementById('settings-pro-info').style.display = 'block';
+    applyProUI();
+  } else {
+    msgEl.style.color = 'var(--danger,#e25555)';
+    msgEl.textContent = 'Invalid access code.';
+  }
+}
+
+function openSettings() {
+  if (!_currentUser) { openAuth(); return; }
+  document.getElementById('settings-overlay').classList.add('show');
+  document.getElementById('settings-email').textContent = _currentUser.email;
+  document.getElementById('user-dropdown').classList.remove('show');
+  const plan = _currentProfile?.plan || 'free';
+  const planBadge = document.getElementById('settings-plan');
+  planBadge.textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
+  planBadge.style.background = plan !== 'free' ? 'var(--forest)' : 'var(--accent-dk)';
+  planBadge.style.color = plan !== 'free' ? '#EFE3D8' : 'var(--accent)';
+  document.getElementById('settings-free-cta').style.display = plan === 'free' ? 'block' : 'none';
+  document.getElementById('settings-pro-info').style.display = plan !== 'free' ? 'block' : 'none';
+}
+
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.remove('show');
+  document.getElementById('password-msg').textContent = '';
+}
+
+async function changePassword() {
+  const newPwd = document.getElementById('new-password').value;
+  const confirmPwd = document.getElementById('confirm-password').value;
+  const msgEl = document.getElementById('password-msg');
+  msgEl.style.color = 'var(--danger,#e25555)';
+  if (!newPwd) { msgEl.textContent = 'Please enter a new password.'; return; }
+  if (newPwd.length < 8) { msgEl.textContent = 'Password must be at least 8 characters.'; return; }
+  if (newPwd !== confirmPwd) { msgEl.textContent = 'Passwords do not match.'; return; }
+  const { error } = await _sb.auth.updateUser({ password: newPwd });
+  if (error) { msgEl.textContent = error.message; return; }
+  msgEl.style.color = 'var(--accent)';
+  msgEl.textContent = '✓ Password updated successfully.';
+  document.getElementById('new-password').value = '';
+  document.getElementById('confirm-password').value = '';
+}
+
+
+// ── Large site add-on prompt ───────────────────────────────────────────
+function showAddonPrompt(areaKm2, addonPrice, autoDowngraded, effectiveSpacing) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('addon-overlay');
+    let breakdownHTML = '';
+    if(areaKm2 > 20) {
+      const overKm2 = (areaKm2 - 20).toFixed(1);
+      const overCharge = ((areaKm2 - 20) * 0.90).toFixed(2);
+      breakdownHTML = `<div style="font-size:12px;color:var(--text-mid);text-align:left;margin-bottom:16px;line-height:2.2;background:var(--bg-input);padding:12px;border-radius:6px;">
+        <div style="display:flex;justify-content:space-between;"><span>Base large site fee (5–20 km²)</span><span>£15.00</span></div>
+        <div style="display:flex;justify-content:space-between;"><span>${overKm2} km² over 20 km² × £0.90</span><span>£${overCharge}</span></div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:4px;font-weight:700;color:var(--text);"><span>Total</span><span>£${addonPrice.toFixed(2)}</span></div>
+      </div>`;
+    } else if(areaKm2 > 5) {
+      breakdownHTML = `<div style="font-size:12px;color:var(--text-mid);margin-bottom:16px;">Flat fee for sites between 5–20 km².</div>`;
+    } else {
+      breakdownHTML = `<div style="font-size:12px;color:var(--text-mid);margin-bottom:16px;">Flat fee for sites beyond the 2×2 km base area.</div>`;
+    }
+    const downNote = autoDowngraded
+      ? `<div style="font-size:11px;color:var(--accent);margin-bottom:12px;padding:8px 10px;background:var(--accent-dk);border-radius:4px;">Resolution auto-adjusted to ${effectiveSpacing}m for this site size</div>`
+      : '';
+    overlay.innerHTML = `<div class="auth-modal-wrap"><div class="auth-modal" style="max-width:440px;text-align:center;">
+      <h2>Large site add-on</h2>
+      <p style="margin-bottom:10px;">Your site is <strong>${areaKm2.toFixed(1)} km²</strong> — beyond standard Pro area.</p>
+      ${downNote}${breakdownHTML}
+      <div style="background:var(--bg-input);border:1px solid var(--border-md);border-radius:8px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:12px;color:var(--text-mid);">One-time charge</span>
+        <span style="font-size:28px;font-family:'Syne',sans-serif;font-weight:800;color:var(--accent);">£${addonPrice.toFixed(2)}</span>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button id="addon-cancel" style="flex:1;background:var(--bg-input);border:1px solid var(--border-md);color:var(--text);padding:12px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Cancel</button>
+        <button id="addon-confirm" style="flex:2;background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:12px;border-radius:5px;font-family:'DM Mono',monospace;font-size:13px;cursor:pointer;font-weight:600;">Confirm → Generate</button>
+      </div>
+    </div></div>`;
+    overlay.classList.add('show');
+    document.getElementById('addon-confirm').onclick = async () => {
+      overlay.classList.remove('show');
+      if(!_currentUser) { openAuth(); resolve(false); return; }
+      try {
+        const res = await fetch(WEBHOOK_WORKER + '/create-addon-checkout', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ email: _currentUser.email, amountPence: Math.round(addonPrice*100),
+            description: 'Large site add-on — ' + areaKm2.toFixed(1) + ' km²',
+            successUrl: 'https://topo-grapher.com?addon=true', cancelUrl: 'https://topo-grapher.com' })
+        });
+        const data = await res.json();
+        if(data.url) window.location.href = data.url;
+        else resolve(true); // fallback if worker not yet updated
+      } catch(e) { resolve(true); }
+    };
+    document.getElementById('addon-cancel').onclick = () => { overlay.classList.remove('show'); resolve(false); };
+  });
+}
+
+
+
+
+// ── Pro Memory — save/restore last generation ─────────────────────────────
+async function saveProMemory(projectName, spacing, csvData, source) {
+  if (!_currentUser) return;
+  if (!_currentProfile || _currentProfile.plan === 'free') return;
+  // Save to Supabase generations table — already logged
+  // Also save to localStorage for quick restore
+  try {
+    localStorage.setItem('topo-last-project', JSON.stringify({
+      projectName, spacing, source,
+      timestamp: Date.now(),
+      userId: _currentUser.id
+    }));
+  } catch(e) {}
+}
+
+function restoreProMemory() {
+  if (!_currentUser) return;
+  if (!_currentProfile || _currentProfile.plan === 'free') return;
+  try {
+    const saved = JSON.parse(localStorage.getItem('topo-last-project') || 'null');
+    if (!saved || saved.userId !== _currentUser.id) return;
+    // Restore project name and spacing
+    const nameEl = document.getElementById('project-name');
+    if (nameEl && saved.projectName) nameEl.value = saved.projectName;
+    if (saved.spacing) {
+      const spacingBtns = document.querySelectorAll('.acc-btn');
+      spacingBtns.forEach(btn => {
+        if (btn.id === 'acc-' + saved.spacing) btn.click();
+      });
+    }
+    // Show restore notice
+    const notice = document.getElementById('memory-notice');
+    if (notice) {
+      const ago = Math.round((Date.now() - saved.timestamp) / 60000);
+      const agoStr = ago < 60 ? ago + 'm ago' : Math.round(ago/60) + 'h ago';
+      notice.textContent = '↩ Last project restored (' + agoStr + ')';
+      notice.style.display = 'block';
+      setTimeout(() => notice.style.display = 'none', 4000);
+    }
+  } catch(e) {}
+}
+
+// ── Stripe Checkout ────────────────────────────────────────────────────────
+const STRIPE_PUBLISHABLE_KEY = 'pk_live_51TLe6e3tgjRssKt3zUX2Y1KXWF1gUFPfpjFQF2c5sfTQj367H0BO1v52AHuK46dCA9w5LePUwZRw8IQRGk3EU8tM00fY754Arg';
+const STRIPE_PRICE_PRO = 'price_1TLeUH3tgjRssKt3q1BFKpdD';
+const STRIPE_PRICE_COMPANY = 'price_1TM1CI3tgjRssKt3a3lPXzkk';
+const STRIPE_PRICE_ADDON_5 = 'PENDING'; // TODO: create £5 one-time price in Stripe and paste ID here
+const STRIPE_PRICE_ADDON_15 = 'PENDING'; // TODO: create £15 one-time price in Stripe and paste ID here
+const WEBHOOK_WORKER = 'https://odd-king-7b02.svanur300.workers.dev';
+
+async function startCheckout(plan) {
+  if (!_currentUser) {
+    openAuth();
+    return;
+  }
+  const priceId = plan === 'company' ? STRIPE_PRICE_COMPANY : STRIPE_PRICE_PRO;
+  const btn = document.getElementById('checkout-btn-' + plan);
+  if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
+
+  try {
+    // Create checkout session via webhook worker
+    const res = await fetch(WEBHOOK_WORKER + '/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        priceId,
+        email: _currentUser.email,
+        plan,
+        successUrl: 'https://topo-grapher.com?upgraded=true',
+        cancelUrl: 'https://topo-grapher.com#pro'
+      })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error(data.error || 'Failed to create checkout session');
+    }
+  } catch (err) {
+    console.error('Checkout error full:', err);
+    // Show friendly error in UI instead of alert
+    const errDiv = document.getElementById('checkout-error-msg');
+    if (errDiv) {
+      errDiv.textContent = 'Payment error: ' + err.message + ' — please try again or contact aki@topo-grapher.com';
+      errDiv.style.display = 'block';
+      setTimeout(() => errDiv.style.display = 'none', 8000);
+    } else {
+      alert('Checkout error: ' + err.message);
+    }
+    if (btn) { btn.textContent = plan === 'pro' ? 'Get Pro →' : 'Get Company →'; btn.disabled = false; }
+  }
+}
+
+// Check for successful upgrade on page load
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.location.search.includes('upgraded=true')) {
+    setTimeout(() => {
+      const msg = document.createElement('div');
+      msg.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--forest);color:#EFE3D8;padding:14px 24px;border-radius:6px;font-family:DM Mono,monospace;font-size:13px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);';
+      msg.textContent = '✓ Welcome to Pro! Your account has been upgraded.';
+      document.body.appendChild(msg);
+      setTimeout(() => msg.remove(), 5000);
+      // Clean URL
+      window.history.replaceState({}, '', '/');
+    }, 1000);
+  }
+});
+
+// ── Supabase Auth ──────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://lkhdwgltwzaxslspxgcx.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxraGR3Z2x0d3pheHNsc3B4Z2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMDk1OTYsImV4cCI6MjA5MTU4NTU5Nn0.nDy7pWgYkr-NFNh5wpIFmfu4tXsLPoPqrdtvzY3__4Q';
+const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let _currentUser = null;
+let _currentProfile = null;
+
+async function initAuth() {
+  try {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (session) await handleSession(session);
+    _sb.auth.onAuthStateChange(async (event, session) => {
+      if (session) await handleSession(session);
+      else handleSignOut();
+    });
+  } catch(e) {
+    console.warn('Auth init error:', e.message);
+  }
+}
+
+async function handleSession(session) {
+  _currentUser = session.user;
+  // Load profile
+  const { data } = await _sb.from('profiles').select('*').eq('id', _currentUser.id).single();
+  _currentProfile = data;
+  updateNavUI();
+  // Apply pro if plan is pro or company
+  if (_currentProfile && (_currentProfile.plan === 'pro' || _currentProfile.plan === 'company')) {
+    applyProUI();
+    setTimeout(restoreProMemory, 500);
+  }
+}
+
+function handleSignOut() {
+  _currentUser = null;
+  _currentProfile = null;
+  updateNavUI();
+}
+
+function updateNavUI() {
+  const btn = document.getElementById('nav-auth-btn');
+  const dropdown = document.getElementById('user-dropdown');
+  const emailDisplay = document.getElementById('user-email-display');
+  if (!btn || !dropdown) return; // DOM not ready yet
+  if (_currentUser) {
+    btn.textContent = _currentUser.email.split('@')[0];
+    if (_currentProfile?.plan && _currentProfile.plan !== 'free') {
+      btn.textContent += ' ✓';
+    }
+    if (emailDisplay) emailDisplay.textContent = _currentUser.email;
+    btn.onclick = () => dropdown.classList.toggle('show');
+    if (!document._authClickListener) {
+      document._authClickListener = true;
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#user-menu-wrap')) dropdown.classList.remove('show');
+      });
+    }
+  } else {
+    btn.textContent = 'Sign in';
+    btn.onclick = openAuth;
+    dropdown.classList.remove('show');
+  }
+}
+
+function openAuth(mode) {
+  document.getElementById('auth-overlay').classList.add('show');
+  if (mode === 'signup') switchTab('signup');
+  else switchTab('signin');
+}
+
+function closeAuth() {
+  document.getElementById('auth-overlay').classList.remove('show');
+  document.getElementById('signin-error').textContent = '';
+  document.getElementById('signup-error').textContent = '';
+}
+
+function switchTab(tab) {
+  document.getElementById('auth-form-signin').style.display = tab === 'signin' ? 'block' : 'none';
+  document.getElementById('auth-form-signup').style.display = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('tab-signin').classList.toggle('active', tab === 'signin');
+  document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+}
+
+async function submitAuth(type) {
+  const errEl = document.getElementById(type + '-error');
+  errEl.textContent = '';
+  errEl.style.color = 'var(--danger,#e25555)';
+  if (type === 'signin') {
+    const email = document.getElementById('signin-email').value.trim();
+    const password = document.getElementById('signin-password').value;
+    if (!email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
+    console.log('Signing in:', email);
+    const { data, error } = await _sb.auth.signInWithPassword({ email, password });
+    console.log('Signin result:', { data, error });
+    if (error) { errEl.textContent = error.message; return; }
+    closeAuth();
+  } else {
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    if (!email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
+    if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+    console.log('Signing up:', email);
+    const { data, error } = await _sb.auth.signUp({
+      email, password,
+      options: { emailRedirectTo: 'https://topo-grapher.com' }
+    });
+    console.log('Signup result:', { data, error });
+    if (error) { errEl.textContent = error.message; return; }
+    errEl.style.color = 'var(--accent)';
+    errEl.textContent = 'Check your email to confirm your account.';
+  }
+}
+
+async function signOut() {
+  await _sb.auth.signOut();
+  document.getElementById('user-dropdown').classList.remove('show');
+  location.reload();
+}
+
+// Close auth modal on overlay click
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('auth-overlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('auth-overlay')) closeAuth();
+  });
+  const settingsOverlay = document.getElementById('settings-overlay');
+  if (settingsOverlay) {
+    settingsOverlay.addEventListener('click', (e) => {
+      if (e.target === settingsOverlay) closeSettings();
+    });
+  }
+});
+
+// ── Log generation to Supabase ─────────────────────────────────────────────
+async function logGeneration(projectName, pointCount, spacing, areaM2, elevSource) {
+  if (!_currentUser) return; // only log for signed-in users
+  await _sb.from('generations').insert({
+    user_id: _currentUser.id,
+    project_name: projectName,
+    point_count: pointCount,
+    spacing: spacing,
+    area_m2: areaM2,
+    elevation_source: elevSource
+  });
+}
+
+// ── Save notify signup to Supabase ─────────────────────────────────────────
+async function sendNotify() {
+  const email = document.getElementById('notify-email').value.trim();
+  const plan = document.getElementById('notify-plan').value;
+  if (!email) return;
+  const btn = document.querySelector('.btn-notify-send');
+  btn.textContent = '…';
+  const { error } = await _sb.from('notify_signups').insert({ email, plan });
+  if (error && error.code === '23505') {
+    // Already signed up
+    document.getElementById('notify-success').textContent = "You're already on the list!";
+  } else if (error) {
+    document.getElementById('notify-success').textContent = 'Something went wrong — try again.';
+  } else {
+    document.getElementById('notify-success').textContent = "✓ You're on the list. We'll email you when Pro launches — early signups get the first month free.";
+  }
+  document.getElementById('notify-success').classList.add('show');
+  btn.textContent = 'Notify me →';
+}
+
+// Check daily limit — use Supabase for logged-in users, localStorage for guests
+async function checkDailyLimit() {
+  if (isProUnlocked()) return;
+  if (_currentUser && _currentProfile?.plan === 'pro') return;
+  if (_currentUser && _currentProfile?.plan === 'company') return;
+
+  if (_currentUser) {
+    // Check server-side generation count for today
+    const today = new Date().toISOString().slice(0, 10);
+    const { count } = await _sb.from('generations')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', _currentUser.id)
+      .gte('created_at', today + 'T00:00:00Z');
+    if (count >= FREE_DAILY_LIMIT) {
+      throw new Error('Free tier limit reached — ' + FREE_DAILY_LIMIT + ' generations per day. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.');
+    }
+  } else {
+    // Guest — use localStorage
+    const used = getGenerationsToday();
+    if (used >= FREE_DAILY_LIMIT) {
+      throw new Error('Free tier limit reached. <a href="#" onclick="openAuth()" style="color:var(--accent)">Sign in</a> or <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.');
+    }
+  }
+}
+
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  // Init map first — don't wait for auth
+  initMap();
+  updateLimitBadge();
+  // Init auth after a tick so it doesn't block map rendering
+  setTimeout(() => initAuth(), 0);
+  if (isProUnlocked()) applyProUI();
+  document.getElementById('project-name').addEventListener('input', function(){ this.classList.remove('error'); updateConvertBtn(); });
+  document.getElementById('convert-btn').addEventListener('click', convert);
+  document.getElementById('download-btn').addEventListener('click', downloadCSV);
+  document.getElementById('notify-email').addEventListener('keydown', function(e){ if(e.key==='Enter') sendNotify(); });
+});
+</script>
+
+<!-- Auth Modal -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-modal-wrap">
+    <div class="auth-modal" id="auth-modal">
+      <button class="auth-close" onclick="closeAuth()">✕</button>
+      <h2 id="auth-title">Sign in</h2>
+      <p id="auth-subtitle">Access your projects and Pro features.</p>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-signin" onclick="switchTab('signin')">Sign in</button>
+        <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Create account</button>
+      </div>
+      <div id="auth-form-signin">
+        <div class="auth-field"><label>Email</label><input type="email" id="signin-email" placeholder="your@email.com"/></div>
+        <div class="auth-field"><label>Password</label><input type="password" id="signin-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitAuth('signin')"/></div>
+        <button class="auth-submit" onclick="submitAuth('signin')">Sign in →</button>
+        <div class="auth-error" id="signin-error"></div>
+      </div>
+      <div id="auth-form-signup" style="display:none">
+        <div class="auth-field"><label>Email</label><input type="email" id="signup-email" placeholder="you@yourfirm.com"/></div>
+        <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="Min. 8 characters" onkeydown="if(event.key==='Enter')submitAuth('signup')"/></div>
+        <button class="auth-submit" onclick="submitAuth('signup')">Create account →</button>
+        <div class="auth-error" id="signup-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="auth-overlay" id="settings-overlay">
+  <div class="auth-modal-wrap">
+    <div class="auth-modal" style="max-width:480px;">
+      <button class="auth-close" onclick="closeSettings()">✕</button>
+      <h2>Account settings</h2>
+      <p>Manage your account and subscription.</p>
+
+      <div style="margin-bottom:20px;padding:14px;background:var(--bg-input);border-radius:6px;border:1px solid var(--border);">
+        <div style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;">Signed in as</div>
+        <div style="font-size:14px;color:var(--text);" id="settings-email">—</div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;">Plan</span>
+          <span class="user-plan-badge" id="settings-plan">Free</span>
+        </div>
+      </div>
+
+      <!-- Change password -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Change password</div>
+        <div class="auth-field"><label>New password</label><input type="password" id="new-password" placeholder="Min. 8 characters"/></div>
+        <div class="auth-field"><label>Confirm password</label><input type="password" id="confirm-password" placeholder="Repeat new password"/></div>
+        <button class="auth-submit" onclick="changePassword()" style="margin-top:4px;">Update password →</button>
+        <div class="auth-error" id="password-msg" style="min-height:16px;"></div>
+      </div>
+
+      <!-- Subscription -->
+      <div style="border-top:1px solid var(--border);padding-top:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Subscription</div>
+        <div id="settings-free-cta" style="display:none;">
+          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">Upgrade to Pro for unlimited generations, 3m precision, and LiDAR accuracy in Denmark and the UK.</p>
+          <button class="tier-cta" onclick="closeSettings();document.getElementById('pro').scrollIntoView({behavior:'smooth'})">Upgrade to Pro →</button>
+        </div>
+        <div id="settings-pro-info" style="display:none;">
+          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">You have an active Pro subscription. To manage billing, cancel, or change your plan contact us at <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Access code</div>
+        <div style="display:flex;gap:8px;">
+          <input type="password" id="settings-access-code" placeholder="Enter access code…" style="flex:1;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;padding:9px 12px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;" onkeydown="if(event.key==='Enter')applyAccessCode()"/>
+          <button onclick="applyAccessCode()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:9px 16px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;white-space:nowrap;">Apply</button>
+        </div>
+        <div id="access-code-msg" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
+        <button onclick="signOut();closeSettings();" style="background:none;border:none;color:var(--danger,#e25555);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;padding:0;letter-spacing:.06em;">Sign out</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Large site add-on modal (content injected dynamically) -->
+<div class="auth-overlay" id="addon-overlay"></div>
+
+<!-- Download sign-in prompt -->
+<div class="auth-overlay" id="download-signin-overlay">
+  <div class="auth-modal-wrap">
+    <div class="auth-modal" style="max-width:420px;text-align:center;">
+      <button class="auth-close" onclick="document.getElementById('download-signin-overlay').classList.remove('show')">✕</button>
+      <h2>Sign in to download</h2>
+      <p>Create a free account to download your terrain CSV. It takes 30 seconds and your data is ready immediately.</p>
+      <button class="auth-submit" onclick="document.getElementById('download-signin-overlay').classList.remove('show');openAuth('signup');" style="margin-bottom:10px;">Create free account →</button>
+      <button onclick="document.getElementById('download-signin-overlay').classList.remove('show');openAuth('signin');" style="width:100%;background:none;border:1px solid var(--border-md);color:var(--text-mid);padding:11px;bord    // Pro area limits — tiered add-on pricing, 100km² hard limit
+    const siteAreaM2 = siteW * siteH;
+    const siteAreaKm2 = siteAreaM2 / 1000000;
+    const PRO_BASE_MAX_M = 2000;
+
+    if(isPro) {
+      if(siteAreaKm2 > 100) {
+        throw new Error('Site area exceeds 100 km². Please <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">contact us</a> for very large site requests.');
+      }
+      let effectiveSpacing = selectedSpacing;
+      let autoDowngraded = false;
+      if(siteAreaKm2 > 50 && selectedSpacing < 12) {
+        effectiveSpacing = selectedSpacing <= 3 ? 6 : 12;
+        autoDowngraded = true;
+      }
+      let addonPrice = 0;
+      if(siteAreaKm2 > 20) {
+        addonPrice = parseFloat((15 + (siteAreaKm2 - 20) * 0.90).toFixed(2));
+      } else if(siteAreaKm2 > 5) {
+        addonPrice = 15;
+      } else if(siteAreaKm2 > 4 || siteW > PRO_BASE_MAX_M || siteH > PRO_BASE_MAX_M) {
+        addonPrice = 5;
+      }
+      if(addonPrice > 0) {
+        const confirmed = await showAddonPrompt(siteAreaKm2, addonPrice, autoDowngraded, effectiveSpacing);
+        if(!confirmed) { showProgress(false); document.getElementById('convert-btn').disabled = false; return; }
+      }
+      window._effSpacing = effectiveSpacing;
+    } else {
+      window._effSpacing = selectedSpacing;
+    }
+
+        await checkDailyLimit();
+    const isNatural = isPro && document.getElementById('scatter-select')?.value === 'natural';
+    const effSpacing = window._effectiveSpacing || selectedSpacing;
+    const grid = generateGrid(polygonLatLngs, effSpacing, isNatural);
+    if(grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
+    const POINT_CAP = isPro ? 50000 : 2000;
+    if(grid.length>POINT_CAP){
+      if(isPro){
+        throw new Error(`${grid.length.toLocaleString()} points exceeds the limit of ${POINT_CAP.toLocaleString()}. Use a larger spacing or smaller area.`);
+      } else {
+        throw new Error(`${grid.length.toLocaleString()} points exceeds the free limit of 2,000. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for larger areas.`);
+      }
+    }
+
+    const estSecs = Math.ceil(grid.length / 50 * 0.6);
+    setProgress(0.1,'Extracting data…',`${grid.length.toLocaleString()} points — est. ${estSecs}s`);
+    const _t1=setTimeout(()=>setProgress(null,'Exposing contours…',null),20000);
+    const _t2=setTimeout(()=>setProgress(null,'Almost done…',null),30000);
+    const {elevations,source} = await fetchElevations(grid,(f,l,s)=>setProgress(0.1+f*0.78,null,s));
+    clearTimeout(_t1);clearTimeout(_t2);
+
+    setProgress(0.9,'Calculating coordinates…','');
+    const utm = grid.map((p,i)=>({...latLonToUTM(p.lat,p.lon), alt:elevations[i]}));
+    const mode = document.getElementById('origin-select').value;
+    let oE,oN;
+    if(mode==='first'){ oE=utm[0].easting; oN=utm[0].northing; }
+    else{ oE=utm.reduce((s,p)=>s+p.easting,0)/utm.length; oN=utm.reduce((s,p)=>s+p.northing,0)/utm.length; }
+
+    const out = utm.map(p=>({
+      x:parseFloat((p.easting-oE).toFixed(3)),
+      y:parseFloat((p.northing-oN).toFixed(3)),
+      z:parseFloat(p.alt.toFixed(3))
+    }));
+    // Snap points to clean orthogonal grid to fix Revit interpolation issues
+    // Our UTM grid has slight diagonal drift — snap to nearest spacing interval
+    // Skip snapping in Natural mode — scatter points must stay jittered
+    const snapGrid = (pts, spacing) => {
+      return pts.map(p => ({
+        x: parseFloat((Math.round(p.x / spacing) * spacing).toFixed(3)),
+        y: parseFloat((Math.round(p.y / spacing) * spacing).toFixed(3)),
+        z: p.z
+      }));
+    };
+    const snapped = isNatural ? out : snapGrid(out, effSpacing);
+    // Deduplicate — if two points snap to same grid cell, keep highest Z
+    // (dedup only relevant for uniform mode)
+    const gridMap = new Map();
+    snapped.forEach(p => {
+      const key = p.x + ',' + p.y;
+      if(!gridMap.has(key) || p.z > gridMap.get(key).z) gridMap.set(key, p);
+    });
+    const cleanOut = Array.from(gridMap.values())
+      .sort((a,b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
+    csvData = 'X,Y,Z\n'+cleanOut.map(p=>`${p.x},${p.y},${p.z}`).join('\n');
+
+    // Flat elevation detector — warn if data quality is poor
+    const zValsOut = cleanOut.map(p=>p.z).filter(z=>isFinite(z)&&z!==0);
+    const uniqueZ = new Set(zValsOut.map(z=>Math.round(z))).size;
+    const allIntegers = zValsOut.every(z => z === Math.round(z));
+    const flatRatio = uniqueZ / Math.max(zValsOut.length, 1);
+    if (allIntegers && flatRatio < 0.05) {
+      // Less than 5% unique values and all whole numbers — low resolution data
+      setTimeout(() => {
+        const warn = document.getElementById('elevation-quality-warn');
+        if (warn) {
+          warn.style.display = 'block';
+          warn.innerHTML = '⚠ Low resolution elevation detected (' + uniqueZ + ' unique values across ' + cleanOut.length + ' points). ' +
+            'For better accuracy, consider importing a KMZ file from Google Earth. ' +
+            '<a href="#tool" style="color:var(--accent)">Learn more</a>';
+        }
+      }, 600);
+    } else {
+      const warn = document.getElementById('elevation-quality-warn');
+      if (warn) warn.style.display = 'none';
+    }
+    // Log to Supabase if signed in
+    const _siteArea = parseFloat(document.getElementById('stat-area')?.textContent?.replace(/[^0-9.]/g,'')) || 0;
+    logGeneration(projectName, cleanOut.length, selectedSpacing, _siteArea, source||'unknown');
+    saveProMemory(projectName, selectedSpacing, csvData, source||'unknown');
+    setSiteContourData(out);
+
+    const displayPts = typeof cleanOut !== 'undefined' ? cleanOut : out;
+    const alts = displayPts.map(p=>p.z).filter(z=>z!==0&&isFinite(z)&&!isNaN(z));
+    const xs=displayPts.map(p=>p.x), ys=displayPts.map(p=>p.y);
+    const xR=Math.max(...xs)-Math.min(...xs), yR=Math.max(...ys)-Math.min(...ys);
+
+    document.getElementById('stat-points').textContent=displayPts.length.toLocaleString();
+    document.getElementById('stat-spacing').textContent=`${selectedSpacing}m`;
+    document.getElementById('stat-range').textContent=alts.length?`${Math.min(...alts).toFixed(0)}–${Math.max(...alts).toFixed(0)}`:'—';
+    document.getElementById('stat-area').textContent=Math.round(xR*yR).toLocaleString();
+    document.getElementById('stat-dims').textContent=`${xR.toFixed(0)}m × ${yR.toFixed(0)}m`;
+
+    document.getElementById('origin-info').innerHTML=
+      `<strong>Local origin (0,0) · ${projectName}</strong><br>`+
+      `UTM Easting: ${oE.toFixed(2)} &nbsp;|&nbsp; Northing: ${oN.toFixed(2)} &nbsp;|&nbsp; Zone: ${utm[0].zone}<br>`+
+      `Elevation source: ${source}<br>`+
+      `<span style="opacity:.7;font-size:11px">Set Revit Survey Point to UTM coordinates above for georeferenced placement.</span>`;
+
+    document.getElementById('preview-body').innerHTML=
+      out.slice(0,6).map(p=>`<tr><td>${p.x}</td><td>${p.y}</td><td>${p.z}</td></tr>`).join('')+
+      `<tr><td colspan="3" style="color:var(--text-soft);font-size:11px;padding-top:6px">… ${out.length.toLocaleString()} total rows in CSV</td></tr>`;
+
+    // Only count generation on SUCCESS — not on error
+    if (!isProUnlocked() && !(_currentProfile && _currentProfile.plan !== 'free')) {
+      incrementGenerationsToday();
+      updateLimitBadge();
+    }
+    setProgress(1,'Done — terrain data ready.','');
+    window._isGenerating = false;
     window._isGenerating = false;
     const altsForWire = displayPts.map(p=>p.z).filter(z=>isFinite(z)&&!isNaN(z));
     const wMinZ = altsForWire.length ? Math.min(...altsForWire) : 0;
@@ -2288,7 +3369,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <button class="tier-cta" onclick="closeSettings();document.getElementById('pro').scrollIntoView({behavior:'smooth'})">Upgrade to Pro →</button>
         </div>
         <div id="settings-pro-info" style="display:none;">
-          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">You have an active Pro subscription. To manage billing, cancel, or change your plan contact us at <a href="/cdn-cgi/l/email-protection#caaba1a38abea5baa5e7adb8abbaa2afb8e4a9a5a7" style="color:var(--accent)"><span class="__cf_email__" data-cfemail="7b1a10123b0f140b14561c091a0b131e0955181416">[email&#160;protected]</span></a>.</p>
+          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">You have an active Pro subscription. To manage billing, cancel, or change your plan contact us at <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
         </div>
       </div>
 
@@ -2307,25 +3388,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   </div>
 </div>
 
-<!-- Large site add-on modal -->
-<div class="auth-overlay" id="addon-overlay">
-  <div class="auth-modal-wrap">
-    <div class="auth-modal" style="max-width:420px;text-align:center;">
-      <h2>Large site add-on</h2>
-      <p style="margin-bottom:6px;">Your site is <strong id="addon-area">—</strong>, which exceeds the standard Pro limit.</p>
-      <p style="margin-bottom:24px;" id="addon-note"></p>
-      <div style="background:var(--bg-input);border:1px solid var(--border-md);border-radius:8px;padding:20px;margin-bottom:24px;">
-        <div style="font-size:32px;font-family:'Syne',sans-serif;font-weight:800;color:var(--accent);" id="addon-price">£5</div>
-        <div style="font-size:12px;color:var(--text-soft);margin-top:4px;">per generation · charged separately</div>
-      </div>
-      <p style="font-size:12px;color:var(--text-soft);margin-bottom:20px;">Payment will be handled via invoice. By proceeding you agree to be charged for this generation.</p>
-      <div style="display:flex;gap:10px;">
-        <button id="addon-cancel" style="flex:1;background:var(--bg-input);border:1px solid var(--border-md);color:var(--text);padding:12px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Cancel</button>
-        <button id="addon-confirm" style="flex:2;background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:12px;border-radius:5px;font-family:'DM Mono',monospace;font-size:13px;cursor:pointer;font-weight:600;">Proceed → Generate CSV</button>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Large site add-on modal (content injected dynamically) -->
+<div class="auth-overlay" id="addon-overlay"></div>
 
 <!-- Download sign-in prompt -->
 <div class="auth-overlay" id="download-signin-overlay">
@@ -2336,3 +3400,33 @@ document.addEventListener('DOMContentLoaded', ()=>{
       <p>Create a free account to download your terrain CSV. It takes 30 seconds and your data is ready immediately.</p>
       <button class="auth-submit" onclick="document.getElementById('download-signin-overlay').classList.remove('show');openAuth('signup');" style="margin-bottom:10px;">Create free account →</button>
       <button onclick="document.getElementById('download-signin-overlay').classList.remove('show');openAuth('signin');" style="width:100%;background:none;border:1px solid var(--border-md);color:var(--text-mid);padding:11px;borde
+<!-- Leave-site warning -->
+<div id="leave-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;align-items:center;justify-content:center;">
+  <div style="background:var(--forest);border:2px solid var(--green-lt);border-radius:12px;padding:32px 28px;max-width:400px;width:90%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.5);">
+    <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:#EFE3D8;margin-bottom:10px;">Oh, leaving?</div>
+    <div style="font-size:13px;color:var(--accent);line-height:1.8;margin-bottom:22px;font-family:'DM Mono',monospace;">Your site is generating — it might just take a little longer because we’re working extra hard on it.</div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <button onclick="document.getElementById('leave-overlay').style.display='none'" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:11px 20px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;">Stay — keep generating</button>
+      <button onclick="window._isGenerating=false;window.location.href=window._leaveUrl||'/'" style="background:none;border:1px solid var(--green-lt);color:var(--accent);padding:11px 16px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Leave anyway</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window._isGenerating=false;
+window._leaveUrl=null;
+window.addEventListener('beforeunload',function(e){
+  if(window._isGenerating){e.preventDefault();e.returnValue='';return '';}
+});
+document.addEventListener('click',function(e){
+  if(!window._isGenerating)return;
+  const a=e.target.closest('a[href]');
+  if(a&&!a.href.startsWith('mailto')&&!a.href.startsWith('javascript')&&!a.href.startsWith('#')){
+    e.preventDefault();
+    window._leaveUrl=a.href;
+    const o=document.getElementById('leave-overlay');
+    if(o){o.style.display='flex';}
+  }
+});
+</script>
+
