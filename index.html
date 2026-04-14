@@ -339,17 +339,21 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   .nav-tag { display: none; }
   .nav-link { display: none; }
   .hero { padding: 56px 16px 32px; }
-  .hero h1 { font-size: clamp(26px, 7vw, 42px); }
+  .hero h1 { font-size: clamp(26px,7vw,42px); }
   .hero p { font-size: 13px; }
   .section { padding: 32px 16px; }
   .card { padding: 14px; }
   #tool { width: 100% !important; padding: 0 12px; box-sizing: border-box; }
   #map { height: 260px; }
-  .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .stat-row { grid-template-columns: repeat(2, 1fr) !important; }
+  .acc-grid { grid-template-columns: repeat(2,1fr) !important; }
+  .acc-btn { padding: 10px 8px; }
+  .acc-m { font-size: 16px; }
+  .acc-d { font-size: 10px; }
+  .stats-grid { grid-template-columns: repeat(2,1fr) !important; }
+  .stat-row { grid-template-columns: repeat(2,1fr) !important; }
   .tier-grid { grid-template-columns: 1fr !important; }
   .addon-grid { grid-template-columns: 1fr !important; }
+  .addon-pill { padding: 8px 10px; font-size: 11px; }
   .tool-header { flex-direction: column; gap: 8px; align-items: flex-start !important; }
   .draw-controls { flex-wrap: wrap; gap: 6px; }
   .draw-controls input { width: 100% !important; min-width: 0 !important; }
@@ -357,36 +361,38 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   .option-row select { width: 100%; }
   #scatter-row { flex-direction: column; align-items: flex-start !important; gap: 8px; }
   #scatter-row select { width: 100%; }
-  .auth-modal { padding: 20px 16px !important; margin: 16px !important; }
-  .auth-modal h2 { font-size: 20px; }
-  .tier-card { padding: 16px; }
+  .auth-modal { padding: 20px 16px !important; margin: 12px !important; max-width: calc(100vw - 24px) !important; }
+  .auth-modal h2 { font-size: 18px; }
+  .tier-card { padding: 14px; }
+  .tier-badge { font-size: 9px; }
   .pro-grid { grid-template-columns: 1fr !important; }
-  .notify-row { flex-direction: column; gap: 8px; }
-  .notify-row select, .notify-row input { width: 100%; }
+  .notify-row, .notify-row > * { flex-direction: column; width: 100%; }
   .btn-notify-send { width: 100%; }
   .footer-inner { flex-direction: column; gap: 8px; text-align: center; }
-  canvas { max-width: 100% !important; }
+  canvas { max-width: 100% !important; height: auto !important; }
   .preview-table { font-size: 11px; }
-  .stats-grid .stat-n { font-size: 18px; }
   #progress-card { padding: 14px; }
   .hero-steps { flex-direction: column; gap: 8px; }
   .hero-step { font-size: 12px; }
-  .large-addon-cards { flex-direction: column !important; }
+  .large-addon-section { flex-direction: column !important; gap: 12px; }
+  .large-addon-pills { flex-direction: column !important; width: 100%; }
+  .large-addon-pills .addon-pill { width: 100%; box-sizing: border-box; text-align: left; display: flex; justify-content: space-between; align-items: center; }
+  .wireframe-wrap { height: 180px !important; }
+  .user-btn { font-size: 10px; padding: 5px 9px; }
+  .beta-pill { font-size: 9px; padding: 3px 8px; }
+  select { font-size: 13px; }
 }
 
 @media (max-width: 480px) {
-  .nav-logo { font-size: 15px; }
-  .hero h1 { font-size: 24px; }
-  .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .acc-btn { padding: 10px 8px; }
-  .acc-m { font-size: 16px; }
-  .acc-d { font-size: 10px; }
-  .btn-main { font-size: 12px; padding: 14px; }
-  .btn-dl { font-size: 11px; padding: 12px; }
-  #map { height: 220px; }
+  .nav-logo { font-size: 14px; }
+  .hero h1 { font-size: 22px; }
+  #map { height: 200px; }
+  .btn-main { font-size: 12px; padding: 13px; }
+  .btn-dl { font-size: 11px; padding: 11px; }
   .tier-cta { font-size: 11px; padding: 11px 14px; }
-  .beta-pill { font-size: 9px; padding: 3px 8px; }
-  .user-btn { font-size: 10px; padding: 5px 9px; }
+  .stat-n { font-size: 18px !important; }
+  .acc-btn { padding: 8px 6px; }
+  .acc-m { font-size: 14px; }
 }
 
   .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
@@ -647,12 +653,12 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 
   <!-- Large site add-on -->
   <div class="card" style="margin-top:10px">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap;" class="large-addon-section">
       <div>
         <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--text);margin-bottom:6px;">Large Site Add-on <em style="color:var(--accent);font-style:normal;">// Pro &amp; Company</em></div>
         <div style="font-size:14px;color:var(--text-mid);line-height:1.7;max-width:520px;">For masterplans, landscape architecture, and infrastructure projects beyond 2×2km. Charged per generation — not per user.</div>
       </div>
-      <div style="display:flex;gap:10px;flex-shrink:0;flex-wrap:wrap;align-items:flex-start;">
+      <div style="display:flex;gap:10px;flex-shrink:0;flex-wrap:wrap;align-items:flex-start;" class="large-addon-pills">
         <div class="addon-pill">Up to 5 km² <span>£5 / generation</span></div>
         <div class="addon-pill">Up to 20 km² <span>£15 / generation</span></div>
         <div class="addon-pill">Above 20 km² <span>Contact us</span></div>
@@ -1103,27 +1109,27 @@ function checkDrawnAreaWarning() {
 function checkDrawnAreaWarning() {
   if(!polygonLatLngs) return;
   const hintEl = document.getElementById('map-hint');
-  const lats=polygonLatLngs.map(p=>p.lat), lons=polygonLatLngs.map(p=>p.lng);
+  const lats=polygonLatLngs.map(p=>p.lat),lons=polygonLatLngs.map(p=>p.lng);
   const mpd=metresPerDeg((Math.min(...lats)+Math.max(...lats))/2);
-  const siteW=(Math.max(...lons)-Math.min(...lons))*mpd.lon;
-  const siteH=(Math.max(...lats)-Math.min(...lats))*mpd.lat;
-  const areaKm2=(siteW*siteH)/1e6;
+  const sW=(Math.max(...lons)-Math.min(...lons))*mpd.lon;
+  const sH=(Math.max(...lats)-Math.min(...lats))*mpd.lat;
+  const akm2=(sW*sH)/1e6;
   const isPro=isProUnlocked()||(_currentProfile&&_currentProfile.plan!=='free');
-  if(!isPro&&(siteW>500||siteH>500)) {
+  if(!isPro&&(sW>500||sH>500)){
     hintEl.innerHTML='⚠ Free tier limit is 500×500m. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for larger sites.';
     hintEl.style.color='var(--warning,#e2a255)';
-  } else if(isPro&&areaKm2>100) {
+  } else if(isPro&&akm2>100){
     hintEl.innerHTML='⚠ Exceeds 100 km² maximum. <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">Contact us</a>.';
     hintEl.style.color='var(--warning,#e2a255)';
-  } else if(isPro&&areaKm2>20) {
-    const tot=(15+(areaKm2-20)*0.90).toFixed(2);
-    hintEl.textContent='⚠ '+areaKm2.toFixed(1)+' km² — add-on: £15 base + £'+((areaKm2-20)*0.90).toFixed(2)+' = £'+tot+' total.';
+  } else if(isPro&&akm2>20){
+    const tot=(15+(akm2-20)*0.90).toFixed(2);
+    hintEl.textContent='⚠ '+akm2.toFixed(1)+' km² — add-on: £15 + £'+((akm2-20)*0.90).toFixed(2)+' = £'+tot;
     hintEl.style.color='var(--warning,#e2a255)';
-  } else if(isPro&&areaKm2>5) {
-    hintEl.textContent='⚠ '+areaKm2.toFixed(1)+' km² — £15 large site add-on will apply.';
+  } else if(isPro&&akm2>5){
+    hintEl.textContent='⚠ '+akm2.toFixed(1)+' km² — £15 large site add-on applies.';
     hintEl.style.color='var(--warning,#e2a255)';
-  } else if(isPro&&(areaKm2>4||siteW>2000||siteH>2000)) {
-    hintEl.textContent='⚠ '+areaKm2.toFixed(1)+' km² — £5 large site add-on will apply.';
+  } else if(isPro&&(akm2>4||sW>2000||sH>2000)){
+    hintEl.textContent='⚠ '+akm2.toFixed(1)+' km² — £5 large site add-on applies.';
     hintEl.style.color='var(--warning,#e2a255)';
   } else {
     hintEl.style.color='';
@@ -1134,7 +1140,12 @@ function updateHint(){
   const el = document.getElementById('map-hint');
   if(polygonLatLngs && polygonLatLngs.length > 0){
     const c = generateGrid(polygonLatLngs, selectedSpacing).length;
-    el.textContent = `Area set — ${c.toLocaleString()} points at ${selectedSpacing}m spacing. Adjust spacing below or click Generate.`;
+    const _lats=polygonLatLngs.map(p=>p.lat),_lons=polygonLatLngs.map(p=>p.lng);
+    const _mpd=metresPerDeg((Math.min(..._lats)+Math.max(..._lats))/2);
+    const _sW=(_lons.reduce((a,b)=>Math.max(a,b),-999)-_lons.reduce((a,b)=>Math.min(a,b),999))*_mpd.lon;
+    const _sH=(_lats.reduce((a,b)=>Math.max(a,b),-999)-_lats.reduce((a,b)=>Math.min(a,b),999))*_mpd.lat;
+    const _akm=((_sW*_sH)/1e6).toFixed(2);
+    el.textContent = `Area set: ${_akm} km² — ${c.toLocaleString()} points at ${selectedSpacing}m. Adjust below or click Generate.`;
     return;
   }
   el.textContent = 'Use the search box (top-right of map) to find your site. Draw a polygon or rectangle to define the boundary. Double-click to finish a polygon.';
@@ -1901,11 +1912,11 @@ function showAddonPrompt(areaKm2, addonPrice, autoDowngraded, effectiveSpacing) 
     const overlay = document.getElementById('addon-overlay');
     let breakdownHTML = '';
     if(areaKm2 > 20) {
-      const overKm2 = (areaKm2 - 20).toFixed(1);
-      const overCharge = ((areaKm2 - 20) * 0.90).toFixed(2);
+      const overKm2 = (areaKm2-20).toFixed(1);
+      const overCharge = ((areaKm2-20)*0.90).toFixed(2);
       breakdownHTML = `<div style="font-size:12px;color:var(--text-mid);text-align:left;margin-bottom:16px;line-height:2.2;background:var(--bg-input);padding:12px;border-radius:6px;">
         <div style="display:flex;justify-content:space-between;"><span>Base large site fee (5–20 km²)</span><span>£15.00</span></div>
-        <div style="display:flex;justify-content:space-between;"><span>${overKm2} km² over 20 km² × £0.90</span><span>£${overCharge}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span>${overKm2} km² over 20 × £0.90</span><span>£${overCharge}</span></div>
         <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:4px;font-weight:700;color:var(--text);"><span>Total</span><span>£${addonPrice.toFixed(2)}</span></div>
       </div>`;
     } else if(areaKm2 > 5) {
@@ -1935,14 +1946,14 @@ function showAddonPrompt(areaKm2, addonPrice, autoDowngraded, effectiveSpacing) 
       if(!_currentUser) { openAuth(); resolve(false); return; }
       try {
         const res = await fetch(WEBHOOK_WORKER + '/create-addon-checkout', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ email: _currentUser.email, amountPence: Math.round(addonPrice*100),
-            description: 'Large site add-on — ' + areaKm2.toFixed(1) + ' km²',
-            successUrl: 'https://topo-grapher.com?addon=true', cancelUrl: 'https://topo-grapher.com' })
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email:_currentUser.email, amountPence:Math.round(addonPrice*100),
+            description:'Large site add-on — '+areaKm2.toFixed(1)+' km²',
+            successUrl:'https://topo-grapher.com?addon=true', cancelUrl:'https://topo-grapher.com' })
         });
         const data = await res.json();
         if(data.url) window.location.href = data.url;
-        else resolve(true); // fallback if worker not yet updated
+        else resolve(true);
       } catch(e) { resolve(true); }
     };
     document.getElementById('addon-cancel').onclick = () => { overlay.classList.remove('show'); resolve(false); };
@@ -2346,7 +2357,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   </div>
 </div>
 
-<!-- Large site add-on modal (content injected dynamically) -->
+<!-- Large site add-on modal (dynamic) -->
 <div class="auth-overlay" id="addon-overlay"></div>
 
 <!-- Download sign-in prompt -->
@@ -2384,9 +2395,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
         const confirmed = await showAddonPrompt(siteAreaKm2, addonPrice, autoDowngraded, effectiveSpacing);
         if(!confirmed) { showProgress(false); document.getElementById('convert-btn').disabled = false; return; }
       }
-      window._effSpacing = effectiveSpacing;
+      window._effSp = effectiveSpacing;
     } else {
-      window._effSpacing = selectedSpacing;
+      window._effSp = selectedSpacing;
     }
 
         await checkDailyLimit();
@@ -3392,7 +3403,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   </div>
 </div>
 
-<!-- Large site add-on modal (content injected dynamically) -->
+<!-- Large site add-on modal (dynamic) -->
 <div class="auth-overlay" id="addon-overlay"></div>
 
 <!-- Download sign-in prompt -->
@@ -3405,17 +3416,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
       <button class="auth-submit" onclick="document.getElementById('download-signin-overlay').classList.remove('show');openAuth('signup');" style="margin-bottom:10px;">Create free account →</button>
       <button onclick="document.getElementById('download-signin-overlay').classList.remove('show');openAuth('signin');" style="width:100%;background:none;border:1px solid var(--border-md);color:var(--text-mid);padding:11px;borde
 <!-- Leave-site warning -->
-<div id="leave-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;align-items:center;justify-content:center;">
-  <div style="background:var(--forest);border:2px solid var(--green-lt);border-radius:12px;padding:32px 28px;max-width:400px;width:90%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.5);">
-    <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:#EFE3D8;margin-bottom:10px;">Oh, leaving?</div>
+<div id="leave-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
+  <div style="background:var(--forest);border:2px solid var(--green-lt);border-radius:12px;padding:32px 24px;max-width:400px;width:100%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.5);">
+    <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#EFE3D8;margin-bottom:10px;">Oh, leaving?</div>
     <div style="font-size:13px;color:var(--accent);line-height:1.8;margin-bottom:22px;font-family:'DM Mono',monospace;">Your site is generating — it might just take a little longer because we’re working extra hard on it.</div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      <button onclick="document.getElementById('leave-overlay').style.display='none'" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:11px 20px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;">Stay — keep generating</button>
-      <button onclick="window._isGenerating=false;window.location.href=window._leaveUrl||'/'" style="background:none;border:1px solid var(--green-lt);color:var(--accent);padding:11px 16px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Leave anyway</button>
+      <button onclick="document.getElementById('leave-overlay').style.display='none'" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:11px 18px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Stay — keep generating</button>
+      <button onclick="window._isGenerating=false;window.location.href=window._leaveUrl||'/'" style="background:none;border:1px solid var(--green-lt);color:var(--accent);padding:11px 14px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Leave anyway</button>
     </div>
   </div>
 </div>
-
 <script>
 window._isGenerating=false;
 window._leaveUrl=null;
@@ -3426,11 +3436,9 @@ document.addEventListener('click',function(e){
   if(!window._isGenerating)return;
   const a=e.target.closest('a[href]');
   if(a&&!a.href.startsWith('mailto')&&!a.href.startsWith('javascript')&&!a.href.startsWith('#')){
-    e.preventDefault();
-    window._leaveUrl=a.href;
+    e.preventDefault();window._leaveUrl=a.href;
     const o=document.getElementById('leave-overlay');
     if(o){o.style.display='flex';}
   }
 });
 </script>
-
