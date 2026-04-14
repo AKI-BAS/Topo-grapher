@@ -339,21 +339,17 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   .nav-tag { display: none; }
   .nav-link { display: none; }
   .hero { padding: 56px 16px 32px; }
-  .hero h1 { font-size: clamp(26px,7vw,42px); }
+  .hero h1 { font-size: clamp(26px, 7vw, 42px); }
   .hero p { font-size: 13px; }
   .section { padding: 32px 16px; }
   .card { padding: 14px; }
   #tool { width: 100% !important; padding: 0 12px; box-sizing: border-box; }
   #map { height: 260px; }
-  .acc-grid { grid-template-columns: repeat(2,1fr) !important; }
-  .acc-btn { padding: 10px 8px; }
-  .acc-m { font-size: 16px; }
-  .acc-d { font-size: 10px; }
-  .stats-grid { grid-template-columns: repeat(2,1fr) !important; }
-  .stat-row { grid-template-columns: repeat(2,1fr) !important; }
+  .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .stat-row { grid-template-columns: repeat(2, 1fr) !important; }
   .tier-grid { grid-template-columns: 1fr !important; }
   .addon-grid { grid-template-columns: 1fr !important; }
-  .addon-pill { padding: 8px 10px; font-size: 11px; }
   .tool-header { flex-direction: column; gap: 8px; align-items: flex-start !important; }
   .draw-controls { flex-wrap: wrap; gap: 6px; }
   .draw-controls input { width: 100% !important; min-width: 0 !important; }
@@ -361,38 +357,38 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   .option-row select { width: 100%; }
   #scatter-row { flex-direction: column; align-items: flex-start !important; gap: 8px; }
   #scatter-row select { width: 100%; }
-  .auth-modal { padding: 20px 16px !important; margin: 12px !important; max-width: calc(100vw - 24px) !important; }
-  .auth-modal h2 { font-size: 18px; }
-  .tier-card { padding: 14px; }
-  .tier-badge { font-size: 9px; }
+  .auth-modal { padding: 20px 16px !important; margin: 16px !important; }
+  .auth-modal h2 { font-size: 20px; }
+  .tier-card { padding: 16px; }
   .pro-grid { grid-template-columns: 1fr !important; }
-  .notify-row, .notify-row > * { flex-direction: column; width: 100%; }
+  .notify-row { flex-direction: column; gap: 8px; }
+  .notify-row select, .notify-row input { width: 100%; }
   .btn-notify-send { width: 100%; }
   .footer-inner { flex-direction: column; gap: 8px; text-align: center; }
-  canvas { max-width: 100% !important; height: auto !important; }
+  canvas { max-width: 100% !important; }
   .preview-table { font-size: 11px; }
+  .stats-grid .stat-n { font-size: 18px; }
   #progress-card { padding: 14px; }
   .hero-steps { flex-direction: column; gap: 8px; }
   .hero-step { font-size: 12px; }
-  .large-addon-section { flex-direction: column !important; gap: 12px; }
-  .large-addon-pills { flex-direction: column !important; width: 100%; }
-  .large-addon-pills .addon-pill { width: 100%; box-sizing: border-box; text-align: left; display: flex; justify-content: space-between; align-items: center; }
-  .wireframe-wrap { height: 180px !important; }
-  .user-btn { font-size: 10px; padding: 5px 9px; }
-  .beta-pill { font-size: 9px; padding: 3px 8px; }
-  select { font-size: 13px; }
+  .large-addon-cards { flex-direction: column !important; }
+  .addon-pill { padding: 8px 10px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; }
+  .auth-modal { max-width: calc(100vw - 24px) !important; }
 }
 
 @media (max-width: 480px) {
-  .nav-logo { font-size: 14px; }
-  .hero h1 { font-size: 22px; }
-  #map { height: 200px; }
-  .btn-main { font-size: 12px; padding: 13px; }
-  .btn-dl { font-size: 11px; padding: 11px; }
+  .nav-logo { font-size: 15px; }
+  .hero h1 { font-size: 24px; }
+  .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .acc-btn { padding: 10px 8px; }
+  .acc-m { font-size: 16px; }
+  .acc-d { font-size: 10px; }
+  .btn-main { font-size: 12px; padding: 14px; }
+  .btn-dl { font-size: 11px; padding: 12px; }
+  #map { height: 220px; }
   .tier-cta { font-size: 11px; padding: 11px 14px; }
-  .stat-n { font-size: 18px !important; }
-  .acc-btn { padding: 8px 6px; }
-  .acc-m { font-size: 14px; }
+  .beta-pill { font-size: 9px; padding: 3px 8px; }
+  .user-btn { font-size: 10px; padding: 5px 9px; }
 }
 
   .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
@@ -653,12 +649,12 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 
   <!-- Large site add-on -->
   <div class="card" style="margin-top:10px">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap;" class="large-addon-section">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap;">
       <div>
         <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--text);margin-bottom:6px;">Large Site Add-on <em style="color:var(--accent);font-style:normal;">// Pro &amp; Company</em></div>
         <div style="font-size:14px;color:var(--text-mid);line-height:1.7;max-width:520px;">For masterplans, landscape architecture, and infrastructure projects beyond 2×2km. Charged per generation — not per user.</div>
       </div>
-      <div style="display:flex;gap:10px;flex-shrink:0;flex-wrap:wrap;align-items:flex-start;" class="large-addon-pills">
+      <div style="display:flex;gap:10px;flex-shrink:0;flex-wrap:wrap;align-items:flex-start;">
         <div class="addon-pill">Up to 5 km² <span>£5 / generation</span></div>
         <div class="addon-pill">Up to 20 km² <span>£15 / generation</span></div>
         <div class="addon-pill">Above 20 km² <span>Contact us</span></div>
@@ -1109,27 +1105,27 @@ function checkDrawnAreaWarning() {
 function checkDrawnAreaWarning() {
   if(!polygonLatLngs) return;
   const hintEl = document.getElementById('map-hint');
-  const lats=polygonLatLngs.map(p=>p.lat),lons=polygonLatLngs.map(p=>p.lng);
+  const lats=polygonLatLngs.map(p=>p.lat), lons=polygonLatLngs.map(p=>p.lng);
   const mpd=metresPerDeg((Math.min(...lats)+Math.max(...lats))/2);
-  const sW=(Math.max(...lons)-Math.min(...lons))*mpd.lon;
-  const sH=(Math.max(...lats)-Math.min(...lats))*mpd.lat;
-  const akm2=(sW*sH)/1e6;
+  const siteW=(Math.max(...lons)-Math.min(...lons))*mpd.lon;
+  const siteH=(Math.max(...lats)-Math.min(...lats))*mpd.lat;
+  const areaKm2=(siteW*siteH)/1e6;
   const isPro=isProUnlocked()||(_currentProfile&&_currentProfile.plan!=='free');
-  if(!isPro&&(sW>500||sH>500)){
+  if(!isPro&&(siteW>500||siteH>500)) {
     hintEl.innerHTML='⚠ Free tier limit is 500×500m. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for larger sites.';
     hintEl.style.color='var(--warning,#e2a255)';
-  } else if(isPro&&akm2>100){
+  } else if(isPro&&areaKm2>100) {
     hintEl.innerHTML='⚠ Exceeds 100 km² maximum. <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">Contact us</a>.';
     hintEl.style.color='var(--warning,#e2a255)';
-  } else if(isPro&&akm2>20){
-    const tot=(15+(akm2-20)*0.90).toFixed(2);
-    hintEl.textContent='⚠ '+akm2.toFixed(1)+' km² — add-on: £15 + £'+((akm2-20)*0.90).toFixed(2)+' = £'+tot;
+  } else if(isPro&&areaKm2>20) {
+    const tot=(15+(areaKm2-20)*0.90).toFixed(2);
+    hintEl.textContent='⚠ '+areaKm2.toFixed(1)+' km² — add-on: £15 base + £'+((areaKm2-20)*0.90).toFixed(2)+' = £'+tot+' total.';
     hintEl.style.color='var(--warning,#e2a255)';
-  } else if(isPro&&akm2>5){
-    hintEl.textContent='⚠ '+akm2.toFixed(1)+' km² — £15 large site add-on applies.';
+  } else if(isPro&&areaKm2>5) {
+    hintEl.textContent='⚠ '+areaKm2.toFixed(1)+' km² — £15 large site add-on will apply.';
     hintEl.style.color='var(--warning,#e2a255)';
-  } else if(isPro&&(akm2>4||sW>2000||sH>2000)){
-    hintEl.textContent='⚠ '+akm2.toFixed(1)+' km² — £5 large site add-on applies.';
+  } else if(isPro&&(areaKm2>4||siteW>2000||siteH>2000)) {
+    hintEl.textContent='⚠ '+areaKm2.toFixed(1)+' km² — £5 large site add-on will apply.';
     hintEl.style.color='var(--warning,#e2a255)';
   } else {
     hintEl.style.color='';
@@ -1140,11 +1136,9 @@ function updateHint(){
   const el = document.getElementById('map-hint');
   if(polygonLatLngs && polygonLatLngs.length > 0){
     const c = generateGrid(polygonLatLngs, selectedSpacing).length;
-    const _lats=polygonLatLngs.map(p=>p.lat),_lons=polygonLatLngs.map(p=>p.lng);
-    const _mpd=metresPerDeg((Math.min(..._lats)+Math.max(..._lats))/2);
-    const _sW=(_lons.reduce((a,b)=>Math.max(a,b),-999)-_lons.reduce((a,b)=>Math.min(a,b),999))*_mpd.lon;
-    const _sH=(_lats.reduce((a,b)=>Math.max(a,b),-999)-_lats.reduce((a,b)=>Math.min(a,b),999))*_mpd.lat;
-    const _akm=((_sW*_sH)/1e6).toFixed(2);
+    const _l=polygonLatLngs.map(p=>p.lat),_o=polygonLatLngs.map(p=>p.lng);
+    const _m=metresPerDeg((Math.min(..._l)+Math.max(..._l))/2);
+    const _akm=(((Math.max(..._o)-Math.min(..._o))*_m.lon)*((Math.max(..._l)-Math.min(..._l))*_m.lat)/1e6).toFixed(2);
     el.textContent = `Area set: ${_akm} km² — ${c.toLocaleString()} points at ${selectedSpacing}m. Adjust below or click Generate.`;
     return;
   }
@@ -1881,7 +1875,29 @@ function openSettings() {
   planBadge.style.background = plan !== 'free' ? 'var(--forest)' : 'var(--accent-dk)';
   planBadge.style.color = plan !== 'free' ? '#EFE3D8' : 'var(--accent)';
   document.getElementById('settings-free-cta').style.display = plan === 'free' ? 'block' : 'none';
-  document.getElementById('settings-pro-info').style.display = plan !== 'free' ? 'block' : 'none';
+  document.getElementById('settings-pro-info').style.display = plan === 'pro' ? 'block' : 'none';
+  document.getElementById('settings-company-info').style.display = plan === 'company' ? 'block' : 'none';
+  document.getElementById('settings-join-company').style.display = plan === 'free' ? 'block' : 'none';
+  if(plan === 'company' && _currentProfile?.company_join_code) {
+    const codeEl = document.getElementById('company-code-display');
+    if(codeEl) codeEl.textContent = _currentProfile.company_join_code;
+    const seatsEl = document.getElementById('company-seats-display');
+    if(seatsEl) seatsEl.textContent = (_currentProfile.seats_used||1) + ' / ' + (_currentProfile.seat_count||2) + ' seats used';
+  }
+}
+
+async function joinCompanyWithCode() {
+  const code = document.getElementById('company-join-code').value.trim().toUpperCase();
+  const msgEl = document.getElementById('company-join-msg');
+  if(!code) { msgEl.textContent = 'Please enter a code.'; return; }
+  const { data, error } = await _sb.from('profiles').select('id,seat_count,seats_used,company_name,company_join_code').eq('company_join_code',code).eq('plan','company').single();
+  if(error||!data) { msgEl.style.color='var(--danger,#e25555)'; msgEl.textContent='Invalid or expired code.'; return; }
+  if((data.seats_used||0) >= (data.seat_count||2)) { msgEl.style.color='var(--danger,#e25555)'; msgEl.textContent='No seats available.'; return; }
+  const { error: uErr } = await _sb.from('profiles').update({ plan:'company', company_name:data.company_name, updated_at:new Date().toISOString() }).eq('id',_currentUser.id);
+  await _sb.from('profiles').update({ seats_used:(data.seats_used||0)+1, updated_at:new Date().toISOString() }).eq('id',data.id);
+  if(uErr) { msgEl.style.color='var(--danger,#e25555)'; msgEl.textContent='Error joining. Try again.'; return; }
+  msgEl.style.color='var(--accent)'; msgEl.textContent='✓ Joined '+(data.company_name||'company')+'!';
+  setTimeout(()=>{ closeSettings(); location.reload(); },1500);
 }
 
 function closeSettings() {
@@ -1912,11 +1928,11 @@ function showAddonPrompt(areaKm2, addonPrice, autoDowngraded, effectiveSpacing) 
     const overlay = document.getElementById('addon-overlay');
     let breakdownHTML = '';
     if(areaKm2 > 20) {
-      const overKm2 = (areaKm2-20).toFixed(1);
-      const overCharge = ((areaKm2-20)*0.90).toFixed(2);
+      const overKm2 = (areaKm2 - 20).toFixed(1);
+      const overCharge = ((areaKm2 - 20) * 0.90).toFixed(2);
       breakdownHTML = `<div style="font-size:12px;color:var(--text-mid);text-align:left;margin-bottom:16px;line-height:2.2;background:var(--bg-input);padding:12px;border-radius:6px;">
         <div style="display:flex;justify-content:space-between;"><span>Base large site fee (5–20 km²)</span><span>£15.00</span></div>
-        <div style="display:flex;justify-content:space-between;"><span>${overKm2} km² over 20 × £0.90</span><span>£${overCharge}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span>${overKm2} km² over 20 km² × £0.90</span><span>£${overCharge}</span></div>
         <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:4px;font-weight:700;color:var(--text);"><span>Total</span><span>£${addonPrice.toFixed(2)}</span></div>
       </div>`;
     } else if(areaKm2 > 5) {
@@ -1946,14 +1962,14 @@ function showAddonPrompt(areaKm2, addonPrice, autoDowngraded, effectiveSpacing) 
       if(!_currentUser) { openAuth(); resolve(false); return; }
       try {
         const res = await fetch(WEBHOOK_WORKER + '/create-addon-checkout', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email:_currentUser.email, amountPence:Math.round(addonPrice*100),
-            description:'Large site add-on — '+areaKm2.toFixed(1)+' km²',
-            successUrl:'https://topo-grapher.com?addon=true', cancelUrl:'https://topo-grapher.com' })
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ email: _currentUser.email, amountPence: Math.round(addonPrice*100),
+            description: 'Large site add-on — ' + areaKm2.toFixed(1) + ' km²',
+            successUrl: 'https://topo-grapher.com?addon=true', cancelUrl: 'https://topo-grapher.com' })
         });
         const data = await res.json();
         if(data.url) window.location.href = data.url;
-        else resolve(true);
+        else resolve(true); // fallback if worker not yet updated
       } catch(e) { resolve(true); }
     };
     document.getElementById('addon-cancel').onclick = () => { overlay.classList.remove('show'); resolve(false); };
@@ -2014,16 +2030,35 @@ const STRIPE_PRICE_ADDON_15 = 'PENDING'; // TODO: create £15 one-time price in 
 const WEBHOOK_WORKER = 'https://odd-king-7b02.svanur300.workers.dev';
 
 async function startCheckout(plan) {
-  if (!_currentUser) {
-    openAuth();
-    return;
-  }
+  if (!_currentUser) { openAuth(); return; }
+  if (plan === 'company') { showSeatPicker(); return; }
+  await doCheckout('pro', 1);
+}
+
+function showSeatPicker() {
+  document.getElementById('seat-picker-overlay').classList.add('show');
+  document.getElementById('seat-count-input').value = 2;
+  updateSeatTotal();
+}
+
+function updateSeatTotal() {
+  const seats = parseInt(document.getElementById('seat-count-input').value) || 2;
+  document.getElementById('seat-total').textContent = '£' + (seats * 19.99).toFixed(2) + '/month';
+}
+
+async function confirmSeatCheckout() {
+  const seats = parseInt(document.getElementById('seat-count-input').value) || 2;
+  if (seats < 2) { alert('Minimum 2 seats.'); return; }
+  document.getElementById('seat-picker-overlay').classList.remove('show');
+  await doCheckout('company', seats);
+}
+
+async function doCheckout(plan, quantity) {
   const priceId = plan === 'company' ? STRIPE_PRICE_COMPANY : STRIPE_PRICE_PRO;
   const btn = document.getElementById('checkout-btn-' + plan);
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
 
   try {
-    // Create checkout session via webhook worker
     const res = await fetch(WEBHOOK_WORKER + '/create-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2031,6 +2066,7 @@ async function startCheckout(plan) {
         priceId,
         email: _currentUser.email,
         plan,
+        quantity,
         successUrl: 'https://topo-grapher.com?upgraded=true',
         cancelUrl: 'https://topo-grapher.com#pro'
       })
@@ -2338,7 +2374,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <button class="tier-cta" onclick="closeSettings();document.getElementById('pro').scrollIntoView({behavior:'smooth'})">Upgrade to Pro →</button>
         </div>
         <div id="settings-pro-info" style="display:none;">
-          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">You have an active Pro subscription. To manage billing, cancel, or change your plan contact us at <a href="/cdn-cgi/l/email-protection#96f7fdffd6e2f9e6f9bbf1e4f7e6fef3e4b8f5f9fb" style="color:var(--accent)"><span class="__cf_email__" data-cfemail="01606a6841756e716e2c667360716964732f626e6c">[email&#160;protected]</span></a>.</p>
+          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">Active Pro subscription. To manage billing contact <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
+        </div>
+        <div id="settings-company-info" style="display:none;">
+          <p style="font-size:13px;color:var(--text-mid);margin-bottom:10px;">Company plan — share this code with your team:</p>
+          <div style="background:var(--bg-input);border:1px solid var(--border-md);border-radius:6px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:var(--accent);letter-spacing:.12em;" id="company-code-display">—</span>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('company-code-display').textContent)" style="background:none;border:1px solid var(--border-md);color:var(--text-soft);font-family:'DM Mono',monospace;font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;">Copy</button>
+          </div>
+          <div style="font-size:12px;color:var(--text-soft);" id="company-seats-display">— seats used</div>
+        </div>
+        <div id="settings-join-company" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:14px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase;">Join a company</div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="company-join-code" placeholder="Enter company code…" style="flex:1;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;padding:9px 12px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;text-transform:uppercase;" onkeydown="if(event.key==='Enter')joinCompanyWithCode()"/>
+            <button onclick="joinCompanyWithCode()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:9px 16px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Join</button>
+          </div>
+          <div id="company-join-msg" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
         </div>
       </div>
 
@@ -2357,7 +2409,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   </div>
 </div>
 
-<!-- Large site add-on modal (dynamic) -->
+<!-- Large site add-on modal (content injected dynamically) -->
 <div class="auth-overlay" id="addon-overlay"></div>
 
 <!-- Download sign-in prompt -->
@@ -2395,9 +2447,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
         const confirmed = await showAddonPrompt(siteAreaKm2, addonPrice, autoDowngraded, effectiveSpacing);
         if(!confirmed) { showProgress(false); document.getElementById('convert-btn').disabled = false; return; }
       }
-      window._effSp = effectiveSpacing;
+      window._effSpacing = effectiveSpacing;
     } else {
-      window._effSp = selectedSpacing;
+      window._effSpacing = selectedSpacing;
     }
 
         await checkDailyLimit();
@@ -2898,7 +2950,29 @@ function openSettings() {
   planBadge.style.background = plan !== 'free' ? 'var(--forest)' : 'var(--accent-dk)';
   planBadge.style.color = plan !== 'free' ? '#EFE3D8' : 'var(--accent)';
   document.getElementById('settings-free-cta').style.display = plan === 'free' ? 'block' : 'none';
-  document.getElementById('settings-pro-info').style.display = plan !== 'free' ? 'block' : 'none';
+  document.getElementById('settings-pro-info').style.display = plan === 'pro' ? 'block' : 'none';
+  document.getElementById('settings-company-info').style.display = plan === 'company' ? 'block' : 'none';
+  document.getElementById('settings-join-company').style.display = plan === 'free' ? 'block' : 'none';
+  if(plan === 'company' && _currentProfile?.company_join_code) {
+    const codeEl = document.getElementById('company-code-display');
+    if(codeEl) codeEl.textContent = _currentProfile.company_join_code;
+    const seatsEl = document.getElementById('company-seats-display');
+    if(seatsEl) seatsEl.textContent = (_currentProfile.seats_used||1) + ' / ' + (_currentProfile.seat_count||2) + ' seats used';
+  }
+}
+
+async function joinCompanyWithCode() {
+  const code = document.getElementById('company-join-code').value.trim().toUpperCase();
+  const msgEl = document.getElementById('company-join-msg');
+  if(!code) { msgEl.textContent = 'Please enter a code.'; return; }
+  const { data, error } = await _sb.from('profiles').select('id,seat_count,seats_used,company_name,company_join_code').eq('company_join_code',code).eq('plan','company').single();
+  if(error||!data) { msgEl.style.color='var(--danger,#e25555)'; msgEl.textContent='Invalid or expired code.'; return; }
+  if((data.seats_used||0) >= (data.seat_count||2)) { msgEl.style.color='var(--danger,#e25555)'; msgEl.textContent='No seats available.'; return; }
+  const { error: uErr } = await _sb.from('profiles').update({ plan:'company', company_name:data.company_name, updated_at:new Date().toISOString() }).eq('id',_currentUser.id);
+  await _sb.from('profiles').update({ seats_used:(data.seats_used||0)+1, updated_at:new Date().toISOString() }).eq('id',data.id);
+  if(uErr) { msgEl.style.color='var(--danger,#e25555)'; msgEl.textContent='Error joining. Try again.'; return; }
+  msgEl.style.color='var(--accent)'; msgEl.textContent='✓ Joined '+(data.company_name||'company')+'!';
+  setTimeout(()=>{ closeSettings(); location.reload(); },1500);
 }
 
 function closeSettings() {
@@ -3060,16 +3134,35 @@ const STRIPE_PRICE_ADDON_15 = 'PENDING'; // TODO: create £15 one-time price in 
 const WEBHOOK_WORKER = 'https://odd-king-7b02.svanur300.workers.dev';
 
 async function startCheckout(plan) {
-  if (!_currentUser) {
-    openAuth();
-    return;
-  }
+  if (!_currentUser) { openAuth(); return; }
+  if (plan === 'company') { showSeatPicker(); return; }
+  await doCheckout('pro', 1);
+}
+
+function showSeatPicker() {
+  document.getElementById('seat-picker-overlay').classList.add('show');
+  document.getElementById('seat-count-input').value = 2;
+  updateSeatTotal();
+}
+
+function updateSeatTotal() {
+  const seats = parseInt(document.getElementById('seat-count-input').value) || 2;
+  document.getElementById('seat-total').textContent = '£' + (seats * 19.99).toFixed(2) + '/month';
+}
+
+async function confirmSeatCheckout() {
+  const seats = parseInt(document.getElementById('seat-count-input').value) || 2;
+  if (seats < 2) { alert('Minimum 2 seats.'); return; }
+  document.getElementById('seat-picker-overlay').classList.remove('show');
+  await doCheckout('company', seats);
+}
+
+async function doCheckout(plan, quantity) {
   const priceId = plan === 'company' ? STRIPE_PRICE_COMPANY : STRIPE_PRICE_PRO;
   const btn = document.getElementById('checkout-btn-' + plan);
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
 
   try {
-    // Create checkout session via webhook worker
     const res = await fetch(WEBHOOK_WORKER + '/create-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3077,6 +3170,7 @@ async function startCheckout(plan) {
         priceId,
         email: _currentUser.email,
         plan,
+        quantity,
         successUrl: 'https://topo-grapher.com?upgraded=true',
         cancelUrl: 'https://topo-grapher.com#pro'
       })
@@ -3092,7 +3186,7 @@ async function startCheckout(plan) {
     // Show friendly error in UI instead of alert
     const errDiv = document.getElementById('checkout-error-msg');
     if (errDiv) {
-      errDiv.textContent = 'Payment error: ' + err.message + ' — please try again or contact <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="57363c3e17233827387a302536273f32257934383a">[email&#160;protected]</a>';
+      errDiv.textContent = 'Payment error: ' + err.message + ' — please try again or contact aki@topo-grapher.com';
       errDiv.style.display = 'block';
       setTimeout(() => errDiv.style.display = 'none', 8000);
     } else {
@@ -3384,7 +3478,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <button class="tier-cta" onclick="closeSettings();document.getElementById('pro').scrollIntoView({behavior:'smooth'})">Upgrade to Pro →</button>
         </div>
         <div id="settings-pro-info" style="display:none;">
-          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">You have an active Pro subscription. To manage billing, cancel, or change your plan contact us at <a href="/cdn-cgi/l/email-protection#2a4b41436a5e455a45074d584b5a424f5804494547" style="color:var(--accent)"><span class="__cf_email__" data-cfemail="07666c6e47736877682a607566776f62752964686a">[email&#160;protected]</span></a>.</p>
+          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">Active Pro subscription. To manage billing contact <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
+        </div>
+        <div id="settings-company-info" style="display:none;">
+          <p style="font-size:13px;color:var(--text-mid);margin-bottom:10px;">Company plan — share this code with your team:</p>
+          <div style="background:var(--bg-input);border:1px solid var(--border-md);border-radius:6px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:var(--accent);letter-spacing:.12em;" id="company-code-display">—</span>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('company-code-display').textContent)" style="background:none;border:1px solid var(--border-md);color:var(--text-soft);font-family:'DM Mono',monospace;font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;">Copy</button>
+          </div>
+          <div style="font-size:12px;color:var(--text-soft);" id="company-seats-display">— seats used</div>
+        </div>
+        <div id="settings-join-company" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:14px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase;">Join a company</div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="company-join-code" placeholder="Enter company code…" style="flex:1;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;padding:9px 12px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;text-transform:uppercase;" onkeydown="if(event.key==='Enter')joinCompanyWithCode()"/>
+            <button onclick="joinCompanyWithCode()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:9px 16px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Join</button>
+          </div>
+          <div id="company-join-msg" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
         </div>
       </div>
 
@@ -3403,7 +3513,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   </div>
 </div>
 
-<!-- Large site add-on modal (dynamic) -->
+<!-- Large site add-on modal (content injected dynamically) -->
 <div class="auth-overlay" id="addon-overlay"></div>
 
 <!-- Download sign-in prompt -->
@@ -3416,16 +3526,51 @@ document.addEventListener('DOMContentLoaded', ()=>{
       <button class="auth-submit" onclick="document.getElementById('download-signin-overlay').classList.remove('show');openAuth('signup');" style="margin-bottom:10px;">Create free account →</button>
       <button onclick="document.getElementById('download-signin-overlay').classList.remove('show');openAuth('signin');" style="width:100%;background:none;border:1px solid var(--border-md);color:var(--text-mid);padding:11px;borde
 <!-- Leave-site warning -->
-<div id="leave-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
-  <div style="background:var(--forest);border:2px solid var(--green-lt);border-radius:12px;padding:32px 24px;max-width:400px;width:100%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.5);">
-    <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#EFE3D8;margin-bottom:10px;">Oh, leaving?</div>
+<div id="leave-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;align-items:center;justify-content:center;">
+  <div style="background:var(--forest);border:2px solid var(--green-lt);border-radius:12px;padding:32px 28px;max-width:400px;width:90%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.5);">
+    <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:#EFE3D8;margin-bottom:10px;">Oh, leaving?</div>
     <div style="font-size:13px;color:var(--accent);line-height:1.8;margin-bottom:22px;font-family:'DM Mono',monospace;">Your site is generating — it might just take a little longer because we’re working extra hard on it.</div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      <button onclick="document.getElementById('leave-overlay').style.display='none'" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:11px 18px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Stay — keep generating</button>
-      <button onclick="window._isGenerating=false;window.location.href=window._leaveUrl||'/'" style="background:none;border:1px solid var(--green-lt);color:var(--accent);padding:11px 14px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Leave anyway</button>
+      <button onclick="document.getElementById('leave-overlay').style.display='none'" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:11px 20px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;">Stay — keep generating</button>
+      <button onclick="window._isGenerating=false;window.location.href=window._leaveUrl||'/'" style="background:none;border:1px solid var(--green-lt);color:var(--accent);padding:11px 16px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Leave anyway</button>
     </div>
   </div>
 </div>
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js" defer></script><script>
+
+<script>
 window._isGenerating=false;
-window._leaveUrl=
+window._leaveUrl=null;
+window.addEventListener('beforeunload',function(e){
+  if(window._isGenerating){e.preventDefault();e.returnValue='';return '';}
+});
+document.addEventListener('click',function(e){
+  if(!window._isGenerating)return;
+  const a=e.target.closest('a[href]');
+  if(a&&!a.href.startsWith('mailto')&&!a.href.startsWith('javascript')&&!a.href.startsWith('#')){
+    e.preventDefault();
+    window._leaveUrl=a.href;
+    const o=document.getElementById('leave-overlay');
+    if(o){o.style.display='flex';}
+  }
+});
+</script>
+
+
+<!-- Seat picker modal -->
+<div class="auth-overlay" id="seat-picker-overlay">
+  <div class="auth-modal-wrap">
+    <div class="auth-modal" style="max-width:380px;text-align:center;">
+      <button class="auth-close" onclick="document.getElementById('seat-picker-overlay').classList.remove('show')">&#x2715;</button>
+      <h2>Company seats</h2>
+      <p style="font-size:13px;color:var(--text-mid);margin-bottom:20px;">How many team members need access? Minimum 2 seats.</p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:14px;">
+        <button onclick="const i=document.getElementById('seat-count-input');i.value=Math.max(2,parseInt(i.value)-1);updateSeatTotal()" style="width:36px;height:36px;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;font-size:18px;cursor:pointer;color:var(--text);">−</button>
+        <input type="number" id="seat-count-input" value="2" min="2" oninput="updateSeatTotal()" style="width:70px;text-align:center;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;padding:8px;font-family:'DM Mono',monospace;font-size:20px;font-weight:700;color:var(--text);outline:none;"/>
+        <button onclick="const i=document.getElementById('seat-count-input');i.value=parseInt(i.value)+1;updateSeatTotal()" style="width:36px;height:36px;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;font-size:18px;cursor:pointer;color:var(--text);">+</button>
+      </div>
+      <div style="font-size:22px;font-weight:700;font-family:'Syne',sans-serif;color:var(--accent);margin-bottom:4px;" id="seat-total">£39.98/month</div>
+      <div style="font-size:12px;color:var(--text-soft);margin-bottom:22px;">£19.99 per seat · billed monthly</div>
+      <button onclick="confirmSeatCheckout()" style="width:100%;background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:14px;border-radius:6px;font-family:'DM Mono',monospace;font-size:13px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;">Continue to payment →</button>
+    </div>
+  </div>
+</div>
