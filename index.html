@@ -444,7 +444,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   </div>
 
   <div class="card">
-    <div class="card-label">03 — Point spacing</div>
+    <div class="card-label">03 — Point density</div>
     <div class="accuracy-grid">
       <div class="acc-btn" id="acc-3" onclick="setAccuracy(3)"><div class="acc-m">3m</div><div class="acc-d">Highest detail — small or complex sites</div><div class="acc-p" id="pts-3">— pts</div><div style="font-size:10px;color:var(--accent-md);margin-top:4px;letter-spacing:.06em">// Pro</div></div>
       <div class="acc-btn" id="acc-6" onclick="setAccuracy(6)"><div class="acc-m">6m</div><div class="acc-d">Recommended for most sites</div><div class="acc-p" id="pts-6">— pts</div><div style="font-size:10px;color:var(--accent-md);margin-top:4px;letter-spacing:.06em">// Pro</div></div>
@@ -461,6 +461,16 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
       <select id="origin-select">
         <option value="first">First grid point (bottom-left)</option>
         <option value="centroid">Centroid of site area</option>
+      </select>
+    </div>
+    <div class="option-row" id="scatter-row" style="opacity:0.4;pointer-events:none;">
+      <div>
+        <div class="option-label">Point distribution <span style="font-size:10px;color:var(--accent-md);letter-spacing:.06em;margin-left:6px;">// Pro</span></div>
+        <div class="option-desc" id="scatter-desc">Uniform grid — predictable, compatible with all BIM tools</div>
+      </div>
+      <select id="scatter-select" onchange="updateScatterDesc()">
+        <option value="uniform">Uniform</option>
+        <option value="natural">Natural</option>
       </select>
     </div>
   </div>
@@ -694,16 +704,25 @@ function pointInPoly(lat,lon,poly){
   return inside;
 }
 
-function generateGrid(poly,spacing){
+function generateGrid(poly,spacing,scatter=false){
   const lats=poly.map(p=>p.lat),lons=poly.map(p=>p.lng);
   const minLat=Math.min(...lats),maxLat=Math.max(...lats);
   const minLon=Math.min(...lons),maxLon=Math.max(...lons);
   const mpd=metresPerDeg((minLat+maxLat)/2);
   const dLat=spacing/mpd.lat,dLon=spacing/mpd.lon;
   const pts=[];
-  for(let lat=minLat;lat<=maxLat+dLat*0.5;lat+=dLat)
-    for(let lon=minLon;lon<=maxLon+dLon*0.5;lon+=dLon)
-      if(pointInPoly(lat,lon,poly)) pts.push({lat,lon});
+  if(scatter){
+    for(let lat=minLat;lat<=maxLat+dLat*0.5;lat+=dLat)
+      for(let lon=minLon;lon<=maxLon+dLon*0.5;lon+=dLon){
+        const jLat=lat+(Math.random()-0.5)*dLat*0.8;
+        const jLon=lon+(Math.random()-0.5)*dLon*0.8;
+        if(pointInPoly(jLat,jLon,poly)) pts.push({lat:jLat,lon:jLon});
+      }
+  } else {
+    for(let lat=minLat;lat<=maxLat+dLat*0.5;lat+=dLat)
+      for(let lon=minLon;lon<=maxLon+dLon*0.5;lon+=dLon)
+        if(pointInPoly(lat,lon,poly)) pts.push({lat,lon});
+  }
   return pts;
 }
 
@@ -1167,12 +1186,24 @@ function applyProUI() {
     const el = document.getElementById(id);
     if (el) { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
   });
+  // Unlock point distribution toggle
+  const scatterRow = document.getElementById('scatter-row');
+  if (scatterRow) { scatterRow.style.opacity = '1'; scatterRow.style.pointerEvents = 'auto'; }
   // Hide the daily limit badge
   const lb = document.getElementById('daily-limit-badge');
   if (lb) lb.style.display = 'none';
   // Hide unlock prompt if visible
   const up = document.getElementById('pro-unlock-wrap');
   if (up) up.style.display = 'none';
+}
+
+function updateScatterDesc() {
+  const val = document.getElementById('scatter-select')?.value;
+  const desc = document.getElementById('scatter-desc');
+  if (!desc) return;
+  desc.textContent = val === 'natural'
+    ? 'Natural scatter — better terrain fidelity, reduces flat-plane artefacts'
+    : 'Uniform grid — predictable, compatible with all BIM tools';
 }
 
 function showUnlockPrompt() {
@@ -1238,7 +1269,8 @@ async function convert(){
     }
 
     await checkDailyLimit();
-    const grid = generateGrid(polygonLatLngs, selectedSpacing);
+    const isNatural = isPro && document.getElementById('scatter-select')?.value === 'natural';
+    const grid = generateGrid(polygonLatLngs, selectedSpacing, isNatural);
     if(grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
     const POINT_CAP = isPro ? 50000 : 2000;
     if(grid.length>POINT_CAP){
@@ -1267,6 +1299,7 @@ async function convert(){
     }));
     // Snap points to clean orthogonal grid to fix Revit interpolation issues
     // Our UTM grid has slight diagonal drift — snap to nearest spacing interval
+    // Skip snapping in Natural mode — scatter points must stay jittered
     const snapGrid = (pts, spacing) => {
       return pts.map(p => ({
         x: parseFloat((Math.round(p.x / spacing) * spacing).toFixed(3)),
@@ -1274,8 +1307,9 @@ async function convert(){
         z: p.z
       }));
     };
-    const snapped = snapGrid(out, selectedSpacing);
+    const snapped = isNatural ? out : snapGrid(out, selectedSpacing);
     // Deduplicate — if two points snap to same grid cell, keep highest Z
+    // (dedup only relevant for uniform mode)
     const gridMap = new Map();
     snapped.forEach(p => {
       const key = p.x + ',' + p.y;
@@ -2150,7 +2184,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <button class="tier-cta" onclick="closeSettings();document.getElementById('pro').scrollIntoView({behavior:'smooth'})">Upgrade to Pro →</button>
         </div>
         <div id="settings-pro-info" style="display:none;">
-          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">You have an active Pro subscription. To manage billing, cancel, or change your plan contact us at <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
+          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">You have an active Pro subscription. To manage billing, cancel, or change your plan contact us at <a href="/cdn-cgi/l/email-protection#caaba1a38abea5baa5e7adb8abbaa2afb8e4a9a5a7" style="color:var(--accent)"><span class="__cf_email__" data-cfemail="7b1a10123b0f140b14561c091a0b131e0955181416">[email&#160;protected]</span></a>.</p>
         </div>
       </div>
 
@@ -2197,9 +2231,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
       <h2>Sign in to download</h2>
       <p>Create a free account to download your terrain CSV. It takes 30 seconds and your data is ready immediately.</p>
       <button class="auth-submit" onclick="document.getElementById('download-signin-overlay').classList.remove('show');openAuth('signup');" style="margin-bottom:10px;">Create free account →</button>
-      <button onclick="document.getElementById('download-signin-overlay').classList.remove('show');openAuth('signin');" style="width:100%;background:none;border:1px solid var(--border-md);color:var(--text-mid);padding:11px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Sign in</button>
-    </div>
-  </div>
-</div>
-</body>
-</html>
+      <button onclick="document.getElementById('download-signin-overlay').classList.remove('show');openAuth('signin');" style="width:100%;background:none;border:1px solid var(--border-md);color:var(--text-mid);padding:11px;borde
