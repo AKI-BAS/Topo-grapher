@@ -426,6 +426,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
       <div><div class="option-label">Project name</div><div class="option-desc">Required — names your output CSV file</div></div>
       <input type="text" id="project-name" placeholder="e.g. Harbour_Site_Oslo" style="width:220px">
     </div>
+    <div id="memory-notice" style="display:none;font-size:11px;color:var(--accent);margin-top:6px;letter-spacing:.06em;"></div>
   </div>
 
   <div class="card">
@@ -978,6 +979,8 @@ function initMap(){
     updatePtCounts();
     updateHint();
     updateConvertBtn();
+    // Visual area warning
+    checkDrawnAreaWarning();
   });
 
   map.on(L.Draw.Event.DRAWSTART, ()=>{
@@ -1035,6 +1038,32 @@ function clearArea(){
   updateConvertBtn();
   document.getElementById('result-card').classList.remove('show');
   if(typeof clearSiteContourData==='function') clearSiteContourData();
+}
+
+function checkDrawnAreaWarning() {
+  if (!polygonLatLngs) return;
+  const hintEl = document.getElementById('map-hint');
+  const lats = polygonLatLngs.map(p=>p.lat), lons = polygonLatLngs.map(p=>p.lng);
+  const mpd = metresPerDeg((Math.min(...lats)+Math.max(...lats))/2);
+  const siteW = (Math.max(...lons)-Math.min(...lons))*mpd.lon;
+  const siteH = (Math.max(...lats)-Math.min(...lats))*mpd.lat;
+  const areaKm2 = (siteW * siteH) / 1e6;
+  const isPro = isProUnlocked() || (_currentProfile && _currentProfile.plan !== 'free');
+  if (!isPro && (siteW > 500 || siteH > 500)) {
+    hintEl.innerHTML = '⚠ Free tier limit is 500×500m — this site is too large. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for sites up to 2×2km.';
+    hintEl.style.color = 'var(--warning,#e2a255)';
+  } else if (isPro && areaKm2 > 20) {
+    hintEl.innerHTML = '⚠ Site exceeds 20 km² maximum. Please <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">contact us</a> for large site pricing.';
+    hintEl.style.color = 'var(--warning,#e2a255)';
+  } else if (isPro && areaKm2 > 5) {
+    hintEl.textContent = '⚠ Site is ' + areaKm2.toFixed(1) + ' km² — a £15 large site add-on will apply at checkout.';
+    hintEl.style.color = 'var(--warning,#e2a255)';
+  } else if (isPro && (areaKm2 > 4 || siteW > 2000 || siteH > 2000)) {
+    hintEl.textContent = '⚠ Site is ' + areaKm2.toFixed(1) + ' km² — a £5 large site add-on will apply at checkout.';
+    hintEl.style.color = 'var(--warning,#e2a255)';
+  } else {
+    hintEl.style.color = '';
+  }
 }
 
 function updateHint(){
@@ -1213,6 +1242,7 @@ function showUnlockPrompt() {
 
 async function convert(){
   hideError(); showResult(false);
+  window._isGenerating = true;
   const nEl = document.getElementById('project-name');
   projectName = nEl.value.trim();
   if(!projectName){ nEl.classList.add('error'); nEl.focus(); showError('Enter a project name first.'); return; }
@@ -1241,36 +1271,47 @@ async function convert(){
       }
     }
 
-    // Pro area limits with add-on tiers
+    // Pro area limits with tiered add-on pricing
     const siteAreaM2 = siteW * siteH;
     const siteAreaKm2 = siteAreaM2 / 1000000;
-    const PRO_BASE_MAX_M = 2000; // 2km × 2km base Pro limit
+    const PRO_BASE_MAX_M = 2000;
 
     if(isPro) {
+      if(siteAreaKm2 > 100) {
+        throw new Error('Site area exceeds 100 km\u00b2. Please <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">contact us</a> for very large site requests.');
+      }
+      let effectiveSpacing = selectedSpacing;
+      let autoDowngraded = false;
+      if(siteAreaKm2 > 50 && selectedSpacing < 12) {
+        effectiveSpacing = selectedSpacing <= 3 ? 6 : 12;
+        autoDowngraded = true;
+      }
+      let addonPrice = 0;
       if(siteAreaKm2 > 20) {
-        throw new Error('Site area exceeds 20 km². Please <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">contact us</a> for large site pricing.');
+        const overKm2 = siteAreaKm2 - 20;
+        addonPrice = parseFloat((15 + overKm2 * 0.90).toFixed(2));
       } else if(siteAreaKm2 > 5) {
-        // 5–20 km² → £15 add-on
-        const confirmed = await showAddonPrompt(siteAreaKm2, 15);
-        if(!confirmed) {
-          showProgress(false);
-          document.getElementById('convert-btn').disabled = false;
-          return;
-        }
+        addonPrice = 15;
       } else if(siteAreaKm2 > 4 || siteW > PRO_BASE_MAX_M || siteH > PRO_BASE_MAX_M) {
-        // 2×2km–5 km² → £5 add-on
-        const confirmed = await showAddonPrompt(siteAreaKm2, 5);
+        addonPrice = 5;
+      }
+      if(addonPrice > 0) {
+        const confirmed = await showAddonPrompt(siteAreaKm2, addonPrice, autoDowngraded, effectiveSpacing);
         if(!confirmed) {
           showProgress(false);
           document.getElementById('convert-btn').disabled = false;
           return;
         }
       }
+      window._effectiveSpacing = effectiveSpacing;
+    } else {
+      window._effectiveSpacing = selectedSpacing;
     }
 
-    await checkDailyLimit();
+        await checkDailyLimit();
     const isNatural = isPro && document.getElementById('scatter-select')?.value === 'natural';
-    const grid = generateGrid(polygonLatLngs, selectedSpacing, isNatural);
+    const effSpacing = window._effectiveSpacing || selectedSpacing;
+    const grid = generateGrid(polygonLatLngs, effSpacing, isNatural);
     if(grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
     const POINT_CAP = isPro ? 50000 : 2000;
     if(grid.length>POINT_CAP){
@@ -1307,7 +1348,7 @@ async function convert(){
         z: p.z
       }));
     };
-    const snapped = isNatural ? out : snapGrid(out, selectedSpacing);
+    const snapped = isNatural ? out : snapGrid(out, effSpacing);
     // Deduplicate — if two points snap to same grid cell, keep highest Z
     // (dedup only relevant for uniform mode)
     const gridMap = new Map();
@@ -1372,6 +1413,7 @@ async function convert(){
       updateLimitBadge();
     }
     setProgress(1,'Done — terrain data ready.','');
+    window._isGenerating = false;
     const altsForWire = displayPts.map(p=>p.z).filter(z=>isFinite(z)&&!isNaN(z));
     const wMinZ = altsForWire.length ? Math.min(...altsForWire) : 0;
     const wMaxZ = altsForWire.length ? Math.max(...altsForWire) : 0;
@@ -1786,22 +1828,82 @@ async function changePassword() {
 
 
 // ── Large site add-on prompt ───────────────────────────────────────────────
-function showAddonPrompt(areaKm2, price) {
+function showAddonPrompt(areaKm2, addonPrice, autoDowngraded, effectiveSpacing) {
   return new Promise((resolve) => {
     const overlay = document.getElementById('addon-overlay');
-    const areaEl = document.getElementById('addon-area');
-    const priceEl = document.getElementById('addon-price');
-    const noteEl = document.getElementById('addon-note');
-    if(areaEl) areaEl.textContent = areaKm2.toFixed(2) + ' km²';
-    if(priceEl) priceEl.textContent = '£' + price;
-    if(noteEl) noteEl.textContent = price === 5
-      ? 'Up to 5 km² — £5 per generation'
-      : 'Up to 20 km² — £15 per generation';
+
+    // Build breakdown lines
+    let breakdownHTML = '';
+    let tier = '';
+    if(areaKm2 > 20) {
+      const overKm2 = (areaKm2 - 20).toFixed(1);
+      const overCharge = (areaKm2 - 20) * 0.90;
+      breakdownHTML = `
+        <div style="font-size:12px;color:var(--text-mid);text-align:left;margin-bottom:16px;line-height:2;">
+          <div style="display:flex;justify-content:space-between;"><span>Base large site fee (up to 20 km²)</span><span>£15.00</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>${overKm2} km² over 20 km² × £0.90/km²</span><span>£${overCharge.toFixed(2)}</span></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:4px;font-weight:700;color:var(--text);"><span>Total add-on</span><span>£${addonPrice.toFixed(2)}</span></div>
+        </div>`;
+      tier = areaKm2.toFixed(1) + ' km² site';
+    } else if(areaKm2 > 5) {
+      breakdownHTML = `<div style="font-size:12px;color:var(--text-mid);text-align:left;margin-bottom:16px;">Flat fee for sites between 5–20 km².</div>`;
+      tier = areaKm2.toFixed(1) + ' km² site';
+    } else {
+      breakdownHTML = `<div style="font-size:12px;color:var(--text-mid);text-align:left;margin-bottom:16px;">Flat fee for sites beyond 2×2 km base area.</div>`;
+      tier = areaKm2.toFixed(1) + ' km² site';
+    }
+
+    const downgradeNote = autoDowngraded
+      ? `<div style="font-size:11px;color:var(--accent);margin-bottom:12px;padding:8px;background:var(--accent-dk);border-radius:4px;">Resolution auto-adjusted to ${effectiveSpacing}m for this site size</div>`
+      : '';
+
+    overlay.innerHTML = `
+      <div class="auth-modal-wrap">
+        <div class="auth-modal" style="max-width:440px;text-align:center;">
+          <h2>Large site add-on</h2>
+          <p style="margin-bottom:6px;">Your site is <strong>${tier}</strong> — beyond the standard Pro area.</p>
+          ${downgradeNote}
+          ${breakdownHTML}
+          <div style="background:var(--bg-input);border:1px solid var(--border-md);border-radius:8px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:13px;color:var(--text-mid);">One-time charge for this generation</span>
+            <span style="font-size:28px;font-family:'Syne',sans-serif;font-weight:800;color:var(--accent);">£${addonPrice.toFixed(2)}</span>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button id="addon-cancel" style="flex:1;background:var(--bg-input);border:1px solid var(--border-md);color:var(--text);padding:12px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Cancel</button>
+            <button id="addon-confirm" style="flex:2;background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:12px;border-radius:5px;font-family:'DM Mono',monospace;font-size:13px;cursor:pointer;font-weight:600;">Confirm → Generate CSV</button>
+          </div>
+        </div>
+      </div>`;
+
     overlay.classList.add('show');
-    document.getElementById('addon-confirm').onclick = () => {
+
+    document.getElementById('addon-confirm').onclick = async () => {
       overlay.classList.remove('show');
-      resolve(true);
+      const addonPriceId = STRIPE_PRICE_ADDON_5;  // single flexible product
+      if (addonPriceId === 'PENDING') {
+        resolve(true); // TODO: wire Stripe once price created
+        return;
+      }
+      if (!_currentUser) { openAuth(); resolve(false); return; }
+      try {
+        const amountPence = Math.round(addonPrice * 100);
+        const res = await fetch(WEBHOOK_WORKER + '/create-addon-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: _currentUser.email,
+            amountPence,
+            description: 'Large site add-on — ' + tier,
+            successUrl: 'https://topo-grapher.com?addon=true',
+            cancelUrl: 'https://topo-grapher.com'
+          })
+        });
+        const data = await res.json();
+        if (data.url) window.location.href = data.url;
+        else resolve(false);
+      } catch(e) { resolve(false); }
     };
+
     document.getElementById('addon-cancel').onclick = () => {
       overlay.classList.remove('show');
       resolve(false);
@@ -1857,6 +1959,8 @@ function restoreProMemory() {
 const STRIPE_PUBLISHABLE_KEY = 'pk_live_51TLe6e3tgjRssKt3zUX2Y1KXWF1gUFPfpjFQF2c5sfTQj367H0BO1v52AHuK46dCA9w5LePUwZRw8IQRGk3EU8tM00fY754Arg';
 const STRIPE_PRICE_PRO = 'price_1TLeUH3tgjRssKt3q1BFKpdD';
 const STRIPE_PRICE_COMPANY = 'price_1TM1CI3tgjRssKt3a3lPXzkk';
+const STRIPE_PRICE_ADDON_5 = 'PENDING'; // TODO: create £5 one-time price in Stripe and paste ID here
+const STRIPE_PRICE_ADDON_15 = 'PENDING'; // TODO: create £15 one-time price in Stripe and paste ID here
 const WEBHOOK_WORKER = 'https://odd-king-7b02.svanur300.workers.dev';
 
 async function startCheckout(plan) {
