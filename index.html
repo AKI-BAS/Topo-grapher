@@ -1377,7 +1377,7 @@ async function convert(){
       window._effectiveSpacing = selectedSpacing;
     }
 
-        await checkDailyLimit();
+    <script> await checkDailyLimit();
     const isNatural = isPro && document.getElementById('scatter-select')?.value === 'natural';
     const effSpacing = window._effectiveSpacing || selectedSpacing;
     const grid = generateGrid(polygonLatLngs, effSpacing, isNatural);
