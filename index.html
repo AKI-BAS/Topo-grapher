@@ -1377,7 +1377,7 @@ async function convert(){
       window._effectiveSpacing = selectedSpacing;
     }
 
-    <script> await checkDailyLimit();
+          await checkDailyLimit();
     const isNatural = isPro && document.getElementById('scatter-select')?.value === 'natural';
     const effSpacing = window._effectiveSpacing || selectedSpacing;
     const grid = generateGrid(polygonLatLngs, effSpacing, isNatural);
@@ -2920,7 +2920,7 @@ function showWireframe(points, minZ, maxZ) {
 
 // ── Settings ───────────────────────────────────────────────────────────────
 
-function applyAccessCode() {
+<script> function applyAccessCode() {
   const code = document.getElementById('settings-access-code').value.trim();
   const msgEl = document.getElementById('access-code-msg');
   const ok = tryUnlockPro(code);
