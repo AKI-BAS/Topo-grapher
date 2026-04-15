@@ -546,7 +546,21 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
       <thead><tr><th>X (m)</th><th>Y (m)</th><th>Z (m)</th></tr></thead>
       <tbody id="preview-body"></tbody>
     </table>
-    <button class="btn-dl" id="download-btn">↓ Download CSV for Revit</button>
+    <div id="elevation-quality-warn" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;line-height:1.6;"></div>
+    <div id="elevation-source-banner" style="display:none;margin-bottom:14px;padding:12px 16px;border-radius:6px;border:1px solid var(--border-md);background:var(--bg-input);">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;">
+          <div id="esb-title" style="font-size:12px;font-weight:600;color:var(--text);letter-spacing:.04em;margin-bottom:2px;"></div>
+          <div id="esb-detail" style="font-size:11px;color:var(--text-soft);font-family:'DM Mono',monospace;"></div>
+        </div>
+        <div id="esb-badge" style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:4px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;"></div>
+      </div>
+      <div id="esb-upgrade" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--text-mid);font-family:'DM Mono',monospace;line-height:1.6;"></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn-dl" id="download-btn" style="flex:1;min-width:160px;">↓ Download CSV</button>
+      <button class="btn-dl" id="download-map-btn" style="flex:1;min-width:160px;background:var(--bg-input);color:var(--text);border-color:var(--border-md);">↓ Site map image</button>
+    </div>
   </div>
 
   <p style="font-size:13px;color:var(--text-mid);text-align:center;max-width:540px;margin:12px auto 0;line-height:1.7">
@@ -1320,7 +1334,6 @@ function showUnlockPrompt() {
 async function convert(){
   hideError(); showResult(false);
   window._isGenerating = true;
-  window._isGenerating = true;
   const nEl = document.getElementById('project-name');
   projectName = nEl.value.trim();
   if(!projectName){ nEl.classList.add('error'); nEl.focus(); showError('Enter a project name first.'); return; }
@@ -1465,6 +1478,7 @@ async function convert(){
     const _siteArea = parseFloat(document.getElementById('stat-area')?.textContent?.replace(/[^0-9.]/g,'')) || 0;
     logGeneration(projectName, cleanOut.length, selectedSpacing, _siteArea, source||'unknown');
     saveProMemory(projectName, selectedSpacing, csvData, source||'unknown');
+    updateElevationSourceBanner(source||'unknown', isPro);
     setSiteContourData(out);
 
     const displayPts = typeof cleanOut !== 'undefined' ? cleanOut : out;
@@ -1495,7 +1509,6 @@ async function convert(){
     }
     setProgress(1,'Done — terrain data ready.','');
     window._isGenerating = false;
-    window._isGenerating = false;
     const altsForWire = displayPts.map(p=>p.z).filter(z=>isFinite(z)&&!isNaN(z));
     const wMinZ = altsForWire.length ? Math.min(...altsForWire) : 0;
     const wMaxZ = altsForWire.length ? Math.max(...altsForWire) : 0;
@@ -1520,6 +1533,182 @@ function downloadCSV(){
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csvData],{type:'text/csv'}));
   a.download = `${safe}_toposolid.csv`;
+  a.click();
+}
+
+// ── Elevation source quality banner ────────────────────────────────────────
+function updateElevationSourceBanner(source, isPro) {
+  const banner = document.getElementById('elevation-source-banner');
+  const title  = document.getElementById('esb-title');
+  const detail = document.getElementById('esb-detail');
+  const badge  = document.getElementById('esb-badge');
+  const upgrade = document.getElementById('esb-upgrade');
+  if(!banner) return;
+
+  const s = source.toLowerCase();
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+  let tier, resText, sourceLabel, upgradeMsg;
+
+  if(s.includes('dhm') || s.includes('denmark')) {
+    tier = 'lidar'; resText = '0.4m resolution · Danish DHM LiDAR'; sourceLabel = 'LiDAR 0.4m';
+  } else if(s.includes('gpxz') || s.includes('1m-lidar')) {
+    tier = 'lidar'; resText = '1m resolution · GPXZ LiDAR'; sourceLabel = 'LiDAR 1m';
+  } else if(s.includes('eu_dtm') || s.includes('swissalti') || s.includes('ahn3') || s.includes('3dep') || s.includes('opentopo')) {
+    tier = 'lidar'; resText = '0.5–1m resolution · OpenTopography LiDAR'; sourceLabel = 'LiDAR 1m';
+  } else if(s.includes('srtm') || s.includes('30m')) {
+    tier = 'mid'; resText = '30m resolution · SRTM'; sourceLabel = '30m DEM';
+    upgradeMsg = !isPro ? 'Pro users get LiDAR (1m+) for this region — up to 30× more accurate for flat terrain.' : '';
+  } else {
+    tier = 'low'; resText = '90m resolution · Open-Meteo DEM'; sourceLabel = '90m DEM';
+    upgradeMsg = !isPro ? 'This is coarse satellite data. Pro unlocks LiDAR sources (0.4–1m) for Denmark, UK, and 20+ countries — critical for flat or urban sites.' : '';
+  }
+
+  // Colours
+  const colours = {
+    lidar: { bg: isDark ? '#1a2e14' : '#eaf3de', border: '#639922', text: isDark ? '#9aba6a' : '#27500a', badgeBg: '#639922', badgeText: '#fff' },
+    mid:   { bg: isDark ? '#2a2410' : '#faeeda', border: '#ba7517', text: isDark ? '#ef9f27' : '#633806', badgeBg: '#ba7517', badgeText: '#fff' },
+    low:   { bg: isDark ? '#2a1a10' : '#faece7', border: '#d85a30', text: isDark ? '#f09975' : '#4a1b0c', badgeBg: '#d85a30', badgeText: '#fff' },
+  }[tier];
+
+  banner.style.display = 'block';
+  banner.style.background = colours.bg;
+  banner.style.borderColor = colours.border;
+  title.style.color = colours.text;
+  title.textContent = tier === 'lidar' ? 'High-resolution LiDAR data' : tier === 'mid' ? 'Medium-resolution satellite data' : 'Low-resolution satellite data (90m)';
+  detail.textContent = resText + ' · source: ' + source;
+  badge.textContent = sourceLabel;
+  badge.style.background = colours.badgeBg;
+  badge.style.color = colours.badgeText;
+
+  if(upgradeMsg && !isPro) {
+    upgrade.style.display = 'block';
+    upgrade.innerHTML = '⚠ ' + upgradeMsg + ' <a href="#pro" style="color:var(--accent)">Upgrade to Pro →</a>';
+  } else {
+    upgrade.style.display = 'none';
+  }
+}
+
+// ── Site map PNG export ────────────────────────────────────────────────────
+function downloadSiteMap() {
+  if(!csvData || !polygonLatLngs || polygonLatLngs.length === 0) return;
+
+  const W = 1200, H = 900;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const isDark = false; // always export light for print
+
+  // Background
+  ctx.fillStyle = '#f5f0ea';
+  ctx.fillRect(0, 0, W, H);
+
+  // Parse CSV for stats
+  const rows = csvData.split('\n').slice(1).filter(r=>r).map(r=>r.split(',').map(Number));
+  const xs = rows.map(r=>r[0]), ys = rows.map(r=>r[1]), zs = rows.map(r=>r[2]);
+  const minX=Math.min(...xs), maxX=Math.max(...xs);
+  const minY=Math.min(...ys), maxY=Math.max(...ys);
+  const minZ=Math.min(...zs), maxZ=Math.max(...zs);
+  const rangeX=maxX-minX||1, rangeY=maxY-minY||1;
+
+  // Map area with margin
+  const margin = 80, mapW = W - margin*2, mapH = H - 200;
+  const scaleX = mapW / rangeX, scaleY = mapH / rangeY;
+  const scale = Math.min(scaleX, scaleY);
+  const offX = margin + (mapW - rangeX*scale)/2;
+  const offY = margin + (mapH - rangeY*scale)/2;
+
+  const toScreen = (x, y) => [offX + (x-minX)*scale, offY + (maxY-y)*scale];
+
+  // Colour points by elevation
+  const zRange = maxZ - minZ || 1;
+  rows.forEach(([x,y,z]) => {
+    const t = (z-minZ)/zRange;
+    const r = Math.round(28 + t*60), g = Math.round(100 + t*80), b = Math.round(50 - t*20);
+    ctx.fillStyle = `rgba(${r},${g},${b},0.55)`;
+    ctx.beginPath();
+    const [sx,sy] = toScreen(x,y);
+    ctx.arc(sx, sy, 1.8, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  // Polygon outline
+  ctx.beginPath();
+  const lats = polygonLatLngs.map(p=>p.lat), lons = polygonLatLngs.map(p=>p.lng);
+  const utmPoly = polygonLatLngs.map(p=>latLonToUTM(p.lat,p.lng));
+  const polyXs = utmPoly.map(p=>p.easting), polyYs = utmPoly.map(p=>p.northing);
+  const minPX=Math.min(...polyXs), minPY=Math.min(...polyYs);
+  const maxPX=Math.max(...polyXs), maxPY=Math.max(...polyYs);
+  const polyRangeX=maxPX-minPX||1, polyRangeY=maxPY-minPY||1;
+  const polyScale = Math.min(mapW/polyRangeX, mapH/polyRangeY) * 0.85;
+  const polyOffX = margin + (mapW - polyRangeX*polyScale)/2;
+  const polyOffY = margin + (mapH - polyRangeY*polyScale)/2;
+  const toPolyScreen = (ex,ey) => [polyOffX+(ex-minPX)*polyScale, polyOffY+(maxPY-ey)*polyScale];
+
+  ctx.beginPath();
+  utmPoly.forEach((pt,i) => {
+    const [sx,sy] = toPolyScreen(pt.easting, pt.northing);
+    i===0 ? ctx.moveTo(sx,sy) : ctx.lineTo(sx,sy);
+  });
+  ctx.closePath();
+  ctx.strokeStyle = '#1C4D33';
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([]);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(28,77,51,0.08)';
+  ctx.fill();
+
+  // North arrow (top-right)
+  const arrowX = W - 70, arrowY = 100;
+  ctx.save();
+  ctx.translate(arrowX, arrowY);
+  ctx.beginPath(); ctx.moveTo(0,-28); ctx.lineTo(10,10); ctx.lineTo(0,4); ctx.lineTo(-10,10); ctx.closePath();
+  ctx.fillStyle = '#1C4D33'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0,28); ctx.lineTo(10,-10); ctx.lineTo(0,-4); ctx.lineTo(-10,-10); ctx.closePath();
+  ctx.fillStyle = '#ccc'; ctx.fill();
+  ctx.fillStyle = '#1C4D33';
+  ctx.font = 'bold 13px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('N', 0, -34);
+  ctx.restore();
+
+  // Scale bar
+  const scaleBarM = Math.pow(10, Math.floor(Math.log10(rangeX * 0.3)));
+  const scaleBarPx = scaleBarM * scale;
+  const sbX = margin, sbY = H - 140;
+  ctx.fillStyle = '#1C4D33';
+  ctx.fillRect(sbX, sbY, scaleBarPx, 3);
+  ctx.fillRect(sbX, sbY-5, 2, 13);
+  ctx.fillRect(sbX+scaleBarPx, sbY-5, 2, 13);
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(scaleBarM >= 1000 ? (scaleBarM/1000)+'km' : scaleBarM+'m', sbX + scaleBarPx/2, sbY+16);
+
+  // Title block (bottom)
+  ctx.fillStyle = '#1C4D33';
+  ctx.fillRect(0, H-100, W, 100);
+  ctx.fillStyle = '#EFE3D8';
+  ctx.font = 'bold 22px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(projectName.toUpperCase(), margin, H-65);
+  ctx.font = '12px monospace';
+  ctx.fillStyle = '#9aba6a';
+  const sourceEl = document.getElementById('esb-detail');
+  const sourceStr = sourceEl ? sourceEl.textContent : 'topo-grapher.com';
+  ctx.fillText(sourceStr, margin, H-42);
+  ctx.fillText('Elev. range: ' + minZ.toFixed(1) + 'm – ' + maxZ.toFixed(1) + 'm  ·  ' + rows.length.toLocaleString() + ' points  ·  topo-grapher.com', margin, H-20);
+
+  // Date (right)
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#9aba6a';
+  ctx.font = '11px monospace';
+  ctx.fillText(new Date().toISOString().slice(0,10), W-margin, H-20);
+
+  // Download
+  const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = `${safe}_sitemap.png`;
   a.click();
 }
 
@@ -2298,6 +2487,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('project-name').addEventListener('input', function(){ this.classList.remove('error'); updateConvertBtn(); });
   document.getElementById('convert-btn').addEventListener('click', convert);
   document.getElementById('download-btn').addEventListener('click', downloadCSV);
+  document.getElementById('download-map-btn').addEventListener('click', downloadSiteMap);
   document.getElementById('notify-email').addEventListener('keydown', function(e){ if(e.key==='Enter') sendNotify(); });
 });
 
