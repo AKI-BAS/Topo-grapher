@@ -640,7 +640,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   </div>
 
 
-<div style="display:none"><div class="main" style="padding-top:0;padding-bottom:0;">
+<div class="main" style="padding-top:0;padding-bottom:0;">
   <div class="card" id="contour-panel">
     <div class="card-label">// Terrain preview<span id="contour-source-badge" style="margin-left:10px;font-size:10px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;"></span></div>
 
@@ -657,7 +657,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
     <canvas id="contour-canvas" style="width:100%;height:320px;display:none;border-radius:4px;"></canvas>
     <div style="font-size:11px;color:var(--text-soft);margin-top:8px;text-align:center;letter-spacing:.06em;min-height:16px;" id="contour-label"></div>
   </div>
-</div></div>
+</div>
 <div class="main" id="pro" style="padding-top:0">
 
   <!-- Tier comparison header -->
@@ -1894,27 +1894,21 @@ let animFrame=null, animT=0;
 let siteFieldData=null;
 
 function setSiteContourData(points){
-  // If terrain is too flat, hide contour panel gracefully
   const zz = points.map(p=>p.z).filter(z=>z!==0&&isFinite(z)&&!isNaN(z));
   const zRange = zz.length ? Math.max(...zz) - Math.min(...zz) : 0;
-  if(zRange < 3){
-    document.getElementById('contour-placeholder').style.display='flex';
-    document.getElementById('contour-canvas').style.display='none';
-    document.getElementById('contour-source-badge').textContent='';
-    document.getElementById('contour-label').textContent='';
-    // Update placeholder text for flat terrain
-    const span = document.querySelector('#contour-placeholder span');
-    if(span) span.textContent = 'Terrain too flat for contour preview — elevation range is only ' + zRange.toFixed(1) + 'm';
-    return;
-  }
-  const xs=points.map(p=>p.x),ys=points.map(p=>p.y),zs=points.map(p=>p.z);
-  const minX=Math.min(...xs),maxX=Math.max(...xs);
-  const minY=Math.min(...ys),maxY=Math.max(...ys);
-  const minZ=Math.min(...zs),maxZ=Math.max(...zs);
-  const rangeX=maxX-minX||1,rangeY=maxY-minY||1,rangeZ=maxZ-minZ||1;
-  const COLS=100,ROWS=66;
-  const field=[];
-  const counts=[];
+
+  // Flat terrain: show colour-fill heatmap instead of contour lines
+  // Only truly suppress if range is < 0.5m (pure raster noise with no real variation)
+  const isFlat = zRange < 0.5;
+
+  const xs=points.map(p=>p.x), ys=points.map(p=>p.y), zs=points.map(p=>p.z);
+  const minX=Math.min(...xs), maxX=Math.max(...xs);
+  const minY=Math.min(...ys), maxY=Math.max(...ys);
+  const minZ=Math.min(...zs), maxZ=Math.max(...zs);
+  const rangeX=maxX-minX||1, rangeY=maxY-minY||1, rangeZ=Math.max(maxZ-minZ,0.01);
+
+  const COLS=100, ROWS=66;
+  const field=[], counts=[];
   for(let r=0;r<=ROWS;r++){field[r]=new Float32Array(COLS+1);counts[r]=new Uint16Array(COLS+1);}
   points.forEach(p=>{
     const c=Math.round((p.x-minX)/rangeX*COLS);
@@ -1924,6 +1918,7 @@ function setSiteContourData(points){
   for(let r=0;r<=ROWS;r++)
     for(let c=0;c<=COLS;c++)
       if(counts[r][c]>0) field[r][c]/=counts[r][c];
+  // Interpolate empty cells
   for(let pass=0;pass<8;pass++)
     for(let r=1;r<ROWS;r++)
       for(let c=1;c<COLS;c++)
@@ -1931,9 +1926,16 @@ function setSiteContourData(points){
           const n=field[r-1]?.[c]||0,s=field[r+1]?.[c]||0,w=field[r][c-1]||0,e=field[r][c+1]||0;
           field[r][c]=(n+s+w+e)/4;
         }
-  siteFieldData={field,COLS,ROWS,minZ,maxZ};
-  document.getElementById('contour-source-badge').textContent='↳ your site';
-  document.getElementById('contour-label').textContent='YOUR SITE — elevation '+minZ.toFixed(0)+'m – '+maxZ.toFixed(0)+'m';
+
+  siteFieldData={field,COLS,ROWS,minZ,maxZ,isFlat};
+
+  const badge = document.getElementById('contour-source-badge');
+  const label = document.getElementById('contour-label');
+  if(badge) badge.textContent='↳ your site';
+  if(label) label.textContent=(isFlat
+    ? 'FLAT SITE — elevation ~'+minZ.toFixed(1)+'m · colour fill (range < 0.5m)'
+    : 'YOUR SITE — elevation '+minZ.toFixed(0)+'m – '+maxZ.toFixed(0)+'m');
+
   document.getElementById('contour-placeholder').style.display='none';
   document.getElementById('contour-canvas').style.display='block';
   if(animFrame) cancelAnimationFrame(animFrame);
@@ -1951,46 +1953,74 @@ function clearSiteContourData(){
 }
 
 function drawContour(){
+function drawContour(){
   const canvas=document.getElementById('contour-canvas');
   if(!canvas||!siteFieldData) return;
   const dpr=Math.min(window.devicePixelRatio||1,2);
-  const W=canvas.offsetWidth||800,H=canvas.offsetHeight||320;
-  canvas.width=W*dpr;canvas.height=H*dpr;
+  const W=canvas.offsetWidth||800, H=canvas.offsetHeight||320;
+  canvas.width=W*dpr; canvas.height=H*dpr;
   const ctx=canvas.getContext('2d');
   ctx.setTransform(dpr,0,0,dpr,0,0);
   const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const {field,COLS,ROWS,isFlat}=siteFieldData;
+
   ctx.fillStyle=isDark?'#0d0d0c':'#f5f0ea';
   ctx.fillRect(0,0,W,H);
-  const {field,COLS,ROWS}=siteFieldData;
-  const lineColor=isDark?'rgba(154,186,106,':'rgba(94,102,49,';
-  const LEVELS=32;
-  for(let li=0;li<LEVELS;li++){
-    const t=li/LEVELS,level=t;
-    const alpha=isDark?(0.12+t*0.65):(0.18+t*0.55);
-    ctx.strokeStyle=lineColor+alpha+')';
-    ctx.lineWidth=t>0.65?0.9:0.5;
-    ctx.beginPath();
+
+  if(isFlat){
+    // Colour-fill heatmap for flat terrain — pixel grid
+    const cellW=W/COLS, cellH=H/ROWS;
     for(let r=0;r<ROWS;r++){
       for(let c=0;c<COLS;c++){
-        const v00=field[r][c],v10=field[r][c+1]||0;
-        const v01=field[r+1]?.[c]||0,v11=field[r+1]?.[c+1]||0;
-        const x0=c/COLS*W,x1=(c+1)/COLS*W,y0=r/ROWS*H,y1=(r+1)/ROWS*H;
-        const edges=[];
-        if((v00<level)!==(v10<level)){const f=(level-v00)/((v10-v00)||1e-9);edges.push([x0+f*(x1-x0),y0]);}
-        if((v10<level)!==(v11<level)){const f=(level-v10)/((v11-v10)||1e-9);edges.push([x1,y0+f*(y1-y0)]);}
-        if((v01<level)!==(v11<level)){const f=(level-v01)/((v11-v01)||1e-9);edges.push([x0+f*(x1-x0),y1]);}
-        if((v00<level)!==(v01<level)){const f=(level-v00)/((v01-v00)||1e-9);edges.push([x0,y0+f*(y1-y0)]);}
-        if(edges.length>=2){ctx.moveTo(edges[0][0],edges[0][1]);ctx.lineTo(edges[1][0],edges[1][1]);}
+        const t=field[r][c]; // already 0–1 normalised
+        // Subtle topo palette: deep olive → mid green → pale sand
+        const red  = Math.round(isDark ? 20+t*80  : 60+t*120);
+        const green= Math.round(isDark ? 60+t*90  : 100+t*100);
+        const blue = Math.round(isDark ? 20+t*40  : 40+t*60);
+        const alpha= isDark ? 0.55+t*0.35 : 0.45+t*0.4;
+        ctx.fillStyle=`rgba(${red},${green},${blue},${alpha})`;
+        ctx.fillRect(c*cellW, r*cellH, cellW+0.5, cellH+0.5);
       }
     }
-    ctx.stroke();
+    // Overlay label
+    ctx.fillStyle=isDark?'rgba(154,186,106,0.55)':'rgba(94,102,49,0.4)';
+    ctx.font='11px monospace';
+    ctx.textAlign='center';
+    ctx.fillText('flat terrain · colour fill · upgrade to Pro + LiDAR for contour detail', W/2, H-12);
+  } else {
+    // Contour line mode
+    const lineColor=isDark?'rgba(154,186,106,':'rgba(94,102,49,';
+    const LEVELS=32;
+    for(let li=0;li<LEVELS;li++){
+      const t=li/LEVELS, level=t;
+      const alpha=isDark?(0.12+t*0.65):(0.18+t*0.55);
+      ctx.strokeStyle=lineColor+alpha+')';
+      ctx.lineWidth=t>0.65?0.9:0.5;
+      ctx.beginPath();
+      for(let r=0;r<ROWS;r++){
+        for(let c=0;c<COLS;c++){
+          const v00=field[r][c], v10=field[r][c+1]||0;
+          const v01=field[r+1]?.[c]||0, v11=field[r+1]?.[c+1]||0;
+          const x0=c/COLS*W, x1=(c+1)/COLS*W, y0=r/ROWS*H, y1=(r+1)/ROWS*H;
+          const edges=[];
+          if((v00<level)!==(v10<level)){const f=(level-v00)/((v10-v00)||1e-9);edges.push([x0+f*(x1-x0),y0]);}
+          if((v10<level)!==(v11<level)){const f=(level-v10)/((v11-v10)||1e-9);edges.push([x1,y0+f*(y1-y0)]);}
+          if((v01<level)!==(v11<level)){const f=(level-v01)/((v11-v01)||1e-9);edges.push([x0+f*(x1-x0),y1]);}
+          if((v00<level)!==(v01<level)){const f=(level-v00)/((v01-v00)||1e-9);edges.push([x0,y0+f*(y1-y0)]);}
+          if(edges.length>=2){ctx.moveTo(edges[0][0],edges[0][1]);ctx.lineTo(edges[1][0],edges[1][1]);}
+        }
+      }
+      ctx.stroke();
+    }
   }
+
+  // Animated scan line — works in both modes
   const scanY=(animT%1)*H;
   const g=ctx.createLinearGradient(0,scanY-30,0,scanY+30);
   g.addColorStop(0,'rgba(154,186,106,0)');
   g.addColorStop(0.5,isDark?'rgba(154,186,106,0.07)':'rgba(94,102,49,0.05)');
   g.addColorStop(1,'rgba(154,186,106,0)');
-  ctx.fillStyle=g;ctx.fillRect(0,scanY-30,W,60);
+  ctx.fillStyle=g; ctx.fillRect(0,scanY-30,W,60);
   animT+=0.003;
   animFrame=requestAnimationFrame(drawContour);
 }
