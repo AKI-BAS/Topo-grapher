@@ -2431,7 +2431,9 @@ async function logGeneration(projectName, pointCount, spacing, areaM2, elevSourc
   });
 }
 
-// ── Save notify signup to Supabase ─────────────────────────────────────────
+// ── Save notify signup to Supabase + send confirmation email ───────────────
+const NOTIFY_WORKER_URL = 'https://topo-notify.svanur300.workers.dev';
+
 async function sendNotify() {
   const email = document.getElementById('notify-email').value.trim();
   const plan = document.getElementById('notify-plan').value;
@@ -2440,12 +2442,17 @@ async function sendNotify() {
   btn.textContent = '…';
   const { error } = await _sb.from('notify_signups').insert({ email, plan });
   if (error && error.code === '23505') {
-    // Already signed up
     document.getElementById('notify-success').textContent = "You're already on the list!";
   } else if (error) {
     document.getElementById('notify-success').textContent = 'Something went wrong — try again.';
   } else {
-    document.getElementById('notify-success').textContent = "✓ You're on the list. We'll email you when Pro launches — early signups get the first month free.";
+    document.getElementById('notify-success').textContent = "✓ You're on the list. Check your email for confirmation.";
+    // Fire confirmation email — don't await, don't block UI on failure
+    fetch(NOTIFY_WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, plan }),
+    }).catch(() => {}); // silent fail — signup is already saved to Supabase
   }
   document.getElementById('notify-success').classList.add('show');
   btn.textContent = 'Notify me →';
