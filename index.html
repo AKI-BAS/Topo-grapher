@@ -129,7 +129,7 @@ textarea { resize:vertical; width:100%; }
     scroll-snap-type:x mandatory;
     -webkit-overflow-scrolling:touch;
     gap:10px;
-    padding-bottom:10px;
+    padding: 4px calc(50vw - 31vw) 10px;
     scrollbar-width:none;
   }
   .accuracy-grid::-webkit-scrollbar { display:none; }
@@ -269,9 +269,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
     scroll-snap-type:x mandatory;
     -webkit-overflow-scrolling:touch;
     gap:14px;
-    padding-bottom:12px;
-    padding-left:2px;
-    padding-right:2px;
+    padding: 4px calc(50vw - 41vw) 12px;
     grid-template-columns:unset;
     scrollbar-width:none;
   }
@@ -324,6 +322,27 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 
 .addon-pill { background:var(--bg-input); border:1px solid var(--border-md); border-radius:5px; padding:12px 16px; font-size:12px; color:var(--text-mid); text-align:center; }
 .addon-pill span { display:block; color:var(--accent); font-size:14px; font-family:'Syne',sans-serif; font-weight:800; margin-top:4px; }
+.addon-pills-row { display:flex; gap:10px; flex-shrink:0; flex-wrap:wrap; align-items:flex-start; }
+@media(max-width:600px){
+  .addon-section-row { flex-direction:column; }
+  .addon-pills-row {
+    flex-wrap:nowrap;
+    overflow-x:scroll;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    padding: 4px calc(50vw - 35vw) 10px;
+    gap:10px;
+    scrollbar-width:none;
+    margin-top:14px;
+    width:100%;
+  }
+  .addon-pills-row::-webkit-scrollbar { display:none; }
+  .addon-pills-row .addon-pill {
+    flex:0 0 70vw;
+    max-width:240px;
+    scroll-snap-align:center;
+  }
+}
 
 /* ── WIREFRAME ────────────────────────────────────────────────────────────── */
 #wireframe-card { display:none; }
@@ -724,12 +743,12 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 
   <!-- Large site add-on -->
   <div class="card" style="margin-top:10px">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap;" class="addon-section-row">
       <div>
         <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--text);margin-bottom:6px;">Large Site Add-on <em style="color:var(--accent);font-style:normal;">// Pro &amp; Company</em></div>
         <div style="font-size:14px;color:var(--text-mid);line-height:1.7;max-width:520px;">For masterplans, landscape architecture, and infrastructure projects beyond 2×2km. Charged per generation — not per user.</div>
       </div>
-      <div style="display:flex;gap:10px;flex-shrink:0;flex-wrap:wrap;align-items:flex-start;">
+      <div class="addon-pills-row">
         <div class="addon-pill">Up to 5 km² <span>£5 / generation</span></div>
         <div class="addon-pill">Up to 20 km² <span>£15 / generation</span></div>
         <div class="addon-pill">Above 20 km² <span>Contact us</span></div>
@@ -1645,140 +1664,231 @@ function updateElevationSourceBanner(source, isPro) {
 }
 
 // ── Site map PNG export ────────────────────────────────────────────────────
-function downloadSiteMap() {
+// Tile helpers
+function lngToTileX(lng, z){ return Math.floor((lng+180)/360 * Math.pow(2,z)); }
+function latToTileY(lat, z){ const r=lat*Math.PI/180; return Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z)); }
+function tileToLng(x, z){ return x/Math.pow(2,z)*360-180; }
+function tileToLat(y, z){ const n=Math.PI-2*Math.PI*y/Math.pow(2,z); return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n))); }
+
+async function downloadSiteMap() {
   if(!csvData || !polygonLatLngs || polygonLatLngs.length === 0) return;
 
-  const W = 2400, H = 1800;
-  const PAD = 160, FOOTER = 220;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d');
+  // Pick best zoom — enough tiles to cover site without too many requests
+  const lats = polygonLatLngs.map(p=>p.lat), lons = polygonLatLngs.map(p=>p.lng);
+  const minLat=Math.min(...lats), maxLat=Math.max(...lats);
+  const minLon=Math.min(...lons), maxLon=Math.max(...lons);
+  // Add 15% padding around the site
+  const latPad=(maxLat-minLat)*0.18||0.002, lonPad=(maxLon-minLon)*0.18||0.002;
+  const bMinLat=minLat-latPad, bMaxLat=maxLat+latPad;
+  const bMinLon=minLon-lonPad, bMaxLon=maxLon+lonPad;
 
-  ctx.fillStyle = '#FAFAF8';
-  ctx.fillRect(0, 0, W, H);
-
-  const rows = csvData.split('\n').slice(1).filter(r=>r.trim()).map(r=>r.split(',').map(Number));
-  const xs = rows.map(r=>r[0]), ys = rows.map(r=>r[1]), zs = rows.map(r=>r[2]).filter(z=>isFinite(z));
-  const minX=Math.min(...xs), maxX=Math.max(...xs);
-  const minY=Math.min(...ys), maxY=Math.max(...ys);
-  const minZ=Math.min(...zs), maxZ=Math.max(...zs);
-  const rangeX=maxX-minX||1, rangeY=maxY-minY||1, zRange=maxZ-minZ||1;
-
-  const mapW = W - PAD*2, mapH = H - PAD - FOOTER;
-  const scale = Math.min(mapW/rangeX, mapH/rangeY) * 0.88;
-  const offX = PAD + (mapW - rangeX*scale)/2;
-  const offY = PAD + (mapH - rangeY*scale)/2;
-  const toS = (x,y) => [offX + (x-minX)*scale, offY + (maxY-y)*scale];
-
-  // Subtle grid lines
-  const gridStep = Math.pow(10, Math.floor(Math.log10(rangeX * 0.4)));
-  ctx.strokeStyle = 'rgba(0,0,0,0.055)';
-  ctx.lineWidth = 1;
-  for(let gx=Math.ceil(minX/gridStep)*gridStep; gx<=maxX; gx+=gridStep){
-    const [sx] = toS(gx, minY); ctx.beginPath(); ctx.moveTo(sx, offY); ctx.lineTo(sx, offY+rangeY*scale); ctx.stroke();
-  }
-  for(let gy=Math.ceil(minY/gridStep)*gridStep; gy<=maxY; gy+=gridStep){
-    const [,sy] = toS(minX, gy); ctx.beginPath(); ctx.moveTo(offX, sy); ctx.lineTo(offX+rangeX*scale, sy); ctx.stroke();
+  // Pick zoom so we get 4-12 tiles across
+  let zoom = 17;
+  for(let z=17; z>=10; z--){
+    const tx0=lngToTileX(bMinLon,z), tx1=lngToTileX(bMaxLon,z);
+    const ty0=latToTileY(bMaxLat,z), ty1=latToTileY(bMinLat,z);
+    if((tx1-tx0+1)*(ty1-ty0+1) <= 16){ zoom=z; break; }
   }
 
-  // Points coloured by elevation
-  const sorted = [...rows].sort((a,b)=>a[2]-b[2]);
-  sorted.forEach(([x,y,z]) => {
-    const t = (z-minZ)/zRange;
-    ctx.fillStyle = `rgba(${Math.round(20+t*135)},${Math.round(77+t*100)},${Math.round(30+t*90)},${0.55+t*0.3})`;
-    ctx.beginPath();
-    const [sx,sy] = toS(x,y);
-    ctx.arc(sx, sy, 2.2, 0, Math.PI*2);
-    ctx.fill();
+  const tx0=lngToTileX(bMinLon,zoom), tx1=lngToTileX(bMaxLon,zoom);
+  const ty0=latToTileY(bMaxLat,zoom), ty1=latToTileY(bMinLat,zoom);
+  const nTilesX=tx1-tx0+1, nTilesY=ty1-ty0+1;
+  const TILE=256;
+
+  // Canvas sized to tile grid, then we'll composite onto output canvas
+  const tileCanvasW=nTilesX*TILE, tileCanvasH=nTilesY*TILE;
+
+  // Geo extent of the tile grid
+  const gridMinLon=tileToLng(tx0,zoom);
+  const gridMaxLon=tileToLng(tx1+1,zoom);
+  const gridMaxLat=tileToLat(ty0,zoom);
+  const gridMinLat=tileToLat(ty1+1,zoom);
+
+  // Output canvas
+  const W=2400, H=1800;
+  const PAD=160, FOOTER=220;
+  const canvas=document.createElement('canvas');
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+
+  // Background fallback
+  ctx.fillStyle='#1a1f16';
+  ctx.fillRect(0,0,W,H);
+
+  // Map draw area
+  const mapW=W-PAD*2, mapH=H-PAD-FOOTER;
+
+  // ── Fetch and draw satellite tiles ──────────────────────────────────
+  const tilePromises=[];
+  for(let ty=ty0; ty<=ty1; ty++){
+    for(let tx=tx0; tx<=tx1; tx++){
+      tilePromises.push(new Promise(resolve=>{
+        const img=new Image();
+        img.crossOrigin='anonymous';
+        img.onload=()=>resolve({img,tx,ty});
+        img.onerror=()=>resolve(null);
+        img.src=`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${tx}`;
+      }));
+    }
+  }
+
+  const tiles = await Promise.all(tilePromises);
+
+  // Projection: geo → output canvas pixel (Mercator)
+  // Map the tile grid extent to the map area, maintaining aspect ratio
+  const lonRange=gridMaxLon-gridMinLon;
+  // Use Mercator Y for accurate projection
+  const mercY = (lat) => Math.log(Math.tan(Math.PI/4 + lat*Math.PI/360));
+  const mercMin=mercY(gridMinLat), mercMax=mercY(gridMaxLat), mercRange=mercMax-mercMin;
+  const aspectTile=lonRange/mercRange;
+  // Scale to fit map area preserving aspect
+  let scaleGeo;
+  if(mapW/mapH < aspectTile){ scaleGeo=mapW/lonRange; } else { scaleGeo=mapH/mercRange; }
+  const drawW=lonRange*scaleGeo, drawH=mercRange*scaleGeo;
+  const drawOffX=PAD+(mapW-drawW)/2, drawOffY=PAD+(mapH-drawH)/2;
+
+  const geoToCanvas=(lon,lat)=>{
+    const x=drawOffX+(lon-gridMinLon)*scaleGeo;
+    const y=drawOffY+(mercMax-mercY(lat))*scaleGeo;
+    return [x,y];
+  };
+
+  // Draw tiles
+  tiles.forEach(t=>{
+    if(!t) return;
+    const [px]=geoToCanvas(tileToLng(t.tx,zoom), tileToLat(t.ty,zoom));
+    const [,py]=geoToCanvas(tileToLng(t.tx,zoom), tileToLat(t.ty,zoom));
+    const [px2]=geoToCanvas(tileToLng(t.tx+1,zoom), tileToLat(t.ty+1,zoom));
+    const [,py2]=geoToCanvas(tileToLng(t.tx+1,zoom), tileToLat(t.ty+1,zoom));
+    ctx.drawImage(t.img, px, py, px2-px, py2-py);
   });
 
-  // Site boundary
-  const utmPoly = polygonLatLngs.map(p=>latLonToUTM(p.lat,p.lng));
-  const polyXs = utmPoly.map(p=>p.easting), polyYs = utmPoly.map(p=>p.northing);
-  const minPX=Math.min(...polyXs), minPY=Math.min(...polyYs);
-  const maxPX=Math.max(...polyXs), maxPY=Math.max(...polyYs);
-  const pRX=maxPX-minPX||1, pRY=maxPY-minPY||1;
-  const pScale = Math.min(mapW/pRX, mapH/pRY) * 0.88;
-  const pOffX = PAD + (mapW - pRX*pScale)/2;
-  const pOffY = PAD + (mapH - pRY*pScale)/2;
+  // ── Parse CSV ──────────────────────────────────────────────────────
+  const rows=csvData.split('\n').slice(1).filter(r=>r.trim()).map(r=>r.split(',').map(Number));
+  const zs=rows.map(r=>r[2]).filter(z=>isFinite(z));
+  const minZ=Math.min(...zs), maxZ=Math.max(...zs), zRange=maxZ-minZ||1;
+
+  // UTM polygon for outline
+  const utmPoly=polygonLatLngs.map(p=>latLonToUTM(p.lat,p.lng));
+  const polyXs=utmPoly.map(p=>p.easting), polyYs=utmPoly.map(p=>p.northing);
+  const minPX=Math.min(...polyXs), maxPY=Math.max(...polyYs);
+
+  // Use geo projection for polygon (it's in lat/lon)
   ctx.beginPath();
-  utmPoly.forEach((pt,i) => {
-    const sx = pOffX+(pt.easting-minPX)*pScale, sy = pOffY+(maxPY-pt.northing)*pScale;
+  polygonLatLngs.forEach((pt,i)=>{
+    const [sx,sy]=geoToCanvas(pt.lng,pt.lat);
     i===0 ? ctx.moveTo(sx,sy) : ctx.lineTo(sx,sy);
   });
   ctx.closePath();
-  ctx.fillStyle = 'rgba(28,77,51,0.06)'; ctx.fill();
-  ctx.strokeStyle = '#1C4D33'; ctx.lineWidth = 3; ctx.setLineDash([]); ctx.stroke();
+  ctx.strokeStyle='rgba(154,186,106,0.9)';
+  ctx.lineWidth=4;
+  ctx.setLineDash([]);
+  ctx.stroke();
+  ctx.fillStyle='rgba(154,186,106,0.07)';
+  ctx.fill();
 
-  // True north arrow — rotated by grid convergence angle
-  const meta = window._siteMapMeta || {};
-  const cLat = meta.centroidLat || polygonLatLngs.reduce((s,p)=>s+p.lat,0)/polygonLatLngs.length;
-  const cLon = meta.centroidLon || polygonLatLngs.reduce((s,p)=>s+p.lng,0)/polygonLatLngs.length;
-  const utmZoneNum = parseInt(meta.utmZone || '30');
-  const centralMeridian = (utmZoneNum - 1)*6 - 180 + 3;
-  const northAngle = (cLon - centralMeridian) * Math.sin(cLat * Math.PI/180) * Math.PI/180;
-  const aLen = 52, aX = W - PAD - 60, aY = PAD + 80;
+  // ── Point cloud projected via UTM → geo (we already have lat/lon from polygon,
+  //    but points are in UTM local coords — re-derive from CSV + grid origin)
+  // We need lat/lon per point. Re-generate from polygonLatLngs grid.
+  // Simpler: use the UTM centre + offset to back-compute approx lat/lon per point
+  const meta=window._siteMapMeta||{};
+  const cLat=meta.centroidLat||lats.reduce((a,b)=>a+b,0)/lats.length;
+  const cLon=meta.centroidLon||lons.reduce((a,b)=>a+b,0)/lons.length;
+  const mpd=metresPerDeg(cLat); // metres per degree at this latitude
+
+  // Get the UTM origin stored during generation
+  // We stored it in the CSV — row 0 offset. Actually re-derive from origin-info element
+  let oE=0, oN=0;
+  const originInfo=document.getElementById('origin-info');
+  if(originInfo){
+    const m=originInfo.innerHTML.match(/Easting: ([\d.]+).*Northing: ([\d.]+)/);
+    if(m){ oE=parseFloat(m[1]); oN=parseFloat(m[2]); }
+  }
+  if(!oE){ const utm0=latLonToUTM(cLat,cLon); oE=utm0.easting; oN=utm0.northing; }
+
+  const sorted=[...rows].sort((a,b)=>a[2]-b[2]);
+  sorted.forEach(([x,y,z])=>{
+    const t=(z-minZ)/zRange;
+    // Convert local UTM offset back to lat/lon
+    const ptLon=cLon+(x/mpd.lon);
+    const ptLat=cLat+(y/mpd.lat);
+    const [sx,sy]=geoToCanvas(ptLon,ptLat);
+    const r=Math.round(30+t*120), g=Math.round(120+t*80), b=Math.round(40+t*60);
+    ctx.fillStyle=`rgba(${r},${g},${b},${0.7+t*0.25})`;
+    ctx.beginPath();
+    ctx.arc(sx,sy,2.8,0,Math.PI*2);
+    ctx.fill();
+  });
+
+  // ── True north arrow ───────────────────────────────────────────────
+  const utmZoneNum=parseInt(meta.utmZone||'30');
+  const centralMeridian=(utmZoneNum-1)*6-180+3;
+  const northAngle=(cLon-centralMeridian)*Math.sin(cLat*Math.PI/180)*Math.PI/180;
+  const aLen=52, aX=W-PAD-60, aY=PAD+80;
   ctx.save();
-  ctx.translate(aX, aY);
+  ctx.translate(aX,aY);
   ctx.rotate(northAngle);
   ctx.beginPath(); ctx.moveTo(0,aLen*0.45); ctx.lineTo(aLen*0.22,0); ctx.lineTo(0,aLen*0.12); ctx.lineTo(-aLen*0.22,0); ctx.closePath();
-  ctx.fillStyle = '#C8C4BC'; ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fill();
   ctx.beginPath(); ctx.moveTo(0,-aLen); ctx.lineTo(aLen*0.22,0); ctx.lineTo(0,-aLen*0.12); ctx.lineTo(-aLen*0.22,0); ctx.closePath();
-  ctx.fillStyle = '#1C4D33'; ctx.fill();
+  ctx.fillStyle='#ffffff'; ctx.fill();
   ctx.rotate(-northAngle);
-  ctx.fillStyle = '#1C4D33'; ctx.font = '500 22px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('N', 0, -aLen - 12);
+  ctx.fillStyle='#ffffff'; ctx.font='500 22px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('N',0,-aLen-12);
   ctx.restore();
 
-  // Elevation legend
-  const legX = W - PAD - 26, legY = PAD + 180, legH = 220, legW = 14;
-  const grad = ctx.createLinearGradient(0, legY+legH, 0, legY);
-  grad.addColorStop(0, 'rgba(20,77,30,0.9)'); grad.addColorStop(0.5,'rgba(94,130,60,0.9)'); grad.addColorStop(1,'rgba(155,177,120,0.9)');
-  ctx.fillStyle = grad; ctx.fillRect(legX, legY, legW, legH);
-  ctx.fillStyle = '#3a3a30'; ctx.font = '20px monospace'; ctx.textAlign = 'left';
-  ctx.fillText(maxZ.toFixed(0)+'m', legX+legW+10, legY+8);
-  ctx.fillText(((minZ+maxZ)/2).toFixed(0)+'m', legX+legW+10, legY+legH/2+6);
-  ctx.fillText(minZ.toFixed(0)+'m', legX+legW+10, legY+legH+4);
+  // ── Elevation legend ───────────────────────────────────────────────
+  const legX=W-PAD-26, legY=PAD+180, legH=220, legW=14;
+  const grad=ctx.createLinearGradient(0,legY+legH,0,legY);
+  grad.addColorStop(0,'rgba(30,120,40,0.9)'); grad.addColorStop(0.5,'rgba(94,170,60,0.9)'); grad.addColorStop(1,'rgba(180,210,120,0.9)');
+  ctx.fillStyle=grad; ctx.fillRect(legX,legY,legW,legH);
+  ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.font='20px monospace'; ctx.textAlign='left';
+  ctx.fillText(maxZ.toFixed(0)+'m',legX+legW+10,legY+8);
+  ctx.fillText(((minZ+maxZ)/2).toFixed(0)+'m',legX+legW+10,legY+legH/2+6);
+  ctx.fillText(minZ.toFixed(0)+'m',legX+legW+10,legY+legH+4);
 
-  // Scale bar
-  const targetM = rangeX * 0.18;
-  const mag = Math.pow(10, Math.floor(Math.log10(targetM)));
-  const nice = [1,2,5,10].map(n=>n*mag).find(n=>n>=targetM*0.5) || mag;
-  const barPx = nice * scale;
-  const sbX = PAD, sbY = H - FOOTER + 44;
-  for(let seg=0; seg<2; seg++){
-    ctx.fillStyle = seg%2===0 ? '#1C4D33' : '#888880';
-    ctx.fillRect(sbX + seg*(barPx/2), sbY, barPx/2, 9);
+  // ── Scale bar ──────────────────────────────────────────────────────
+  const siteLonRange=(maxLon-minLon)*mpd.lon;
+  const targetM=siteLonRange*0.18;
+  const mag=Math.pow(10,Math.floor(Math.log10(targetM)));
+  const nice=[1,2,5,10].map(n=>n*mag).find(n=>n>=targetM*0.5)||mag;
+  // Scale bar pixel width — how many px is 'nice' metres at this geo scale
+  const [sbL]=geoToCanvas(minLon,cLat), [sbR]=geoToCanvas(minLon+nice/mpd.lon,cLat);
+  const barPx=sbR-sbL;
+  const sbX=PAD, sbY=H-FOOTER+44;
+  for(let seg=0;seg<2;seg++){
+    ctx.fillStyle=seg%2===0?'rgba(255,255,255,0.9)':'rgba(255,255,255,0.5)';
+    ctx.fillRect(sbX+seg*(barPx/2),sbY,barPx/2,9);
   }
-  ctx.fillStyle = '#1C4D33';
-  ctx.fillRect(sbX, sbY-6, 2, 21); ctx.fillRect(sbX+barPx, sbY-6, 2, 21); ctx.fillRect(sbX+barPx/2, sbY-3, 1.5, 15);
-  ctx.font = '20px monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#3a3a30';
-  ctx.fillText('0', sbX, sbY+28);
-  ctx.fillText(nice >= 1000 ? (nice/1000)+'km' : nice+'m', sbX+barPx, sbY+28);
+  ctx.fillStyle='rgba(255,255,255,0.9)';
+  ctx.fillRect(sbX,sbY-6,2,21); ctx.fillRect(sbX+barPx,sbY-6,2,21); ctx.fillRect(sbX+barPx/2,sbY-3,1.5,15);
+  ctx.font='20px monospace'; ctx.textAlign='center'; ctx.fillStyle='rgba(255,255,255,0.9)';
+  ctx.fillText('0',sbX,sbY+28);
+  ctx.fillText(nice>=1000?(nice/1000)+'km':nice+'m',sbX+barPx,sbY+28);
 
-  // Footer text — no box
-  const fy = H - FOOTER + 90;
-  ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(PAD, H-FOOTER+12); ctx.lineTo(W-PAD, H-FOOTER+12); ctx.stroke();
-  ctx.fillStyle = '#111110'; ctx.font = '500 52px sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText(projectName, PAD, fy);
-  const sourceEl = document.getElementById('esb-detail');
-  const sourceStr = sourceEl ? sourceEl.textContent.replace(' · source: ','  ·  ') : (meta.source||'topo-grapher.com');
-  ctx.fillStyle = '#5a5a50'; ctx.font = '26px monospace';
-  ctx.fillText(sourceStr, PAD, fy+42);
-  ctx.fillStyle = '#8a8a80'; ctx.font = '22px monospace';
-  ctx.fillText(`${rows.length.toLocaleString()} points  ·  elev. ${minZ.toFixed(0)}–${maxZ.toFixed(0)}m  ·  ${Math.round(rangeX)}×${Math.round(rangeY)}m`, PAD, fy+78);
-  ctx.textAlign = 'right';
-  ctx.fillText(new Date().toISOString().slice(0,10)+'  ·  topo-grapher.com', W-PAD, fy+78);
+  // ── Footer ─────────────────────────────────────────────────────────
+  // Semi-transparent dark strip
+  ctx.fillStyle='rgba(10,14,8,0.72)';
+  ctx.fillRect(0,H-FOOTER,W,FOOTER);
+  const fy=H-FOOTER+70;
+  ctx.fillStyle='rgba(255,255,255,0.95)'; ctx.font='500 52px sans-serif'; ctx.textAlign='left';
+  ctx.fillText(projectName,PAD,fy);
+  const sourceEl=document.getElementById('esb-detail');
+  const sourceStr=sourceEl?sourceEl.textContent.replace(' · source: ','  ·  '):(meta.source||'topo-grapher.com');
+  ctx.fillStyle='rgba(154,186,106,0.9)'; ctx.font='26px monospace';
+  ctx.fillText(sourceStr,PAD,fy+44);
+  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='22px monospace';
+  ctx.fillText(`${rows.length.toLocaleString()} points  ·  elev. ${minZ.toFixed(0)}–${maxZ.toFixed(0)}m  ·  ${Math.round(siteLonRange)}×${Math.round((maxLat-minLat)*mpd.lat)}m`,PAD,fy+82);
+  ctx.textAlign='right';
+  ctx.fillText(new Date().toISOString().slice(0,10)+'  ·  topo-grapher.com',W-PAD,fy+82);
 
-  const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
-  const a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
-  a.download = `${safe}_sitemap.png`;
+  // ── Download ───────────────────────────────────────────────────────
+  const safe=projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
+  const a=document.createElement('a');
+  a.href=canvas.toDataURL('image/png');
+  a.download=`${safe}_sitemap.png`;
   a.click();
 }
-
-
 // ── Contour renderer ────────────────────────────────────────────────────────
 let animFrame=null, animT=0;
 let siteFieldData=null;
