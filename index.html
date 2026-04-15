@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Topo-grapher — Terrain Intelligence for BIM</title>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-W75YS5C5EG"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-W75YS5C5EG');
+</script>
 
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -115,6 +122,23 @@ textarea { resize:vertical; width:100%; }
 
 /* ACCURACY */
 .accuracy-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+@media(max-width:600px){
+  .accuracy-grid {
+    display:flex;
+    overflow-x:scroll;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    gap:10px;
+    padding-bottom:10px;
+    scrollbar-width:none;
+  }
+  .accuracy-grid::-webkit-scrollbar { display:none; }
+  .accuracy-grid .acc-btn {
+    flex:0 0 62vw;
+    max-width:220px;
+    scroll-snap-align:center;
+  }
+}
 .acc-btn { background:var(--bg-input); border:1px solid var(--border-md); border-radius:6px; padding:14px 10px; cursor:pointer; transition:all .18s; text-align:center; }
 .acc-btn:hover { border-color:var(--accent-md); }
 .acc-btn.selected { background:var(--accent-dk); border-color:var(--accent-md); }
@@ -238,11 +262,34 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 
 /* ── TIERS ────────────────────────────────────────────────────────────────── */
 .tier-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:0; }
-@media(max-width:860px){ .tier-grid { grid-template-columns:1fr; } }
+@media(max-width:860px){
+  .tier-grid {
+    display:flex;
+    overflow-x:scroll;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    gap:14px;
+    padding-bottom:12px;
+    padding-left:2px;
+    padding-right:2px;
+    grid-template-columns:unset;
+    scrollbar-width:none;
+  }
+  .tier-grid::-webkit-scrollbar { display:none; }
+  .tier-grid .tier-card {
+    flex:0 0 82vw;
+    max-width:340px;
+    scroll-snap-align:center;
+  }
+}
 
 .tier-card { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:24px; display:flex; flex-direction:column; position:relative; transition:background .2s,border-color .2s; }
 /* Pro card: dark background with HIGH contrast text — not green-on-green */
 .tier-card--pro { border-color:var(--accent-md); border-width:2px; background:var(--bg-card); }
+.tier-dots { display:none; justify-content:center; gap:7px; margin-top:10px; }
+@media(max-width:860px){ .tier-dots { display:flex; } }
+.tier-dot { width:6px; height:6px; border-radius:50%; background:var(--border-md); transition:background .2s,transform .2s; cursor:pointer; }
+.tier-dot.active { background:var(--accent); transform:scale(1.3); }
 
 .tier-badge { position:absolute; top:-1px; right:20px; background:var(--forest); color:#EFE3D8; font-size:10px; letter-spacing:.1em; text-transform:uppercase; padding:4px 10px; border-radius:0 0 4px 4px; }
 
@@ -346,10 +393,9 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   .card { padding: 14px; }
   #tool { width: 100% !important; padding: 0 12px; box-sizing: border-box; }
   #map { height: 260px; }
-  .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .stat-row { grid-template-columns: repeat(2, 1fr) !important; }
-  .tier-grid { grid-template-columns: 1fr !important; }
+  .tier-grid .tier-card { flex: 0 0 88vw; }
   .addon-grid { grid-template-columns: 1fr !important; }
   .tool-header { flex-direction: column; gap: 8px; align-items: flex-start !important; }
   .draw-controls { flex-wrap: wrap; gap: 6px; }
@@ -389,7 +435,6 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 @media (max-width: 480px) {
   .nav-logo { font-size: 15px; }
   .hero h1 { font-size: 24px; }
-  .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .acc-btn { padding: 10px 8px; }
   .acc-m { font-size: 16px; }
   .acc-d { font-size: 10px; }
@@ -401,7 +446,6 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   .user-btn { font-size: 10px; padding: 5px 9px; }
 }
 
-  .acc-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .stat-row { grid-template-columns: repeat(2, 1fr) !important; }
   .nav-right gap { gap: 6px; }
 }
@@ -419,7 +463,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 <body>
 
 <nav>
-  <a class="nav-brand" href="#">
+  <a class="nav-brand" href="#" onclick="location.reload();return false;">
     <span class="nav-logo">Topo<em>-grapher</em></span>
     <span class="nav-sep"></span>
     <span class="nav-tag">Terrain Intelligence for BIM</span>
@@ -489,12 +533,12 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   <div class="card">
     <div class="card-label">03 — Point density</div>
     <div class="accuracy-grid">
-      <div class="acc-btn" id="acc-3" onclick="setAccuracy(3)"><div class="acc-m">3m</div><div class="acc-d">Highest detail — small or complex sites</div><div class="acc-p" id="pts-3">— pts</div><div style="font-size:10px;color:var(--accent-md);margin-top:4px;letter-spacing:.06em">// Pro</div></div>
-      <div class="acc-btn" id="acc-6" onclick="setAccuracy(6)"><div class="acc-m">6m</div><div class="acc-d">Recommended for most sites</div><div class="acc-p" id="pts-6">— pts</div><div style="font-size:10px;color:var(--accent-md);margin-top:4px;letter-spacing:.06em">// Pro</div></div>
-      <div class="acc-btn selected" id="acc-12" onclick="setAccuracy(12)"><div class="acc-m">12m</div><div class="acc-d">Free tier — up to 500×500m</div><div class="acc-p" id="pts-12">— pts</div><div style="font-size:10px;color:var(--text-soft);margin-top:4px;letter-spacing:.06em">// Free</div></div>
-      <div class="acc-btn" id="acc-20" onclick="setAccuracy(20)"><div class="acc-m">20m</div><div class="acc-d">Low — very large areas</div><div class="acc-p" id="pts-20">— pts</div><div style="font-size:10px;color:var(--text-soft);margin-top:4px;letter-spacing:.06em">// Free</div></div>
+      <div class="acc-btn" id="acc-3" onclick="setAccuracy(3)"><div class="acc-m">Detail</div><div class="acc-d">3m — small or complex sites</div><div class="acc-p" id="pts-3">— pts</div><div style="font-size:10px;color:var(--accent-md);margin-top:4px;letter-spacing:.06em">// Pro</div></div>
+      <div class="acc-btn" id="acc-6" onclick="setAccuracy(6)"><div class="acc-m">Balanced</div><div class="acc-d">6m — most architectural sites</div><div class="acc-p" id="pts-6">— pts</div><div style="font-size:10px;color:var(--accent-md);margin-top:4px;letter-spacing:.06em">// Pro</div></div>
+      <div class="acc-btn selected" id="acc-12" onclick="setAccuracy(12)"><div class="acc-m">Overview</div><div class="acc-d">12m — large sites, free tier</div><div class="acc-p" id="pts-12">— pts</div><div style="font-size:10px;color:var(--text-soft);margin-top:4px;letter-spacing:.06em">// Free</div></div>
+      <div class="acc-btn" id="acc-20" onclick="setAccuracy(20)"><div class="acc-m">Masterplan</div><div class="acc-d">20m — landscape &amp; infrastructure</div><div class="acc-p" id="pts-20">— pts</div><div style="font-size:10px;color:var(--text-soft);margin-top:4px;letter-spacing:.06em">// Free</div></div>
     </div>
-    <div class="acc-note">⚠ Points above ~2,000 take longer to fetch. Use 12m or 20m for large sites.</div>
+    <div class="acc-note">⚠ Points above ~2,000 take longer to fetch. Use Overview or Masterplan for large sites.</div>
   </div>
 
   <div class="card">
@@ -506,9 +550,9 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
         <option value="centroid">Centroid of site area</option>
       </select>
     </div>
-    <div class="option-row" id="scatter-row" style="opacity:0.4;pointer-events:none;">
+    <div class="option-row" id="scatter-row">
       <div>
-        <div class="option-label">Point distribution <span style="font-size:10px;color:var(--accent-md);letter-spacing:.06em;margin-left:6px;">// Pro</span></div>
+        <div class="option-label">Point distribution</div>
         <div class="option-desc" id="scatter-desc">Uniform grid — predictable, compatible with all BIM tools</div>
       </div>
       <select id="scatter-select" onchange="updateScatterDesc()">
@@ -666,9 +710,16 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
         <li class="feat-ok">Invoiced billing available</li>
         <li class="feat-add">Large site add-on available</li>
       </ul>
-      <button class="tier-cta" id="checkout-btn-company" onclick="startCheckout('company')">Get Company →</button>
+      <button class="tier-cta" id="checkout-btn-company" onclick="if(!_currentUser){openAuth();return;}document.getElementById('seat-picker-overlay').classList.add('show');updateSeatTotal();">Get Company →</button>
     </div>
 
+  </div>
+
+  <!-- Mobile carousel dots -->
+  <div class="tier-dots" id="tier-dots">
+    <span class="tier-dot active" data-i="0"></span>
+    <span class="tier-dot" data-i="1"></span>
+    <span class="tier-dot" data-i="2"></span>
   </div>
 
   <!-- Large site add-on -->
@@ -1298,22 +1349,18 @@ function tryUnlockPro(code) {
 }
 
 function applyProUI() {
-  if (!isProUnlocked()) return;
-  // Show pro badge in nav
+  const hasProPlan = _currentProfile && (_currentProfile.plan === 'pro' || _currentProfile.plan === 'company');
+  if (!isProUnlocked() && !hasProPlan) return;
   const badge = document.getElementById('pro-status-badge');
   if (badge) { badge.textContent = 'Pro ✓'; badge.style.background = 'var(--forest)'; badge.style.color = '#EFE3D8'; badge.style.borderColor = 'var(--green-lt)'; }
-  // Unlock spacing buttons — remove // Pro labels, enable selection
   ['acc-3','acc-6'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
   });
-  // Unlock point distribution toggle
   const scatterRow = document.getElementById('scatter-row');
   if (scatterRow) { scatterRow.style.opacity = '1'; scatterRow.style.pointerEvents = 'auto'; }
-  // Hide the daily limit badge
   const lb = document.getElementById('daily-limit-badge');
   if (lb) lb.style.display = 'none';
-  // Hide unlock prompt if visible
   const up = document.getElementById('pro-unlock-wrap');
   if (up) up.style.display = 'none';
 }
@@ -1401,7 +1448,7 @@ async function convert(){
     }
 
         await checkDailyLimit();
-    const isNatural = isPro && document.getElementById('scatter-select')?.value === 'natural';
+    const isNatural = document.getElementById('scatter-select')?.value === 'natural';
     const effSpacing = window._effectiveSpacing || selectedSpacing;
     const grid = generateGrid(polygonLatLngs, effSpacing, isNatural);
     if(grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
@@ -1480,6 +1527,13 @@ async function convert(){
     logGeneration(projectName, cleanOut.length, selectedSpacing, _siteArea, source||'unknown');
     saveProMemory(projectName, selectedSpacing, csvData, source||'unknown');
     updateElevationSourceBanner(source||'unknown', isPro);
+    // Save globals for site map export
+    window._siteMapMeta = {
+      source: source || 'unknown',
+      centroidLat: polygonLatLngs.reduce((s,p)=>s+p.lat,0)/polygonLatLngs.length,
+      centroidLon: polygonLatLngs.reduce((s,p)=>s+p.lng,0)/polygonLatLngs.length,
+      utmZone: utm[0].zone,
+    };
     setSiteContourData(out);
 
     const displayPts = typeof cleanOut !== 'undefined' ? cleanOut : out;
@@ -1594,118 +1648,129 @@ function updateElevationSourceBanner(source, isPro) {
 function downloadSiteMap() {
   if(!csvData || !polygonLatLngs || polygonLatLngs.length === 0) return;
 
-  const W = 1200, H = 900;
+  const W = 2400, H = 1800;
+  const PAD = 160, FOOTER = 220;
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
-  const isDark = false; // always export light for print
 
-  // Background
-  ctx.fillStyle = '#f5f0ea';
+  ctx.fillStyle = '#FAFAF8';
   ctx.fillRect(0, 0, W, H);
 
-  // Parse CSV for stats
-  const rows = csvData.split('\n').slice(1).filter(r=>r).map(r=>r.split(',').map(Number));
-  const xs = rows.map(r=>r[0]), ys = rows.map(r=>r[1]), zs = rows.map(r=>r[2]);
+  const rows = csvData.split('\n').slice(1).filter(r=>r.trim()).map(r=>r.split(',').map(Number));
+  const xs = rows.map(r=>r[0]), ys = rows.map(r=>r[1]), zs = rows.map(r=>r[2]).filter(z=>isFinite(z));
   const minX=Math.min(...xs), maxX=Math.max(...xs);
   const minY=Math.min(...ys), maxY=Math.max(...ys);
   const minZ=Math.min(...zs), maxZ=Math.max(...zs);
-  const rangeX=maxX-minX||1, rangeY=maxY-minY||1;
+  const rangeX=maxX-minX||1, rangeY=maxY-minY||1, zRange=maxZ-minZ||1;
 
-  // Map area with margin
-  const margin = 80, mapW = W - margin*2, mapH = H - 200;
-  const scaleX = mapW / rangeX, scaleY = mapH / rangeY;
-  const scale = Math.min(scaleX, scaleY);
-  const offX = margin + (mapW - rangeX*scale)/2;
-  const offY = margin + (mapH - rangeY*scale)/2;
+  const mapW = W - PAD*2, mapH = H - PAD - FOOTER;
+  const scale = Math.min(mapW/rangeX, mapH/rangeY) * 0.88;
+  const offX = PAD + (mapW - rangeX*scale)/2;
+  const offY = PAD + (mapH - rangeY*scale)/2;
+  const toS = (x,y) => [offX + (x-minX)*scale, offY + (maxY-y)*scale];
 
-  const toScreen = (x, y) => [offX + (x-minX)*scale, offY + (maxY-y)*scale];
+  // Subtle grid lines
+  const gridStep = Math.pow(10, Math.floor(Math.log10(rangeX * 0.4)));
+  ctx.strokeStyle = 'rgba(0,0,0,0.055)';
+  ctx.lineWidth = 1;
+  for(let gx=Math.ceil(minX/gridStep)*gridStep; gx<=maxX; gx+=gridStep){
+    const [sx] = toS(gx, minY); ctx.beginPath(); ctx.moveTo(sx, offY); ctx.lineTo(sx, offY+rangeY*scale); ctx.stroke();
+  }
+  for(let gy=Math.ceil(minY/gridStep)*gridStep; gy<=maxY; gy+=gridStep){
+    const [,sy] = toS(minX, gy); ctx.beginPath(); ctx.moveTo(offX, sy); ctx.lineTo(offX+rangeX*scale, sy); ctx.stroke();
+  }
 
-  // Colour points by elevation
-  const zRange = maxZ - minZ || 1;
-  rows.forEach(([x,y,z]) => {
+  // Points coloured by elevation
+  const sorted = [...rows].sort((a,b)=>a[2]-b[2]);
+  sorted.forEach(([x,y,z]) => {
     const t = (z-minZ)/zRange;
-    const r = Math.round(28 + t*60), g = Math.round(100 + t*80), b = Math.round(50 - t*20);
-    ctx.fillStyle = `rgba(${r},${g},${b},0.55)`;
+    ctx.fillStyle = `rgba(${Math.round(20+t*135)},${Math.round(77+t*100)},${Math.round(30+t*90)},${0.55+t*0.3})`;
     ctx.beginPath();
-    const [sx,sy] = toScreen(x,y);
-    ctx.arc(sx, sy, 1.8, 0, Math.PI*2);
+    const [sx,sy] = toS(x,y);
+    ctx.arc(sx, sy, 2.2, 0, Math.PI*2);
     ctx.fill();
   });
 
-  // Polygon outline
-  ctx.beginPath();
-  const lats = polygonLatLngs.map(p=>p.lat), lons = polygonLatLngs.map(p=>p.lng);
+  // Site boundary
   const utmPoly = polygonLatLngs.map(p=>latLonToUTM(p.lat,p.lng));
   const polyXs = utmPoly.map(p=>p.easting), polyYs = utmPoly.map(p=>p.northing);
   const minPX=Math.min(...polyXs), minPY=Math.min(...polyYs);
   const maxPX=Math.max(...polyXs), maxPY=Math.max(...polyYs);
-  const polyRangeX=maxPX-minPX||1, polyRangeY=maxPY-minPY||1;
-  const polyScale = Math.min(mapW/polyRangeX, mapH/polyRangeY) * 0.85;
-  const polyOffX = margin + (mapW - polyRangeX*polyScale)/2;
-  const polyOffY = margin + (mapH - polyRangeY*polyScale)/2;
-  const toPolyScreen = (ex,ey) => [polyOffX+(ex-minPX)*polyScale, polyOffY+(maxPY-ey)*polyScale];
-
+  const pRX=maxPX-minPX||1, pRY=maxPY-minPY||1;
+  const pScale = Math.min(mapW/pRX, mapH/pRY) * 0.88;
+  const pOffX = PAD + (mapW - pRX*pScale)/2;
+  const pOffY = PAD + (mapH - pRY*pScale)/2;
   ctx.beginPath();
   utmPoly.forEach((pt,i) => {
-    const [sx,sy] = toPolyScreen(pt.easting, pt.northing);
+    const sx = pOffX+(pt.easting-minPX)*pScale, sy = pOffY+(maxPY-pt.northing)*pScale;
     i===0 ? ctx.moveTo(sx,sy) : ctx.lineTo(sx,sy);
   });
   ctx.closePath();
-  ctx.strokeStyle = '#1C4D33';
-  ctx.lineWidth = 2.5;
-  ctx.setLineDash([]);
-  ctx.stroke();
-  ctx.fillStyle = 'rgba(28,77,51,0.08)';
-  ctx.fill();
+  ctx.fillStyle = 'rgba(28,77,51,0.06)'; ctx.fill();
+  ctx.strokeStyle = '#1C4D33'; ctx.lineWidth = 3; ctx.setLineDash([]); ctx.stroke();
 
-  // North arrow (top-right)
-  const arrowX = W - 70, arrowY = 100;
+  // True north arrow — rotated by grid convergence angle
+  const meta = window._siteMapMeta || {};
+  const cLat = meta.centroidLat || polygonLatLngs.reduce((s,p)=>s+p.lat,0)/polygonLatLngs.length;
+  const cLon = meta.centroidLon || polygonLatLngs.reduce((s,p)=>s+p.lng,0)/polygonLatLngs.length;
+  const utmZoneNum = parseInt(meta.utmZone || '30');
+  const centralMeridian = (utmZoneNum - 1)*6 - 180 + 3;
+  const northAngle = (cLon - centralMeridian) * Math.sin(cLat * Math.PI/180) * Math.PI/180;
+  const aLen = 52, aX = W - PAD - 60, aY = PAD + 80;
   ctx.save();
-  ctx.translate(arrowX, arrowY);
-  ctx.beginPath(); ctx.moveTo(0,-28); ctx.lineTo(10,10); ctx.lineTo(0,4); ctx.lineTo(-10,10); ctx.closePath();
+  ctx.translate(aX, aY);
+  ctx.rotate(northAngle);
+  ctx.beginPath(); ctx.moveTo(0,aLen*0.45); ctx.lineTo(aLen*0.22,0); ctx.lineTo(0,aLen*0.12); ctx.lineTo(-aLen*0.22,0); ctx.closePath();
+  ctx.fillStyle = '#C8C4BC'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0,-aLen); ctx.lineTo(aLen*0.22,0); ctx.lineTo(0,-aLen*0.12); ctx.lineTo(-aLen*0.22,0); ctx.closePath();
   ctx.fillStyle = '#1C4D33'; ctx.fill();
-  ctx.beginPath(); ctx.moveTo(0,28); ctx.lineTo(10,-10); ctx.lineTo(0,-4); ctx.lineTo(-10,-10); ctx.closePath();
-  ctx.fillStyle = '#ccc'; ctx.fill();
-  ctx.fillStyle = '#1C4D33';
-  ctx.font = 'bold 13px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('N', 0, -34);
+  ctx.rotate(-northAngle);
+  ctx.fillStyle = '#1C4D33'; ctx.font = '500 22px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('N', 0, -aLen - 12);
   ctx.restore();
 
+  // Elevation legend
+  const legX = W - PAD - 26, legY = PAD + 180, legH = 220, legW = 14;
+  const grad = ctx.createLinearGradient(0, legY+legH, 0, legY);
+  grad.addColorStop(0, 'rgba(20,77,30,0.9)'); grad.addColorStop(0.5,'rgba(94,130,60,0.9)'); grad.addColorStop(1,'rgba(155,177,120,0.9)');
+  ctx.fillStyle = grad; ctx.fillRect(legX, legY, legW, legH);
+  ctx.fillStyle = '#3a3a30'; ctx.font = '20px monospace'; ctx.textAlign = 'left';
+  ctx.fillText(maxZ.toFixed(0)+'m', legX+legW+10, legY+8);
+  ctx.fillText(((minZ+maxZ)/2).toFixed(0)+'m', legX+legW+10, legY+legH/2+6);
+  ctx.fillText(minZ.toFixed(0)+'m', legX+legW+10, legY+legH+4);
+
   // Scale bar
-  const scaleBarM = Math.pow(10, Math.floor(Math.log10(rangeX * 0.3)));
-  const scaleBarPx = scaleBarM * scale;
-  const sbX = margin, sbY = H - 140;
+  const targetM = rangeX * 0.18;
+  const mag = Math.pow(10, Math.floor(Math.log10(targetM)));
+  const nice = [1,2,5,10].map(n=>n*mag).find(n=>n>=targetM*0.5) || mag;
+  const barPx = nice * scale;
+  const sbX = PAD, sbY = H - FOOTER + 44;
+  for(let seg=0; seg<2; seg++){
+    ctx.fillStyle = seg%2===0 ? '#1C4D33' : '#888880';
+    ctx.fillRect(sbX + seg*(barPx/2), sbY, barPx/2, 9);
+  }
   ctx.fillStyle = '#1C4D33';
-  ctx.fillRect(sbX, sbY, scaleBarPx, 3);
-  ctx.fillRect(sbX, sbY-5, 2, 13);
-  ctx.fillRect(sbX+scaleBarPx, sbY-5, 2, 13);
-  ctx.font = '11px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(scaleBarM >= 1000 ? (scaleBarM/1000)+'km' : scaleBarM+'m', sbX + scaleBarPx/2, sbY+16);
+  ctx.fillRect(sbX, sbY-6, 2, 21); ctx.fillRect(sbX+barPx, sbY-6, 2, 21); ctx.fillRect(sbX+barPx/2, sbY-3, 1.5, 15);
+  ctx.font = '20px monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#3a3a30';
+  ctx.fillText('0', sbX, sbY+28);
+  ctx.fillText(nice >= 1000 ? (nice/1000)+'km' : nice+'m', sbX+barPx, sbY+28);
 
-  // Title block (bottom)
-  ctx.fillStyle = '#1C4D33';
-  ctx.fillRect(0, H-100, W, 100);
-  ctx.fillStyle = '#EFE3D8';
-  ctx.font = 'bold 22px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText(projectName.toUpperCase(), margin, H-65);
-  ctx.font = '12px monospace';
-  ctx.fillStyle = '#9aba6a';
+  // Footer text — no box
+  const fy = H - FOOTER + 90;
+  ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(PAD, H-FOOTER+12); ctx.lineTo(W-PAD, H-FOOTER+12); ctx.stroke();
+  ctx.fillStyle = '#111110'; ctx.font = '500 52px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(projectName, PAD, fy);
   const sourceEl = document.getElementById('esb-detail');
-  const sourceStr = sourceEl ? sourceEl.textContent : 'topo-grapher.com';
-  ctx.fillText(sourceStr, margin, H-42);
-  ctx.fillText('Elev. range: ' + minZ.toFixed(1) + 'm – ' + maxZ.toFixed(1) + 'm  ·  ' + rows.length.toLocaleString() + ' points  ·  topo-grapher.com', margin, H-20);
-
-  // Date (right)
+  const sourceStr = sourceEl ? sourceEl.textContent.replace(' · source: ','  ·  ') : (meta.source||'topo-grapher.com');
+  ctx.fillStyle = '#5a5a50'; ctx.font = '26px monospace';
+  ctx.fillText(sourceStr, PAD, fy+42);
+  ctx.fillStyle = '#8a8a80'; ctx.font = '22px monospace';
+  ctx.fillText(`${rows.length.toLocaleString()} points  ·  elev. ${minZ.toFixed(0)}–${maxZ.toFixed(0)}m  ·  ${Math.round(rangeX)}×${Math.round(rangeY)}m`, PAD, fy+78);
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#9aba6a';
-  ctx.font = '11px monospace';
-  ctx.fillText(new Date().toISOString().slice(0,10), W-margin, H-20);
+  ctx.fillText(new Date().toISOString().slice(0,10)+'  ·  topo-grapher.com', W-PAD, fy+78);
 
-  // Download
   const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
   const a = document.createElement('a');
   a.href = canvas.toDataURL('image/png');
@@ -2432,6 +2497,42 @@ async function logGeneration(projectName, pointCount, spacing, areaM2, elevSourc
   });
 }
 
+// ── Seat picker ────────────────────────────────────────────────────────────
+function updateSeatTotal() {
+  const n = Math.max(2, parseInt(document.getElementById('seat-count-input').value) || 2);
+  document.getElementById('seat-count-input').value = n;
+  const total = (n * 19.99).toFixed(2);
+  document.getElementById('seat-total').textContent = '£' + total + '/month';
+}
+
+async function confirmSeatCheckout() {
+  const seats = Math.max(2, parseInt(document.getElementById('seat-count-input').value) || 2);
+  document.getElementById('seat-picker-overlay').classList.remove('show');
+  if (!_currentUser) { openAuth(); return; }
+  const btn = document.getElementById('checkout-btn-company');
+  if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
+  try {
+    const res = await fetch(WEBHOOK_WORKER + '/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        priceId: STRIPE_PRICE_COMPANY,
+        email: _currentUser.email,
+        plan: 'company',
+        seats,
+        successUrl: 'https://topo-grapher.com?upgraded=true',
+        cancelUrl: 'https://topo-grapher.com#pro'
+      })
+    });
+    const data = await res.json();
+    if (data.url) { window.location.href = data.url; }
+    else throw new Error(data.error || 'Failed to create checkout');
+  } catch (err) {
+    if (btn) { btn.textContent = 'Get Company →'; btn.disabled = false; }
+    alert('Checkout error: ' + err.message);
+  }
+}
+
 // ── Save notify signup to Supabase + send confirmation email ───────────────
 const NOTIFY_WORKER_URL = 'https://topo-notify.svanur300.workers.dev';
 
@@ -2497,6 +2598,28 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('download-btn').addEventListener('click', downloadCSV);
   document.getElementById('download-map-btn').addEventListener('click', downloadSiteMap);
   document.getElementById('notify-email').addEventListener('keydown', function(e){ if(e.key==='Enter') sendNotify(); });
+
+  // Pricing carousel dots on mobile
+  const tierGrid = document.querySelector('.tier-grid');
+  const tierDots = document.querySelectorAll('.tier-dot');
+  if(tierGrid && tierDots.length){
+    tierDots.forEach(dot => {
+      dot.addEventListener('click', () => {
+        const i = parseInt(dot.dataset.i);
+        const cards = tierGrid.querySelectorAll('.tier-card');
+        if(cards[i]) cards[i].scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+      });
+    });
+    tierGrid.addEventListener('scroll', () => {
+      const cards = tierGrid.querySelectorAll('.tier-card');
+      let closest = 0, minDist = Infinity;
+      cards.forEach((card, i) => {
+        const dist = Math.abs(card.getBoundingClientRect().left + card.offsetWidth/2 - window.innerWidth/2);
+        if(dist < minDist){ minDist = dist; closest = i; }
+      });
+      tierDots.forEach((dot, i) => dot.classList.toggle('active', i === closest));
+    }, {passive:true});
+  }
 });
 
 window._isGenerating=false;
