@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Topo-grapher — Terrain Intelligence for BIM</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIj4KICA8cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIGZpbGw9IiMxMTExMTAiIHJ4PSI1Ii8+CiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOWFiYTZhIiBzdHJva2UtbGluZWNhcD0icm91bmQiPgogICAgPHBhdGggc3Ryb2tlLXdpZHRoPSIwLjciIG9wYWNpdHk9IjAuMjUiIGQ9Ik0yLDI0IFE4LDIyIDE0LDIzIFEyMCwyNCAyNiwyMiBRMjksMjEgMzAsMjEiLz4KICAgIDxwYXRoIHN0cm9rZS13aWR0aD0iMC43IiBvcGFjaXR5PSIwLjMzIiBkPSJNMiwyMiBROCwyMCAxNCwyMSBRMjAsMjIgMjYsMjAgUTI5LDE5IDMwLDE4Ii8+CiAgICA8cGF0aCBzdHJva2Utd2lkdGg9IjAuOCIgb3BhY2l0eT0iMC40MiIgZD0iTTMsMjAgUTgsMTggMTQsMTkgUTIwLDIwIDI2LDE3IFEyOSwxNiAzMCwxNSIvPgogICAgPHBhdGggc3Ryb2tlLXdpZHRoPSIwLjgiIG9wYWNpdHk9IjAuNTEiIGQ9Ik0zLDE4IFE4LDE2IDE0LDE3IFEyMCwxNyAyNSwxNCBRMjgsMTMgMzAsMTIiLz4KICAgIDxwYXRoIHN0cm9rZS13aWR0aD0iMC45IiBvcGFjaXR5PSIwLjYwIiBkPSJNNCwxNiBROSwxMyAxNCwxNCBRMTksMTUgMjQsMTIgUTI3LDEwIDMwLDkiLz4KICAgIDxwYXRoIHN0cm9rZS13aWR0aD0iMC45IiBvcGFjaXR5PSIwLjY5IiBkPSJNNSwxNCBRMTAsMTEgMTQsMTIgUTE5LDEzIDIzLDEwIFEyNiw4IDI5LDciLz4KICAgIDxwYXRoIHN0cm9rZS13aWR0aD0iMS4wIiBvcGFjaXR5PSIwLjc4IiBkPSJNNywxMiBRMTEsOSAxNCwxMCBRMTksMTEgMjIsOCBRMjUsNiAyOCw1Ii8+CiAgICA8cGF0aCBzdHJva2Utd2lkdGg9IjEuMCIgb3BhY2l0eT0iMC44NyIgZD0iTTksMTAgUTEyLDcgMTQsOCBRMTksOSAyMSw3IFEyNCw1IDI3LDQiLz4KICAgIDxwYXRoIHN0cm9rZS13aWR0aD0iMS4xIiBvcGFjaXR5PSIwLjk1IiBkPSJNMTEsOCBRMTMsNiAxNCw3IFExOCw4IDIwLDYgUTIzLDQgMjYsMyIvPgogICAgPHBhdGggc3Ryb2tlLXdpZHRoPSIwLjciIG9wYWNpdHk9IjAuMjIiIGQ9Ik0yLDI2IFExMCwyNSAxOCwyNS41IFEyNCwyNiAzMCwyNSIvPgogIDwvZz4KPC9zdmc+Cg==">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIj4KICA8cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIGZpbGw9IiMxMTExMTAiIHJ4PSI1Ii8+CiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOWFiYTZhIiBzdHJva2UtbGluZWNhcD0icm91bmQiPgogICAgPHBhdGggc3Ryb2tlLXdpZHRoPSIwLjciIG9wYWNpdHk9IjAuMjUiIGQ9Ik0yLDI0IFE4LDIyIDE0LDIzIFEyMCwyNCAyNiwyMiBRMjksMjEgMzAsMjEiLz4KICAgIDxwYXRoIHN0cm9rZS13aWR0aD0iMC43IiBvcGFjaXR5PSIwLjMzIiBkPSJNMiwyMiBROCwyMCAxNCwyMSBRMjAsMjIgMjYsMjAgUTI5LDE5IDMwLDE4Ii8+CiAgICA8cGF0aCBzdHJva2Utd2lkdGg9IjAuOCIgb3BhY2l0eT0iMC40MiIgZD0iTTMsMjAgUTgsMTggMTQsMTkgUTIwLDIwIDI2LDE3IFEyOSwxNiAzMCwxNSIvPgogICAgPHBhdGggc3Ryb2tlLXdpZHRoPSIwLjgiIG9wYWNpdHk9IjAuNTEiIGQ9Ik0zLDE4IFE4LDE2IDE0LDE3IFEyMCwxNyAyNSwxNCBRMjgsMTMgMzAsMTIiLz4KICAgIDxwYXRoIHN0cm9rZS13aWR0aD0iMC45IiBvcGFjaXR5PSIwLjYwIiBkPSJNNCwxNiBROSwxMyAxNCwxNCBRMTksMTUgMjQsMTIgUTI3LDEwIDMwLDkiLz4KICAgIDxwYXRoIHN0cm9rZS13aWR0aD0iMC45IiBvcGFjaXR5PSIwLjY5IiBkPSJNNSwxNCBRMTAsMTEgMTQsMTIgUTE5LDEzIDIzLDEwIFEyNiw4IDI5LDciLz4KICAgIDxwYXRoIHN0cm9rZS13aWR0aD0iMS4wIiBvcGFjaXR5PSIwLjc4IiBkPSJNNywxMiBRMTEsOSAxNCwxMCBRMTksMTEgMjIsOCBRMjUsNiAyOCw1Ii8+CiAgICA8cGF0aCBzdHJva2Utd2lkdGg9IjEuMCIgb3BhY2l0eT0iMC44NyIgZD0iTTksMTAgUTEyLDcgMTQsOCBRMTksOSAyMSw3IFEyNCw1IDI3LDQiLz4KICAgIDxwYXRoIHN0cm9rZS13aWR0aD0iMS4xIiBvcGFjaXR5PSIwLjk1IiBkPSJNMTEsOCBRMTMsNiAxNCw3IFExOCw4IDIwLDYgUTIzLDQgMjYsMyIvPgogICAgPHBhdGggc3Ryb2tlLXdpZHRoPSIwLjciIG9wYWNpdHk9IjAuMjIiIGQ9Ik0yLDI2IFExMCwyNSAxOCwyNS41IFEyNCwyNiAzMCwyNSIvPgogIDwvZz4KPC9zdmc+Cg==">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-W75YS5C5EG"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -234,6 +236,12 @@ textarea { resize:vertical; width:100%; }
 /* NOTIFY FORM */
 .notify-form { display:flex; gap:8px; align-items:stretch; }
 .notify-form input { flex:1; min-width:0; }
+@media(max-width:600px){
+  .notify-form { flex-direction:column; gap:8px; }
+  .notify-form input { width:100%; }
+  .notify-form select { width:100%; }
+  .btn-notify-send { width:100%; }
+}
 .btn-notify-send { background:var(--accent-md); color:#EFE3D8; border:1px solid var(--accent); padding:8px 18px; border-radius:4px; font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; transition:all .18s; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; }
 .btn-notify-send:hover { background:var(--accent); color:#1a1208; }
 .notify-success { font-size:12px; color:var(--accent); margin-top:8px; display:none; }
@@ -435,7 +443,6 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   .pro-grid { grid-template-columns: 1fr !important; }
   .notify-row { flex-direction: column; gap: 8px; }
   .notify-row select, .notify-row input { width: 100%; }
-  .btn-notify-send { width: 100%; }
   .footer-inner { flex-direction: column; gap: 8px; text-align: center; }
   canvas { max-width: 100% !important; }
   .preview-table { font-size: 11px; }
@@ -651,24 +658,6 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   </div>
 
 
-<div class="main" style="padding-top:0;padding-bottom:0;">
-  <div class="card" id="contour-panel">
-    <div class="card-label">// Terrain preview<span id="contour-source-badge" style="margin-left:10px;font-size:10px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;"></span></div>
-
-    <div id="contour-placeholder" style="width:100%;height:320px;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px dashed var(--border-md);gap:14px;">
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.35">
-        <ellipse cx="24" cy="30" rx="18" ry="6" stroke="currentColor" stroke-width="1"/>
-        <ellipse cx="24" cy="24" rx="13" ry="5" stroke="currentColor" stroke-width="1"/>
-        <ellipse cx="24" cy="19" rx="8" ry="3.5" stroke="currentColor" stroke-width="1"/>
-        <ellipse cx="24" cy="15" rx="4" ry="2" stroke="currentColor" stroke-width="1"/>
-        <ellipse cx="24" cy="12" rx="1.5" ry="1" stroke="currentColor" stroke-width="1"/>
-      </svg>
-      <span style="font-size:12px;color:var(--text-soft);letter-spacing:.08em;text-align:center;max-width:220px;line-height:1.6">Draw your site on the map above to see a contour preview here</span>
-    </div>
-    <canvas id="contour-canvas" style="width:100%;height:320px;display:none;border-radius:4px;"></canvas>
-    <div style="font-size:11px;color:var(--text-soft);margin-top:8px;text-align:center;letter-spacing:.06em;min-height:16px;" id="contour-label"></div>
-  </div>
-</div>
 <div class="main" id="pro" style="padding-top:0">
 
   <!-- Tier comparison header -->
