@@ -369,9 +369,9 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 }
 
 /* ── AUTH MODAL ───────────────────────────────────────────────────────────── */
-.auth-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:9000; align-items:center; justify-content:center; }
+.auth-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:9000; align-items:center; justify-content:center; padding:20px; box-sizing:border-box; }
 .auth-overlay.show { display:flex; }
-.auth-modal { position:relative; background:var(--bg-card); border:1px solid var(--border-md); border-radius:10px; padding:32px; width:100%; max-width:400px; margin:20px; }
+.auth-modal { position:relative; background:var(--bg-card); border:1px solid var(--border-md); border-radius:10px; padding:32px; width:100%; max-width:400px; }
 .auth-modal h2 { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; color:var(--text); margin-bottom:6px; }
 .auth-modal p { font-size:13px; color:var(--text-soft); margin-bottom:24px; line-height:1.6; }
 .auth-tabs { display:flex; gap:0; margin-bottom:24px; border-bottom:1px solid var(--border); }
@@ -386,6 +386,17 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 .auth-error { font-size:12px; color:var(--danger,#e25555); margin-top:10px; min-height:16px; }
 .auth-close { position:absolute; top:20px; right:24px; background:none; border:1px solid var(--border-md); border-radius:5px; color:var(--text-soft); font-size:13px; cursor:pointer; line-height:1; width:26px; height:26px; display:flex; align-items:center; justify-content:center; transition:background .15s,color .15s; }
 .auth-close:hover { background:var(--bg-input); color:var(--text); }
+.settings-tab { background:none; border:none; border-bottom:2px solid transparent; padding:8px 16px; font-family:'DM Mono',monospace; font-size:12px; color:var(--text-soft); cursor:pointer; letter-spacing:.06em; text-transform:uppercase; transition:color .15s,border-color .15s; }
+.settings-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.settings-tab:hover { color:var(--text); }
+.saved-project-card { background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:12px 14px; margin-bottom:8px; }
+.saved-project-name { font-size:14px; font-weight:600; color:var(--text); margin-bottom:4px; font-family:'Syne',sans-serif; }
+.saved-project-meta { font-size:11px; color:var(--text-soft); letter-spacing:.04em; margin-bottom:10px; line-height:1.6; }
+.saved-project-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.saved-project-btn { background:var(--bg-card); border:1px solid var(--border-md); color:var(--text-mid); font-family:'DM Mono',monospace; font-size:11px; padding:6px 12px; border-radius:4px; cursor:pointer; transition:all .15s; letter-spacing:.04em; }
+.saved-project-btn:hover { border-color:var(--accent-md); color:var(--accent); }
+.saved-project-btn.primary { background:var(--accent-md); color:#EFE3D8; border-color:var(--accent); }
+.saved-project-btn.primary:hover { background:var(--accent); }
 .auth-modal-wrap { position:relative; }
 .auth-divider { text-align:center; font-size:11px; color:var(--text-soft); margin:16px 0; }
 .auth-google { width:100%; background:var(--bg-input); border:1px solid var(--border-md); color:var(--text); padding:11px; border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; letter-spacing:.04em; margin-bottom:4px; }
@@ -2274,7 +2285,6 @@ function applyAccessCode() {
 
 function openSettings() {
   if (!_currentUser) { openAuth(); return; }
-  document.getElementById('settings-overlay').classList.add('show');
   document.getElementById('settings-email').textContent = _currentUser.email;
   document.getElementById('user-dropdown').classList.remove('show');
   const plan = _currentProfile?.plan || 'free';
@@ -2284,14 +2294,29 @@ function openSettings() {
   planBadge.style.color = plan !== 'free' ? '#EFE3D8' : 'var(--accent)';
   document.getElementById('settings-free-cta').style.display = plan === 'free' ? 'block' : 'none';
   document.getElementById('settings-pro-info').style.display = plan === 'pro' ? 'block' : 'none';
-  document.getElementById('settings-company-info').style.display = plan === 'company' ? 'block' : 'none';
-  document.getElementById('settings-join-company').style.display = plan === 'free' ? 'block' : 'none';
+  const companyInfo = document.getElementById('settings-company-info');
+  if (companyInfo) companyInfo.style.display = plan === 'company' ? 'block' : 'none';
+  const joinCompany = document.getElementById('settings-join-company');
+  if (joinCompany) joinCompany.style.display = plan === 'free' ? 'block' : 'none';
   if(plan === 'company' && _currentProfile?.company_join_code) {
     const codeEl = document.getElementById('company-code-display');
     if(codeEl) codeEl.textContent = _currentProfile.company_join_code;
     const seatsEl = document.getElementById('company-seats-display');
     if(seatsEl) seatsEl.textContent = (_currentProfile.seats_used||1) + ' / ' + (_currentProfile.seat_count||2) + ' seats used';
   }
+  switchSettingsTab('account');
+  document.getElementById('settings-overlay').classList.add('show');
+}
+
+function switchSettingsTab(tab) {
+  document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+  const tabBtn = document.getElementById('stab-' + tab);
+  if (tabBtn) tabBtn.classList.add('active');
+  const accountPanel = document.getElementById('settings-panel-account');
+  const projectsPanel = document.getElementById('settings-panel-projects');
+  if (accountPanel) accountPanel.style.display = tab === 'account' ? 'block' : 'none';
+  if (projectsPanel) projectsPanel.style.display = tab === 'projects' ? 'block' : 'none';
+  if (tab === 'projects') renderSavedProjects();
 }
 
 async function joinCompanyWithCode() {
@@ -2388,41 +2413,242 @@ function showAddonPrompt(areaKm2, addonPrice, autoDowngraded, effectiveSpacing) 
 
 
 // ── Pro Memory — save/restore last generation ─────────────────────────────
+// ── Project memory — saves last 3 generations with full CSV ───────────────
+// ── Project memory ─────────────────────────────────────────────────────────
+// Pro users: full CSV saved (up to 3 projects, 1.8MB limit, 2-week expiry)
+// All signed-in users: last-project name+spacing restored on login (no CSV)
+const MEMORY_KEY = 'topo-saved-projects';
+const MEMORY_MAX = 3;
+const MEMORY_MAX_BYTES = 1.8 * 1024 * 1024; // 1.8MB
+const MEMORY_EXPIRY_MS = 14 * 24 * 60 * 60 * 1000; // 2 weeks
+
+function isPro() {
+  return isProUnlocked() || (_currentProfile && _currentProfile.plan !== 'free');
+}
+
 async function saveProMemory(projectName, spacing, csvData, source) {
   if (!_currentUser) return;
-  if (!_currentProfile || _currentProfile.plan === 'free') return;
-  // Save to Supabase generations table — already logged
-  // Also save to localStorage for quick restore
   try {
+    // All signed-in users: save lightweight restore key (name + spacing only)
     localStorage.setItem('topo-last-project', JSON.stringify({
-      projectName, spacing, source,
-      timestamp: Date.now(),
-      userId: _currentUser.id
+      projectName, spacing, source, timestamp: Date.now(), userId: _currentUser.id
     }));
+
+    // Pro only: save full CSV with expiry and size check
+    if (!isPro()) return;
+
+    const csvBytes = new Blob([csvData || '']).size;
+    if (csvBytes > MEMORY_MAX_BYTES) {
+      // Too large — store a tombstone so the UI can show "regenerate" instead
+      const existing = loadSavedProjects();
+      const filtered = existing.filter(p => p.projectName !== projectName);
+      const entry = {
+        id: Date.now(), userId: _currentUser.id,
+        projectName, spacing, source,
+        csvData: null, // null = too large, must regenerate
+        tooLarge: true,
+        timestamp: Date.now(),
+        pointCount: csvData ? csvData.split('\n').length - 2 : 0,
+      };
+      const updated = [entry, ...filtered].slice(0, MEMORY_MAX);
+      localStorage.setItem(MEMORY_KEY, JSON.stringify(updated));
+      return;
+    }
+
+    const existing = loadSavedProjects();
+    const filtered = existing.filter(p => p.projectName !== projectName);
+    const entry = {
+      id: Date.now(), userId: _currentUser.id,
+      projectName, spacing, source, csvData,
+      timestamp: Date.now(),
+      lastAccessed: Date.now(),
+      pointCount: csvData ? csvData.split('\n').length - 2 : 0,
+    };
+    const updated = [entry, ...filtered].slice(0, MEMORY_MAX);
+    localStorage.setItem(MEMORY_KEY, JSON.stringify(updated));
   } catch(e) {}
 }
 
+function loadSavedProjects() {
+  try {
+    if (!_currentUser) return [];
+    const raw = localStorage.getItem(MEMORY_KEY);
+    const all = JSON.parse(raw || '[]');
+    const now = Date.now();
+    // Filter to this user, prune expired (2 weeks since last access)
+    const valid = all.filter(p =>
+      p.userId === _currentUser.id &&
+      (now - (p.lastAccessed || p.timestamp)) < MEMORY_EXPIRY_MS
+    );
+    // Write back if anything was pruned
+    if (valid.length !== all.filter(p => p.userId === _currentUser.id).length) {
+      const others = all.filter(p => p.userId !== _currentUser.id);
+      localStorage.setItem(MEMORY_KEY, JSON.stringify([...others, ...valid]));
+    }
+    return valid;
+  } catch(e) { return []; }
+}
+
+function touchProject(id) {
+  // Update lastAccessed so 2-week clock resets on re-download
+  try {
+    const all = JSON.parse(localStorage.getItem(MEMORY_KEY) || '[]');
+    const updated = all.map(p => p.id === id ? {...p, lastAccessed: Date.now()} : p);
+    localStorage.setItem(MEMORY_KEY, JSON.stringify(updated));
+  } catch(e) {}
+}
+
+function renderSavedProjects() {
+  const list = document.getElementById('saved-projects-list');
+  const empty = document.getElementById('saved-projects-empty');
+  if (!list) return;
+
+  if (!isPro()) {
+    list.innerHTML = '';
+    if (empty) {
+      empty.style.display = 'block';
+      empty.innerHTML = '<div style="font-size:13px;color:var(--text-soft);">Project memory is a Pro feature.</div><div style="font-size:12px;color:var(--text-soft);margin-top:6px;">Upgrade to save and re-download your last 3 sites.</div>';
+    }
+    return;
+  }
+
+  const projects = loadSavedProjects();
+  if (projects.length === 0) {
+    list.innerHTML = '';
+    if (empty) {
+      empty.style.display = 'block';
+      empty.innerHTML = '<div style="font-size:13px;color:var(--text-soft);">No saved projects yet.</div><div style="font-size:12px;color:var(--text-soft);margin-top:6px;">Generate a site to save it here.</div>';
+    }
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  list.innerHTML = projects.map((p, i) => {
+    const ago = formatAgo(p.lastAccessed || p.timestamp);
+    const pts = p.pointCount ? p.pointCount.toLocaleString() + ' pts' : '';
+    const src = p.source ? ' · ' + p.source.replace(/-/g,' ') : '';
+    const expires = formatExpiry(p.lastAccessed || p.timestamp);
+
+    if (p.tooLarge) {
+      return `<div class="saved-project-card">
+        <div class="saved-project-name">${escHtml(p.projectName)}</div>
+        <div class="saved-project-meta">${ago} · ${p.spacing}m spacing · ${pts}${src}</div>
+        <div style="font-size:11px;color:var(--text-soft);margin-bottom:10px;">Site too large to store (>1.8MB) — regenerate to download again.</div>
+        <div class="saved-project-actions">
+          <button class="saved-project-btn primary" onclick="restoreProject(${i})">↩ Restore settings</button>
+          <button class="saved-project-btn" onclick="deleteProject(${i})" style="margin-left:auto;color:var(--danger,#e25555);">Delete</button>
+        </div>
+      </div>`;
+    }
+
+    return `<div class="saved-project-card">
+      <div class="saved-project-name">${escHtml(p.projectName)}</div>
+      <div class="saved-project-meta">${ago} · ${p.spacing}m spacing · ${pts}${src}</div>
+      <div style="font-size:10px;color:var(--text-soft);margin-bottom:10px;letter-spacing:.04em;">Expires ${expires}</div>
+      <div class="saved-project-actions">
+        <button class="saved-project-btn primary" onclick="redownloadProject(${i})">↓ Download CSV</button>
+        <button class="saved-project-btn" onclick="restoreProject(${i})">↩ Restore to tool</button>
+        <button class="saved-project-btn" onclick="deleteProject(${i})" style="margin-left:auto;color:var(--danger,#e25555);">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function redownloadProject(index) {
+  const projects = loadSavedProjects();
+  const p = projects[index];
+  if (!p || !p.csvData) return;
+  touchProject(p.id); // reset 2-week expiry on access
+  const safe = p.projectName.replace(/[^a-zA-Z0-9_\-]/g, '_');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([p.csvData], {type:'text/csv'}));
+  a.download = `${safe}_toposolid.csv`;
+  a.click();
+  renderSavedProjects(); // refresh expiry display
+}
+
+function restoreProject(index) {
+  const projects = loadSavedProjects();
+  const p = projects[index];
+  if (!p) return;
+  if (p.id) touchProject(p.id);
+  const nameEl = document.getElementById('project-name');
+  if (nameEl) nameEl.value = p.projectName;
+  const spacingBtn = document.getElementById('acc-' + p.spacing);
+  if (spacingBtn) spacingBtn.click();
+  if (p.csvData) {
+    csvData = p.csvData;
+    projectName = p.projectName;
+    closeSettings();
+    showResult(true);
+    const notice = document.getElementById('memory-notice');
+    if (notice) {
+      notice.textContent = '↩ Project restored — ' + p.projectName;
+      notice.style.display = 'block';
+      setTimeout(() => notice.style.display = 'none', 4000);
+    }
+  } else {
+    // tooLarge — restore settings only, user needs to regenerate
+    closeSettings();
+    const notice = document.getElementById('memory-notice');
+    if (notice) {
+      notice.textContent = '↩ Settings restored — hit Generate to get your CSV again';
+      notice.style.display = 'block';
+      setTimeout(() => notice.style.display = 'none', 5000);
+    }
+  }
+}
+
+function deleteProject(index) {
+  try {
+    const projects = loadSavedProjects();
+    const toDelete = projects[index];
+    if (!toDelete) return;
+    const all = JSON.parse(localStorage.getItem(MEMORY_KEY) || '[]');
+    localStorage.setItem(MEMORY_KEY, JSON.stringify(all.filter(p => p.id !== toDelete.id)));
+    renderSavedProjects();
+  } catch(e) {}
+}
+
+function formatAgo(ts) {
+  const mins = Math.round((Date.now() - ts) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.round(hrs / 24) + 'd ago';
+}
+
+function formatExpiry(lastAccessedTs) {
+  const expiresAt = lastAccessedTs + MEMORY_EXPIRY_MS;
+  const daysLeft = Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+  if (daysLeft <= 1) return 'tomorrow';
+  if (daysLeft <= 7) return 'in ' + daysLeft + ' days';
+  return 'in ' + Math.ceil(daysLeft / 7) + ' weeks';
+}
+
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// On login: restore last project name+spacing for ALL signed-in users
 function restoreProMemory() {
   if (!_currentUser) return;
-  if (!_currentProfile || _currentProfile.plan === 'free') return;
   try {
     const saved = JSON.parse(localStorage.getItem('topo-last-project') || 'null');
     if (!saved || saved.userId !== _currentUser.id) return;
-    // Restore project name and spacing
     const nameEl = document.getElementById('project-name');
     if (nameEl && saved.projectName) nameEl.value = saved.projectName;
     if (saved.spacing) {
-      const spacingBtns = document.querySelectorAll('.acc-btn');
-      spacingBtns.forEach(btn => {
+      document.querySelectorAll('.acc-btn').forEach(btn => {
         if (btn.id === 'acc-' + saved.spacing) btn.click();
       });
     }
-    // Show restore notice
+    // Only show memory notice for Pro users (free users just silently restore)
+    if (!isPro()) return;
     const notice = document.getElementById('memory-notice');
     if (notice) {
-      const ago = Math.round((Date.now() - saved.timestamp) / 60000);
-      const agoStr = ago < 60 ? ago + 'm ago' : Math.round(ago/60) + 'h ago';
-      notice.textContent = '↩ Last project restored (' + agoStr + ')';
+      notice.textContent = '↩ Last project restored (' + formatAgo(saved.timestamp) + ')';
       notice.style.display = 'block';
       setTimeout(() => notice.style.display = 'none', 4000);
     }
@@ -2820,49 +3046,68 @@ document.addEventListener('click',function(e){
     <div class="auth-modal" style="max-width:480px;">
       <button class="auth-close" onclick="closeSettings()">✕</button>
       <h2>Account settings</h2>
-      <p>Manage your account and subscription.</p>
 
-      <div style="margin-bottom:20px;padding:14px;background:var(--bg-input);border-radius:6px;border:1px solid var(--border);">
-        <div style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;">Signed in as</div>
-        <div style="font-size:14px;color:var(--text);" id="settings-email">—</div>
-        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
-          <span style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;">Plan</span>
-          <span class="user-plan-badge" id="settings-plan">Free</span>
+      <!-- Settings tabs -->
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;">
+        <button class="settings-tab active" id="stab-account" onclick="switchSettingsTab('account')">Account</button>
+        <button class="settings-tab" id="stab-projects" onclick="switchSettingsTab('projects')">Projects</button>
+      </div>
+
+      <!-- Account tab -->
+      <div id="settings-panel-account">
+        <div style="margin-bottom:20px;padding:14px;background:var(--bg-input);border-radius:6px;border:1px solid var(--border);">
+          <div style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;">Signed in as</div>
+          <div style="font-size:14px;color:var(--text);" id="settings-email">—</div>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;">Plan</span>
+            <span class="user-plan-badge" id="settings-plan">Free</span>
+          </div>
+        </div>
+
+        <!-- Change password -->
+        <div style="margin-bottom:20px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Change password</div>
+          <div class="auth-field"><label>New password</label><input type="password" id="new-password" placeholder="Min. 8 characters"/></div>
+          <div class="auth-field"><label>Confirm password</label><input type="password" id="confirm-password" placeholder="Repeat new password"/></div>
+          <button class="auth-submit" onclick="changePassword()" style="margin-top:4px;">Update password →</button>
+          <div class="auth-error" id="password-msg" style="min-height:16px;"></div>
+        </div>
+
+        <!-- Subscription -->
+        <div style="border-top:1px solid var(--border);padding-top:16px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Subscription</div>
+          <div id="settings-free-cta" style="display:none;">
+            <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">Upgrade to Pro for unlimited generations, 3m precision, and LiDAR accuracy in Denmark and the UK.</p>
+            <button class="tier-cta" onclick="closeSettings();document.getElementById('pro').scrollIntoView({behavior:'smooth'})">Upgrade to Pro →</button>
+          </div>
+          <div id="settings-pro-info" style="display:none;">
+            <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">You have an active Pro subscription. To manage billing, cancel, or change your plan contact us at <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Access code</div>
+          <div style="display:flex;gap:8px;">
+            <input type="password" id="settings-access-code" placeholder="Enter access code…" style="flex:1;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;padding:9px 12px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;" onkeydown="if(event.key==='Enter')applyAccessCode()"/>
+            <button onclick="applyAccessCode()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:9px 16px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;white-space:nowrap;">Apply</button>
+          </div>
+          <div id="access-code-msg" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
+          <button onclick="signOut();closeSettings();" style="background:none;border:none;color:var(--danger,#e25555);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;padding:0;letter-spacing:.06em;">Sign out</button>
         </div>
       </div>
 
-      <!-- Change password -->
-      <div style="margin-bottom:20px;">
-        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Change password</div>
-        <div class="auth-field"><label>New password</label><input type="password" id="new-password" placeholder="Min. 8 characters"/></div>
-        <div class="auth-field"><label>Confirm password</label><input type="password" id="confirm-password" placeholder="Repeat new password"/></div>
-        <button class="auth-submit" onclick="changePassword()" style="margin-top:4px;">Update password →</button>
-        <div class="auth-error" id="password-msg" style="min-height:16px;"></div>
-      </div>
-
-      <!-- Subscription -->
-      <div style="border-top:1px solid var(--border);padding-top:16px;">
-        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Subscription</div>
-        <div id="settings-free-cta" style="display:none;">
-          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">Upgrade to Pro for unlimited generations, 3m precision, and LiDAR accuracy in Denmark and the UK.</p>
-          <button class="tier-cta" onclick="closeSettings();document.getElementById('pro').scrollIntoView({behavior:'smooth'})">Upgrade to Pro →</button>
-        </div>
-        <div id="settings-pro-info" style="display:none;">
-          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;">You have an active Pro subscription. To manage billing, cancel, or change your plan contact us at <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
+      <!-- Projects tab -->
+      <div id="settings-panel-projects" style="display:none;">
+        <div style="font-size:12px;color:var(--text-soft);margin-bottom:16px;line-height:1.7;">Your last 3 generated projects are saved locally. Download the CSV again any time.</div>
+        <div id="saved-projects-list"></div>
+        <div id="saved-projects-empty" style="display:none;text-align:center;padding:32px 0;">
+          <div style="font-size:13px;color:var(--text-soft);">No saved projects yet.</div>
+          <div style="font-size:12px;color:var(--text-soft);margin-top:6px;">Generate a site to save it here.</div>
         </div>
       </div>
 
-      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
-        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Access code</div>
-        <div style="display:flex;gap:8px;">
-          <input type="password" id="settings-access-code" placeholder="Enter access code…" style="flex:1;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;padding:9px 12px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;" onkeydown="if(event.key==='Enter')applyAccessCode()"/>
-          <button onclick="applyAccessCode()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:9px 16px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;white-space:nowrap;">Apply</button>
-        </div>
-        <div id="access-code-msg" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
-      </div>
-      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
-        <button onclick="signOut();closeSettings();" style="background:none;border:none;color:var(--danger,#e25555);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;padding:0;letter-spacing:.06em;">Sign out</button>
-      </div>
     </div>
   </div>
 </div>
