@@ -1652,6 +1652,12 @@ function updateElevationSourceBanner(source, isPro) {
     tier = 'lidar'; resText = '0.4m resolution · Danish DHM LiDAR'; sourceLabel = 'LiDAR 0.4m';
   } else if(s.includes('gpxz') || s.includes('1m-lidar')) {
     tier = 'lidar'; resText = '1m resolution · GPXZ LiDAR'; sourceLabel = 'LiDAR 1m';
+  } else if(s.includes('usgs') || s.includes('3dep')) {
+    tier = 'lidar'; resText = 'Up to 1m resolution · USGS 3DEP LiDAR'; sourceLabel = 'LiDAR 1m';
+  } else if(s.includes('ign') || s.includes('rge-alti') || s.includes('rge_alti')) {
+    tier = 'lidar'; resText = '1m resolution · IGN RGE ALTI France'; sourceLabel = 'LiDAR 1m';
+  } else if(s.includes('arcticdem')) {
+    tier = 'mid'; resText = '10m resolution · ArcticDEM (satellite stereo)'; sourceLabel = '10m DEM';
   } else if(s.includes('eu_dtm') || s.includes('swissalti') || s.includes('ahn3') || s.includes('3dep') || s.includes('opentopo')) {
     tier = 'lidar'; resText = '0.5–1m resolution · OpenTopography LiDAR'; sourceLabel = 'LiDAR 1m';
   } else if(s.includes('srtm') || s.includes('30m')) {
