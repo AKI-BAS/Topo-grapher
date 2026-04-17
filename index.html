@@ -61,7 +61,18 @@
   --danger:    #c0392b;
 }
 
-html { scroll-behavior: smooth; }
+/* ── Import Guide Panel ── */
+.ig-step { display:flex; gap:16px; margin-bottom:24px; align-items:flex-start; }
+.ig-step-n { width:28px; height:28px; border-radius:4px; background:var(--accent-dk); border:1px solid var(--accent-md); color:var(--accent); font-size:10px; font-weight:700; letter-spacing:.06em; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+.ig-step-body { flex:1; }
+.ig-step-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:5px; letter-spacing:.01em; }
+.ig-step-desc { font-size:12px; color:var(--text-mid); line-height:1.7; }
+.ig-step-desc strong { color:var(--text); }
+.ig-tip { background:var(--accent-dk); border:1px solid var(--accent-md); border-radius:6px; padding:12px 14px; font-size:11px; color:var(--accent); line-height:1.6; margin-top:8px; }
+.ig-tab { transition:color .15s, border-color .15s; }
+.ig-tab:hover { color:var(--text) !important; }
+
+html, body { overflow-x: hidden; }
 body { background:var(--bg); color:var(--text); font-family:'DM Mono',monospace; min-height:100vh; transition:background .2s,color .2s; }
 
 /* NAV */
@@ -664,8 +675,211 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <button class="btn-dl" id="download-btn" style="flex:1;min-width:160px;">↓ Download CSV</button>
       <button class="btn-dl" id="download-map-btn" style="flex:1;min-width:160px;background:var(--bg-input);color:var(--text);border-color:var(--border-md);">↓ Site map image</button>
+      <button class="btn-dl" id="import-guide-btn" onclick="openImportGuide()" style="flex:1;min-width:160px;background:var(--accent-dk);color:var(--accent);border-color:var(--accent-md);">⬡ How to import</button>
     </div>
   </div>
+
+<!-- ── Import Guide Slide Panel ──────────────────────────────────────────── -->
+<div id="import-guide-overlay" onclick="if(event.target===this)closeImportGuide()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0);z-index:8000;transition:background .3s;"></div>
+
+<div id="import-guide-panel" style="
+  position:fixed;top:0;right:0;height:100vh;width:min(520px,100vw);
+  background:var(--bg-card);border-left:1px solid var(--border-md);
+  transform:translateX(100%);transition:transform .4s cubic-bezier(.32,.72,0,1);
+  z-index:8001;display:flex;flex-direction:column;overflow:hidden;
+">
+  <!-- Header -->
+  <div style="padding:24px 28px 20px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+    <div>
+      <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);letter-spacing:-.01em;margin-bottom:4px;">Import into your model</div>
+      <div style="font-size:11px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;">Step-by-step · Revit · SketchUp · ArchiCAD · Rhino</div>
+    </div>
+    <button onclick="closeImportGuide()" style="background:var(--bg-input);border:1px solid var(--border-md);color:var(--text-mid);width:32px;height:32px;border-radius:4px;cursor:pointer;font-size:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseover="this.style.borderColor='var(--accent-md)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-mid)'">✕</button>
+  </div>
+
+  <!-- Software tabs -->
+  <div style="display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;">
+    <button class="ig-tab active" onclick="switchIGTab('revit',this)" style="padding:10px 18px;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--accent);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;">Revit</button>
+    <button class="ig-tab" onclick="switchIGTab('sketchup',this)" style="padding:10px 18px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-mid);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;">SketchUp</button>
+    <button class="ig-tab" onclick="switchIGTab('archicad',this)" style="padding:10px 18px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-mid);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;">ArchiCAD</button>
+    <button class="ig-tab" onclick="switchIGTab('rhino',this)" style="padding:10px 18px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-mid);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;">Rhino</button>
+  </div>
+
+  <!-- Steps content — scrollable -->
+  <div style="flex:1;overflow-y:auto;padding:28px;">
+
+    <!-- Revit -->
+    <div id="ig-revit" class="ig-content">
+      <div style="font-size:11px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:20px;">Revit 2022 and later · Toposolid workflow</div>
+      <div class="ig-step">
+        <div class="ig-step-n">01</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Download your CSV</div>
+          <div class="ig-step-desc">Click <strong>↓ Download CSV</strong> above. The file contains X, Y, Z point data in metres, with a UTM origin coordinate in the filename for georeferencing.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">02</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Open the Massing & Site tab</div>
+          <div class="ig-step-desc">In Revit, go to the <strong>Massing & Site</strong> tab in the ribbon. Make sure you are in a 3D view or a site plan view.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">03</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Create Toposolid from Import</div>
+          <div class="ig-step-desc">Click <strong>Toposolid → Create from Import → Select Import Instance</strong>. In the dialogue that opens, choose <strong>Specify Points File</strong> and navigate to your downloaded CSV.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">04</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Set units to Metres</div>
+          <div class="ig-step-desc">When prompted for units, select <strong>Meter</strong>. All coordinates in the CSV are in metres relative to the UTM origin shown in the download.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">05</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Done — terrain created</div>
+          <div class="ig-step-desc">Revit builds the Toposolid surface from your point cloud. Accuracy depends on your plan — up to <strong>0.4m vertical resolution</strong> on Pro with LiDAR data.</div>
+        </div>
+      </div>
+      <div class="ig-tip">💡 Tip: For large sites keep point count under 20,000 for best Revit performance. Use 6m or 12m spacing if your site is over 1km².</div>
+    </div>
+
+    <!-- SketchUp -->
+    <div id="ig-sketchup" class="ig-content" style="display:none;">
+      <div style="font-size:11px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:20px;">SketchUp Pro · Sandbox tools</div>
+      <div class="ig-step">
+        <div class="ig-step-n">01</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Download your CSV</div>
+          <div class="ig-step-desc">Click <strong>↓ Download CSV</strong> above. You'll need the free <strong>Undet for SketchUp</strong> plugin or the built-in Sandbox tools depending on your workflow.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">02</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Enable Sandbox Tools</div>
+          <div class="ig-step-desc">Go to <strong>View → Toolbars → Sandbox</strong> to enable the Sandbox toolbar. This gives you the From Scratch and From Contours tools.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">03</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Import via Extensions</div>
+          <div class="ig-step-desc">Use <strong>File → Import</strong> and set the file type to <strong>Text files (*.txt, *.csv)</strong>. Select your CSV. SketchUp will place the points as a 3D point cloud.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">04</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Generate terrain surface</div>
+          <div class="ig-step-desc">Select all the imported points, then use <strong>Sandbox → From Contours</strong> to generate a TIN (triangulated irregular network) mesh surface from the points.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">05</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Done — terrain mesh ready</div>
+          <div class="ig-step-desc">Your site topography is now a SketchUp group. Scale is in metres — use the <strong>Tape Measure</strong> tool to verify a known dimension if needed.</div>
+        </div>
+      </div>
+      <div class="ig-tip">💡 Tip: The Undet plugin handles large CSV point clouds much better than the native importer for Pro sites with thousands of points.</div>
+    </div>
+
+    <!-- ArchiCAD -->
+    <div id="ig-archicad" class="ig-content" style="display:none;">
+      <div style="font-size:11px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:20px;">ArchiCAD 25 and later · Mesh tool</div>
+      <div class="ig-step">
+        <div class="ig-step-n">01</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Download your CSV</div>
+          <div class="ig-step-desc">Click <strong>↓ Download CSV</strong> above. ArchiCAD accepts XYZ survey data directly via the Mesh tool.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">02</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Open Site Plan view</div>
+          <div class="ig-step-desc">Switch to your <strong>Site Plan</strong> floor plan view. Set the working unit to <strong>Metres</strong> under <strong>Options → Project Preferences → Working Units</strong>.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">03</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Import survey data</div>
+          <div class="ig-step-desc">Go to <strong>File → Interoperability → Merge</strong> and select your CSV. Alternatively use <strong>Design → Create Mesh from Survey Data</strong> if available in your version.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">04</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Mesh tool refinement</div>
+          <div class="ig-step-desc">Select the imported points and use the <strong>Mesh tool</strong> to generate the terrain surface. Adjust ridge and valley lines for drainage accuracy on flat sites.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">05</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Done — mesh terrain created</div>
+          <div class="ig-step-desc">Your topography mesh is placed at real-world elevation. LiDAR data at 1m resolution gives you accurate drainage gradients even on shallow slopes.</div>
+        </div>
+      </div>
+      <div class="ig-tip">💡 Tip: Use the site map image (download above) as an underlay in ArchiCAD to visually verify the terrain aligns with your site boundary.</div>
+    </div>
+
+    <!-- Rhino -->
+    <div id="ig-rhino" class="ig-content" style="display:none;">
+      <div style="font-size:11px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:20px;">Rhino 7/8 · Grasshopper compatible</div>
+      <div class="ig-step">
+        <div class="ig-step-n">01</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Download your CSV</div>
+          <div class="ig-step-desc">Click <strong>↓ Download CSV</strong> above. Each row is <strong>X, Y, Z</strong> in metres. The file is clean plain text — no headers to strip.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">02</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Import as point cloud</div>
+          <div class="ig-step-desc">Use the Rhino command <code style="background:var(--bg-input);padding:1px 5px;border-radius:3px;font-size:11px;">_Import</code> and select your CSV. Set the delimiter to <strong>comma</strong> and confirm XYZ column order.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">03</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Generate surface</div>
+          <div class="ig-step-desc">Select the point cloud and run <code style="background:var(--bg-input);padding:1px 5px;border-radius:3px;font-size:11px;">_Patch</code> or <code style="background:var(--bg-input);padding:1px 5px;border-radius:3px;font-size:11px;">_Drape</code> to fit a NURBS surface. For Grasshopper, use a <strong>Delaunay Mesh</strong> component for a precise TIN.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">04</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Grasshopper workflow</div>
+          <div class="ig-step-desc">Feed the CSV into a <strong>Read File</strong> component → <strong>Text Split</strong> → <strong>Construct Point</strong> → <strong>Delaunay Mesh</strong>. This gives you a parametric terrain mesh you can edit live.</div>
+        </div>
+      </div>
+      <div class="ig-step">
+        <div class="ig-step-n">05</div>
+        <div class="ig-step-body">
+          <div class="ig-step-title">Done — terrain surface ready</div>
+          <div class="ig-step-desc">Export to Revit via <strong>Rhino.Inside</strong> or save as DWG/DXF for import into any BIM platform. LiDAR accuracy is preserved through the entire pipeline.</div>
+        </div>
+      </div>
+      <div class="ig-tip">💡 Tip: Rhino handles very large point clouds well — no need to thin your CSV before importing. Use the full-resolution file for maximum accuracy.</div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div style="padding:20px 28px;border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <div style="font-size:11px;color:var(--text-soft);line-height:1.5;">Need help? <a href="mailto:aki@topo-grapher.com" style="color:var(--accent);text-decoration:none;">aki@topo-grapher.com</a></div>
+    <button onclick="closeImportGuide()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:10px 20px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;white-space:nowrap;transition:all .15s;" onmouseover="this.style.background='var(--green-lt)'" onmouseout="this.style.background='var(--green)'">← Close guide</button>
+  </div>
+</div>
 
   <p style="font-size:13px;color:var(--text-mid);text-align:center;max-width:540px;margin:12px auto 0;line-height:1.7">
     Import the CSV into Revit (Toposolid → Create from Import), SketchUp (Sandbox → From Contours), ArchiCAD, Rhino, or any BIM/CAD tool that accepts XYZ point data.<br>
@@ -3026,6 +3240,42 @@ document.addEventListener('click',function(e){
     if(o){o.style.display='flex';}
   }
 });
+
+// ── Import Guide Panel ────────────────────────────────────────────────────
+function openImportGuide() {
+  const overlay = document.getElementById('import-guide-overlay');
+  const panel   = document.getElementById('import-guide-panel');
+  overlay.style.display = 'block';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      overlay.style.background = 'rgba(0,0,0,0.5)';
+      panel.style.transform = 'translateX(0)';
+    });
+  });
+  document.body.style.overflow = 'hidden';
+}
+
+function closeImportGuide() {
+  const overlay = document.getElementById('import-guide-overlay');
+  const panel   = document.getElementById('import-guide-panel');
+  overlay.style.background = 'rgba(0,0,0,0)';
+  panel.style.transform = 'translateX(100%)';
+  document.body.style.overflow = '';
+  setTimeout(() => { overlay.style.display = 'none'; }, 400);
+}
+
+function switchIGTab(name, btn) {
+  document.querySelectorAll('.ig-content').forEach(el => { el.style.display = 'none'; });
+  document.querySelectorAll('.ig-tab').forEach(t => {
+    t.style.borderBottomColor = 'transparent';
+    t.style.color = 'var(--text-mid)';
+  });
+  document.getElementById('ig-' + name).style.display = 'block';
+  btn.style.borderBottomColor = 'var(--accent)';
+  btn.style.color = 'var(--accent)';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeImportGuide(); });
 </script>
 
 <!-- Auth Modal -->
