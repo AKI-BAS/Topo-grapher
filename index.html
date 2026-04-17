@@ -70,9 +70,11 @@ nav { background:var(--bg-card); border-bottom:1px solid var(--border); padding:
 .nav-logo { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:var(--text); letter-spacing:-.01em; }
 .nav-logo em { color:var(--accent); font-style:normal; }
 .site-logo { display:inline-flex; align-items:center; text-decoration:none; }
-.site-logo img { height:40px; width:auto; display:block; }
-.site-logo img { display:block; }
-  .site-logo .logo-light { display:block; }
+.site-logo img { height:40px; width:auto; display:block; transition:filter .2s; }
+[data-theme="dark"] .site-logo img {
+  /* Knock out the cream background baked into the logo PNG so it falls into the dark bg */
+  filter: invert(1) hue-rotate(180deg);
+  mix-blend-mode: screen;
 }
 .nav-sep { width:1px; height:16px; background:var(--border-md); }
 .nav-tag { font-size:13px; color:var(--text-mid); letter-spacing:.06em; text-transform:uppercase; }
@@ -1159,8 +1161,8 @@ function activateTool(t){
     svg.innerHTML = `
       <defs>
         <pattern id="topo-stripe-pattern" x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width="12" height="12" fill="rgba(154,186,106,0.18)"/>
-          <line x1="0" y1="0" x2="0" y2="12" stroke="#9aba6a" stroke-width="4" stroke-opacity="0.55"/>
+          <rect width="12" height="12" fill="rgba(154,186,106,0.28)"/>
+          <line x1="0" y1="0" x2="0" y2="12" stroke="#b8d982" stroke-width="5" stroke-opacity="0.9"/>
         </pattern>
       </defs>`;
     document.getElementById('map').appendChild(svg);
@@ -1168,10 +1170,10 @@ function activateTool(t){
 
   const opts = {
     shapeOptions:{
-      color: '#9aba6a',
+      color: '#b8d982',
       fillColor: 'url(#topo-stripe-pattern)',
       fillOpacity: 1,
-      weight: 3,
+      weight: 4,
       opacity: 1,
       dashArray: null
     }
