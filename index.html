@@ -70,10 +70,19 @@
 .ig-step-desc strong { color:var(--text); opacity:1; font-weight:600; }
 .ig-step-desc code { background:var(--bg-input); padding:1px 5px; border-radius:3px; font-size:12.5px; color:var(--text); }
 .ig-tip { background:var(--accent-dk); border:1px solid var(--accent-md); border-radius:6px; padding:13px 15px; font-size:12.5px; color:var(--accent); line-height:1.65; margin-top:10px; }
+
+/* Data Quality panel — mirrors ig-step pattern but tuned for prose */
+.dq-reason { display:flex; gap:16px; margin-bottom:24px; align-items:flex-start; }
+.dq-reason-n { width:30px; height:30px; border-radius:4px; background:var(--accent-dk); border:1px solid var(--accent-md); color:var(--accent); font-size:11px; font-weight:700; letter-spacing:.06em; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+.dq-reason-body { flex:1; }
+.dq-reason-title { font-size:15px; font-weight:700; color:var(--text); margin-bottom:6px; letter-spacing:.01em; }
+.dq-reason-desc { font-size:13px; color:var(--text); opacity:.88; line-height:1.75; }
+.dq-reason-desc strong { color:var(--text); opacity:1; font-weight:600; }
 .ig-tab { transition:color .15s, border-color .15s; }
 .ig-tab:hover { color:var(--text) !important; }
 #import-guide-panel.open ~ #import-guide-tab,
-body.guide-open #import-guide-tab { opacity:0; pointer-events:none; }
+body.guide-open #import-guide-tab,
+body.guide-open #data-quality-tab { opacity:0; pointer-events:none; }
 
 html, body { overflow-x: hidden; }
 body { background:var(--bg); color:var(--text); font-family:'DM Mono',monospace; min-height:100vh; transition:background .2s,color .2s; }
@@ -686,7 +695,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 
 <!-- Floating tab trigger — always visible on right edge -->
 <div id="import-guide-tab" onclick="openImportGuide()" style="
-  position:fixed;right:0;top:50%;transform:translateY(-50%);
+  position:fixed;right:0;top:38%;transform:translateY(-50%);
   z-index:7999;cursor:pointer;
   background:var(--bg-card);
   border:1px solid var(--border-md);
@@ -699,6 +708,23 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 " onmouseover="this.style.background='var(--bg-input)';this.style.borderColor='var(--accent-md)'" onmouseout="this.style.background='var(--bg-card)';this.style.borderColor='var(--border-md)'">
   <span style="font-size:16px;">⬡</span>
   <span style="font-size:10px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;writing-mode:vertical-rl;text-orientation:mixed;font-family:'DM Mono',monospace;font-weight:600;line-height:1;">How to import</span>
+</div>
+
+<!-- Data Quality floating tab trigger — sits below How-to-import -->
+<div id="data-quality-tab" onclick="openDataQuality()" style="
+  position:fixed;right:0;top:62%;transform:translateY(-50%);
+  z-index:7999;cursor:pointer;
+  background:var(--bg-card);
+  border:1px solid var(--border-md);
+  border-right:none;
+  border-radius:10px 0 0 10px;
+  padding:18px 10px;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  box-shadow:-3px 0 16px rgba(0,0,0,.18);
+  transition:background .15s, border-color .15s, transform .4s cubic-bezier(.32,.72,0,1);
+" onmouseover="this.style.background='var(--bg-input)';this.style.borderColor='var(--accent-md)'" onmouseout="this.style.background='var(--bg-card)';this.style.borderColor='var(--border-md)'">
+  <span style="font-size:16px;">◈</span>
+  <span style="font-size:10px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;writing-mode:vertical-rl;text-orientation:mixed;font-family:'DM Mono',monospace;font-weight:600;line-height:1;">Why our data</span>
 </div>
 
 <div id="import-guide-panel" style="
@@ -893,18 +919,139 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 
   </div>
 
-  <!-- Disclaimer -->
-  <div style="padding:16px 30px;background:var(--bg-input);border-top:1px solid var(--border);flex-shrink:0;">
-    <div style="font-size:10px;color:var(--text-soft);line-height:1.7;letter-spacing:.02em;">
-      <strong style="color:var(--text-mid);letter-spacing:.04em;text-transform:uppercase;font-size:9px;">Disclaimer</strong><br>
-      Topo-grapher is a data-gathering and export tool intended for use within 3D modelling software. It is not liable for errors, omissions, or any consequences arising from use of this data on real construction sites or in any other context. Elevation data is sourced from the best available public datasets and is as accurate as the underlying source permits — however, we strongly recommend verifying all terrain data against official municipal or regional records, or commissioning a land survey, before making any construction or engineering decisions.
+  <!-- Footer -->
+  <div style="padding:14px 30px;border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div style="font-size:12px;color:var(--text-soft);line-height:1.5;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <span>Need help? <a href="mailto:aki@topo-grapher.com" style="color:var(--accent);text-decoration:none;">aki@topo-grapher.com</a></span>
+      <button onclick="openDisclaimer()" style="background:none;border:none;color:var(--text-mid);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;padding:0;letter-spacing:.04em;text-decoration:underline;text-underline-offset:3px;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-mid)'">⚠ Disclaimer</button>
     </div>
+    <button onclick="closeImportGuide()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:10px 22px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;white-space:nowrap;transition:all .15s;" onmouseover="this.style.background='var(--green-lt)'" onmouseout="this.style.background='var(--green)'">← Close guide</button>
+  </div>
+</div>
+
+<!-- ── Data Quality Slide Panel ──────────────────────────────────────────── -->
+<div id="data-quality-overlay" onclick="if(event.target===this)closeDataQuality()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0);z-index:8000;transition:background .3s;"></div>
+
+<div id="data-quality-panel" style="
+  position:fixed;top:0;right:0;height:100vh;width:min(540px,100vw);
+  background:var(--bg-card);border-left:1px solid var(--border-md);
+  transform:translateX(100%);transition:transform .4s cubic-bezier(.32,.72,0,1);
+  z-index:8001;display:flex;flex-direction:column;overflow:hidden;
+">
+  <!-- Header -->
+  <div style="padding:26px 30px 22px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+    <div>
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.01em;margin-bottom:6px;">Why our data is better<br>for real construction projects</div>
+      <div style="font-size:12px;color:var(--text-mid);line-height:1.6;">Survey-grade terrain you can import, inspect,<br>and edit inside your own modelling software.</div>
+    </div>
+    <button onclick="closeDataQuality()" style="background:var(--bg-input);border:1px solid var(--border-md);color:var(--text-mid);width:34px;height:34px;border-radius:4px;cursor:pointer;font-size:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseover="this.style.borderColor='var(--accent-md)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-mid)'">✕</button>
+  </div>
+
+  <!-- Content — scrollable -->
+  <div style="flex:1;overflow-y:auto;padding:28px 30px;">
+
+    <!-- Intro paragraph -->
+    <p style="font-size:14px;color:var(--text);opacity:.9;line-height:1.75;margin-bottom:26px;">
+      Most online terrain tools give you a visual, not a buildable model. Topo-grapher is built for the other case. Every output is a clean, editable point set at real-world coordinates, accurate to the resolution of the underlying official survey for your region.
+    </p>
+
+    <!-- Reasons grid -->
+    <div class="dq-reason">
+      <div class="dq-reason-n">01</div>
+      <div class="dq-reason-body">
+        <div class="dq-reason-title">Sourced from national mapping authorities</div>
+        <div class="dq-reason-desc">We work with the top-tier LiDAR and photogrammetry datasets published by national mapping agencies and geospatial institutes across Europe, the UK, and North America. The same data your surveyors and planners already reference, made accessible inside the tools you already use.</div>
+      </div>
+    </div>
+
+    <div class="dq-reason">
+      <div class="dq-reason-n">02</div>
+      <div class="dq-reason-body">
+        <div class="dq-reason-title">Resolution that actually serves BIM</div>
+        <div class="dq-reason-desc">On Pro, vertical accuracy reaches <strong>0.4m or better</strong> in supported regions. That is close enough to drive drainage gradients, tie into site levels, and coordinate with civil engineers without needing to redo the terrain at tender stage.</div>
+      </div>
+    </div>
+
+    <div class="dq-reason">
+      <div class="dq-reason-n">03</div>
+      <div class="dq-reason-body">
+        <div class="dq-reason-title">Editable, not baked</div>
+        <div class="dq-reason-desc">The CSV is plain XYZ point data. You import it as a Toposolid, mesh, or NURBS surface and you own it from there. Smooth a point, raise a ridge, trim to a site boundary, the data is yours to shape. No black-box texture maps, no locked formats.</div>
+      </div>
+    </div>
+
+    <div class="dq-reason">
+      <div class="dq-reason-n">04</div>
+      <div class="dq-reason-body">
+        <div class="dq-reason-title">Georeferenced, not floating</div>
+        <div class="dq-reason-desc">Every export ships with a UTM origin in the filename. Your model lands at its real-world location, aligned with aerial imagery, cadastral maps, and any other georeferenced layer in your coordination workflow. No guessing, no manual offsets.</div>
+      </div>
+    </div>
+
+    <div class="dq-reason">
+      <div class="dq-reason-n">05</div>
+      <div class="dq-reason-body">
+        <div class="dq-reason-title">Consistent across borders</div>
+        <div class="dq-reason-desc">Every region uses a different authority, a different API, a different coordinate system. We handle that so you get a uniform XYZ file whether you are working a site in Copenhagen, the Cotswolds, or California. One workflow, whatever country the project is in.</div>
+      </div>
+    </div>
+
+    <div class="dq-reason">
+      <div class="dq-reason-n">06</div>
+      <div class="dq-reason-body">
+        <div class="dq-reason-title">Verifiable against public records</div>
+        <div class="dq-reason-desc">Because the underlying data is from official public sources, every point can be cross-checked against the same datasets used by municipal planners and engineers. If a point looks wrong, you can confirm it against the authoritative record. That matters when you are handing a model to a contractor.</div>
+      </div>
+    </div>
+
+    <!-- Callout -->
+    <div style="background:var(--accent-dk);border:1px solid var(--accent-md);border-radius:8px;padding:18px 20px;margin-top:10px;margin-bottom:26px;">
+      <div style="font-size:11px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-bottom:8px;">The short version</div>
+      <div style="font-size:13px;color:var(--text);line-height:1.7;">Other platforms give you a picture of the terrain. We give you the terrain itself, as data, at the resolution your consultants actually need, ready to drop into Revit, Rhino, ArchiCAD, or SketchUp and carry through the whole project.</div>
+    </div>
+
   </div>
 
   <!-- Footer -->
-  <div style="padding:16px 30px;border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-    <div style="font-size:12px;color:var(--text-soft);line-height:1.5;">Need help? <a href="mailto:aki@topo-grapher.com" style="color:var(--accent);text-decoration:none;">aki@topo-grapher.com</a></div>
-    <button onclick="closeImportGuide()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:10px 22px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;white-space:nowrap;transition:all .15s;" onmouseover="this.style.background='var(--green-lt)'" onmouseout="this.style.background='var(--green)'">← Close guide</button>
+  <div style="padding:14px 30px;border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div style="font-size:12px;color:var(--text-soft);line-height:1.5;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <span>Questions? <a href="mailto:aki@topo-grapher.com" style="color:var(--accent);text-decoration:none;">aki@topo-grapher.com</a></span>
+      <button onclick="openDisclaimer()" style="background:none;border:none;color:var(--text-mid);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;padding:0;letter-spacing:.04em;text-decoration:underline;text-underline-offset:3px;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-mid)'">⚠ Disclaimer</button>
+    </div>
+    <button onclick="closeDataQuality()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:10px 22px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;white-space:nowrap;transition:all .15s;" onmouseover="this.style.background='var(--green-lt)'" onmouseout="this.style.background='var(--green)'">← Close</button>
+  </div>
+</div>
+
+<!-- ── Disclaimer Modal ──────────────────────────────────────────────────── -->
+<div id="disclaimer-overlay" onclick="if(event.target===this)closeDisclaimer()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0);z-index:9000;transition:background .25s;align-items:center;justify-content:center;padding:20px;">
+  <div id="disclaimer-modal" style="
+    background:var(--bg-card);border:1px solid var(--border-md);border-radius:10px;
+    max-width:520px;width:100%;max-height:85vh;overflow:hidden;
+    display:flex;flex-direction:column;
+    transform:scale(.96);opacity:0;transition:transform .25s cubic-bezier(.32,.72,0,1),opacity .25s;
+    box-shadow:0 20px 60px rgba(0,0,0,.4);
+  ">
+    <!-- Header -->
+    <div style="padding:22px 26px 16px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+      <div>
+        <div style="font-size:10px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:4px;">⚠ Important</div>
+        <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:800;color:var(--text);letter-spacing:-.01em;">Disclaimer</div>
+      </div>
+      <button onclick="closeDisclaimer()" style="background:var(--bg-input);border:1px solid var(--border-md);color:var(--text-mid);width:32px;height:32px;border-radius:4px;cursor:pointer;font-size:15px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseover="this.style.borderColor='var(--accent-md)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-mid)'">✕</button>
+    </div>
+    <!-- Body -->
+    <div style="padding:22px 26px;overflow-y:auto;flex:1;">
+      <p style="font-size:13px;color:var(--text);opacity:.9;line-height:1.75;margin-bottom:14px;">
+        Topo-grapher is a data-gathering and export tool intended for use within 3D modelling software. It is not liable for errors, omissions, or any consequences arising from use of this data on real construction sites or in any other context.
+      </p>
+      <p style="font-size:13px;color:var(--text);opacity:.9;line-height:1.75;margin-bottom:0;">
+        Elevation data is sourced from the best available public datasets and is as accurate as the underlying source permits. For any construction or engineering decisions we strongly recommend verifying terrain data against official municipal or regional records, or commissioning a land survey.
+      </p>
+    </div>
+    <!-- Footer -->
+    <div style="padding:14px 26px;border-top:1px solid var(--border);flex-shrink:0;display:flex;justify-content:flex-end;">
+      <button onclick="closeDisclaimer()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:9px 20px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;transition:all .15s;" onmouseover="this.style.background='var(--green-lt)'" onmouseout="this.style.background='var(--green)'">Understood</button>
+    </div>
   </div>
 </div>
 
@@ -3330,7 +3477,53 @@ function switchIGTab(name, btn) {
   btn.style.color = 'var(--accent)';
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeImportGuide(); });
+function openDataQuality() {
+  const overlay = document.getElementById('data-quality-overlay');
+  const panel   = document.getElementById('data-quality-panel');
+  overlay.style.display = 'block';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      overlay.style.background = 'rgba(0,0,0,0.5)';
+      panel.style.transform = 'translateX(0)';
+    });
+  });
+  document.body.style.overflow = 'hidden';
+  document.body.classList.add('guide-open');
+}
+
+function closeDataQuality() {
+  const overlay = document.getElementById('data-quality-overlay');
+  const panel   = document.getElementById('data-quality-panel');
+  overlay.style.background = 'rgba(0,0,0,0)';
+  panel.style.transform = 'translateX(100%)';
+  document.body.style.overflow = '';
+  document.body.classList.remove('guide-open');
+  setTimeout(() => { overlay.style.display = 'none'; }, 400);
+}
+
+function openDisclaimer() {
+  const overlay = document.getElementById('disclaimer-overlay');
+  const modal   = document.getElementById('disclaimer-modal');
+  overlay.style.display = 'flex';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      overlay.style.background = 'rgba(0,0,0,0.65)';
+      modal.style.transform = 'scale(1)';
+      modal.style.opacity = '1';
+    });
+  });
+}
+
+function closeDisclaimer() {
+  const overlay = document.getElementById('disclaimer-overlay');
+  const modal   = document.getElementById('disclaimer-modal');
+  overlay.style.background = 'rgba(0,0,0,0)';
+  modal.style.transform = 'scale(.96)';
+  modal.style.opacity = '0';
+  setTimeout(() => { overlay.style.display = 'none'; }, 250);
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeImportGuide(); closeDataQuality(); closeDisclaimer(); } });
 </script>
 
 <!-- Auth Modal -->
