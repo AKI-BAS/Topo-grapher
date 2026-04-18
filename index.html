@@ -1352,27 +1352,47 @@ function nextWorker() {
   return url;
 }
 
-async function tryWorkerProxy(pts){
-  // Use GET with query params — worker passes them straight to Open-Meteo
-  const CHUNK = 50; // Keep URL short — 50 coords per request through proxy
+async function tryWorkerProxy(pts, onProgress){
+  // Worker proxy: 7 workers rotating by round-robin. Fire PARALLEL batches
+  // (one per worker) in waves, then the next wave, etc. Previous version
+  // serialised with 600ms sleep between each batch — 75% of generation
+  // time was spent idle. Chunk size 200 is the URL-length ceiling for GET.
+  const CHUNK = 200;
+  const PARALLEL = WORKER_URLS.length; // 7 workers in flight at once
   const e = new Array(pts.length);
+  const isPro = (isProUnlocked() || (_currentProfile && _currentProfile.plan !== 'free'));
+
+  // Build all batch descriptors up front.
+  const batches = [];
   for(let i=0;i<pts.length;i+=CHUNK){
     const b = pts.slice(i,i+CHUNK);
     const lats = b.map(p=>p.lat.toFixed(6)).join(',');
     const lons = b.map(p=>p.lon.toFixed(6)).join(',');
-    const workerBase = nextWorker();
-    const isPro = (isProUnlocked() || (_currentProfile && _currentProfile.plan !== 'free'));
-    const workerUrl = workerBase + '?latitude=' + encodeURIComponent(lats) + '&longitude=' + encodeURIComponent(lons) + (isPro ? '&pro=true' : '');
-    const r = await fetch(workerUrl);
-    if(!r.ok){
-      const txt = await r.text().catch(()=>'');
-      throw new Error('proxy-' + r.status + ': ' + txt.slice(0,120));
-    }
-    const d = await r.json();
-    if(d.error) throw new Error('proxy-error: ' + (d.reason||JSON.stringify(d).slice(0,80)));
-    if(!Array.isArray(d.elevation)) throw new Error('proxy-format: ' + JSON.stringify(d).slice(0,80));
-    d.elevation.forEach((v,j)=>{ e[i+j]=v; });
-    if(i+CHUNK<pts.length) await sleep(600); // spread across multiple workers
+    batches.push({ offset: i, lats, lons });
+  }
+
+  // Fire in waves of PARALLEL. Each wave all 7 workers hit Open-Meteo
+  // simultaneously from different IPs, so there's no per-IP throttling.
+  let done = 0;
+  for(let w=0; w<batches.length; w+=PARALLEL){
+    const wave = batches.slice(w, w+PARALLEL);
+    const promises = wave.map((batch, idx) => {
+      const workerBase = WORKER_URLS[(w+idx) % WORKER_URLS.length];
+      const workerUrl = workerBase + '?latitude=' + encodeURIComponent(batch.lats) + '&longitude=' + encodeURIComponent(batch.lons) + (isPro ? '&pro=true' : '');
+      return fetch(workerUrl).then(async r => {
+        if(!r.ok){
+          const txt = await r.text().catch(()=>'');
+          throw new Error('proxy-' + r.status + ': ' + txt.slice(0,120));
+        }
+        const d = await r.json();
+        if(d.error) throw new Error('proxy-error: ' + (d.reason||JSON.stringify(d).slice(0,80)));
+        if(!Array.isArray(d.elevation)) throw new Error('proxy-format: ' + JSON.stringify(d).slice(0,80));
+        d.elevation.forEach((v,j)=>{ e[batch.offset+j]=v; });
+      });
+    });
+    await Promise.all(promises);
+    done += wave.length;
+    if(onProgress) onProgress(done / batches.length, `${done}/${batches.length} batches`);
   }
   if(looksLikeFailure(e)) throw new Error('proxy returned zeros');
   return e;
@@ -1475,9 +1495,13 @@ async function fetchElevations(pts,onP){
   let err0='', err1='';
   // Primary: Cloudflare Worker proxy — bypasses rate limits and CORS issues
   try{
-    const totalBatches = Math.ceil(pts.length/50);
-    onP(0,'Fetching elevation data…',`${pts.length} points · ${totalBatches} batches · ~${Math.ceil(totalBatches*1.2)}s`);
-    const e=await tryWorkerProxy(pts);
+    const totalBatches = Math.ceil(pts.length/200);
+    // New estimate: 7 batches in parallel @ ~1.5s each = ceil(batches/7) * 1.5s
+    const estSecs = Math.max(2, Math.ceil(totalBatches/7) * 2);
+    onP(0,'Fetching elevation data…',`${pts.length} points · ${totalBatches} batches · ~${estSecs}s`);
+    const e=await tryWorkerProxy(pts, (frac, label) => {
+      onP(frac * 0.95, 'Fetching elevation data…', label);
+    });
     return {elevations:e,source:'open-meteo.com via proxy (90m DEM)'};
   }catch(e){ err0=e.message; onP(0.2,'Trying direct API…',e.message.slice(0,60)); }
 
@@ -2175,7 +2199,16 @@ function updateElevationSourceBanner(source, isPro) {
   banner.style.borderColor = colours.border;
   title.style.color = colours.text;
   title.textContent = tier === 'lidar' ? 'High-resolution LiDAR data' : tier === 'mid' ? 'Medium-resolution satellite data' : 'Low-resolution satellite data (90m)';
-  detail.textContent = resText + ' · source: ' + source;
+  // Detail line: append a tooltip-bearing caveat for 90m sources, regardless
+  // of plan tier. 90m data is limited enough that flat terrain can produce
+  // visible stepping artefacts even after our smoothing, so we flag it
+  // honestly. Tooltip explains the cause without scaring users off.
+  if(tier === 'low') {
+    const caveat = ' · <span style="border-bottom:1px dotted ' + colours.text + ';cursor:help;" title="This region isn\'t covered by higher-resolution data sources (LiDAR or ArcticDEM). 90m data can produce visible stepped terrain on flat or gently-sloped sites — this is a limitation of the source, not a bug. Surface smoothing is applied automatically to reduce the effect.">limited data in this region ⓘ</span>';
+    detail.innerHTML = resText + ' · source: ' + source + caveat;
+  } else {
+    detail.textContent = resText + ' · source: ' + source;
+  }
   badge.textContent = sourceLabel;
   badge.style.background = colours.badgeBg;
   badge.style.color = colours.badgeText;
