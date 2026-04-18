@@ -1975,12 +1975,17 @@ async function convert(){
     // left untouched. The data stays authentic to what the authority
     // published. Uniform mode is never smoothed either.
     const srcRes = sourceResolutionMetres(source);
-    if(isNatural && srcRes >= 90 && srcRes > effSpacing){
+    if(isNatural && srcRes >= 90 && srcRes > effSpacing && utm.length < 20000){
       setProgress(0.92,'Smoothing surface…', `blending ${srcRes}m source`);
       const elevsIn = utm.map(p=>p.alt);
-      // Smoothing radius: ~1.2× source resolution captures 4–8 neighbours
-      // without overshooting into unrelated terrain.
-      const smoothed = idwSmoothElevations(utm, elevsIn, srcRes*1.2, 2, 8);
+      // Smoothing radius: 2.5× source resolution (225m for 90m data) ensures
+      // every point blends with samples from 2-3 adjacent source cells. A
+      // tighter radius leaves flat clusters inside single cells untouched,
+      // which Revit/SketchUp then renders as stepped plateaus between cells.
+      // 16 neighbours gives enough variety to blend across cell boundaries
+      // without over-smoothing. Genuine <180m features can't be resolved from
+      // 90m data anyway (Nyquist limit), so nothing real is lost.
+      const smoothed = idwSmoothElevations(utm, elevsIn, srcRes*2.5, 2, 16);
       for(let i=0;i<utm.length;i++) utm[i].alt = smoothed[i];
     }
 
