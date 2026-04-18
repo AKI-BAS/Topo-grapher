@@ -1246,6 +1246,67 @@ function pointInPoly(lat,lon,poly){
   return inside;
 }
 
+// Source-resolution detector — returns metres/pixel of the underlying DEM
+// based on the source string, or 0 if unknown/high-res.
+function sourceResolutionMetres(source){
+  if(!source) return 0;
+  const s = source.toLowerCase();
+  if(s.includes('90m')||s.includes('open-meteo')) return 90;
+  if(s.includes('30m')||s.includes('srtm')) return 30;
+  if(s.includes('arcticdem')||s.includes('10m')) return 10;
+  return 0; // LiDAR / high-res / unknown — no smoothing needed
+}
+
+// IDW (inverse-distance-weighted) elevation smoothing.
+// Fixes the "waffle grid" artefact when low-resolution source data (SRTM 90m)
+// returns identical Z values for jittered XY points that landed in the same
+// source cell. Each point's Z becomes a weighted blend of its k-nearest
+// neighbours, breaking identical-value clusters into a continuous surface.
+// Preserves XY exactly — only Z changes. Runs in O(n*k) with a spatial grid.
+function idwSmoothElevations(pts, elevations, radiusM, power=2, k=8){
+  const n = pts.length;
+  if(n < 4) return elevations.slice();
+  // Build spatial hash grid for fast neighbour lookup.
+  const cell = radiusM;
+  const bucket = new Map();
+  const key = (ix,iy) => ix+','+iy;
+  const xs = pts.map(p=>p.easting||p.x||0);
+  const ys = pts.map(p=>p.northing||p.y||0);
+  for(let i=0;i<n;i++){
+    const ix = Math.floor(xs[i]/cell), iy = Math.floor(ys[i]/cell);
+    const kk = key(ix,iy);
+    if(!bucket.has(kk)) bucket.set(kk, []);
+    bucket.get(kk).push(i);
+  }
+  const smoothed = new Array(n);
+  for(let i=0;i<n;i++){
+    const ix = Math.floor(xs[i]/cell), iy = Math.floor(ys[i]/cell);
+    // Gather candidates from 3x3 neighbouring cells.
+    const cands = [];
+    for(let dx=-1;dx<=1;dx++)
+      for(let dy=-1;dy<=1;dy++){
+        const b = bucket.get(key(ix+dx,iy+dy));
+        if(b) for(const j of b) cands.push(j);
+      }
+    // Compute distances, sort, take k nearest (excluding self only if we have enough).
+    const dists = cands.map(j => {
+      const dx = xs[i]-xs[j], dy = ys[i]-ys[j];
+      return {j, d2: dx*dx + dy*dy};
+    }).sort((a,b)=>a.d2-b.d2).slice(0, k);
+    let wsum = 0, zsum = 0;
+    for(const {j, d2} of dists){
+      const z = elevations[j];
+      if(z==null || !isFinite(z)) continue;
+      // +1 avoids division by zero for self (d2=0).
+      const w = 1 / Math.pow(d2 + 1, power/2);
+      wsum += w;
+      zsum += w * z;
+    }
+    smoothed[i] = wsum > 0 ? zsum/wsum : elevations[i];
+  }
+  return smoothed;
+}
+
 function generateGrid(poly,spacing,scatter=false){
   const lats=poly.map(p=>p.lat),lons=poly.map(p=>p.lng);
   const minLat=Math.min(...lats),maxLat=Math.max(...lats);
@@ -1906,6 +1967,23 @@ async function convert(){
 
     setProgress(0.9,'Calculating coordinates…','');
     const utm = grid.map((p,i)=>({...latLonToUTM(p.lat,p.lon), alt:elevations[i]}));
+
+    // Waffle-grid fix: only applied to 90m sources (Open-Meteo global DEM),
+    // where the source is so coarse relative to any realistic site scale that
+    // jittered points share Z values from the same cell, producing visible
+    // stepped artefacts. SRTM 30m, ArcticDEM 10m, and all LiDAR sources are
+    // left untouched. The data stays authentic to what the authority
+    // published. Uniform mode is never smoothed either.
+    const srcRes = sourceResolutionMetres(source);
+    if(isNatural && srcRes >= 90 && srcRes > effSpacing){
+      setProgress(0.92,'Smoothing surface…', `blending ${srcRes}m source`);
+      const elevsIn = utm.map(p=>p.alt);
+      // Smoothing radius: ~1.2× source resolution captures 4–8 neighbours
+      // without overshooting into unrelated terrain.
+      const smoothed = idwSmoothElevations(utm, elevsIn, srcRes*1.2, 2, 8);
+      for(let i=0;i<utm.length;i++) utm[i].alt = smoothed[i];
+    }
+
     const mode = document.getElementById('origin-select').value;
     let oE,oN;
     if(mode==='first'){ oE=utm[0].easting; oN=utm[0].northing; }
