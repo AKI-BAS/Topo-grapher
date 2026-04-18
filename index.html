@@ -1388,6 +1388,54 @@ function nextWorker() {
   return url;
 }
 
+async function tryWorkerSingle(pts, onProgress){
+  // Single-worker POST: used for Precise flow (dense grids) where the
+  // 7-parallel-GET approach fires 7 near-identical bbox requests at OpenTopo
+  // simultaneously and triggers its rate limits. One worker, one OpenTopo
+  // call, one GeoTIFF sampled for all points — drastically fewer external
+  // API calls at the cost of no per-user parallelism (which Precise doesn't
+  // benefit from anyway since all points share one bbox).
+  const workerBase = nextWorker();
+  const isPro = (isProUnlocked() || (_currentProfile && _currentProfile.plan !== 'free'));
+  if(onProgress) onProgress(0.1, `1 request · ${pts.length} points`);
+  const body = {
+    lats: pts.map(p => parseFloat(p.lat.toFixed(6))),
+    lons: pts.map(p => parseFloat(p.lon.toFixed(6))),
+    pro: isPro
+  };
+  let r;
+  try {
+    r = await fetch(workerBase, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  } catch(fetchErr) {
+    throw new Error('worker-post-network: ' + fetchErr.message);
+  }
+  // One retry on 429/500 — same pattern as tryWorkerProxy, covers transient
+  // upstream hiccups (OpenTopo/Open-Meteo momentary rate-limit blips).
+  if(r.status === 429 || r.status === 500){
+    await sleep(2000);
+    r = await fetch(workerBase, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  }
+  if(!r.ok){
+    const txt = await r.text().catch(()=>'');
+    throw new Error('worker-post-' + r.status + ': ' + txt.slice(0,160));
+  }
+  const d = await r.json();
+  if(d.error) throw new Error('worker-post-error: ' + (d.reason||JSON.stringify(d).slice(0,80)));
+  if(!Array.isArray(d.elevation)) throw new Error('worker-post-format: ' + JSON.stringify(d).slice(0,80));
+  if(d.elevation.length !== pts.length) throw new Error('worker-post-length: got ' + d.elevation.length + ' expected ' + pts.length);
+  if(looksLikeFailure(d.elevation)) throw new Error('worker-post returned zeros');
+  if(onProgress) onProgress(1, '1/1 batches');
+  return d.elevation;
+}
+
 async function tryWorkerProxy(pts, onProgress){
   // Worker proxy: 7 workers rotating by round-robin. Fire PARALLEL batches
   // (one per worker) in waves, then the next wave, etc. Previous version
@@ -1543,16 +1591,31 @@ async function tryOpenElevation(pts){
 async function fetchElevations(pts,onP){
   // Try Open-Meteo first — most reliable free elevation API
   let err0='', err1='';
-  // Primary: Cloudflare Worker proxy — bypasses rate limits and CORS issues
+  // Primary: Cloudflare Worker — uses region-routed high-res sources
+  // (EU_DTM, COP30, USGS, DHM, GPXZ) and falls back to Open-Meteo only when
+  // no regional source exists. Two modes:
+  //  - Precise (>600 pts): one POST to one worker, one OpenTopo call.
+  //    Avoids 7-parallel-GET fan-out that triggers OpenTopo rate limits
+  //    for dense same-bbox grids.
+  //  - Site (≤600 pts): 7 parallel GETs across 7 workers. Faster for sparse
+  //    grids because each worker handles a slice independently.
+  const USE_SINGLE_POST = pts.length > 600;
   try{
-    const totalBatches = Math.ceil(pts.length/200);
-    // New estimate: 7 batches in parallel @ ~1.5s each = ceil(batches/7) * 1.5s
-    const estSecs = Math.max(2, Math.ceil(totalBatches/7) * 2);
-    onP(0,'Fetching elevation data…',`${pts.length} points · ${totalBatches} batches · ~${estSecs}s`);
-    const e=await tryWorkerProxy(pts, (frac, label) => {
-      onP(frac * 0.95, 'Fetching elevation data…', label);
-    });
-    return {elevations:e,source:'open-meteo.com via proxy (90m DEM)'};
+    if(USE_SINGLE_POST){
+      onP(0,'Fetching elevation data…',`${pts.length} points · single request`);
+      const e=await tryWorkerSingle(pts, (frac, label) => {
+        onP(frac * 0.95, 'Fetching elevation data…', label);
+      });
+      return {elevations:e,source:'worker (region-routed, single POST)'};
+    } else {
+      const totalBatches = Math.ceil(pts.length/200);
+      const estSecs = Math.max(2, Math.ceil(totalBatches/7) * 2);
+      onP(0,'Fetching elevation data…',`${pts.length} points · ${totalBatches} batches · ~${estSecs}s`);
+      const e=await tryWorkerProxy(pts, (frac, label) => {
+        onP(frac * 0.95, 'Fetching elevation data…', label);
+      });
+      return {elevations:e,source:'worker (region-routed, 7-parallel GET)'};
+    }
   }catch(e){ err0=e.message; onP(0.2,'Trying direct API…',e.message.slice(0,60)); }
 
   try{
