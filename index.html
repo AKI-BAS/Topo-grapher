@@ -3494,7 +3494,7 @@ async function confirmSeatCheckout() {
         priceId: STRIPE_PRICE_COMPANY,
         email: _currentUser.email,
         plan: 'company',
-        seats,
+        quantity: seats,
         successUrl: 'https://topo-grapher.com?upgraded=true',
         cancelUrl: 'https://topo-grapher.com#pro'
       })
