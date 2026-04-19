@@ -279,6 +279,30 @@ textarea { resize:vertical; width:100%; }
 .notify-success { font-size:12px; color:var(--accent); margin-top:8px; display:none; }
 .notify-success.show { display:block; }
 
+<!--
+.feedback-grid {
+  display: grid;
+  grid-template-columns: 1fr 240px;
+  gap: 40px;
+  align-items: start;
+}
+.feedback-left { min-width: 0; }
+.feedback-right {
+  padding-left: 30px;
+  border-left: 1px solid var(--border-md);
+}
+@media (max-width: 700px) {
+  .feedback-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .feedback-right {
+    padding-left: 0;
+    border-left: none;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-md);
+  }
+}
 /* FOOTER */
 footer { background:var(--bg-card); border-top:1px solid var(--border); padding:24px 32px; text-align:center; transition:background .2s; }
 .footer-logo { font-family:'Syne',sans-serif; font-size:15px; font-weight:800; color:var(--text); margin-bottom:5px; }
@@ -1202,20 +1226,50 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
     </div>
   </div>
 
-  <!-- Notify section -->
-  <div class="card" id="notify-section" style="margin-top:10px">
-    <div style="max-width:560px;">
-      <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);margin-bottom:6px;">Be first to know when Pro launches</div>
-      <div style="font-size:14px;color:var(--text-mid);line-height:1.7;margin-bottom:16px;">Leave your email and we'll notify you the moment Pro goes live. Early signups get the first month free.</div>
-      <div class="notify-form">
-        <input type="email" id="notify-email" placeholder="your@email.com" style="flex:1;min-width:0;">
-        <select id="notify-plan" style="width:160px;">
-          <option value="pro">Pro — £25/mo</option>
-          <option value="company">Company — £19.99/seat</option>
-        </select>
-        <button class="btn-notify-send" onclick="sendNotify()">Notify me →</button>
+<!-- Feedback section (with roadmap sidebar) -->
+  <div class="card" id="feedback-section" style="margin-top:10px">
+    <div class="feedback-grid">
+
+      <!-- LEFT: feedback form -->
+      <div class="feedback-left">
+        <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);margin-bottom:6px;">Got thoughts? We'd love to hear them.</div>
+        <div style="font-size:14px;color:var(--text-mid);line-height:1.7;margin-bottom:16px;">Bug reports, feature ideas, or just want email updates about sales and major upgrades — drop them here.</div>
+
+        <div class="notify-form" style="margin-bottom:8px;">
+          <select id="fb-topic" onchange="onFeedbackTopicChange()" style="width:200px;">
+            <option value="general">General feedback</option>
+            <option value="bug">Bug report</option>
+            <option value="feature">Feature request</option>
+            <option value="updates_only">Sales &amp; updates only</option>
+          </select>
+          <input type="email" id="fb-email" placeholder="your@email.com (optional)" style="flex:1;min-width:0;">
+        </div>
+
+        <textarea id="fb-message" placeholder="Tell us what's on your mind…" rows="5" style="width:100%;background:var(--bg-input);border:1px solid var(--border-md);border-radius:4px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;resize:vertical;margin-bottom:10px;box-sizing:border-box;"></textarea>
+
+        <!-- Honeypot: hidden from humans, bots will fill it and get rejected by RLS -->
+        <input type="text" id="fb-hp" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;" aria-hidden="true">
+
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn-notify-send" onclick="sendFeedback()">Send →</button>
+        </div>
+
+        <div class="notify-success" id="fb-success"></div>
       </div>
-      <div class="notify-success" id="notify-success"></div>
+
+      <!-- RIGHT: roadmap -->
+      <div class="feedback-right">
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;letter-spacing:.04em;text-transform:uppercase;">What we're working on</div>
+        <ul style="list-style:none;padding:0;margin:0;font-family:'DM Mono',monospace;font-size:13px;line-height:1.9;color:var(--text-mid);">
+          <li style="margin-bottom:10px;"><span style="color:var(--accent);margin-right:8px;">→</span>Iceland DEM (10m resolution)</li>
+          <li style="margin-bottom:10px;"><span style="color:var(--accent);margin-right:8px;">→</span>Contour preview before download</li>
+          <li style="margin-bottom:10px;"><span style="color:var(--accent);margin-right:8px;">→</span>Scotland DTM 10 and Lidar</li>
+          <li style="margin-bottom:10px;"><span style="color:var(--accent);margin-right:8px;">→</span>Adaptive resolution (dense edges)</li>
+          <li style="margin-bottom:10px;"><span style="color:var(--accent);margin-right:8px;">→</span>Precise area focus zones</li>
+        </ul>
+        <div style="font-size:12px;color:var(--text-soft);margin-top:18px;font-style:italic;line-height:1.6;">Your feedback shapes what ships next.</div>
+      </div>
+
     </div>
   </div>
 
@@ -3508,31 +3562,102 @@ async function confirmSeatCheckout() {
   }
 }
 
-// ── Save notify signup to Supabase + send confirmation email ───────────────
+// ── Feedback form ──────────────────────────────────────────────────────────
 const NOTIFY_WORKER_URL = 'https://topo-notify.svanur300.workers.dev';
 
-async function sendNotify() {
-  const email = document.getElementById('notify-email').value.trim();
-  const plan = document.getElementById('notify-plan').value;
-  if (!email) return;
-  const btn = document.querySelector('.btn-notify-send');
-  btn.textContent = '…';
-  const { error } = await _sb.from('notify_signups').insert({ email, plan });
-  if (error && error.code === '23505') {
-    document.getElementById('notify-success').textContent = "You're already on the list!";
-  } else if (error) {
-    document.getElementById('notify-success').textContent = 'Something went wrong — try again.';
+function onFeedbackTopicChange() {
+  const topic = document.getElementById('fb-topic').value;
+  const msg = document.getElementById('fb-message');
+  const email = document.getElementById('fb-email');
+  if (topic === 'updates_only') {
+    msg.style.display = 'none';
+    email.placeholder = 'your@email.com (required)';
   } else {
-    document.getElementById('notify-success').textContent = "✓ You're on the list. Check your email for confirmation.";
-    // Fire confirmation email — don't await, don't block UI on failure
-    fetch(NOTIFY_WORKER_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, plan }),
-    }).catch(() => {}); // silent fail — signup is already saved to Supabase
+    msg.style.display = '';
+    email.placeholder = 'your@email.com (optional)';
   }
-  document.getElementById('notify-success').classList.add('show');
-  btn.textContent = 'Notify me →';
+}
+
+async function sendFeedback() {
+  const topic = document.getElementById('fb-topic').value;
+  const email = document.getElementById('fb-email').value.trim();
+  const message = document.getElementById('fb-message').value.trim();
+  const honeypot = document.getElementById('fb-hp').value;
+  const successEl = document.getElementById('fb-success');
+  const btn = document.querySelector('#feedback-section .btn-notify-send');
+
+  // Validation
+  if (topic === 'updates_only') {
+    if (!email) {
+      successEl.textContent = 'Email required for updates.';
+      successEl.style.color = 'var(--danger, #e25555)';
+      successEl.classList.add('show');
+      return;
+    }
+  } else {
+    if (!message) {
+      successEl.textContent = 'Add a message so we know what you mean.';
+      successEl.style.color = 'var(--danger, #e25555)';
+      successEl.classList.add('show');
+      return;
+    }
+  }
+
+  btn.textContent = '…';
+  btn.disabled = true;
+  successEl.style.color = ''; // reset to default (accent)
+
+  try {
+    // Auto-fill user_id if logged in
+    const userId = (typeof _currentUser !== 'undefined' && _currentUser) ? _currentUser.id : null;
+
+    const { error } = await _sb.from('feedback').insert({
+      topic,
+      email: email || null,
+      message: topic === 'updates_only' ? null : (message || null),
+      user_id: userId,
+      user_agent: navigator.userAgent,
+      honeypot: honeypot || null,
+    });
+
+    if (error) throw error;
+
+    // "Updates only" path: also write to notify_signups + fire confirmation email
+    if (topic === 'updates_only' && email) {
+      const { error: nErr } = await _sb.from('notify_signups').insert({ email, plan: 'pro' });
+      // 23505 = already on list; not an error from the user's perspective
+      if (!nErr || nErr.code === '23505') {
+        fetch(NOTIFY_WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, plan: 'pro' }),
+        }).catch(() => {}); // silent fail — signup already saved
+      }
+      successEl.textContent = "✓ You're on the list. Check your email for confirmation.";
+    } else {
+      successEl.textContent = "✓ Thanks — we've got it.";
+    }
+
+    successEl.classList.add('show');
+
+    // Clear the form so people can submit again without refresh
+    document.getElementById('fb-message').value = '';
+    if (!userId) document.getElementById('fb-email').value = '';
+
+  } catch (err) {
+    successEl.textContent = 'Something went wrong — try again.';
+    successEl.style.color = 'var(--danger, #e25555)';
+    successEl.classList.add('show');
+  } finally {
+    btn.textContent = 'Send →';
+    btn.disabled = false;
+  }
+}
+
+function prefillFeedbackEmail() {
+  if (typeof _currentUser === 'undefined' || !_currentUser) return;
+  const el = document.getElementById('fb-email');
+  if (el && !el.value) el.value = _currentUser.email || '';
 }
 
 // Check daily limit — use Supabase for logged-in users, localStorage for guests
