@@ -1788,8 +1788,8 @@ function checkDrawnAreaWarning() {
   const siteH=(Math.max(...lats)-Math.min(...lats))*mpd.lat;
   const areaKm2=(siteW*siteH)/1e6;
   const _isPro=isPro();
-  if(!_isPro&&(siteW>500||siteH>500)) {
-    hintEl.innerHTML='⚠ Free tier limit is 500×500m. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for larger sites.';
+  if(!_isPro&&(siteW>250||siteH>250)) {
+    hintEl.innerHTML='⚠ Free tier limit is 250×250m. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for larger sites.';
     hintEl.style.color='var(--warning,#e2a255)';
   } else if(_isPro&&areaKm2>100) {
     hintEl.innerHTML='⚠ Exceeds 100 km² maximum. <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">Contact us</a>.';
@@ -1991,7 +1991,7 @@ async function convert(){
 
   try{
     // Free tier limits
-    const FREE_MAX_M = 500; // 500m x 500m max area
+    const FREE_MAX_M = 250; // 250m x 250m max area
     const FREE_MAX_SPACING = 12; // 12m minimum spacing
     const lats=polygonLatLngs.map(p=>p.lat),lons=polygonLatLngs.map(p=>p.lng);
     const mpd=metresPerDeg((Math.min(...lats)+Math.max(...lats))/2);
@@ -2001,7 +2001,7 @@ async function convert(){
 
     if(!_isPro){
       if(siteW>FREE_MAX_M||siteH>FREE_MAX_M){
-        throw new Error('Free tier is limited to 500 × 500m sites. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for sites up to 2 × 2km.');
+        throw new Error('Free tier is limited to 250 × 250m sites. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for sites up to 2 × 2km.');
       }
       if(selectedSpacing<FREE_MAX_SPACING){
         throw new Error('Free tier supports 12m spacing only. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for 3m and 6m precision.');
@@ -2254,8 +2254,10 @@ function updateElevationSourceBanner(source, isPro) {
   } else if(s.includes('ign') || s.includes('rge-alti') || s.includes('rge_alti')) {
     tier = 'lidar'; resText = '1m resolution · IGN RGE ALTI France'; sourceLabel = 'LiDAR 1m';
   } else if(s.includes('arcticdem')) {
-    tier = 'mid'; resText = '10m resolution · ArcticDEM (satellite stereo)'; sourceLabel = '10m DEM';
-  } else if(s.includes('eu_dtm') || s.includes('swissalti') || s.includes('ahn3') || s.includes('3dep') || s.includes('opentopo')) {
+    tier = 'high'; resText = '10m resolution · ArcticDEM (satellite stereo)'; sourceLabel = '10m DEM';
+  } else if(s.includes('eu_dtm')) {
+    tier = 'high'; resText = '10m resolution · EU-DTM'; sourceLabel = '10m DEM';
+  } else if(s.includes('swissalti') || s.includes('ahn3') || s.includes('3dep') || s.includes('opentopo')) {
     tier = 'lidar'; resText = '0.5–1m resolution · OpenTopography LiDAR'; sourceLabel = 'LiDAR 1m';
   } else if(s.includes('srtm') || s.includes('30m')) {
     tier = 'mid'; resText = '30m resolution · SRTM'; sourceLabel = '30m DEM';
@@ -2267,7 +2269,8 @@ function updateElevationSourceBanner(source, isPro) {
 
   // Colours
   const colours = {
-    lidar: { bg: isDark ? '#1a2e14' : '#eaf3de', border: '#639922', text: isDark ? '#9aba6a' : '#27500a', badgeBg: '#639922', badgeText: '#fff' },
+    lidar: { bg: isDark ? '#0e1f2e' : '#dce9f5', border: '#2878c8', text: isDark ? '#6aa8da' : '#0a3661', badgeBg: '#2878c8', badgeText: '#fff' },
+    high:  { bg: isDark ? '#1a2e14' : '#eaf3de', border: '#639922', text: isDark ? '#9aba6a' : '#27500a', badgeBg: '#639922', badgeText: '#fff' },
     mid:   { bg: isDark ? '#2a2410' : '#faeeda', border: '#ba7517', text: isDark ? '#ef9f27' : '#633806', badgeBg: '#ba7517', badgeText: '#fff' },
     low:   { bg: isDark ? '#2a1a10' : '#faece7', border: '#d85a30', text: isDark ? '#f09975' : '#4a1b0c', badgeBg: '#d85a30', badgeText: '#fff' },
   }[tier];
@@ -2276,7 +2279,7 @@ function updateElevationSourceBanner(source, isPro) {
   banner.style.background = colours.bg;
   banner.style.borderColor = colours.border;
   title.style.color = colours.text;
-  title.textContent = tier === 'lidar' ? 'High-resolution LiDAR data' : tier === 'mid' ? 'Medium-resolution satellite data' : 'Low-resolution satellite data (90m)';
+   title.textContent = tier === 'lidar' ? 'High-resolution LiDAR data' : tier === 'high' ? 'High-resolution satellite data (10m)' : tier === 'mid' ? 'Medium-resolution satellite data (30m)' : 'Low-resolution satellite data (90m)';
   // Detail line: append a tooltip-bearing caveat for 90m sources, regardless
   // of plan tier. 90m data is limited enough that flat terrain can produce
   // visible stepping artefacts even after our smoothing, so we flag it
