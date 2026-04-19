@@ -503,7 +503,6 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   .map-toolbar button[onclick*="clear"] { width: auto !important; align-self: flex-end; margin-left: 0 !important; }
   input[type="text"] { max-width: 100%; box-sizing: border-box; }
   .nav-right { gap: 6px; flex-shrink: 0; }
-  #pro-unlock-wrap { right: 8px; left: 8px; width: auto !important; max-width: calc(100vw - 16px); }
 }
 
 @media (max-width: 480px) {
@@ -552,10 +551,6 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
         <a href="#pro" onclick="document.getElementById('user-dropdown').classList.remove('show');startCheckout('pro')">Upgrade to Pro →</a>
         <button onclick="signOut()">Sign out</button>
       </div>
-    </div>
-    <div id="pro-unlock-wrap" style="display:none;position:absolute;top:58px;right:32px;background:var(--bg-card);border:1px solid var(--border-md);border-radius:6px;padding:12px 14px;gap:8px;align-items:center;z-index:2000;box-shadow:0 4px 16px rgba(0,0,0,.25);">
-      <input type="password" id="pro-code-input" placeholder="Enter access code…" style="width:200px;" onkeydown="if(event.key==='Enter'){const ok=tryUnlockPro(this.value);if(!ok){this.style.borderColor='var(--danger)';setTimeout(()=>this.style.borderColor='',1000);}}" />
-      <button onclick="const ok=tryUnlockPro(document.getElementById('pro-code-input').value);if(!ok){document.getElementById('pro-code-input').style.borderColor='var(--danger)';setTimeout(()=>document.getElementById('pro-code-input').style.borderColor='',1000);}" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:8px 14px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;white-space:nowrap;">Unlock</button>
     </div>
     <button class="theme-btn" id="theme-toggle" title="Toggle theme">☀</button>
   </div>
@@ -1396,12 +1391,12 @@ async function tryWorkerSingle(pts, onProgress){
   // API calls at the cost of no per-user parallelism (which Precise doesn't
   // benefit from anyway since all points share one bbox).
   const workerBase = nextWorker();
-  const isPro = (isProUnlocked() || (_currentProfile && _currentProfile.plan !== 'free'));
+  const _isPro = isPro();
   if(onProgress) onProgress(0.1, `1 request · ${pts.length} points`);
   const body = {
     lats: pts.map(p => parseFloat(p.lat.toFixed(6))),
     lons: pts.map(p => parseFloat(p.lon.toFixed(6))),
-    pro: isPro
+    pro: _isPro
   };
   let r;
   try {
@@ -1444,7 +1439,7 @@ async function tryWorkerProxy(pts, onProgress){
   const CHUNK = 200;
   const PARALLEL = WORKER_URLS.length; // 7 workers in flight at once
   const e = new Array(pts.length);
-  const isPro = (isProUnlocked() || (_currentProfile && _currentProfile.plan !== 'free'));
+  const _isPro = isPro();
 
   // Build all batch descriptors up front.
   const batches = [];
@@ -1465,7 +1460,7 @@ async function tryWorkerProxy(pts, onProgress){
     const wave = batches.slice(w, w+PARALLEL);
     const promises = wave.map((batch, idx) => {
       const workerBase = WORKER_URLS[(w+idx) % WORKER_URLS.length];
-      const workerUrl = workerBase + '?latitude=' + encodeURIComponent(batch.lats) + '&longitude=' + encodeURIComponent(batch.lons) + (isPro ? '&pro=true' : '');
+      const workerUrl = workerBase + '?latitude=' + encodeURIComponent(batch.lats) + '&longitude=' + encodeURIComponent(batch.lons) + (_isPro ? '&pro=true' : '');
       return fetch(workerUrl).then(async r => {
         // 429 retry: Open-Meteo returns "Minutely API request limit exceeded"
         // during heavy concurrent use. Pause ~2s and retry once before
@@ -1792,21 +1787,21 @@ function checkDrawnAreaWarning() {
   const siteW=(Math.max(...lons)-Math.min(...lons))*mpd.lon;
   const siteH=(Math.max(...lats)-Math.min(...lats))*mpd.lat;
   const areaKm2=(siteW*siteH)/1e6;
-  const isPro=isProUnlocked()||(_currentProfile&&_currentProfile.plan!=='free');
-  if(!isPro&&(siteW>500||siteH>500)) {
+  const _isPro=isPro();
+  if(!_isPro&&(siteW>500||siteH>500)) {
     hintEl.innerHTML='⚠ Free tier limit is 500×500m. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for larger sites.';
     hintEl.style.color='var(--warning,#e2a255)';
-  } else if(isPro&&areaKm2>100) {
+  } else if(_isPro&&areaKm2>100) {
     hintEl.innerHTML='⚠ Exceeds 100 km² maximum. <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">Contact us</a>.';
     hintEl.style.color='var(--warning,#e2a255)';
-  } else if(isPro&&areaKm2>20) {
+  } else if(_isPro&&areaKm2>20) {
     const tot=(15+(areaKm2-20)*0.90).toFixed(2);
     hintEl.textContent='⚠ '+areaKm2.toFixed(1)+' km² — add-on: £15 base + £'+((areaKm2-20)*0.90).toFixed(2)+' = £'+tot+' total.';
     hintEl.style.color='var(--warning,#e2a255)';
-  } else if(isPro&&areaKm2>5) {
+  } else if(_isPro&&areaKm2>5) {
     hintEl.textContent='⚠ '+areaKm2.toFixed(1)+' km² — £15 large site add-on will apply.';
     hintEl.style.color='var(--warning,#e2a255)';
-  } else if(isPro&&(areaKm2>4||siteW>2000||siteH>2000)) {
+  } else if(_isPro&&(areaKm2>4||siteW>2000||siteH>2000)) {
     hintEl.textContent='⚠ '+areaKm2.toFixed(1)+' km² — £5 large site add-on will apply.';
     hintEl.style.color='var(--warning,#e2a255)';
   } else {
@@ -1929,17 +1924,6 @@ function incrementGenerationsToday() {
     .forEach(k => localStorage.removeItem(k));
 }
 
-function checkDailyLimit() {
-  if (isProUnlocked()) return; // Pro users have no limit
-  const used = getGenerationsToday();
-  if (used >= FREE_DAILY_LIMIT) {
-    throw new Error(
-      `Free tier limit reached — ${FREE_DAILY_LIMIT} generations per day. ` +
-      `Resets at midnight. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.`
-    );
-  }
-}
-
 function updateLimitBadge() {
   const used = getGenerationsToday();
   const remaining = Math.max(0, FREE_DAILY_LIMIT - used);
@@ -1951,25 +1935,13 @@ function updateLimitBadge() {
 }
 
 
-// ── Pro unlock (owner access via secret code) ──────────────────────────────
-const PRO_SECRET = 'topo-pro-2024';  // change this to something only you know
-
-function isProUnlocked() {
-  return localStorage.getItem('topo-pro-unlocked') === 'true';
-}
-
-function tryUnlockPro(code) {
-  if (code.trim() === PRO_SECRET) {
-    localStorage.setItem('topo-pro-unlocked', 'true');
-    applyProUI();
-    return true;
-  }
-  return false;
+// ── Pro status (Stripe-backed, from profile) ──────────────────────────────
+function isPro() {
+  return _currentProfile && (_currentProfile.plan === 'pro' || _currentProfile.plan === 'company');
 }
 
 function applyProUI() {
-  const hasProPlan = _currentProfile && (_currentProfile.plan === 'pro' || _currentProfile.plan === 'company');
-  if (!isProUnlocked() && !hasProPlan) return;
+  if (!isPro()) return;
   const badge = document.getElementById('pro-status-badge');
   if (badge) { badge.textContent = 'Pro ✓'; badge.style.background = 'var(--forest)'; badge.style.color = '#EFE3D8'; badge.style.borderColor = 'var(--green-lt)'; }
   ['acc-3','acc-6'].forEach(id => {
@@ -1980,8 +1952,6 @@ function applyProUI() {
   if (scatterRow) { scatterRow.style.opacity = '1'; scatterRow.style.pointerEvents = 'auto'; }
   const lb = document.getElementById('daily-limit-badge');
   if (lb) lb.style.display = 'none';
-  const up = document.getElementById('pro-unlock-wrap');
-  if (up) up.style.display = 'none';
   const footerSub = document.getElementById('footer-sub');
   if (footerSub) {
     const label = _currentProfile?.plan === 'company' ? 'Team' : 'Pro';
@@ -1996,11 +1966,6 @@ function updateScatterDesc() {
   desc.textContent = val === 'natural'
     ? 'Natural scatter — better terrain fidelity, reduces flat-plane artefacts'
     : 'Uniform grid — predictable, compatible with all BIM tools';
-}
-
-function showUnlockPrompt() {
-  const wrap = document.getElementById('pro-unlock-wrap');
-  if (wrap) wrap.style.display = wrap.style.display === 'none' ? 'flex' : 'none';
 }
 
 function cancelGeneration() {
@@ -2032,9 +1997,9 @@ async function convert(){
     const mpd=metresPerDeg((Math.min(...lats)+Math.max(...lats))/2);
     const siteW=(Math.max(...lons)-Math.min(...lons))*mpd.lon;
     const siteH=(Math.max(...lats)-Math.min(...lats))*mpd.lat;
-    const isPro = isProUnlocked() || (_currentProfile && _currentProfile.plan !== 'free');
+    const _isPro = isPro();
 
-    if(!isPro){
+    if(!_isPro){
       if(siteW>FREE_MAX_M||siteH>FREE_MAX_M){
         throw new Error('Free tier is limited to 500 × 500m sites. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for sites up to 2 × 2km.');
       }
@@ -2048,7 +2013,7 @@ async function convert(){
     const siteAreaKm2 = siteAreaM2 / 1000000;
     const PRO_BASE_MAX_M = 2000;
 
-    if(isPro) {
+    if(_isPro) {
       if(siteAreaKm2 > 100) {
         throw new Error('Site area exceeds 100 km\u00b2. Please <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">contact us</a> for very large site requests.');
       }
@@ -2085,9 +2050,9 @@ async function convert(){
     const effSpacing = window._effectiveSpacing || selectedSpacing;
     const grid = generateGrid(polygonLatLngs, effSpacing, isNatural);
     if(grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
-    const POINT_CAP = isPro ? 50000 : 2000;
+    const POINT_CAP = _isPro ? 50000 : 2000;
     if(grid.length>POINT_CAP){
-      if(isPro){
+      if(_isPro){
         throw new Error(`${grid.length.toLocaleString()} points exceeds the limit of ${POINT_CAP.toLocaleString()}. Use a larger spacing or smaller area.`);
       } else {
         throw new Error(`${grid.length.toLocaleString()} points exceeds the free limit of 2,000. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for larger areas.`);
@@ -2182,7 +2147,7 @@ async function convert(){
     const _siteArea = parseFloat(document.getElementById('stat-area')?.textContent?.replace(/[^0-9.]/g,'')) || 0;
     logGeneration(projectName, cleanOut.length, selectedSpacing, _siteArea, source||'unknown');
     saveProMemory(projectName, selectedSpacing, csvData, source||'unknown');
-    updateElevationSourceBanner(source||'unknown', isPro);
+    updateElevationSourceBanner(source||'unknown', _isPro);
     // Google Analytics — track successful generation
     try {
       const _area = parseFloat(document.getElementById('stat-area')?.textContent?.replace(/[^0-9.]/g,'')) || 0;
@@ -2191,7 +2156,7 @@ async function convert(){
         event_category: 'engagement',
         event_label: source || 'unknown',
         dimension1: _region,
-        dimension2: isPro ? 'pro' : 'free',
+        dimension2: _isPro ? 'pro' : 'free',
         value: Math.round(_area * 100) / 100
       });
     } catch(e) {}
@@ -2226,7 +2191,7 @@ async function convert(){
       `<tr><td colspan="3" style="color:var(--text-soft);font-size:11px;padding-top:6px">… ${out.length.toLocaleString()} total rows in CSV</td></tr>`;
 
     // Only count generation on SUCCESS — not on error
-    if (!isProUnlocked() && !(_currentProfile && _currentProfile.plan !== 'free')) {
+    if (!isPro()) {
       incrementGenerationsToday();
       updateLimitBadge();
     }
@@ -2922,25 +2887,6 @@ function showWireframe(points, minZ, maxZ) {
 
 // ── Settings ───────────────────────────────────────────────────────────────
 
-function applyAccessCode() {
-  const code = document.getElementById('settings-access-code').value.trim();
-  const msgEl = document.getElementById('access-code-msg');
-  const ok = tryUnlockPro(code);
-  if (ok) {
-    msgEl.style.color = 'var(--accent)';
-    msgEl.textContent = '✓ Pro access unlocked.';
-    document.getElementById('settings-plan').textContent = 'Pro';
-    document.getElementById('settings-plan').style.background = 'var(--forest)';
-    document.getElementById('settings-plan').style.color = '#EFE3D8';
-    document.getElementById('settings-free-cta').style.display = 'none';
-    document.getElementById('settings-pro-info').style.display = 'block';
-    applyProUI();
-  } else {
-    msgEl.style.color = 'var(--danger,#e25555)';
-    msgEl.textContent = 'Invalid access code.';
-  }
-}
-
 function openSettings() {
   if (!_currentUser) { openAuth(); return; }
   document.getElementById('settings-email').textContent = _currentUser.email;
@@ -3079,10 +3025,6 @@ const MEMORY_KEY = 'topo-saved-projects';
 const MEMORY_MAX = 3;
 const MEMORY_MAX_BYTES = 1.8 * 1024 * 1024; // 1.8MB
 const MEMORY_EXPIRY_MS = 14 * 24 * 60 * 60 * 1000; // 2 weeks
-
-function isPro() {
-  return isProUnlocked() || (_currentProfile && _currentProfile.plan !== 'free');
-}
 
 async function saveProMemory(projectName, spacing, csvData, source) {
   if (!_currentUser) return;
@@ -3592,9 +3534,7 @@ async function sendNotify() {
 
 // Check daily limit — use Supabase for logged-in users, localStorage for guests
 async function checkDailyLimit() {
-  if (isProUnlocked()) return;
-  if (_currentUser && _currentProfile?.plan === 'pro') return;
-  if (_currentUser && _currentProfile?.plan === 'company') return;
+  if (isPro()) return;
 
   if (_currentUser) {
     // Check server-side generation count for today
@@ -3622,7 +3562,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   updateLimitBadge();
   // Init auth after a tick so it doesn't block map rendering
   setTimeout(() => initAuth(), 0);
-  if (isProUnlocked()) applyProUI();
   document.getElementById('project-name').addEventListener('input', function(){ this.classList.remove('error'); updateConvertBtn(); });
   document.getElementById('convert-btn').addEventListener('click', convert);
   document.getElementById('download-btn').addEventListener('click', downloadCSV);
@@ -3853,14 +3792,6 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeImpor
           </div>
         </div>
 
-        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
-          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Access code</div>
-          <div style="display:flex;gap:8px;">
-            <input type="password" id="settings-access-code" placeholder="Enter access code…" style="flex:1;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;padding:9px 12px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;" onkeydown="if(event.key==='Enter')applyAccessCode()"/>
-            <button onclick="applyAccessCode()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:9px 16px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;white-space:nowrap;">Apply</button>
-          </div>
-          <div id="access-code-msg" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
-        </div>
         <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
           <button onclick="signOut();closeSettings();" style="background:none;border:none;color:var(--danger,#e25555);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;padding:0;letter-spacing:.06em;">Sign out</button>
         </div>
