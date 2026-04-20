@@ -684,12 +684,12 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
     <div class="stats-grid">
       <div class="stat-box"><div class="stat-n" id="stat-points">—</div><div class="stat-l">Points</div></div>
       <div class="stat-box"><div class="stat-n" id="stat-spacing">—</div><div class="stat-l">Spacing</div></div>
-      <div class="stat-box"><div class="stat-n" id="stat-range">—</div><div class="stat-l">Elev. range (m)</div></div>
-      <div class="stat-box"><div class="stat-n" id="stat-area">—</div><div class="stat-l">m²</div><div class="stat-s" id="stat-dims">—</div></div>
+      <div class="stat-box"><div class="stat-n" id="stat-range">—</div><div class="stat-l" id="stat-range-label">Elev. range (m)</div></div>
+      <div class="stat-box"><div class="stat-n" id="stat-area">—</div><div class="stat-l" id="stat-area-label">m²</div><div class="stat-s" id="stat-dims">—</div></div>
     </div>
     <div class="origin-box" id="origin-info"></div>
     <table class="preview-table">
-      <thead><tr><th>X (m)</th><th>Y (m)</th><th>Z (m)</th></tr></thead>
+      <thead><tr><th id="ph-x">X (m)</th><th id="ph-y">Y (m)</th><th id="ph-z">Z (m)</th></tr></thead>
       <tbody id="preview-body"></tbody>
     </table>
     <div id="elevation-quality-warn" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;line-height:1.6;"></div>
@@ -703,8 +703,15 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
       </div>
       <div id="esb-upgrade" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--text-mid);font-family:'DM Mono',monospace;line-height:1.6;"></div>
     </div>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text-mid);">
+  <span style="letter-spacing:.06em;">Export units</span>
+  <div style="display:inline-flex;border:1px solid var(--border-md);border-radius:4px;overflow:hidden;">
+    <button type="button" id="units-metric" onclick="setExportUnits('metric')" style="background:var(--accent-md);color:#EFE3D8;border:none;padding:6px 14px;font-family:inherit;font-size:12px;cursor:pointer;letter-spacing:.04em;">Metric (m)</button>
+    <button type="button" id="units-imperial" onclick="setExportUnits('imperial')" style="background:var(--bg-input);color:var(--text-mid);border:none;border-left:1px solid var(--border-md);padding:6px 14px;font-family:inherit;font-size:12px;cursor:pointer;letter-spacing:.04em;">Imperial (ft)</button>
+  </div>
+</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <button class="btn-dl" id="download-btn" style="flex:1;min-width:160px;">↓ Download CSV</button>
+      <button class="btn-dl" id="download-btn" onclick="downloadCSV()" style="flex:1;min-width:160px;">↓ Download CSV</button>
       <button class="btn-dl" id="download-map-btn" style="flex:1;min-width:160px;background:var(--bg-input);color:var(--text);border-color:var(--border-md);">↓ Site map image</button>
     </div>
   </div>
@@ -1287,6 +1294,9 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://js.stripe.com/v3/"></script>
 <script>
+// ── Unit conversion (metric ↔ imperial) ────────────────────────────────
+const M_TO_FT = 3.28084;
+let exportUnits = 'metric';  // 'metric' | 'imperial'
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 const html = document.documentElement;
@@ -2175,7 +2185,8 @@ async function convert(){
     });
     const cleanOut = Array.from(gridMap.values())
       .sort((a,b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
-    csvData = 'X,Y,Z\n'+cleanOut.map(p=>`${p.x},${p.y},${p.z}`).join('\n');
+    window._cleanOutMetric = cleanOut;
+csvData = 'X,Y,Z\n'+cleanOut.map(p=>`${p.x},${p.y},${p.z}`).join('\n');
 
     // Flat elevation detector — warn if data quality is poor
     const zValsOut = cleanOut.map(p=>p.z).filter(z=>isFinite(z)&&z!==0);
@@ -2233,6 +2244,7 @@ async function convert(){
     document.getElementById('stat-range').textContent=alts.length?`${Math.min(...alts).toFixed(0)}–${Math.max(...alts).toFixed(0)}`:'—';
     document.getElementById('stat-area').textContent=Math.round(xR*yR).toLocaleString();
     document.getElementById('stat-dims').textContent=`${xR.toFixed(0)}m × ${yR.toFixed(0)}m`;
+refreshResultStats();
 
     document.getElementById('origin-info').innerHTML=
       `<strong>Local origin (0,0) · ${projectName}</strong><br>`+
@@ -2269,20 +2281,78 @@ async function convert(){
   }
 }
 
-function downloadCSV(){
-  if(!csvData) return;
-  const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csvData],{type:'text/csv'}));
-  a.download = `${safe}_toposolid.csv`;
-  a.click();
-  // Google Analytics — track CSV download
-  try {
-    gtag('event', 'csv_downloaded', {
-      event_category: 'conversion',
-      event_label: safe
-    });
-  } catch(e) {}
+function setExportUnits(u){
+  exportUnits = u;
+  const m = document.getElementById('units-metric');
+  const i = document.getElementById('units-imperial');
+  if(m && i){
+    const activeBG = 'var(--accent-md)', activeC = '#EFE3D8';
+    const idleBG   = 'var(--bg-input)',  idleC   = 'var(--text-mid)';
+    m.style.background = u==='metric' ? activeBG : idleBG;
+    m.style.color      = u==='metric' ? activeC  : idleC;
+    i.style.background = u==='imperial' ? activeBG : idleBG;
+    i.style.color      = u==='imperial' ? activeC  : idleC;
+  }
+  refreshResultStats();
+}
+
+function refreshResultStats(){
+  const pts = window._cleanOutMetric;
+  if(!pts || !pts.length) return;
+  const imperial = exportUnits === 'imperial';
+  const mult = imperial ? M_TO_FT : 1;
+  const unit = imperial ? 'ft' : 'm';
+
+  // Preview table headers
+  const phX = document.getElementById('ph-x');
+  const phY = document.getElementById('ph-y');
+  const phZ = document.getElementById('ph-z');
+  if(phX) phX.textContent = `X (${unit})`;
+  if(phY) phY.textContent = `Y (${unit})`;
+  if(phZ) phZ.textContent = `Z (${unit})`;
+
+  // Stat labels
+  const rangeLbl = document.getElementById('stat-range-label');
+  const areaLbl  = document.getElementById('stat-area-label');
+  if(rangeLbl) rangeLbl.textContent = `Elev. range (${unit})`;
+  if(areaLbl)  areaLbl.textContent  = imperial ? 'ft²' : 'm²';
+
+  // Elevation range
+  const alts = pts.map(p=>p.z*mult).filter(z=>z!==0&&isFinite(z)&&!isNaN(z));
+  const rangeEl = document.getElementById('stat-range');
+  if(rangeEl) rangeEl.textContent = alts.length
+    ? `${Math.min(...alts).toFixed(0)}–${Math.max(...alts).toFixed(0)}`
+    : '—';
+
+  // Dimensions (xR × yR)
+  const xs = pts.map(p=>p.x), ys = pts.map(p=>p.y);
+  const xR = (Math.max(...xs)-Math.min(...xs)) * mult;
+  const yR = (Math.max(...ys)-Math.min(...ys)) * mult;
+  const dimsEl = document.getElementById('stat-dims');
+  if(dimsEl) dimsEl.textContent = `${xR.toFixed(0)}${unit} × ${yR.toFixed(0)}${unit}`;
+
+  // Area
+  const areaM2 = (Math.max(...xs)-Math.min(...xs)) * (Math.max(...ys)-Math.min(...ys));
+  const areaEl = document.getElementById('stat-area');
+  if(areaEl){
+    if(imperial){
+      const ft2 = areaM2 * 10.7639;
+      areaEl.textContent = ft2.toLocaleString('en-US',{maximumFractionDigits:0});
+    } else {
+      areaEl.textContent = Math.round(areaM2).toLocaleString();
+    }
+  }
+
+  // Preview table body — re-render with converted values
+  const body = document.getElementById('preview-body');
+  if(body && pts.length){
+    const decimals = imperial ? 2 : 3;
+    body.innerHTML =
+      pts.slice(0,6).map(p=>
+        `<tr><td>${(p.x*mult).toFixed(decimals)}</td><td>${(p.y*mult).toFixed(decimals)}</td><td>${(p.z*mult).toFixed(decimals)}</td></tr>`
+      ).join('') +
+      `<tr><td colspan="3" style="color:var(--text-soft);font-size:11px;padding-top:6px">… ${pts.length.toLocaleString()} total rows in CSV</td></tr>`;
+  }
 }
 
 // ── Elevation source quality banner ────────────────────────────────────────
