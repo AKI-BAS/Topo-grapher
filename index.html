@@ -711,7 +711,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   </div>
 </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <button class="btn-dl" id="download-btn" onclick="downloadCSV()" style="flex:1;min-width:160px;">↓ Download CSV</button>
+      <button class="btn-dl" id="download-btn" style="flex:1;min-width:160px;">↓ Download CSV</button>
       <button class="btn-dl" id="download-map-btn" style="flex:1;min-width:160px;background:var(--bg-input);color:var(--text);border-color:var(--border-md);">↓ Site map image</button>
     </div>
   </div>
@@ -2074,6 +2074,7 @@ async function convert(){
       }
     }
 
+
     // Pro area limits with tiered add-on pricing
     const siteAreaM2 = siteW * siteH;
     const siteAreaKm2 = siteAreaM2 / 1000000;
@@ -2281,6 +2282,35 @@ refreshResultStats();
   }finally{
     document.getElementById('convert-btn').disabled=false;
   }
+}
+function downloadCSV(){
+  const pts = window._cleanOutMetric;
+  if(!pts || !pts.length) return;
+
+  const imperial = exportUnits === 'imperial';
+  const mult = imperial ? M_TO_FT : 1;
+  const decimals = imperial ? 2 : 3;
+  const header = imperial ? 'X_ft,Y_ft,Z_ft' : 'X,Y,Z';
+  const suffix = imperial ? '_ft' : '_m';
+
+  const rows = pts.map(p =>
+    `${(p.x*mult).toFixed(decimals)},${(p.y*mult).toFixed(decimals)},${(p.z*mult).toFixed(decimals)}`
+  );
+  const csv = header + '\n' + rows.join('\n');
+
+  const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = `${safe}_toposolid${suffix}.csv`;
+  a.click();
+
+  try {
+    gtag('event', 'csv_downloaded', {
+      event_category: 'conversion',
+      event_label: safe,
+      dimension3: exportUnits
+    });
+  } catch(e) {}
 }
 
 function setExportUnits(u){
