@@ -1912,7 +1912,12 @@ async function tryWorkerSingle(pts, onProgress){
   if(d.error) throw new Error('worker-post-error: ' + (d.reason||JSON.stringify(d).slice(0,80)));
   if(!Array.isArray(d.elevation)) throw new Error('worker-post-format: ' + JSON.stringify(d).slice(0,80));
   if(d.elevation.length !== pts.length) throw new Error('worker-post-length: got ' + d.elevation.length + ' expected ' + pts.length);
-  if(looksLikeFailure(d.elevation)) throw new Error('worker-post returned zeros');
+   if(looksLikeFailure(d.elevation)) throw new Error('worker-post returned zeros');
+  if(onProgress) onProgress(1, '1/1 batches');
+  // Pass through the worker's source label (e.g. "Iceland-ArcticDEM-10m-EGM2008",
+  // "DHM-Denmark-0.4m", "Germany-EU_DTM-30m") so the UI reflects the real data
+  // source rather than a generic "worker" string.
+  return { elevations: d.elevation, source: d.source || 'worker (region-routed, single POST)' };
   if(onProgress) onProgress(1, '1/1 batches');
   return d.elevation;
 }
@@ -1926,6 +1931,9 @@ async function tryWorkerProxy(pts, onProgress){
   const PARALLEL = WORKER_URLS.length; // 7 workers in flight at once
   const e = new Array(pts.length);
   const _isPro = isPro();
+  // Captured from the first batch that returns a source label. All batches
+  // within one generation hit the same region, so first-seen is authoritative.
+  let workerSource = null;
 
   // Build all batch descriptors up front.
   const batches = [];
@@ -1963,6 +1971,7 @@ async function tryWorkerProxy(pts, onProgress){
         if(d.error) throw new Error('proxy-error: ' + (d.reason||JSON.stringify(d).slice(0,80)));
         if(!Array.isArray(d.elevation)) throw new Error('proxy-format: ' + JSON.stringify(d).slice(0,80));
         d.elevation.forEach((v,j)=>{ e[batch.offset+j]=v; });
+        if (d.source && !workerSource) workerSource = d.source;
       });
     });
     await Promise.all(promises);
@@ -1974,7 +1983,7 @@ async function tryWorkerProxy(pts, onProgress){
     if(w + PARALLEL < batches.length) await sleep(300);
   }
   if(looksLikeFailure(e)) throw new Error('proxy returned zeros');
-  return e;
+  return { elevations: e, source: workerSource || 'worker (region-routed, 7-parallel GET)' };
 }
 
 // API 1: Open-Meteo elevation — POST with JSON body (no URL length limit)
@@ -2084,18 +2093,20 @@ async function fetchElevations(pts,onP){
   try{
     if(USE_SINGLE_POST){
       onP(0,'Fetching elevation data…',`${pts.length} points · single request`);
-      const e=await tryWorkerSingle(pts, (frac, label) => {
+      const result = await tryWorkerSingle(pts, (frac, label) => {
         onP(frac * 0.95, 'Fetching elevation data…', label);
       });
-      return {elevations:e,source:'worker (region-routed, single POST)'};
+      // Worker returns the true regional source (e.g. "Iceland-ArcticDEM-10m-EGM2008").
+      // Fall back to generic label only if the worker didn't include one.
+      return { elevations: result.elevations, source: result.source };
     } else {
       const totalBatches = Math.ceil(pts.length/200);
       const estSecs = Math.max(2, Math.ceil(totalBatches/7) * 2);
       onP(0,'Fetching elevation data…',`${pts.length} points · ${totalBatches} batches · ~${estSecs}s`);
-      const e=await tryWorkerProxy(pts, (frac, label) => {
+      const result = await tryWorkerProxy(pts, (frac, label) => {
         onP(frac * 0.95, 'Fetching elevation data…', label);
       });
-      return {elevations:e,source:'worker (region-routed, 7-parallel GET)'};
+      return { elevations: result.elevations, source: result.source };
     }
   }catch(e){ err0=e.message; onP(0.2,'Trying direct API…',e.message.slice(0,60)); }
 
@@ -2820,29 +2831,52 @@ function updateElevationSourceBanner(source, isPro) {
 
   const s = source.toLowerCase();
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-
   let tier, resText, sourceLabel, upgradeMsg;
 
+  // Matching order matters — more specific labels must come before broader
+  // substring catches. The worker's source strings are of the form
+  // "Country-Dataset-Resolution" (e.g. "Germany-EU_DTM-30m", "DHM-Denmark-0.4m",
+  // "Iceland-ArcticDEM-10m-EGM2008"), so we match on the Dataset portion.
+
+  // ── Tier: LiDAR (premium, 0.4m–1m) ──────────────────────────────────
   if(s.includes('dhm') || s.includes('denmark')) {
     tier = 'lidar'; resText = '0.4m resolution · Danish DHM LiDAR'; sourceLabel = 'LiDAR 0.4m';
-  } else if(s.includes('gpxz') || s.includes('1m-lidar')) {
+  } else if(s.includes('gpxz')) {
     tier = 'lidar'; resText = '1m resolution · GPXZ LiDAR'; sourceLabel = 'LiDAR 1m';
   } else if(s.includes('usgs') || s.includes('3dep')) {
-    tier = 'lidar'; resText = 'Up to 1m resolution · USGS 3DEP LiDAR'; sourceLabel = 'LiDAR 1m';
+    // epqs.nationalmap.gov serves the best available 3DEP layer per-point
+    // (typically 10m, 1m where LiDAR-flown). Label honestly without promising 1m.
+    tier = 'lidar'; resText = 'USGS 3DEP (up to 1m where available)'; sourceLabel = 'USGS 3DEP';
   } else if(s.includes('ign') || s.includes('rge-alti') || s.includes('rge_alti')) {
     tier = 'lidar'; resText = '1m resolution · IGN RGE ALTI France'; sourceLabel = 'LiDAR 1m';
+  } else if(s.includes('swissalti') || s.includes('ahn3') || s.includes('ahn4')) {
+    tier = 'lidar'; resText = '0.5–1m resolution · National LiDAR'; sourceLabel = 'LiDAR 1m';
+
+  // ── Tier: High (10m self-hosted / stereo) ───────────────────────────
   } else if(s.includes('arcticdem')) {
-    tier = 'high'; resText = '10m resolution · ArcticDEM (satellite stereo)'; sourceLabel = '10m DEM';
+    // ArcticDEM is satellite stereo, not LiDAR, but it's the best-available
+    // for Iceland and we self-host it on R2 — worth foregrounding.
+    tier = 'high'; resText = '10m resolution · ArcticDEM (best available for Iceland)'; sourceLabel = '10m DEM';
+
+  // ── Tier: Mid (30m — EU_DTM, COP30, SRTM) ──────────────────────────
   } else if(s.includes('eu_dtm')) {
-    tier = 'high'; resText = '10m resolution · EU-DTM'; sourceLabel = '10m DEM';
-  } else if(s.includes('swissalti') || s.includes('ahn3') || s.includes('3dep') || s.includes('opentopo')) {
-    tier = 'lidar'; resText = '0.5–1m resolution · OpenTopography LiDAR'; sourceLabel = 'LiDAR 1m';
-  } else if(s.includes('srtm') || s.includes('30m')) {
+    tier = 'mid'; resText = '30m resolution · Continental Europe DTM'; sourceLabel = '30m DEM';
+    upgradeMsg = !isPro ? 'Pro users get national LiDAR (0.4–1m) where available — up to 75× more accurate for flat terrain.' : '';
+  } else if(s.includes('cop30') || s.includes('copernicus')) {
+    tier = 'mid'; resText = '30m resolution · Copernicus GLO-30'; sourceLabel = '30m DEM';
+    upgradeMsg = !isPro ? 'Pro users get LiDAR (1m+) for this region where available.' : '';
+  } else if(s.includes('srtm')) {
     tier = 'mid'; resText = '30m resolution · SRTM'; sourceLabel = '30m DEM';
-    upgradeMsg = !isPro ? 'Pro users get LiDAR (1m+) for this region — up to 30× more accurate for flat terrain.' : '';
+    upgradeMsg = !isPro ? 'Pro users get LiDAR (1m+) for this region where available.' : '';
+  } else if(s.includes('30m')) {
+    // Generic 30m catch-all — anything else labelled 30m we haven't branded.
+    tier = 'mid'; resText = '30m resolution · satellite DEM'; sourceLabel = '30m DEM';
+    upgradeMsg = !isPro ? 'Pro users get LiDAR (1m+) for this region where available.' : '';
+
+  // ── Tier: Low (90m global fallback) ─────────────────────────────────
   } else {
     tier = 'low'; resText = '90m resolution · Open-Meteo DEM'; sourceLabel = '90m DEM';
-    upgradeMsg = !isPro ? 'This is coarse satellite data. Pro unlocks LiDAR sources (0.4–1m) for Denmark, UK, and 20+ countries — critical for flat or urban sites.' : '';
+    upgradeMsg = !isPro ? 'This is coarse satellite data. Pro unlocks LiDAR sources (0.4–1m) for Denmark, UK, USA and 20+ countries — critical for flat or urban sites.' : '';
   }
 
   // Colours
