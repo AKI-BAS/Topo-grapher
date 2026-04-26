@@ -107,11 +107,15 @@
 body.guide-open #import-guide-tab,
 body.guide-open #data-quality-tab { opacity:0; pointer-events:none; }
 
-html, body { overflow-x: hidden; }
+html, body {
+  overflow-x: hidden;  /* fallback */
+  overflow-x: clip;    /* modern, doesn't break sticky */
+}
 body { background:var(--bg); color:var(--text); font-family:'DM Mono',monospace; min-height:100vh; transition:background .2s,color .2s; }
 
 /* NAV */
-nav { background:var(--bg-card); border-bottom:1px solid var(--border); padding:0 32px; height:70px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:1000; transition:background .2s,border-color .2s; }
+nav { background: color-mix(in srgb, var(--bg-card) 72%, transparent); backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%); border-bottom:1px solid transparent; padding:0 32px; height:70px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:1000; transition: background var(--dur-standard) var(--ease-out), border-color var(--dur-standard) var(--ease-out); }
+nav.scrolled { background: color-mix(in srgb, var(--bg-card) 88%, transparent); border-bottom-color: var(--border); }
 .nav-brand { display:flex; align-items:center; gap:14px; text-decoration:none; }
 .nav-logo { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:var(--text); letter-spacing:-.01em; }
 .nav-logo em { color:var(--accent); font-style:normal; }
@@ -138,7 +142,7 @@ nav { background:var(--bg-card); border-bottom:1px solid var(--border); padding:
   /* inherits font, size, color, letter-spacing from .nav-link */
 }
 /* HERO */
-.hero { background:var(--bg-card); padding:44px 32px 40px; border-bottom:1px solid var(--border); transition:background .2s; }
+.hero { background:var(--bg); padding:44px 32px 40px; border-bottom:1px solid var(--border); transition:background .2s; }
 .hero-inner { max-width:1400px; margin:0 auto; }
 .hero-kicker { font-size:12px; color:var(--text-soft); letter-spacing:.18em; text-transform:uppercase; margin-bottom:12px; }
 .hero h1 { font-family:'Syne',sans-serif; font-size:clamp(40px,5.5vw,62px); font-weight:800; line-height:1; color:var(--text); letter-spacing:-.02em; margin-bottom:16px; }
@@ -5028,6 +5032,26 @@ window.track = function(event, params) {
     if (typeof gtag === 'function') gtag('event', event, params);
   } catch(e) {}
 };
+</script>
+
+<!-- NEW: sticky nav scroll state -->
+<script>
+(function() {
+  const nav = document.querySelector('nav');
+  if (!nav) return;
+  let ticking = false;
+  function update() {
+    nav.classList.toggle('scrolled', window.scrollY > 8);
+    ticking = false;
+  }
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      requestAnimationFrame(update);
+      ticking = true;
+    }
+  }, { passive: true });
+  update();
+})();
 </script>
 
 <!-- Auth Modal -->
