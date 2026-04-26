@@ -4846,7 +4846,11 @@ window.track = function(event, params) {
     <div class="auth-modal" style="max-width:380px;text-align:center;">
       <button class="auth-close" onclick="document.getElementById('seat-picker-overlay').classList.remove('show')">&#x2715;</button>
       <h2>Company seats</h2>
-      <p style="font-size:13px;color:var(--text-mid);margin-bottom:20px;">How many team members need access? Minimum 2 seats.</p>
+      <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px;">How many team members need access? Minimum 2 seats.</p>
+      <div style="margin-bottom:18px;text-align:left;">
+        <label for="seat-picker-company-name" style="display:block;font-size:11px;color:var(--text-soft);margin-bottom:5px;letter-spacing:.06em;text-transform:uppercase;">Company name <span style="color:var(--text-soft);text-transform:none;letter-spacing:0;font-size:10px;">(optional)</span></label>
+        <input type="text" id="seat-picker-company-name" placeholder="Your company or team name" style="width:100%;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;box-sizing:border-box;"/>
+      </div>
       <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:14px;">
         <button onclick="const i=document.getElementById('seat-count-input');i.value=Math.max(2,parseInt(i.value)-1);updateSeatTotal()" style="width:36px;height:36px;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;font-size:18px;cursor:pointer;color:var(--text);">−</button>
         <input type="number" id="seat-count-input" value="2" min="2" oninput="updateSeatTotal()" style="width:70px;text-align:center;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;padding:8px;font-family:'DM Mono',monospace;font-size:20px;font-weight:700;color:var(--text);outline:none;"/>
