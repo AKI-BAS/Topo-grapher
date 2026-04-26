@@ -4750,6 +4750,60 @@ window.track = function(event, params) {
           </div>
         </div>
 
+<!-- Company admin view -->
+        <div id="settings-company-info" style="display:none;border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Your company</div>
+
+          <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:14px;">
+            <div style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;">Company name</div>
+            <div style="font-size:14px;color:var(--text);" id="company-name-display">—</div>
+          </div>
+
+          <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
+              <div style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;">Join code</div>
+              <div style="display:flex;gap:6px;">
+                <button onclick="copyJoinCode()" style="background:var(--bg-card);border:1px solid var(--border-md);color:var(--text-mid);font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;border-radius:3px;cursor:pointer;letter-spacing:.04em;">Copy</button>
+                <button onclick="regenerateJoinCode()" style="background:var(--bg-card);border:1px solid var(--border-md);color:var(--text-mid);font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;border-radius:3px;cursor:pointer;letter-spacing:.04em;">Regenerate</button>
+              </div>
+            </div>
+            <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:var(--accent);letter-spacing:.06em;" id="company-code-display">—</div>
+            <div style="font-size:11px;color:var(--text-soft);margin-top:6px;line-height:1.6;">Share this code with team members so they can join. Regenerating invalidates the old code.</div>
+          </div>
+
+          <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
+              <div style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;">Seats</div>
+              <button onclick="openSeatChangeModal()" style="background:var(--bg-card);border:1px solid var(--border-md);color:var(--text-mid);font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;border-radius:3px;cursor:pointer;letter-spacing:.04em;">Change</button>
+            </div>
+            <div style="font-size:14px;color:var(--text);" id="company-seats-display">— / — seats used</div>
+          </div>
+
+          <div style="margin-bottom:8px;">
+            <div style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Members</div>
+            <div id="company-members-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
+
+          <div id="company-action-msg" style="font-size:12px;min-height:16px;margin-top:8px;"></div>
+        </div>
+
+        <!-- Company member view -->
+        <div id="settings-company-member-info" style="display:none;border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Company membership</div>
+          <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:14px;">
+            <div style="font-size:13px;color:var(--text-mid);line-height:1.7;">You're a member of <strong style="color:var(--text);" id="member-company-name">—</strong>. You have full access to Company-tier features. To leave or change membership, contact your company admin.</div>
+          </div>
+        </div>
+
+        <!-- Free user join view -->
+        <div id="settings-join-company" style="display:none;border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;">Join a company</div>
+          <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;line-height:1.7;">Have a company join code from your team admin? Enter it below to get Company-tier access.</p>
+          <div class="auth-field"><label>Join code</label><input type="text" id="company-join-code" placeholder="TOPO-XXXXXX" style="text-transform:uppercase;letter-spacing:.04em;font-family:'DM Mono',monospace;"/></div>
+          <button class="auth-submit" onclick="joinCompanyWithCode()" style="margin-top:4px;">Join company →</button>
+          <div id="company-join-msg" style="font-size:12px;min-height:16px;margin-top:8px;"></div>
+        </div>
+
         <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
           <button onclick="signOut();closeSettings();" style="background:none;border:none;color:var(--danger,#e25555);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;padding:0;letter-spacing:.06em;">Sign out</button>
         </div>
