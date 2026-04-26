@@ -1878,7 +1878,23 @@ function metresPerDeg(lat){
   const r=lat*Math.PI/180;
   return {lat:111132.92-559.82*Math.cos(2*r)+1.175*Math.cos(4*r), lon:111412.84*Math.cos(r)-93.5*Math.cos(3*r)};
 }
+// ── Bbox area helper (O(1) — safe to call on any polygon size) ─────────────
+// Used to gate expensive preview operations BEFORE they run. generateGrid
+// allocates an object per cell, so a 10km × 10km bbox at 3m spacing tries
+// to allocate 11M objects synchronously and freezes the tab. We compute
+// area in O(1) first, then decide whether the preview is even worth running.
+const PREVIEW_FULL_KM2    = 4;   // ≤ 4 km²: show all 4 spacing counts (max ~440K @ 3m)
+const PREVIEW_PARTIAL_KM2 = 25;  // 4–25 km²: show only 12m + 20m counts (12m maxes ~175K)
+                                 // > 25 km²: skip all previews, disable Generate
 
+function getBboxAreaKm2(poly){
+  if(!poly || poly.length === 0) return 0;
+  const lats = poly.map(p=>p.lat), lons = poly.map(p=>p.lng);
+  const mpd = metresPerDeg((Math.min(...lats)+Math.max(...lats))/2);
+  const w = (Math.max(...lons)-Math.min(...lons)) * mpd.lon;
+  const h = (Math.max(...lats)-Math.min(...lats)) * mpd.lat;
+  return (w * h) / 1e6;
+}
 function pointInPoly(lat,lon,poly){
   let inside=false;
   for(let i=0,j=poly.length-1;i<poly.length;j=i++){
@@ -2431,21 +2447,55 @@ function checkDrawnAreaWarning() {
 function updateHint(){
   const el = document.getElementById('map-hint');
   if(polygonLatLngs && polygonLatLngs.length > 0){
+    const areaKm2 = getBboxAreaKm2(polygonLatLngs);
+    // Above 100 km² — convert() will reject this. Tell them now, not later.
+    if(areaKm2 > 100){
+      el.innerHTML = `⚠ Site is ${areaKm2.toFixed(1)} km² — exceeds the 100 km² maximum. Draw a smaller area, or <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">contact us</a> for very large sites.`;
+      el.style.color = 'var(--danger)';
+      return;
+    }
+    // 25–100 km²: too large for live preview, but generation works fine.
+    // Add-on pricing is shown separately by checkDrawnAreaWarning.
+    if(areaKm2 > PREVIEW_PARTIAL_KM2){
+      el.textContent = `Area set: ${areaKm2.toFixed(1)} km² — too large for live preview, but you can still generate. Click Generate when ready.`;
+      el.style.color = 'var(--text-mid)';
+      return;
+    }
+    // 4–25 km²: skip 3m and 6m preview to avoid freeze, show area only.
+    const skipPointCount = areaKm2 > PREVIEW_FULL_KM2 && (selectedSpacing === 3 || selectedSpacing === 6);
+    if(skipPointCount){
+      el.textContent = `Area set: ${areaKm2.toFixed(2)} km² — ${selectedSpacing}m spacing too dense to preview at this size. Use 12m or 20m, or click Generate.`;
+      el.style.color = '';
+      return;
+    }
     const c = generateGrid(polygonLatLngs, selectedSpacing).length;
-    const _l=polygonLatLngs.map(p=>p.lat),_o=polygonLatLngs.map(p=>p.lng);
-    const _m=metresPerDeg((Math.min(..._l)+Math.max(..._l))/2);
-    const _akm=(((Math.max(..._o)-Math.min(..._o))*_m.lon)*((Math.max(..._l)-Math.min(..._l))*_m.lat)/1e6).toFixed(2);
-    el.textContent = `Area set: ${_akm} km² — ${c.toLocaleString()} points at ${selectedSpacing}m. Adjust below or click Generate.`;
+    el.textContent = `Area set: ${areaKm2.toFixed(2)} km² — ${c.toLocaleString()} points at ${selectedSpacing}m. Adjust below or click Generate.`;
+    el.style.color = '';
     return;
   }
   el.textContent = 'Use the search box (top-right of map) to find your site. Draw a polygon or rectangle to define the boundary. Double-click to finish a polygon.';
+  el.style.color = '';
 }
 
 function updatePtCounts(){
+  const areaKm2 = getBboxAreaKm2(polygonLatLngs);
+  // Threshold-gated preview. generateGrid is unbounded — calling it on a
+  // huge bbox at 3m spacing freezes the tab (see PREVIEW_*_KM2 above).
+  // Skip the densest spacings when the bbox is too big to handle them.
   [3,6,12,20].forEach(s=>{
     const el = document.getElementById(`pts-${s}`);
     if(!el) return;
     if(!polygonLatLngs){ el.textContent='— pts'; el.style.color=''; return; }
+    // Above 25 km²: skip everything — even 12m would be ~175K pts × 4 buttons.
+    // Between 4–25 km²: skip 3m and 6m — 3m at 25 km² = 2.7M pts, freezes.
+    const tooLargeForThisSpacing =
+      areaKm2 > PREVIEW_PARTIAL_KM2 ||
+      (areaKm2 > PREVIEW_FULL_KM2 && (s === 3 || s === 6));
+    if(tooLargeForThisSpacing){
+      el.textContent = '— pts';
+      el.style.color = 'var(--text-soft)';
+      return;
+    }
     const c = generateGrid(polygonLatLngs, s).length;
     el.textContent = `~${c.toLocaleString()} pts`;
     el.style.color = c>2000 ? 'var(--danger)' : '';
@@ -2459,7 +2509,15 @@ function setAccuracy(s){
 }
 
 function updateConvertBtn(){
-  document.getElementById('convert-btn').disabled = !(document.getElementById('project-name').value.trim() && polygonLatLngs && polygonLatLngs.length>0);
+  const btn = document.getElementById('convert-btn');
+  const hasName = document.getElementById('project-name').value.trim();
+  const hasPoly = polygonLatLngs && polygonLatLngs.length > 0;
+  // No size gate here — generation has its own guards (POINT_CAP at 50K,
+  // 100 km² hard cap in convert(), per-tier add-on pricing in
+  // checkDrawnAreaWarning). The button is enabled whenever there's a
+  // name and a polygon; convert() handles oversize/overdense rejection.
+  btn.disabled = !(hasName && hasPoly);
+  btn.title = '';
 }
 
 // ── UI ─────────────────────────────────────────────────────────────────────
