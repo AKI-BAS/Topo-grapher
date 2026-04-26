@@ -4859,6 +4859,27 @@ window.track = function(event, params) {
   </div>
 </div>
 
+<!-- Seat change modal (Company admin only) -->
+<div class="auth-overlay" id="seat-change-overlay">
+  <div class="auth-modal-wrap">
+    <div class="auth-modal" style="max-width:380px;text-align:center;">
+      <button class="auth-close" onclick="document.getElementById('seat-change-overlay').classList.remove('show')">&#x2715;</button>
+      <h2>Change seat count</h2>
+      <p style="font-size:13px;color:var(--text-mid);margin-bottom:6px;">Adjust the number of seats on your subscription.</p>
+      <p style="font-size:12px;color:var(--text-soft);margin-bottom:20px;line-height:1.7;">Cannot reduce below current usage. Stripe will prorate the difference on your next invoice.</p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:14px;">
+        <button onclick="const i=document.getElementById('seat-change-input');const min=parseInt(i.dataset.min)||2;i.value=Math.max(min,parseInt(i.value)-1);updateSeatChangeTotal()" style="width:36px;height:36px;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;font-size:18px;cursor:pointer;color:var(--text);">−</button>
+        <input type="number" id="seat-change-input" value="2" min="2" data-min="2" oninput="updateSeatChangeTotal()" style="width:70px;text-align:center;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;padding:8px;font-family:'DM Mono',monospace;font-size:20px;font-weight:700;color:var(--text);outline:none;"/>
+        <button onclick="const i=document.getElementById('seat-change-input');i.value=Math.min(100,parseInt(i.value)+1);updateSeatChangeTotal()" style="width:36px;height:36px;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;font-size:18px;cursor:pointer;color:var(--text);">+</button>
+      </div>
+      <div style="font-size:22px;font-weight:700;font-family:'Syne',sans-serif;color:var(--accent);margin-bottom:4px;" id="seat-change-total">£39.98/month</div>
+      <div style="font-size:12px;color:var(--text-soft);margin-bottom:8px;" id="seat-change-current">Currently 2 seats · 1 in use</div>
+      <div id="seat-change-msg" style="font-size:12px;min-height:18px;margin-bottom:14px;"></div>
+      <button id="seat-change-confirm-btn" onclick="confirmSeatChange()" style="width:100%;background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:14px;border-radius:6px;font-family:'DM Mono',monospace;font-size:13px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;">Update seats →</button>
+    </div>
+  </div>
+</div>
+
 <!-- Leave-site warning -->
 <div id="leave-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;align-items:center;justify-content:center;">
   <div style="background:var(--forest);border:2px solid var(--green-lt);border-radius:12px;padding:32px 28px;max-width:400px;width:90%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.5);">
