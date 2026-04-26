@@ -3751,24 +3751,271 @@ function switchSettingsTab(tab) {
   if (tab === 'projects') renderSavedProjects();
 }
 
+// ── Company tier — frontend ──────────────────────────────────────────────
+// All Company endpoints require either a Supabase JWT (read by the worker
+// via Authorization: Bearer <token>) or a direct Supabase RPC call. We use:
+//   join_company_with_code   → Supabase RPC (JWT implicit via _sb session)
+//   remove_company_member    → Supabase RPC (JWT implicit)
+//   /regenerate-join-code    → worker (manual JWT in Authorization header)
+//   /update-seat-count       → worker (manual JWT in Authorization header)
+// Why split? Joining/removing are pure DB operations with no Stripe
+// involvement, so they live as RPCs. The worker endpoints exist because
+// they need to call Stripe's API (or generate codes server-side with the
+// service-role key). Don't unify them.
+
+async function getAuthHeader() {
+  const { data: { session } } = await _sb.auth.getSession();
+  if (!session?.access_token) throw new Error('Not signed in');
+  return 'Bearer ' + session.access_token;
+}
+
 async function joinCompanyWithCode() {
   const codeEl = document.getElementById('company-join-code');
-  const msgEl = document.getElementById('company-join-msg');
-  if (!codeEl || !msgEl) {
-    console.warn('joinCompanyWithCode called but Company UI not yet built');
+  const msgEl  = document.getElementById('company-join-msg');
+  if (!codeEl || !msgEl) return;
+  const code = codeEl.value.trim().toUpperCase();
+  if (!code) {
+    msgEl.style.color = 'var(--danger,#e25555)';
+    msgEl.textContent = 'Please enter a code.';
     return;
   }
-  const code = codeEl.value.trim().toUpperCase();
-  if(!code) { msgEl.textContent = 'Please enter a code.'; return; }
-  if(!code) { msgEl.textContent = 'Please enter a code.'; return; }
-  const { data, error } = await _sb.from('profiles').select('id,seat_count,seats_used,company_name,company_join_code').eq('company_join_code',code).eq('plan','company').single();
-  if(error||!data) { msgEl.style.color='var(--danger,#e25555)'; msgEl.textContent='Invalid or expired code.'; return; }
-  if((data.seats_used||0) >= (data.seat_count||2)) { msgEl.style.color='var(--danger,#e25555)'; msgEl.textContent='No seats available.'; return; }
-  const { error: uErr } = await _sb.from('profiles').update({ plan:'company', company_name:data.company_name, updated_at:new Date().toISOString() }).eq('id',_currentUser.id);
-  await _sb.from('profiles').update({ seats_used:(data.seats_used||0)+1, updated_at:new Date().toISOString() }).eq('id',data.id);
-  if(uErr) { msgEl.style.color='var(--danger,#e25555)'; msgEl.textContent='Error joining. Try again.'; return; }
-  msgEl.style.color='var(--accent)'; msgEl.textContent='✓ Joined '+(data.company_name||'company')+'!';
-  setTimeout(()=>{ closeSettings(); location.reload(); },1500);
+
+  msgEl.style.color = 'var(--text-mid)';
+  msgEl.textContent = 'Joining…';
+
+  try {
+    const { data, error } = await _sb.rpc('join_company_with_code', { p_code: code });
+    if (error) throw error;
+
+    // RPC returns { success: true, company_name } OR { error: '<reason>' }.
+    // Reasons: invalid_code, already_in_company, no_seats_available
+    if (data?.error) {
+      msgEl.style.color = 'var(--danger,#e25555)';
+      const friendly = {
+        invalid_code:        'That code isn\'t valid. Check with your team admin.',
+        already_in_company:  'You\'re already in a company. Sign out and back in if this is wrong.',
+        no_seats_available:  'This company has no seats available. Ask your admin to add more.',
+      }[data.error] || data.error;
+      msgEl.textContent = friendly;
+      return;
+    }
+
+    msgEl.style.color = 'var(--accent)';
+    msgEl.textContent = '✓ Joined ' + (data?.company_name || 'company') + '!';
+    setTimeout(() => { closeSettings(); location.reload(); }, 1500);
+  } catch (err) {
+    msgEl.style.color = 'var(--danger,#e25555)';
+    msgEl.textContent = 'Error: ' + (err.message || 'unknown');
+  }
+}
+
+async function loadCompanyMembers() {
+  // Admin-side: list all profiles where company_id === my id.
+  // RLS policy on profiles already restricts visibility, so admins see
+  // their members and nothing else.
+  const listEl = document.getElementById('company-members-list');
+  const msgEl  = document.getElementById('company-action-msg');
+  if (!listEl || !_currentUser) return;
+
+  listEl.innerHTML = '<div style="font-size:12px;color:var(--text-soft);font-style:italic;">Loading members…</div>';
+
+  try {
+    const { data, error } = await _sb
+      .from('profiles')
+      .select('id,company_id')
+      .eq('company_id', _currentUser.id);
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      listEl.innerHTML = '<div style="font-size:12px;color:var(--text-soft);font-style:italic;padding:8px 0;">No members yet — share your join code to add team members.</div>';
+      return;
+    }
+
+    // Resolve each member's email via auth.users — Supabase doesn't expose
+    // emails through profiles RLS, so we hit /auth/v1/admin/users wouldn't
+    // work from the browser anyway. Instead, the profile id IS the auth
+    // user id, and we can fetch user metadata only for the current user.
+    // Workaround: store no email column. Display short user-id only.
+    // If we want emails, add a stored email column on profiles populated
+    // via the on_auth_user_created trigger. Parked as future work.
+    listEl.innerHTML = data.map(m => {
+      const shortId = m.id.slice(0, 8) + '…';
+      return `<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-mid);">${shortId}</div>
+        <button onclick="removeMember('${m.id}')" style="background:var(--bg-card);border:1px solid var(--border-md);color:var(--text-soft);font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:3px;cursor:pointer;letter-spacing:.04em;" onmouseover="this.style.borderColor='var(--danger,#e25555)';this.style.color='var(--danger,#e25555)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-soft)'">Remove</button>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    listEl.innerHTML = '<div style="font-size:12px;color:var(--danger,#e25555);">Error loading members: ' + (err.message || 'unknown') + '</div>';
+  }
+}
+
+async function removeMember(memberId) {
+  if (!confirm('Remove this member from your company? They\'ll lose Company-tier access immediately.')) return;
+  const msgEl = document.getElementById('company-action-msg');
+  if (msgEl) { msgEl.style.color = 'var(--text-mid)'; msgEl.textContent = 'Removing…'; }
+
+  try {
+    const { data, error } = await _sb.rpc('remove_company_member', { p_member_id: memberId });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+
+    if (msgEl) { msgEl.style.color = 'var(--accent)'; msgEl.textContent = '✓ Member removed.'; }
+    // Refresh the list and the seats display
+    await loadCompanyMembers();
+    // Also refresh seats display — seats_used changed
+    const { data: prof } = await _sb.from('profiles').select('seats_used,seat_count').eq('id', _currentUser.id).single();
+    if (prof) {
+      _currentProfile.seats_used = prof.seats_used;
+      _currentProfile.seat_count = prof.seat_count;
+      const seatsEl = document.getElementById('company-seats-display');
+      if (seatsEl) seatsEl.textContent = (prof.seats_used || 1) + ' / ' + (prof.seat_count || 2) + ' seats used';
+    }
+    setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 3000);
+  } catch (err) {
+    if (msgEl) { msgEl.style.color = 'var(--danger,#e25555)'; msgEl.textContent = 'Error: ' + (err.message || 'unknown'); }
+  }
+}
+
+async function copyJoinCode() {
+  const codeEl = document.getElementById('company-code-display');
+  if (!codeEl) return;
+  const code = codeEl.textContent.trim();
+  if (!code || code === '—') return;
+  try {
+    await navigator.clipboard.writeText(code);
+    const msgEl = document.getElementById('company-action-msg');
+    if (msgEl) {
+      msgEl.style.color = 'var(--accent)';
+      msgEl.textContent = '✓ Code copied to clipboard';
+      setTimeout(() => { msgEl.textContent = ''; }, 2000);
+    }
+  } catch (err) {
+    // Clipboard API requires HTTPS or localhost; fall back silently
+    const msgEl = document.getElementById('company-action-msg');
+    if (msgEl) {
+      msgEl.style.color = 'var(--danger,#e25555)';
+      msgEl.textContent = 'Copy failed — select the code manually.';
+    }
+  }
+}
+
+async function regenerateJoinCode() {
+  if (!confirm('Generate a new join code? The current code will stop working immediately and you\'ll need to share the new one with your team.')) return;
+  const msgEl = document.getElementById('company-action-msg');
+  if (msgEl) { msgEl.style.color = 'var(--text-mid)'; msgEl.textContent = 'Generating new code…'; }
+
+  try {
+    const auth = await getAuthHeader();
+    const res = await fetch(WEBHOOK_WORKER + '/regenerate-join-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': auth }
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'HTTP ' + res.status);
+
+    // Update the display + the cached profile
+    const codeDisplay = document.getElementById('company-code-display');
+    if (codeDisplay) codeDisplay.textContent = data.code;
+    if (_currentProfile) _currentProfile.company_join_code = data.code;
+
+    if (msgEl) { msgEl.style.color = 'var(--accent)'; msgEl.textContent = '✓ New code generated.'; }
+    setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 3000);
+  } catch (err) {
+    if (msgEl) { msgEl.style.color = 'var(--danger,#e25555)'; msgEl.textContent = 'Error: ' + (err.message || 'unknown'); }
+  }
+}
+
+function openSeatChangeModal() {
+  if (!_currentProfile?.is_company_admin) return;
+  const seatsUsed   = _currentProfile.seats_used  || 1;
+  const seatCount   = _currentProfile.seat_count  || 2;
+  const input = document.getElementById('seat-change-input');
+  const currentLine = document.getElementById('seat-change-current');
+  const msgEl = document.getElementById('seat-change-msg');
+  if (!input) return;
+
+  // Min is the larger of (seats_used, COMPANY_MIN_SEATS=2). Worker enforces
+  // the same rule but we mirror it client-side for snappy UX.
+  const minAllowed = Math.max(2, seatsUsed);
+  input.dataset.min = String(minAllowed);
+  input.min = String(minAllowed);
+  input.value = String(seatCount);
+  if (currentLine) currentLine.textContent = 'Currently ' + seatCount + ' seat' + (seatCount === 1 ? '' : 's') + ' · ' + seatsUsed + ' in use';
+  if (msgEl) msgEl.textContent = '';
+  updateSeatChangeTotal();
+  document.getElementById('seat-change-overlay').classList.add('show');
+}
+
+function updateSeatChangeTotal() {
+  const input = document.getElementById('seat-change-input');
+  const totalEl = document.getElementById('seat-change-total');
+  if (!input || !totalEl) return;
+  const minAllowed = parseInt(input.dataset.min) || 2;
+  let n = parseInt(input.value) || minAllowed;
+  if (n < minAllowed) { n = minAllowed; input.value = String(n); }
+  if (n > 100) { n = 100; input.value = String(n); }
+  totalEl.textContent = '£' + (n * 19.99).toFixed(2) + '/month';
+}
+
+async function confirmSeatChange() {
+  const input = document.getElementById('seat-change-input');
+  const msgEl = document.getElementById('seat-change-msg');
+  const btn   = document.getElementById('seat-change-confirm-btn');
+  if (!input || !msgEl || !btn) return;
+  const newQuantity = parseInt(input.value, 10);
+  const minAllowed  = parseInt(input.dataset.min) || 2;
+  const currentSeats = _currentProfile?.seat_count || 2;
+
+  if (!Number.isInteger(newQuantity) || newQuantity < minAllowed || newQuantity > 100) {
+    msgEl.style.color = 'var(--danger,#e25555)';
+    msgEl.textContent = 'Seat count must be between ' + minAllowed + ' and 100.';
+    return;
+  }
+  if (newQuantity === currentSeats) {
+    msgEl.style.color = 'var(--text-mid)';
+    msgEl.textContent = 'No change — already at ' + currentSeats + ' seats.';
+    return;
+  }
+
+  msgEl.style.color = 'var(--text-mid)';
+  msgEl.textContent = 'Updating subscription…';
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+
+  try {
+    const auth = await getAuthHeader();
+    const res = await fetch(WEBHOOK_WORKER + '/update-seat-count', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': auth },
+      body: JSON.stringify({ newQuantity })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'HTTP ' + res.status);
+
+    msgEl.style.color = 'var(--accent)';
+    msgEl.textContent = '✓ Seats updated. Stripe will prorate on your next invoice.';
+
+    // The webhook fires customer.subscription.updated which syncs seat_count
+    // in the DB. ~200ms round trip. Wait briefly, refresh the cached profile,
+    // close modal, and refresh the settings display.
+    setTimeout(async () => {
+      const { data: prof } = await _sb.from('profiles').select('*').eq('id', _currentUser.id).single();
+      if (prof) {
+        _currentProfile = prof;
+        const seatsEl = document.getElementById('company-seats-display');
+        if (seatsEl) seatsEl.textContent = (prof.seats_used || 1) + ' / ' + (prof.seat_count || 2) + ' seats used';
+      }
+      document.getElementById('seat-change-overlay').classList.remove('show');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }, 800);
+  } catch (err) {
+    msgEl.style.color = 'var(--danger,#e25555)';
+    msgEl.textContent = 'Error: ' + (err.message || 'unknown');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
 }
 
 function closeSettings() {
@@ -4324,6 +4571,7 @@ async function confirmSeatCheckout() {
         email: _currentUser.email,
         plan: 'company',
         quantity: seats,
+        companyName: (document.getElementById('seat-picker-company-name')?.value || '').trim(),
         successUrl: 'https://topo-grapher.com?upgraded=true',
         cancelUrl: 'https://topo-grapher.com#pro'
       })
