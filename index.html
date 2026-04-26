@@ -3861,8 +3861,9 @@ async function loadCompanyMembers() {
   try {
     const { data, error } = await _sb
       .from('profiles')
-      .select('id,company_id')
-      .eq('company_id', _currentUser.id);
+      .select('id,email,company_id')
+      .eq('company_id', _currentUser.id)
+      .order('email', { ascending: true });
     if (error) throw error;
 
     if (!data || data.length === 0) {
@@ -3870,18 +3871,17 @@ async function loadCompanyMembers() {
       return;
     }
 
-    // Resolve each member's email via auth.users — Supabase doesn't expose
-    // emails through profiles RLS, so we hit /auth/v1/admin/users wouldn't
-    // work from the browser anyway. Instead, the profile id IS the auth
-    // user id, and we can fetch user metadata only for the current user.
-    // Workaround: store no email column. Display short user-id only.
-    // If we want emails, add a stored email column on profiles populated
-    // via the on_auth_user_created trigger. Parked as future work.
     listEl.innerHTML = data.map(m => {
-      const shortId = m.id.slice(0, 8) + '…';
+      // Defensive: if email column is missing (very old row that escaped
+      // backfill, or trigger failed on signup), fall back to short UUID
+      // so the row still renders and can still be removed.
+      const display = m.email || (m.id.slice(0, 8) + '… (no email)');
+      // HTML-escape email — emails are user-controlled input, even though
+      // Supabase auth validates the format, defence in depth is cheap.
+      const safeDisplay = display.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       return `<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
-        <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-mid);">${shortId}</div>
-        <button onclick="removeMember('${m.id}')" style="background:var(--bg-card);border:1px solid var(--border-md);color:var(--text-soft);font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:3px;cursor:pointer;letter-spacing:.04em;" onmouseover="this.style.borderColor='var(--danger,#e25555)';this.style.color='var(--danger,#e25555)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-soft)'">Remove</button>
+        <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1;">${safeDisplay}</div>
+        <button onclick="removeMember('${m.id}')" style="background:var(--bg-card);border:1px solid var(--border-md);color:var(--text-soft);font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:3px;cursor:pointer;letter-spacing:.04em;flex-shrink:0;" onmouseover="this.style.borderColor='var(--danger,#e25555)';this.style.color='var(--danger,#e25555)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-soft)'">Remove</button>
       </div>`;
     }).join('');
   } catch (err) {
