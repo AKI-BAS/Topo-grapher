@@ -650,7 +650,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
     <div class="user-dropdown" id="user-dropdown">
       <span style="display:block;padding:40px 14px;font-size:12px;color:var(--text-soft);border-bottom:1px solid var(--border);" id="user-email-display"></span>
       <button onclick="openSettings()">Account settings</button>
-      <a href="#pro" onclick="document.getElementById('user-dropdown').classList.remove('show');startCheckout('pro')">Upgrade to Pro →</a>
+      <a href="#pro" id="nav-upgrade-link" onclick="document.getElementById('user-dropdown').classList.remove('show');startCheckout('pro')">Upgrade to Pro →</a>
       <button onclick="signOut()">Sign out</button>
     </div>
   </div>
@@ -4506,6 +4506,13 @@ function updateNavUI() {
     btn.onclick = openAuth;
     dropdown.classList.remove('show');
   }
+
+// Hide upgrade link for Pro/Company users; show for free users and signed-out
+  const upgradeLink = document.getElementById('nav-upgrade-link');
+  if (upgradeLink) {
+    const hideUpgrade = _currentUser && _currentProfile && (_currentProfile.plan === 'pro' || _currentProfile.plan === 'company');
+    upgradeLink.style.display = hideUpgrade ? 'none' : 'block';
+  }
 }
 
 function openAuth(mode) {
@@ -4995,7 +5002,7 @@ window.track = function(event, params) {
 <!-- Settings Modal -->
 <div class="auth-overlay" id="settings-overlay">
   <div class="auth-modal-wrap">
-    <div class="auth-modal" style="max-width:480px;">
+    <div class="auth-modal" style="max-width:480px;min-height:680px;display:flex;flex-direction:column;">
       <button class="auth-close" onclick="closeSettings()">✕</button>
       <h2>Account settings</h2>
 
