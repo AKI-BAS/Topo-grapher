@@ -3719,23 +3719,62 @@ function openSettings() {
   if (!_currentUser) { openAuth(); return; }
   document.getElementById('settings-email').textContent = _currentUser.email;
   document.getElementById('user-dropdown').classList.remove('show');
-  const plan = _currentProfile?.plan || 'free';
+
+  const plan    = _currentProfile?.plan || 'free';
+  const isAdmin = !!_currentProfile?.is_company_admin;
+  const isMember = plan === 'company' && !isAdmin;
+  // Free users with a company_id are technically "in transition" (e.g.
+  // recently cascade-cancelled before page reload). Hide the join block
+  // in that edge case — they shouldn't try to join again.
+  const isOrphanFree = plan === 'free' && _currentProfile?.company_id;
+
   const planBadge = document.getElementById('settings-plan');
   planBadge.textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
   planBadge.style.background = plan !== 'free' ? 'var(--forest)' : 'var(--accent-dk)';
-  planBadge.style.color = plan !== 'free' ? '#EFE3D8' : 'var(--accent)';
-  document.getElementById('settings-free-cta').style.display = plan === 'free' ? 'block' : 'none';
+  planBadge.style.color      = plan !== 'free' ? '#EFE3D8'        : 'var(--accent)';
+
+  // Subscription block visibility — same rules as before for free/pro,
+  // hidden for company users (their state lives in the company blocks).
+  document.getElementById('settings-free-cta').style.display = (plan === 'free' && !isOrphanFree) ? 'block' : 'none';
   document.getElementById('settings-pro-info').style.display = plan === 'pro' ? 'block' : 'none';
-  const companyInfo = document.getElementById('settings-company-info');
-  if (companyInfo) companyInfo.style.display = plan === 'company' ? 'block' : 'none';
-  const joinCompany = document.getElementById('settings-join-company');
-  if (joinCompany) joinCompany.style.display = plan === 'free' ? 'block' : 'none';
-  if(plan === 'company' && _currentProfile?.company_join_code) {
-    const codeEl = document.getElementById('company-code-display');
-    if(codeEl) codeEl.textContent = _currentProfile.company_join_code;
+
+  // Company blocks — exactly one of these three shows, or none for Pro
+  const companyInfo   = document.getElementById('settings-company-info');
+  const memberInfo    = document.getElementById('settings-company-member-info');
+  const joinCompany   = document.getElementById('settings-join-company');
+  if (companyInfo) companyInfo.style.display = (plan === 'company' && isAdmin)  ? 'block' : 'none';
+  if (memberInfo)  memberInfo.style.display  = isMember                          ? 'block' : 'none';
+  if (joinCompany) joinCompany.style.display = (plan === 'free' && !isOrphanFree) ? 'block' : 'none';
+
+  // Populate admin block from the cached profile + load the member list
+  if (plan === 'company' && isAdmin) {
+    const nameEl  = document.getElementById('company-name-display');
+    const codeEl  = document.getElementById('company-code-display');
     const seatsEl = document.getElementById('company-seats-display');
-    if(seatsEl) seatsEl.textContent = (_currentProfile.seats_used||1) + ' / ' + (_currentProfile.seat_count||2) + ' seats used';
+    if (nameEl)  nameEl.textContent  = _currentProfile?.company_name      || 'Your company';
+    if (codeEl)  codeEl.textContent  = _currentProfile?.company_join_code || '—';
+    if (seatsEl) seatsEl.textContent = (_currentProfile?.seats_used || 1) + ' / ' + (_currentProfile?.seat_count || 2) + ' seats used';
+    // Reset any stale status message from a prior session
+    const msgEl = document.getElementById('company-action-msg');
+    if (msgEl) { msgEl.textContent = ''; msgEl.style.color = ''; }
+    // Async — fills in the member list
+    loadCompanyMembers();
   }
+
+  // Populate the member block (read-only "you're in X")
+  if (isMember) {
+    const memNameEl = document.getElementById('member-company-name');
+    if (memNameEl) memNameEl.textContent = _currentProfile?.company_name || 'your company';
+  }
+
+  // Reset the join-code input + status when opening a fresh session
+  if (plan === 'free' && !isOrphanFree) {
+    const codeInput = document.getElementById('company-join-code');
+    const joinMsg   = document.getElementById('company-join-msg');
+    if (codeInput) codeInput.value = '';
+    if (joinMsg)  { joinMsg.textContent = ''; joinMsg.style.color = ''; }
+  }
+
   switchSettingsTab('account');
   document.getElementById('settings-overlay').classList.add('show');
 }
