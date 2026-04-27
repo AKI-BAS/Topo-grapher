@@ -233,14 +233,61 @@ textarea { resize:vertical; width:100%; }
   border:1px solid var(--border-md);
   position:relative;
 }
+:root {
+  /* Earthy Tones - Easy to swap! */
+  --earth-deep: #3d2b1f;   /* Dark soil */
+  --earth-main: #6d4c41;   /* Rich clay */
+  --earth-accent: #a1887f; /* Light silt */
+}
+
 .progress-fill {
-  height:100%;
-  background: repeating-linear-gradient(
-    -45deg,
-    var(--green) 0px,
-    var(--green) 12px,
-    var(--accent) 12px,
-    var(--accent) 24px
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  border-radius: inherit;
+  
+  /* Base color */
+  background-color: var(--earth-deep);
+  
+  /* Layering multiple moving gradients to create "liquid" depth */
+  background-image: 
+    radial-gradient(at 20% 30%, var(--green) 0%, transparent 50%),
+    radial-gradient(at 80% 70%, var(--accent) 0%, transparent 50%),
+    radial-gradient(at 40% 80%, var(--green) 0%, transparent 50%),
+    radial-gradient(at 70% 20%, var(--accent) 0%, transparent 50%);
+    
+  background-size: 200% 200%;
+  animation: organic-flow 6s ease-in-out infinite alternate;
+  
+  /* Inner shadow for that "carved into the earth" look */
+  box-shadow: inset 0 4px 10px rgba(0,0,0,0.5);
+}
+
+/* The "Contour" overlay - adds subtle light ripples */
+.progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: repeating-radial-gradient(
+    circle at 50% 50%,
+    transparent 0,
+    transparent 20px,
+    rgba(255,255,255, 0.03) 21px,
+    rgba(255,255,255, 0.03) 22px
+  );
+  animation: contour-pulse 4s ease-in-out infinite;
+}
+
+@keyframes organic-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 50% 100%; }
+}
+
+@keyframes contour-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.1); }
+}
   );
   background-size: 34px 100%;
   border-radius:3px;
