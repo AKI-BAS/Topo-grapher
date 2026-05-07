@@ -189,7 +189,7 @@ textarea { resize:vertical; width:100%; }
 .tool-btn:hover { border-color:var(--accent-md); color:var(--text); }
 .tool-btn.active { background:var(--accent-dk); border-color:var(--accent-md); color:var(--accent); }
 .tool-btn.danger:hover { border-color:var(--danger); color:var(--danger); }
-#map-wrap { border-radius:6px; overflow:hidden; border:1px solid var(--border); width:100%; }
+#map-wrap { border-radius:6px; overflow:hidden; border:1px solid var(--border); width:100%; position:relative; }
 #map { height:500px; width:100%; background:#111; }
 .map-hint { font-size:13px; color:var(--text-mid); margin-top:8px; line-height:1.5; }
 
@@ -583,6 +583,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 
   /* Map & toolbar */
   #map { height: 260px; }
+#cursor-coords { display:none !important; }
   .map-toolbar { flex-direction: column; align-items: stretch; }
   .map-toolbar .tool-btn { width: 100%; text-align: center; box-sizing: border-box; }
   .search-wrap { display: flex; gap: 6px; width: 100%; }
@@ -755,7 +756,29 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
       </div>
       <button class="tool-btn danger" onclick="clearArea()" style="margin-left:auto">✕ Clear</button>
     </div>
-    <div id="map-wrap"><div id="map"></div></div>
+    <div id="map-wrap">
+  <div id="map"></div>
+  <div id="cursor-coords" style="
+    display:none;
+    position:absolute;
+    bottom:8px;
+    left:8px;
+    z-index:800;
+    background:rgba(0,0,0,0.72);
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    padding:5px 10px;
+    border-radius:4px;
+    font-family:'DM Mono',monospace;
+    font-size:11px;
+    color:#aaa;
+    line-height:1.6;
+    pointer-events:none;
+    white-space:nowrap;
+  ">
+    <span style="color:#666;">Lat</span> <span id="cursor-lat" style="color:#e0e0e0;font-variant-numeric:tabular-nums;">—</span>&nbsp;&nbsp;&nbsp;<span style="color:#666;">Lon</span> <span id="cursor-lon" style="color:#e0e0e0;font-variant-numeric:tabular-nums;">—</span>
+  </div>
+</div>
     <div class="map-hint" id="map-hint">Use the search box (top-right of map) to find your site. Then draw a polygon or rectangle. Double-click to finish a polygon.</div>
   </div>
 
@@ -2453,6 +2476,19 @@ function initMap(){
 
   map.on(L.Draw.Event.DRAWSTOP, ()=>{
     updateHint();
+  });
+
+  // ── Cursor coordinate readout ──────────────────────────────────────────
+  const cursorEl = document.getElementById('cursor-coords');
+  const cursorLat = document.getElementById('cursor-lat');
+  const cursorLon = document.getElementById('cursor-lon');
+  map.on('mousemove', (e) => {
+    if(cursorEl.style.display === 'none') cursorEl.style.display = 'block';
+    cursorLat.textContent = e.latlng.lat.toFixed(5) + '°';
+    cursorLon.textContent = e.latlng.lng.toFixed(5) + '°';
+  });
+  map.on('mouseout', () => {
+    cursorEl.style.display = 'none';
   });
 }
 
