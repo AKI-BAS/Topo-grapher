@@ -1,10 +1,96 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Topo-grapher — Terrain Intelligence for BIM</title>
-    
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- ═══════════════════════════════════════════════
+       PRIMARY SEO
+  ═══════════════════════════════════════════════ -->
+  <title>Topo-grapher — Topography Data for Revit, SketchUp & Rhino</title>
+  <meta name="description" content="Generate accurate site topography and elevation point clouds for Revit, SketchUp, Rhino and ArchiCAD. Draw your site, download XYZ data instantly. No GIS experience needed.">
+  <meta name="keywords" content="topography for Revit, site topography BIM, elevation data Revit, Autodesk topography, terrain data SketchUp, Rhino site topography, GIS elevation data architects, site analysis architecture, topo survey BIM, point cloud elevation, topographic data download, ArchiCAD terrain, site elevation architecture">
+  <link rel="canonical" href="https://topo-grapher.com/">
+
+  <!-- ═══════════════════════════════════════════════
+       OPEN GRAPH — LinkedIn / Slack / iMessage previews
+  ═══════════════════════════════════════════════ -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://topo-grapher.com/">
+  <meta property="og:title" content="Topo-grapher — Topography Data for Revit, SketchUp & Rhino">
+  <meta property="og:description" content="Draw your site boundary and instantly download elevation point cloud data for BIM and design software. Used by architects, landscape architects and urban designers.">
+  <meta property="og:image" content="https://topo-grapher.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Topo-grapher">
+  <meta property="og:locale" content="en_US">
+
+  <!-- ═══════════════════════════════════════════════
+       TWITTER / X CARD
+  ═══════════════════════════════════════════════ -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://topo-grapher.com/">
+  <meta name="twitter:title" content="Topo-grapher — Topography Data for Revit, SketchUp & Rhino">
+  <meta name="twitter:description" content="Draw your site boundary and instantly download elevation point cloud data for BIM and design software. Used by architects, landscape architects and urban designers.">
+  <meta name="twitter:image" content="https://topo-grapher.com/og-image.png">
+
+  <!-- ═══════════════════════════════════════════════
+       STRUCTURED DATA — Google rich results
+  ═══════════════════════════════════════════════ -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Topo-grapher",
+    "url": "https://topo-grapher.com",
+    "logo": "https://topo-grapher.com/favicon.png",
+    "description": "Generate accurate site topography and elevation point clouds for Revit, SketchUp, Rhino and ArchiCAD. Draw your site boundary on a map and download XYZ elevation data instantly.",
+    "applicationCategory": "DesignApplication",
+    "operatingSystem": "Web",
+    "offers": [
+      {
+        "@type": "Offer",
+        "name": "Free",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      {
+        "@type": "Offer",
+        "name": "Pro",
+        "price": "19",
+        "priceCurrency": "USD",
+        "priceSpecification": {
+          "@type": "UnitPriceSpecification",
+          "billingDuration": "P1M"
+        }
+      }
+    ],
+    "audience": {
+      "@type": "Audience",
+      "audienceType": "Architects, BIM professionals, Landscape Architects, Urban Designers"
+    },
+    "featureList": [
+      "Site topography for Revit",
+      "Elevation point cloud export",
+      "XYZ data for SketchUp",
+      "Terrain data for Rhino",
+      "GIS elevation data for architects",
+      "Toposurface generation"
+    ],
+    "provider": {
+      "@type": "Organization",
+      "name": "Topo-grapher",
+      "url": "https://topo-grapher.com"
+    }
+  }
+  </script>
+
+  <!-- ═══════════════════════════════════════════════
+       ROBOTS & INDEXING
+  ═══════════════════════════════════════════════ -->
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <meta name="author" content="Topo-grapher">
+  <meta name="theme-color" content="#0a0a0a">
     <link rel="icon" type="image/png" href="data:image/png;base64,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">
     
     <link rel="apple-touch-icon" href="data:image/png;base64,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">
