@@ -1790,7 +1790,21 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 </div>
 
 
-<!-- ═══ C — DATA SOURCES ═════════════════════════════════════ -->
+<!-- ═══ C — DATA SOURCES (REPLACEMENT) ════════════════════════════
+     Replace EVERYTHING between the closing </div> of section B (BUILT FOR)
+     and the opening <div class="signpost"> of section D (SIGNPOST ROW)
+     with this block.
+     
+     Changes:
+     - 6 cards now reflect ACTUAL datasets your workers serve
+     - JAXA AW3D30, NASADEM, SRTM v3 standalone cards REMOVED (not queried)
+     - Denmark DHM 0.4m, Iceland ArcticDEM 10m, EU-DEM 25m ADDED
+     - "National LiDAR archives" vague card REMOVED
+     - New expandable "View all data sources" table below the cards
+     - GPXZ / UK LiDAR excluded entirely (commercial licence)
+     - Licence attribution updated to match real sources
+     ════════════════════════════════════════════════════════════════ -->
+
 <div class="data-sources">
   <div class="cs-wrap">
     <p class="cs-eyebrow">// elevation data sources</p>
@@ -1799,21 +1813,71 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
 
     <div class="sources-grid">
 
+      <!-- 1. Denmark DHM — your best resolution -->
       <div class="source-card">
         <div class="source-header">
           <div>
-            <div class="source-name">USGS 3DEP LiDAR</div>
-            <div class="source-provider">U.S. Geological Survey</div>
+            <div class="source-name">Denmark DHM/Terræn</div>
+            <div class="source-provider">Styrelsen for Dataforsyning og Infrastruktur</div>
           </div>
-          <span class="source-res">1m – 3m</span>
+          <span class="source-res">0.4m</span>
         </div>
-        <div class="source-desc">Airborne LiDAR covering the contiguous US, Hawaii, and territories. Quality Level 2 specification. Highest resolution we serve.</div>
+        <div class="source-desc">National airborne LiDAR covering all of Denmark. Highest resolution we serve — sub-metre accuracy for drainage, grading, and site levels.</div>
         <div class="source-acc">
           <span class="source-acc-label">Vert. accuracy</span>
-          <span class="source-acc-val">±0.82m RMSE</span>
+          <span class="source-acc-val">±0.05m (typical)</span>
         </div>
       </div>
 
+      <!-- 2. USA 3DEP -->
+      <div class="source-card">
+        <div class="source-header">
+          <div>
+            <div class="source-name">USGS 3DEP</div>
+            <div class="source-provider">U.S. Geological Survey</div>
+          </div>
+          <span class="source-res">1m – 10m</span>
+        </div>
+        <div class="source-desc">3D Elevation Program covering the contiguous US, Hawaii, and territories. Up to 1m where LiDAR-flown, 10m nationally.</div>
+        <div class="source-acc">
+          <span class="source-acc-label">Vert. accuracy</span>
+          <span class="source-acc-val">±0.82m RMSE (QL2)</span>
+        </div>
+      </div>
+
+      <!-- 3. Iceland ArcticDEM -->
+      <div class="source-card">
+        <div class="source-header">
+          <div>
+            <div class="source-name">ArcticDEM</div>
+            <div class="source-provider">Polar Geospatial Center / NSF</div>
+          </div>
+          <span class="source-res">10m</span>
+        </div>
+        <div class="source-desc">Satellite stereo photogrammetry for Iceland and Arctic regions. Self-hosted on our infrastructure with geoid correction for real-world heights.</div>
+        <div class="source-acc">
+          <span class="source-acc-label">Vert. accuracy</span>
+          <span class="source-acc-val">±1–4m absolute</span>
+        </div>
+      </div>
+
+      <!-- 4. EU-DEM -->
+      <div class="source-card">
+        <div class="source-header">
+          <div>
+            <div class="source-name">EU-DEM v1.1</div>
+            <div class="source-provider">European Environment Agency / Copernicus</div>
+          </div>
+          <span class="source-res">25m</span>
+        </div>
+        <div class="source-desc">Continental European coverage fused from SRTM and ASTER. Used across EU member states where higher-resolution national data isn't available.</div>
+        <div class="source-acc">
+          <span class="source-acc-label">Vert. accuracy</span>
+          <span class="source-acc-val">±3m RMSE</span>
+        </div>
+      </div>
+
+      <!-- 5. Copernicus GLO-30 -->
       <div class="source-card">
         <div class="source-header">
           <div>
@@ -1829,80 +1893,188 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
         </div>
       </div>
 
+      <!-- 6. Global fallback -->
       <div class="source-card">
         <div class="source-header">
           <div>
-            <div class="source-name">JAXA AW3D30</div>
-            <div class="source-provider">Japan Aerospace Exploration Agency</div>
+            <div class="source-name">Open-Meteo / SRTM</div>
+            <div class="source-provider">NASA / Open-Meteo</div>
           </div>
-          <span class="source-res">30m</span>
+          <span class="source-res">90m</span>
         </div>
-        <div class="source-desc">From ALOS optical stereo imagery. Global coverage 82°N–82°S. Particularly strong in Asia-Pacific regions.</div>
-        <div class="source-acc">
-          <span class="source-acc-label">Vert. accuracy</span>
-          <span class="source-acc-val">±5m std. deviation</span>
-        </div>
-      </div>
-
-      <div class="source-card">
-        <div class="source-header">
-          <div>
-            <div class="source-name">SRTM v3</div>
-            <div class="source-provider">NASA / NGA</div>
-          </div>
-          <span class="source-res">30m – 90m</span>
-        </div>
-        <div class="source-desc">Shuttle Radar Topography Mission. Covers 80% of Earth's land surface. Global baseline and cross-validation reference.</div>
+        <div class="source-desc">Global 90m fallback for regions without higher-resolution coverage. Surface smoothing applied automatically in Natural scatter mode.</div>
         <div class="source-acc">
           <span class="source-acc-label">Vert. accuracy</span>
           <span class="source-acc-val">±16m absolute (90%)</span>
         </div>
       </div>
 
-      <div class="source-card">
-        <div class="source-header">
-          <div>
-            <div class="source-name">NASADEM</div>
-            <div class="source-provider">NASA / JPL</div>
-          </div>
-          <span class="source-res">30m</span>
-        </div>
-        <div class="source-desc">Reprocessed SRTM using improved algorithms, ICESat, and ASTER data. Fills voids and corrects absolute elevation offsets in the original SRTM release.</div>
-        <div class="source-acc">
-          <span class="source-acc-label">Vert. accuracy</span>
-          <span class="source-acc-val">Improved over SRTM v3</span>
-        </div>
-      </div>
-
-      <div class="source-card">
-        <div class="source-header">
-          <div>
-            <div class="source-name">National LiDAR archives</div>
-            <div class="source-provider">UK, EU, AUS regional agencies</div>
-          </div>
-          <span class="source-res">1m – 10m</span>
-        </div>
-        <div class="source-desc">UK Environment Agency 1m composite, EU national surveys, Australian ELVIS data. Used where available for professional-grade local accuracy.</div>
-        <div class="source-acc">
-          <span class="source-acc-label">Vert. accuracy</span>
-          <span class="source-acc-val">Dataset-dependent</span>
-        </div>
-      </div>
-
     </div>
 
-    <p class="sources-note">
+    <!-- ── Expandable full data table ─────────────────────────────────── -->
+    <div style="margin-top:20px;">
+      <button id="ds-toggle-btn" onclick="toggleDataSourceTable()" style="
+        background:none;
+        border:1px solid var(--border-md);
+        color:var(--text-mid);
+        font-family:'DM Mono',monospace;
+        font-size:12px;
+        letter-spacing:var(--ls-loose);
+        padding:10px 18px;
+        border-radius:4px;
+        cursor:pointer;
+        transition:border-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
+        width:100%;
+        text-align:left;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+      ">
+        <span>View all data sources by country</span>
+        <span id="ds-toggle-arrow" style="transition:transform var(--dur-standard) var(--ease-out);display:inline-block;">▾</span>
+      </button>
+
+      <div id="ds-full-table" style="
+        display:none;
+        margin-top:10px;
+        border:1px solid var(--border);
+        border-radius:6px;
+        overflow:hidden;
+      ">
+        <table style="width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px;">
+          <thead>
+            <tr style="background:var(--bg-input);border-bottom:1px solid var(--border);">
+              <th style="text-align:left;padding:10px 14px;color:var(--accent);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:500;">Region</th>
+              <th style="text-align:left;padding:10px 14px;color:var(--accent);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:500;">Dataset</th>
+              <th style="text-align:left;padding:10px 14px;color:var(--accent);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:500;">Resolution</th>
+              <th style="text-align:left;padding:10px 14px;color:var(--accent);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:500;">Source</th>
+              <th style="text-align:left;padding:10px 14px;color:var(--accent);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:500;">Licence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- High-resolution national datasets -->
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇩🇰 Denmark</td>
+              <td style="padding:9px 14px;color:var(--text);">DHM/Terræn</td>
+              <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:1px 6px;border-radius:2px;font-size:10px;">0.4m</span></td>
+              <td style="padding:9px 14px;color:var(--text-mid);">SDFI</td>
+              <td style="padding:9px 14px;color:var(--text-soft);">Open (Danish terms)</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇺🇸 United States</td>
+              <td style="padding:9px 14px;color:var(--text);">USGS 3DEP</td>
+              <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:1px 6px;border-radius:2px;font-size:10px;">1m – 10m</span></td>
+              <td style="padding:9px 14px;color:var(--text-mid);">U.S. Geological Survey</td>
+              <td style="padding:9px 14px;color:var(--text-soft);">US Public Domain</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇮🇸 Iceland</td>
+              <td style="padding:9px 14px;color:var(--text);">ArcticDEM</td>
+              <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:1px 6px;border-radius:2px;font-size:10px;">10m</span></td>
+              <td style="padding:9px 14px;color:var(--text-mid);">Polar Geospatial Center</td>
+              <td style="padding:9px 14px;color:var(--text-soft);"><a href="https://www.pgc.umn.edu/guides/user-services/acknowledgement-policy/" target="_blank" rel="noopener" style="color:var(--text-soft);text-decoration:underline;text-underline-offset:2px;">CC BY 4.0</a></td>
+            </tr>
+<tr style="border-bottom:1px solid var(--border);">
+  <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇳🇴 Norway</td>
+  <td style="padding:9px 14px;color:var(--text);">Kartverket DTM1</td>
+  <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:1px 6px;border-radius:2px;font-size:10px;">1m</span></td>
+  <td style="padding:9px 14px;color:var(--text-mid);">Kartverket</td>
+  <td style="padding:9px 14px;color:var(--text-soft);">CC BY 4.0</td>
+</tr>
+<tr style="border-bottom:1px solid var(--border);">
+  <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇨🇭 Switzerland</td>
+  <td style="padding:9px 14px;color:var(--text);">swissALTI3D</td>
+  <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:1px 6px;border-radius:2px;font-size:10px;">0.5m</span></td>
+  <td style="padding:9px 14px;color:var(--text-mid);">swisstopo</td>
+  <td style="padding:9px 14px;color:var(--text-soft);">Open use</td>
+</tr>
+
+            <!-- Continental / regional -->
+            <tr style="border-bottom:1px solid var(--border);background:var(--bg-input);">
+              <td colspan="5" style="padding:7px 14px;font-size:10px;color:var(--text-soft);letter-spacing:.1em;text-transform:uppercase;">Continental &amp; global coverage</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇪🇺 Europe</td>
+              <td style="padding:9px 14px;color:var(--text);">EU-DEM v1.1</td>
+              <td style="padding:9px 14px;"><span style="color:var(--text-mid);background:var(--bg-input);border:1px solid var(--border-md);padding:1px 6px;border-radius:2px;font-size:10px;">25m</span></td>
+              <td style="padding:9px 14px;color:var(--text-mid);">EEA / Copernicus</td>
+              <td style="padding:9px 14px;color:var(--text-soft);"><a href="https://www.eea.europa.eu/legal/copyright" target="_blank" rel="noopener" style="color:var(--text-soft);text-decoration:underline;text-underline-offset:2px;">EEA Standard</a></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:9px 14px;color:var(--text);font-weight:500;">🌍 Global</td>
+              <td style="padding:9px 14px;color:var(--text);">Copernicus GLO-30</td>
+              <td style="padding:9px 14px;"><span style="color:var(--text-mid);background:var(--bg-input);border:1px solid var(--border-md);padding:1px 6px;border-radius:2px;font-size:10px;">30m</span></td>
+              <td style="padding:9px 14px;color:var(--text-mid);">ESA / Airbus</td>
+              <td style="padding:9px 14px;color:var(--text-soft);"><a href="https://spacedata.copernicus.eu/documents/20123/121286/CSCDA_ESA_Mission-specific+Annex_31_Oct_22.pdf" target="_blank" rel="noopener" style="color:var(--text-soft);text-decoration:underline;text-underline-offset:2px;">Copernicus DEM</a></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:9px 14px;color:var(--text);font-weight:500;">🌍 Global (fallback)</td>
+              <td style="padding:9px 14px;color:var(--text);">Open-Meteo / SRTM</td>
+              <td style="padding:9px 14px;"><span style="color:var(--text-soft);background:var(--bg-input);border:1px solid var(--border);padding:1px 6px;border-radius:2px;font-size:10px;">90m</span></td>
+              <td style="padding:9px 14px;color:var(--text-mid);">NASA / Open-Meteo</td>
+              <td style="padding:9px 14px;color:var(--text-soft);">NASA Public Domain</td>
+            </tr>
+
+            <!-- Planned / coming soon -->
+            <tr style="border-bottom:1px solid var(--border);background:var(--bg-input);">
+              <td colspan="5" style="padding:7px 14px;font-size:10px;color:var(--text-soft);letter-spacing:.1em;text-transform:uppercase;">Coming soon</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);opacity:0.6;">
+              <td style="padding:9px 14px;color:var(--text);">🇳🇱 Netherlands</td>
+              <td style="padding:9px 14px;color:var(--text-mid);">AHN3/AHN4</td>
+              <td style="padding:9px 14px;"><span style="color:var(--text-soft);border:1px dashed var(--border-md);padding:1px 6px;border-radius:2px;font-size:10px;">0.5m</span></td>
+              <td style="padding:9px 14px;color:var(--text-soft);">PDOK</td>
+              <td style="padding:9px 14px;color:var(--text-soft);">CC0</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);opacity:0.6;">
+              <td style="padding:9px 14px;color:var(--text);">🇫🇷 France</td>
+              <td style="padding:9px 14px;color:var(--text-mid);">IGN RGE ALTI</td>
+              <td style="padding:9px 14px;"><span style="color:var(--text-soft);border:1px dashed var(--border-md);padding:1px 6px;border-radius:2px;font-size:10px;">1m</span></td>
+              <td style="padding:9px 14px;color:var(--text-soft);">IGN France</td>
+              <td style="padding:9px 14px;color:var(--text-soft);">Licence Ouverte</td>
+            </tr>
+            <tr style="opacity:0.6;">
+              <td style="padding:9px 14px;color:var(--text);">🇯🇵 Japan</td>
+              <td style="padding:9px 14px;color:var(--text-mid);">GSI DEM</td>
+              <td style="padding:9px 14px;"><span style="color:var(--text-soft);border:1px dashed var(--border-md);padding:1px 6px;border-radius:2px;font-size:10px;">5–10m</span></td>
+              <td style="padding:9px 14px;color:var(--text-soft);">GSI Japan</td>
+              <td style="padding:9px 14px;color:var(--text-soft);">Gov open licence</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="sources-note" style="margin-top:14px;">
       Elevation data sourced from open public datasets under their respective licences.
       USGS 3DEP: US Public Domain.
+      Denmark DHM: SDFI open data terms.
+      ArcticDEM:
+      <a href="https://www.pgc.umn.edu/guides/user-services/acknowledgement-policy/" target="_blank" rel="noopener">PGC/NSF (CC BY 4.0)</a>.
       Copernicus GLO-30:
       <a href="https://spacedata.copernicus.eu/documents/20123/121286/CSCDA_ESA_Mission-specific+Annex_31_Oct_22.pdf" target="_blank" rel="noopener">Copernicus DEM Licence</a>.
-      SRTM &amp; NASADEM: NASA Public Domain.
-      JAXA AW3D30:
-      <a href="https://www.eorc.jaxa.jp/ALOS/en/dataset/aw3d30/aw3d30_e.htm" target="_blank" rel="noopener">JAXA AW3D30 Terms of Use</a>.
+      EU-DEM: EEA standard reuse policy.
+      SRTM: NASA Public Domain.
       Accuracy figures as published by respective data providers.
     </p>
   </div>
 </div>
+
+<script>
+function toggleDataSourceTable() {
+  const table = document.getElementById('ds-full-table');
+  const arrow = document.getElementById('ds-toggle-arrow');
+  const btn = document.getElementById('ds-toggle-btn');
+  if (!table) return;
+  const isOpen = table.style.display !== 'none';
+  table.style.display = isOpen ? 'none' : 'block';
+  if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+  if (btn) {
+    btn.style.borderColor = isOpen ? '' : 'var(--accent-md)';
+    btn.style.color = isOpen ? '' : 'var(--accent)';
+  }
+}
+</script>
 
 
 <!-- ═══ D — SIGNPOST ROW ═════════════════════════════════════ -->
