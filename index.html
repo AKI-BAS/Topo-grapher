@@ -3651,7 +3651,7 @@ csvData = 'X,Y,Z\n'+cleanOut.map(p=>`${p.x},${p.y},${p.z}`).join('\n');
     }
     // Log to Supabase if signed in
     const _siteArea = parseFloat(document.getElementById('stat-area')?.textContent?.replace(/[^0-9.]/g,'')) || 0;
-    logGeneration(projectName, cleanOut.length, selectedSpacing, _siteArea, source||'unknown');
+    logGeneration(projectName, cleanOut.length, selectedSpacing, _siteArea, source||'unknown', csvData);
     saveProMemory(projectName, selectedSpacing, csvData, source||'unknown');
     updateElevationSourceBanner(source||'unknown', _isPro);
     // Google Analytics — track successful generation
@@ -4980,24 +4980,16 @@ async function saveProMemory(projectName, spacing, csvData, source) {
   } catch(e) {}
 }
 
-function loadSavedProjects() {
-  try {
-    if (!_currentUser) return [];
-    const raw = localStorage.getItem(MEMORY_KEY);
-    const all = JSON.parse(raw || '[]');
-    const now = Date.now();
-    // Filter to this user, prune expired (2 weeks since last access)
-    const valid = all.filter(p =>
-      p.userId === _currentUser.id &&
-      (now - (p.lastAccessed || p.timestamp)) < MEMORY_EXPIRY_MS
-    );
-    // Write back if anything was pruned
-    if (valid.length !== all.filter(p => p.userId === _currentUser.id).length) {
-      const others = all.filter(p => p.userId !== _currentUser.id);
-      localStorage.setItem(MEMORY_KEY, JSON.stringify([...others, ...valid]));
-    }
-    return valid;
-  } catch(e) { return []; }
+async function loadSavedProjects() {
+  if (!_currentUser) return [];
+  const { data, error } = await _sb
+    .from('generations')
+    .select('id, project_name, point_count, spacing, elevation_source, csv_data, file_name, created_at')
+    .eq('user_id', _currentUser.id)
+    .order('created_at', { ascending: false })
+    .limit(3);
+  if (error) return [];
+  return data || [];
 }
 
 function touchProject(id) {
@@ -5009,7 +5001,7 @@ function touchProject(id) {
   } catch(e) {}
 }
 
-function renderSavedProjects() {
+async function renderSavedProjects() {
   const list = document.getElementById('saved-projects-list');
   const empty = document.getElementById('saved-projects-empty');
   if (!list) return;
@@ -5023,7 +5015,7 @@ function renderSavedProjects() {
     return;
   }
 
-  const projects = loadSavedProjects();
+  const projects = await loadSavedProjects();
   if (projects.length === 0) {
     list.innerHTML = '';
     if (empty) {
@@ -5035,16 +5027,16 @@ function renderSavedProjects() {
   if (empty) empty.style.display = 'none';
 
   list.innerHTML = projects.map((p, i) => {
-    const ago = formatAgo(p.lastAccessed || p.timestamp);
-    const pts = p.pointCount ? p.pointCount.toLocaleString() + ' pts' : '';
-    const src = p.source ? ' · ' + p.source.replace(/-/g,' ') : '';
-    const expires = formatExpiry(p.lastAccessed || p.timestamp);
+    const ago = formatAgo(new Date(p.created_at).getTime());
+    const pts = p.point_count ? p.point_count.toLocaleString() + ' pts' : '';
+    const src = p.elevation_source ? ' · ' + p.elevation_source.replace(/-/g,' ') : '';
+    const hasCSV = !!p.csv_data;
 
-    if (p.tooLarge) {
+    if (!hasCSV) {
       return `<div class="saved-project-card">
-        <div class="saved-project-name">${escHtml(p.projectName)}</div>
+        <div class="saved-project-name">${escHtml(p.project_name)}</div>
         <div class="saved-project-meta">${ago} · ${p.spacing}m spacing · ${pts}${src}</div>
-        <div style="font-size:11px;color:var(--text-soft);margin-bottom:10px;">Site too large to store (>1.8MB) — regenerate to download again.</div>
+        <div style="font-size:11px;color:var(--text-soft);margin-bottom:10px;">Site too large to store — regenerate to download again.</div>
         <div class="saved-project-actions">
           <button class="saved-project-btn primary" onclick="restoreProject(${i})">↩ Restore settings</button>
           <button class="saved-project-btn" onclick="deleteProject(${i})" style="margin-left:auto;color:var(--danger,#e25555);">Delete</button>
@@ -5053,9 +5045,8 @@ function renderSavedProjects() {
     }
 
     return `<div class="saved-project-card">
-      <div class="saved-project-name">${escHtml(p.projectName)}</div>
+      <div class="saved-project-name">${escHtml(p.project_name)}</div>
       <div class="saved-project-meta">${ago} · ${p.spacing}m spacing · ${pts}${src}</div>
-      <div style="font-size:10px;color:var(--text-soft);margin-bottom:10px;letter-spacing:.04em;">Expires ${expires}</div>
       <div class="saved-project-actions">
         <button class="saved-project-btn primary" onclick="redownloadProject(${i})">↓ Download CSV</button>
         <button class="saved-project-btn" onclick="restoreProject(${i})">↩ Restore to tool</button>
@@ -5065,17 +5056,14 @@ function renderSavedProjects() {
   }).join('');
 }
 
-function redownloadProject(index) {
-  const projects = loadSavedProjects();
+async function redownloadProject(index) {
+  const projects = await loadSavedProjects();
   const p = projects[index];
-  if (!p || !p.csvData) return;
-  touchProject(p.id); // reset 2-week expiry on access
-  const safe = p.projectName.replace(/[^a-zA-Z0-9_\-]/g, '_');
+  if (!p || !p.csv_data) return;
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([p.csvData], {type:'text/csv'}));
-  a.download = `${safe}_toposolid.csv`;
+  a.href = URL.createObjectURL(new Blob([p.csv_data], {type:'text/csv'}));
+  a.download = p.file_name || 'toposolid.csv';
   a.click();
-  renderSavedProjects(); // refresh expiry display
 }
 
 function restoreProject(index) {
@@ -5110,15 +5098,12 @@ function restoreProject(index) {
   }
 }
 
-function deleteProject(index) {
-  try {
-    const projects = loadSavedProjects();
-    const toDelete = projects[index];
-    if (!toDelete) return;
-    const all = JSON.parse(localStorage.getItem(MEMORY_KEY) || '[]');
-    localStorage.setItem(MEMORY_KEY, JSON.stringify(all.filter(p => p.id !== toDelete.id)));
-    renderSavedProjects();
-  } catch(e) {}
+async function deleteProject(index) {
+  const projects = await loadSavedProjects();
+  const toDelete = projects[index];
+  if (!toDelete) return;
+  await _sb.from('generations').delete().eq('id', toDelete.id).eq('user_id', _currentUser.id);
+  renderSavedProjects();
 }
 
 function formatAgo(ts) {
@@ -5373,15 +5358,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── Log generation to Supabase ─────────────────────────────────────────────
-async function logGeneration(projectName, pointCount, spacing, areaM2, elevSource) {
-  if (!_currentUser) return; // only log for signed-in users
+async function logGeneration(projectName, pointCount, spacing, areaM2, elevSource, csvRaw) {
+  if (!_currentUser) return;
+  const isPro = _currentProfile?.plan === 'pro' || _currentProfile?.plan === 'company';
+  const safe = (projectName||'site').replace(/[^a-zA-Z0-9_\-]/g,'_');
   await _sb.from('generations').insert({
     user_id: _currentUser.id,
     project_name: projectName,
     point_count: pointCount,
     spacing: spacing,
     area_m2: areaM2,
-    elevation_source: elevSource
+    elevation_source: elevSource,
+    csv_data: isPro ? (csvRaw || null) : null,
+    file_name: isPro ? `${safe}_toposolid.csv` : null
   });
 }
 
