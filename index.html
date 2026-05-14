@@ -4933,6 +4933,7 @@ function showAddonPrompt(areaKm2, addonPrice, autoDowngraded, effectiveSpacing) 
 // Pro users: full CSV saved (up to 3 projects, 1.8MB limit, 2-week expiry)
 // All signed-in users: last-project name+spacing restored on login (no CSV)
 const MEMORY_KEY = 'topo-saved-projects';
+let _cachedProjects = [];
 const MEMORY_MAX = 3;
 const MEMORY_MAX_BYTES = 1.8 * 1024 * 1024; // 1.8MB
 const MEMORY_EXPIRY_MS = 14 * 24 * 60 * 60 * 1000; // 2 weeks
@@ -5016,6 +5017,7 @@ async function renderSavedProjects() {
   }
 
   const projects = await loadSavedProjects();
+  _cachedProjects = projects;
   if (projects.length === 0) {
     list.innerHTML = '';
     if (empty) {
@@ -5057,7 +5059,7 @@ async function renderSavedProjects() {
 }
 
 async function redownloadProject(index) {
-  const projects = await loadSavedProjects();
+  const projects = _cachedProjects;
   const p = projects[index];
   if (!p || !p.csv_data) return;
   const a = document.createElement('a');
@@ -5067,7 +5069,7 @@ async function redownloadProject(index) {
 }
 
 function restoreProject(index) {
-  const projects = loadSavedProjects();
+  const projects = _cachedProjects;
   const p = projects[index];
   if (!p) return;
   if (p.id) touchProject(p.id);
@@ -5099,7 +5101,7 @@ function restoreProject(index) {
 }
 
 async function deleteProject(index) {
-  const projects = await loadSavedProjects();
+  const projects = _cachedProjects;
   const toDelete = projects[index];
   if (!toDelete) return;
   await _sb.from('generations').delete().eq('id', toDelete.id).eq('user_id', _currentUser.id);
