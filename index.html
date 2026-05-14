@@ -3651,7 +3651,8 @@ csvData = 'X,Y,Z\n'+cleanOut.map(p=>`${p.x},${p.y},${p.z}`).join('\n');
     }
     // Log to Supabase if signed in
     const _siteArea = parseFloat(document.getElementById('stat-area')?.textContent?.replace(/[^0-9.]/g,'')) || 0;
-    logGeneration(projectName, cleanOut.length, selectedSpacing, _siteArea, source||'unknown', csvData);
+    const _polyJson = polygonLatLngs ? JSON.stringify(polygonLatLngs) : null;
+logGeneration(projectName, cleanOut.length, selectedSpacing, _siteArea, source||'unknown', csvData, _polyJson);
     saveProMemory(projectName, selectedSpacing, csvData, source||'unknown');
     updateElevationSourceBanner(source||'unknown', _isPro);
     // Google Analytics — track successful generation
@@ -4985,7 +4986,7 @@ async function loadSavedProjects() {
   if (!_currentUser) return [];
   const { data, error } = await _sb
     .from('generations')
-    .select('id, project_name, point_count, spacing, elevation_source, csv_data, file_name, created_at')
+    .select('id, project_name, point_count, spacing, elevation_source, csv_data, file_name, polygon_geojson, created_at')
     .eq('user_id', _currentUser.id)
     .order('created_at', { ascending: false })
     .limit(3);
@@ -5072,10 +5073,37 @@ function restoreProject(index) {
   const projects = _cachedProjects;
   const p = projects[index];
   if (!p) return;
+
+  // Restore project name
   const nameEl = document.getElementById('project-name');
   if (nameEl) nameEl.value = p.project_name;
+
+  // Restore spacing button
   const spacingBtn = document.getElementById('acc-' + p.spacing);
   if (spacingBtn) spacingBtn.click();
+
+  // Restore polygon on map
+  if (p.polygon_geojson) {
+    try {
+      const latlngs = JSON.parse(p.polygon_geojson);
+      // Clear existing drawn items
+      if (drawnItems) drawnItems.clearLayers();
+      // Redraw polygon
+      const poly = L.polygon(latlngs, {
+        color: '#4ea0d9', weight: 2, fillOpacity: 0.15
+      });
+      if (drawnItems) drawnItems.addLayer(poly);
+      // Set the global polygon variable so Generate still works
+      polygonLatLngs = latlngs;
+      // Fit map to polygon
+      map.fitBounds(L.latLngBounds(latlngs), { padding: [60, 60], maxZoom: 16 });
+      updatePtCounts();
+      updateHint();
+      updateConvertBtn();
+    } catch(e) {}
+  }
+
+  // Restore CSV data and show result panel
   if (p.csv_data) {
     csvData = p.csv_data;
     projectName = p.project_name;
@@ -5083,12 +5111,11 @@ function restoreProject(index) {
     showResult(true);
     const notice = document.getElementById('memory-notice');
     if (notice) {
-      notice.textContent = '↩ Project restored — ' + p.projectName;
+      notice.textContent = '↩ Project restored — ' + p.project_name;
       notice.style.display = 'block';
       setTimeout(() => notice.style.display = 'none', 4000);
     }
   } else {
-    // tooLarge — restore settings only, user needs to regenerate
     closeSettings();
     const notice = document.getElementById('memory-notice');
     if (notice) {
@@ -5359,7 +5386,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── Log generation to Supabase ─────────────────────────────────────────────
-async function logGeneration(projectName, pointCount, spacing, areaM2, elevSource, csvRaw) {
+async function logGeneration(projectName, pointCount, spacing, areaM2, elevSource, csvRaw, polygonJson) {
   if (!_currentUser) return;
   const isPro = _currentProfile?.plan === 'pro' || _currentProfile?.plan === 'company';
   const safe = (projectName||'site').replace(/[^a-zA-Z0-9_\-]/g,'_');
@@ -5371,7 +5398,8 @@ async function logGeneration(projectName, pointCount, spacing, areaM2, elevSourc
     area_m2: areaM2,
     elevation_source: elevSource,
     csv_data: isPro ? (csvRaw || null) : null,
-    file_name: isPro ? `${safe}_toposolid.csv` : null
+    file_name: isPro ? `${safe}_toposolid.csv` : null,
+    polygon_geojson: polygonJson || null
   });
 }
 
