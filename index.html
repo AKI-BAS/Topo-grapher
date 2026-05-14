@@ -5072,14 +5072,13 @@ function restoreProject(index) {
   const projects = _cachedProjects;
   const p = projects[index];
   if (!p) return;
-  if (p.id) touchProject(p.id);
   const nameEl = document.getElementById('project-name');
-  if (nameEl) nameEl.value = p.projectName;
+  if (nameEl) nameEl.value = p.project_name;
   const spacingBtn = document.getElementById('acc-' + p.spacing);
   if (spacingBtn) spacingBtn.click();
-  if (p.csvData) {
-    csvData = p.csvData;
-    projectName = p.projectName;
+  if (p.csv_data) {
+    csvData = p.csv_data;
+    projectName = p.project_name;
     closeSettings();
     showResult(true);
     const notice = document.getElementById('memory-notice');
