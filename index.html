@@ -1038,10 +1038,20 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
     <span class="tg__thumb" aria-hidden="true"></span>
   </div>
 </div>
+    <div id="export-format-row" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text-mid);">
+      <span style="letter-spacing:.06em;">File type</span>
+      <div class="tg" data-toggle="export-format" id="export-format-toggle">
+        <button class="tg__option" aria-pressed="true"  data-value="csv">CSV</button>
+        <button class="tg__option" aria-pressed="false" data-value="ifc">IFC</button>
+        <button class="tg__option" aria-pressed="false" data-value="dxf">DXF</button>
+        <span class="tg__thumb" aria-hidden="true"></span>
+      </div>
+      <span style="font-size:11px;color:var(--text-soft);line-height:1.4;">We recommend CSV for best compatibility and editability</span>
+    </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <button class="btn-dl" id="download-btn" style="flex:1;min-width:160px;">↓ Download CSV</button>
       <button class="btn-dl" id="download-map-btn" style="flex:1;min-width:160px;background:var(--bg-input);color:var(--text);border-color:var(--border-md);display:none;">↓ Site map image</button>
-    </div>
+    </div> 
   </div>
 
 <!-- ── Import Guide Slide Panel ──────────────────────────────────────────── -->
@@ -3711,6 +3721,7 @@ refreshResultStats();
     setTimeout(()=>{
       showProgress(false);
       showResult(true);
+updateExportFormatUI();
       showWireframe(displayPts, wMinZ, wMaxZ);
       document.getElementById('result-card').scrollIntoView({behavior:'smooth',block:'start'});
     },400);
@@ -5109,6 +5120,7 @@ function restoreProject(index) {
     projectName = p.project_name;
     closeSettings();
     showResult(true);
+updateExportFormatUI();
     const notice = document.getElementById('memory-notice');
     if (notice) {
       notice.textContent = '↩ Project restored — ' + p.project_name;
@@ -5579,7 +5591,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   setTimeout(() => initAuth(), 0);
   document.getElementById('project-name').addEventListener('input', function(){ this.classList.remove('error'); updateConvertBtn(); });
   document.getElementById('convert-btn').addEventListener('click', convert);
-  document.getElementById('download-btn').addEventListener('click', downloadCSV);
+  document.getElementById('download-btn').addEventListener('click', handleDownload);
 // document.getElementById('download-map-btn').addEventListener('click', downloadSiteMap);
 
   // ── Unified carousel dot sync ─────────────────────────────────────────
@@ -6019,4 +6031,673 @@ window.track = function(event, params) {
   </div>
 </div>
 
+<script> 
+// ══════════════════════════════════════════════════════════════════════════
+// IFC4 Export — Pro-only
+// Generates an IFC4 (STEP P21) file with IfcTriangulatedFaceSet from
+// the XYZ point cloud using Delaunay triangulation (delaunator library).
+// ══════════════════════════════════════════════════════════════════════════
+
+async function loadDelaunator() {
+  if (window.Delaunator) return;
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/delaunator@5.0.1/delaunator.min.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Failed to load Delaunator library'));
+    document.head.appendChild(s);
+  });
+}
+
+function triangulatePoints(pts) {
+  // pts = [{x, y, z}, ...] in local metres
+  // Delaunator works on 2D — we project XY and keep Z for the mesh
+  const coords = new Float64Array(pts.length * 2);
+  for (let i = 0; i < pts.length; i++) {
+    coords[i * 2] = pts[i].x;
+    coords[i * 2 + 1] = pts[i].y;
+  }
+  const d = new Delaunator(coords);
+  // d.triangles is a flat Uint32Array: [i0, i1, i2, i3, i4, i5, ...]
+  const triangles = [];
+  for (let i = 0; i < d.triangles.length; i += 3) {
+    triangles.push([d.triangles[i], d.triangles[i + 1], d.triangles[i + 2]]);
+  }
+  return triangles;
+}
+
+function generateIFC4(pts, triangles, projectNameStr) {
+  // IFC4 STEP/P21 format — text file, string concatenation
+  // Uses IfcTriangulatedFaceSet (IFC4 only, works in Revit 2019+, ArchiCAD 22+)
+  const now = new Date();
+  const ts = now.toISOString().replace(/[-:]/g, '').split('.')[0];
+  const date = now.toISOString().split('T')[0];
+
+  let id = 0;
+  const next = () => ++id;
+
+  // Header
+  const header = `ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('ViewDefinition [CoordinationView]'),'2;1');
+FILE_NAME('${(projectNameStr || 'terrain').replace(/'/g, '')}','${ts}',('Topo-grapher'),('Topo-grapher'),'','Topo-grapher','');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+`;
+
+  const lines = [];
+  const ln = (s) => lines.push(s);
+
+  // ── Minimal IFC4 project structure ────────────────────────────
+  const idOrg = next();
+  ln(`#${idOrg}=IFCORGANIZATION($,'Topo-grapher','https://topo-grapher.com',$,$);`);
+
+  const idApp = next();
+  ln(`#${idApp}=IFCAPPLICATION(#${idOrg},'1.0','Topo-grapher','Topo-grapher');`);
+
+  const idPerson = next();
+  ln(`#${idPerson}=IFCPERSONANDORGANIZATION($,#${idOrg},$);`);
+
+  const idOwner = next();
+  ln(`#${idOwner}=IFCOWNERHISTORY(#${idPerson},#${idApp},$,.NOCHANGE.,$,$,$,${Math.floor(now.getTime() / 1000)});`);
+
+  // Direction/axis
+  const idDirZ = next();
+  ln(`#${idDirZ}=IFCDIRECTION((0.,0.,1.));`);
+  const idDirX = next();
+  ln(`#${idDirX}=IFCDIRECTION((1.,0.,0.));`);
+  const idOrigin = next();
+  ln(`#${idOrigin}=IFCCARTESIANPOINT((0.,0.,0.));`);
+
+  // Axis placements
+  const idAxis3D = next();
+  ln(`#${idAxis3D}=IFCAXIS2PLACEMENT3D(#${idOrigin},#${idDirZ},#${idDirX});`);
+
+  // Geometric context
+  const idCtx = next();
+  ln(`#${idCtx}=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,#${idAxis3D},$);`);
+
+  // Units — metres
+  const idSI_m = next();
+  ln(`#${idSI_m}=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);`);
+  const idSI_rad = next();
+  ln(`#${idSI_rad}=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);`);
+  const idSI_s = next();
+  ln(`#${idSI_s}=IFCSIUNIT(*,.TIMEUNIT.,$,.SECOND.);`);
+  const idUnits = next();
+  ln(`#${idUnits}=IFCUNITASSIGNMENT((#${idSI_m},#${idSI_rad},#${idSI_s}));`);
+
+  // Project
+  const idProject = next();
+  ln(`#${idProject}=IFCPROJECT('${makeGuid()}',#${idOwner},'${(projectNameStr || 'Terrain').replace(/'/g, '')}',$,$,$,$,(#${idCtx}),#${idUnits});`);
+
+  // Site
+  const idSitePlacement = next();
+  ln(`#${idSitePlacement}=IFCLOCALPLACEMENT($,#${idAxis3D});`);
+  const idSite = next();
+  ln(`#${idSite}=IFCSITE('${makeGuid()}',#${idOwner},'Site',$,$,#${idSitePlacement},$,$,.ELEMENT.,$,$,$,$,$);`);
+
+  // RelAggregates — project → site
+  const idRelAgg = next();
+  ln(`#${idRelAgg}=IFCRELAGGREGATES('${makeGuid()}',#${idOwner},$,$,#${idProject},(#${idSite}));`);
+
+  // ── Terrain mesh geometry ─────────────────────────────────────
+  // IfcCartesianPointList3D — all XYZ coordinates
+  const coordStr = pts.map(p =>
+    `(${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)})`
+  ).join(',');
+  const idCoords = next();
+  ln(`#${idCoords}=IFCCARTESIANPOINTLIST3D((${coordStr}));`);
+
+  // IfcTriangulatedFaceSet — 1-based indices
+  const faceStr = triangles.map(t =>
+    `(${t[0] + 1},${t[1] + 1},${t[2] + 1})`
+  ).join(',');
+  const idFaceSet = next();
+  ln(`#${idFaceSet}=IFCTRIANGULATEDFACESET(#${idCoords},$,.T.,(${faceStr}),$);`);
+
+  // Shape representation
+  const idShapeRep = next();
+  ln(`#${idShapeRep}=IFCSHAPEREPRESENTATION(#${idCtx},'Body','Tessellation',(#${idFaceSet}));`);
+
+  const idProdDefShape = next();
+  ln(`#${idProdDefShape}=IFCPRODUCTDEFINITIONSHAPE($,$,(#${idShapeRep}));`);
+
+  // IfcGeographicElement (IFC4) — terrain element
+  const idTerrainPlacement = next();
+  ln(`#${idTerrainPlacement}=IFCLOCALPLACEMENT(#${idSitePlacement},#${idAxis3D});`);
+
+  const idTerrain = next();
+  ln(`#${idTerrain}=IFCGEOGRAPHICELEMENT('${makeGuid()}',#${idOwner},'Terrain','Generated by Topo-grapher','TERRAIN',#${idTerrainPlacement},#${idProdDefShape},$,.TERRAIN.);`);
+
+  // Contain terrain in site
+  const idRelContained = next();
+  ln(`#${idRelContained}=IFCRELCONTAINEDINSPATIALSTRUCTURE('${makeGuid()}',#${idOwner},$,$,(#${idTerrain}),#${idSite});`);
+
+  // Footer
+  const footer = `ENDSEC;
+END-ISO-10303-21;
+`;
+
+  return header + lines.join('\n') + '\n' + footer;
+}
+
+// IFC GUID generator — IFC uses base64-encoded 128-bit identifiers (22 chars)
+function makeGuid() {
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$';
+  let guid = '';
+  for (let i = 0; i < 22; i++) {
+    guid += chars[Math.floor(Math.random() * 64)];
+  }
+  return guid;
+}
+
+async function downloadIFC() {
+  const pts = window._cleanOutMetric;
+  if (!pts || !pts.length) return;
+
+  if (!isPro()) {
+    document.getElementById('pro')?.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  const btn = document.getElementById('download-ifc-btn');
+  if (btn) { btn.textContent = '⏳ Building mesh…'; btn.disabled = true; }
+
+  try {
+    await loadDelaunator();
+    const triangles = triangulatePoints(pts);
+    
+    // Apply unit conversion if imperial
+    const imperial = exportUnits === 'imperial';
+    const mult = imperial ? M_TO_FT : 1;
+    const exportPts = imperial
+      ? pts.map(p => ({ x: p.x * mult, y: p.y * mult, z: p.z * mult }))
+      : pts;
+
+    const ifcContent = generateIFC4(exportPts, triangles, projectName);
+    const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const suffix = imperial ? '_ft' : '_m';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([ifcContent], { type: 'application/x-step' }));
+    a.download = `${safe}_terrain${suffix}.ifc`;
+    a.click();
+
+    try {
+      gtag('event', 'ifc_downloaded', {
+        event_category: 'conversion',
+        event_label: safe,
+        dimension3: exportUnits,
+        value: pts.length
+      });
+    } catch (e) {}
+  } catch (err) {
+    console.error('IFC export error:', err);
+    showError('IFC export failed: ' + err.message);
+  } finally {
+    if (btn) { btn.textContent = '↓ Download IFC'; btn.disabled = false; }
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// IFC2X3 + DXF Contour Export — Pro-only
+// Single download button + format toggle (CSV / IFC / DXF)
+// ══════════════════════════════════════════════════════════════════════════
+
+// ── Format toggle UI ────────────────────────────────────────────────────
+let _exportFormat = 'csv'; // 'csv' | 'ifc' | 'dxf'
+
+function updateExportFormatUI() {
+  const row = document.getElementById('export-format-row');
+  const toggle = document.getElementById('export-format-toggle');
+  const btn = document.getElementById('download-btn');
+  if (!row || !toggle || !btn) return;
+
+  const pro = isPro();
+
+  // Hide IFC/DXF options for free users
+  toggle.querySelectorAll('.tg__option').forEach(opt => {
+    if (opt.dataset.value === 'ifc' || opt.dataset.value === 'dxf') {
+      opt.style.display = pro ? '' : 'none';
+    }
+  });
+
+  // If not pro and format was ifc/dxf, reset to csv
+  if (!pro && _exportFormat !== 'csv') {
+    _exportFormat = 'csv';
+    toggle.querySelectorAll('.tg__option').forEach(o =>
+      o.setAttribute('aria-pressed', o.dataset.value === 'csv' ? 'true' : 'false')
+    );
+  }
+
+  // Re-layout thumb after showing/hiding options
+  if (typeof layoutToggle === 'function') layoutToggle(toggle);
+
+  // Update button label
+  updateDownloadBtnLabel();
+}
+
+function updateDownloadBtnLabel() {
+  const btn = document.getElementById('download-btn');
+  if (!btn) return;
+  const labels = { csv: '↓ Download CSV', ifc: '↓ Download IFC', dxf: '↓ Download DXF' };
+  btn.textContent = labels[_exportFormat] || labels.csv;
+}
+
+// Listen for format toggle clicks
+document.addEventListener('DOMContentLoaded', () => {
+  const toggle = document.getElementById('export-format-toggle');
+  if (!toggle) return;
+
+  toggle.addEventListener('click', e => {
+    const btn = e.target.closest('.tg__option');
+    if (!btn) return;
+
+    const fmt = btn.dataset.value;
+
+    // Pro gate for IFC/DXF
+    if ((fmt === 'ifc' || fmt === 'dxf') && !isPro()) {
+      document.getElementById('pro')?.scrollIntoView({ behavior: 'smooth' });
+      // Reset toggle back to csv
+      toggle.querySelectorAll('.tg__option').forEach(o =>
+        o.setAttribute('aria-pressed', o.dataset.value === 'csv' ? 'true' : 'false')
+      );
+      if (typeof layoutToggle === 'function') layoutToggle(toggle);
+      return;
+    }
+
+    _exportFormat = fmt;
+    updateDownloadBtnLabel();
+  });
+
+  // Init the toggle (adds thumb positioning)
+  if (typeof initToggle === 'function') initToggle(toggle);
+});
+
+// Replace the existing download-btn click handler.
+// The original DOMContentLoaded wired: download-btn → downloadCSV().
+// We remove that and replace with our format-aware router.
+// IMPORTANT: In index.html, CHANGE the existing line:
+//   document.getElementById('download-btn').addEventListener('click', downloadCSV);
+// TO:
+//   document.getElementById('download-btn').addEventListener('click', handleDownload);
+function handleDownload() {
+  if (_exportFormat === 'ifc') downloadIFC();
+  else if (_exportFormat === 'dxf') downloadDXF();
+  else downloadCSV();
+}
+
+
+// ── Delaunator (lazy-loaded for IFC) ────────────────────────────────────
+async function loadDelaunator() {
+  if (window.Delaunator) return;
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/delaunator@5.0.1/delaunator.min.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Failed to load Delaunator library'));
+    document.head.appendChild(s);
+  });
+}
+
+function triangulatePoints(pts) {
+  const coords = new Float64Array(pts.length * 2);
+  for (let i = 0; i < pts.length; i++) {
+    coords[i * 2] = pts[i].x;
+    coords[i * 2 + 1] = pts[i].y;
+  }
+  const d = new Delaunator(coords);
+  const triangles = [];
+  // Filter out degenerate triangles that break Revit's spot elevation tool.
+  // Revit issue #511: if any triangle has a very acute XY angle (< ~1°),
+  // the ENTIRE mesh loses spot elevation/coordinate annotation capability.
+  // This happens because Delaunay on a regular grid produces thin slivers
+  // along polygon edges. We check the minimum XY-plane angle of each
+  // triangle and discard any below 1°.
+  const MIN_ANGLE_RAD = 1.0 * Math.PI / 180; // 1 degree threshold
+  for (let i = 0; i < d.triangles.length; i += 3) {
+    const a = d.triangles[i], b = d.triangles[i + 1], c = d.triangles[i + 2];
+    // XY-plane angle check (Z deliberately ignored — Revit's bug is 2D)
+    const ax = pts[a].x, ay = pts[a].y;
+    const bx = pts[b].x, by = pts[b].y;
+    const cx = pts[c].x, cy = pts[c].y;
+    // Edge lengths squared
+    const ab2 = (bx-ax)**2 + (by-ay)**2;
+    const bc2 = (cx-bx)**2 + (cy-by)**2;
+    const ca2 = (ax-cx)**2 + (ay-cy)**2;
+    const ab = Math.sqrt(ab2), bc = Math.sqrt(bc2), ca = Math.sqrt(ca2);
+    if (ab < 1e-10 || bc < 1e-10 || ca < 1e-10) continue; // zero-area
+    // Angles via law of cosines
+    const cosA = (ab2 + ca2 - bc2) / (2 * ab * ca);
+    const cosB = (ab2 + bc2 - ca2) / (2 * ab * bc);
+    const cosC = (bc2 + ca2 - ab2) / (2 * bc * ca);
+    const minAngle = Math.acos(Math.min(1, Math.max(-1, Math.max(cosA, cosB, cosC))));
+    if (minAngle < MIN_ANGLE_RAD) continue; // degenerate — skip
+    triangles.push([a, b, c]);
+  }
+  return triangles;
+}
+
+
+// ── IFC2X3 generation (IfcFacetedBrep) ──────────────────────────────────
+// WHY IFC2X3 not IFC4:
+// - Revit's "Open" mode doesn't support IFC4 IfcTriangulatedFaceSet at all
+// - Revit's "Link" mode reads IFC4 tessellations but imports as read-only
+//   DirectShape — no spot elevation annotations, no Toposolid conversion
+// - IFC2X3 with IfcFacetedBrep is what Revit's own exporter uses for
+//   Toposurfaces, and what its Open importer converts to native Topography
+// - IfcFacetedBrep = IfcClosedShell of triangular IfcFaces, each face has
+//   an IfcFaceOuterBound → IfcPolyLoop → 3 IfcCartesianPoints
+
+function makeGuid() {
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$';
+  let guid = '';
+  for (let i = 0; i < 22; i++) guid += chars[Math.floor(Math.random() * 64)];
+  return guid;
+}
+
+function generateIFC(pts, triangles, projectNameStr) {
+  const now = new Date();
+  const ts = now.toISOString().replace(/[-:]/g, '').split('.')[0];
+
+  let id = 0;
+  const next = () => ++id;
+
+  const header = `ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('ViewDefinition [CoordinationView_V2.0]'),'2;1');
+FILE_NAME('${(projectNameStr || 'terrain').replace(/'/g, '')}','${ts}',('Topo-grapher'),('Topo-grapher'),'','Topo-grapher','');
+FILE_SCHEMA(('IFC2X3'));
+ENDSEC;
+DATA;
+`;
+
+  const lines = [];
+  const ln = (s) => lines.push(s);
+
+  // Minimal IFC2X3 project structure
+  const idOrg = next();
+  ln(`#${idOrg}=IFCORGANIZATION($,'Topo-grapher','https://topo-grapher.com',$,$);`);
+  const idApp = next();
+  ln(`#${idApp}=IFCAPPLICATION(#${idOrg},'1.0','Topo-grapher','Topo-grapher');`);
+  const idPerson = next();
+  ln(`#${idPerson}=IFCPERSONANDORGANIZATION($,#${idOrg},$);`);
+  const idOwner = next();
+  ln(`#${idOwner}=IFCOWNERHISTORY(#${idPerson},#${idApp},$,.NOCHANGE.,$,$,$,${Math.floor(now.getTime() / 1000)});`);
+
+  const idDirZ = next();
+  ln(`#${idDirZ}=IFCDIRECTION((0.,0.,1.));`);
+  const idDirX = next();
+  ln(`#${idDirX}=IFCDIRECTION((1.,0.,0.));`);
+  const idOrigin = next();
+  ln(`#${idOrigin}=IFCCARTESIANPOINT((0.,0.,0.));`);
+  const idAxis3D = next();
+  ln(`#${idAxis3D}=IFCAXIS2PLACEMENT3D(#${idOrigin},#${idDirZ},#${idDirX});`);
+
+  const idCtx = next();
+  ln(`#${idCtx}=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,#${idAxis3D},$);`);
+
+  const idSI_m = next();
+  ln(`#${idSI_m}=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);`);
+  const idSI_rad = next();
+  ln(`#${idSI_rad}=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);`);
+  const idSI_s = next();
+  ln(`#${idSI_s}=IFCSIUNIT(*,.TIMEUNIT.,$,.SECOND.);`);
+  const idUnits = next();
+  ln(`#${idUnits}=IFCUNITASSIGNMENT((#${idSI_m},#${idSI_rad},#${idSI_s}));`);
+
+  const idProject = next();
+  ln(`#${idProject}=IFCPROJECT('${makeGuid()}',#${idOwner},'${(projectNameStr || 'Terrain').replace(/'/g, '')}',$,$,$,$,(#${idCtx}),#${idUnits});`);
+
+  const idSitePlacement = next();
+  ln(`#${idSitePlacement}=IFCLOCALPLACEMENT($,#${idAxis3D});`);
+
+  // ── IfcFacetedBrep geometry ───────────────────────────────────────
+  // Build unique point IDs (reuse points shared between triangles)
+  const pointKey = (p) => `${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)}`;
+  const pointIdMap = new Map();
+  const getPointId = (p) => {
+    const k = pointKey(p);
+    if (pointIdMap.has(k)) return pointIdMap.get(k);
+    const pid = next();
+    ln(`#${pid}=IFCCARTESIANPOINT((${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)}));`);
+    pointIdMap.set(k, pid);
+    return pid;
+  };
+
+  // Pre-create all unique points
+  for (const t of triangles) {
+    getPointId(pts[t[0]]);
+    getPointId(pts[t[1]]);
+    getPointId(pts[t[2]]);
+  }
+
+  // Build faces: each triangle → IfcPolyLoop → IfcFaceOuterBound → IfcFace
+  const faceIds = [];
+  for (const t of triangles) {
+    const pid0 = getPointId(pts[t[0]]);
+    const pid1 = getPointId(pts[t[1]]);
+    const pid2 = getPointId(pts[t[2]]);
+
+    const idLoop = next();
+    ln(`#${idLoop}=IFCPOLYLOOP((#${pid0},#${pid1},#${pid2}));`);
+    const idBound = next();
+    ln(`#${idBound}=IFCFACEOUTERBOUND(#${idLoop},.T.);`);
+    const idFace = next();
+    ln(`#${idFace}=IFCFACE((#${idBound}));`);
+    faceIds.push(idFace);
+  }
+
+  // IfcClosedShell → IfcFacetedBrep
+  const idShell = next();
+  ln(`#${idShell}=IFCCLOSEDSHELL((${faceIds.map(f => '#' + f).join(',')}));`);
+  const idBrep = next();
+  ln(`#${idBrep}=IFCFACETEDBREP(#${idShell});`);
+
+  // Shape representation
+  const idShapeRep = next();
+  ln(`#${idShapeRep}=IFCSHAPEREPRESENTATION(#${idCtx},'Body','Brep',(#${idBrep}));`);
+  const idProdDefShape = next();
+  ln(`#${idProdDefShape}=IFCPRODUCTDEFINITIONSHAPE($,$,(#${idShapeRep}));`);
+
+  // IfcSite carries the terrain mesh in its own Representation.
+  // Revit imports IfcSite geometry as native Topography when using "Open".
+  const minElev = pts.reduce((m, p) => Math.min(m, p.z), Infinity);
+  const idSite = next();
+  ln(`#${idSite}=IFCSITE('${makeGuid()}',#${idOwner},'Site','Generated by Topo-grapher',$,#${idSitePlacement},#${idProdDefShape},$,.ELEMENT.,$,$,${minElev.toFixed(4)},$,$);`);
+
+  const idRelAgg = next();
+  ln(`#${idRelAgg}=IFCRELAGGREGATES('${makeGuid()}',#${idOwner},$,$,#${idProject},(#${idSite}));`);
+
+  return header + lines.join('\n') + '\nENDSEC;\nEND-ISO-10303-21;\n';
+}
+
+async function downloadIFC() {
+  const pts = window._cleanOutMetric;
+  if (!pts || !pts.length) return;
+  if (!isPro()) { document.getElementById('pro')?.scrollIntoView({ behavior: 'smooth' }); return; }
+
+  const btn = document.getElementById('download-btn');
+  if (btn) { btn.textContent = '⏳ Building mesh…'; btn.disabled = true; }
+
+  try {
+    await loadDelaunator();
+    const triangles = triangulatePoints(pts);
+
+    const imperial = exportUnits === 'imperial';
+    const mult = imperial ? M_TO_FT : 1;
+    const exportPts = imperial
+      ? pts.map(p => ({ x: p.x * mult, y: p.y * mult, z: p.z * mult }))
+      : pts;
+
+    const ifcContent = generateIFC(exportPts, triangles, projectName);
+    const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const suffix = imperial ? '_ft' : '_m';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([ifcContent], { type: 'application/x-step' }));
+    a.download = `${safe}_terrain${suffix}.ifc`;
+    a.click();
+
+    try { gtag('event', 'ifc_downloaded', { event_category: 'conversion', event_label: safe, dimension3: exportUnits, value: pts.length }); } catch (e) {}
+  } catch (err) {
+    console.error('IFC export error:', err);
+    showError('IFC export failed: ' + err.message);
+  } finally {
+    if (btn) { btn.textContent = '↓ Download IFC'; btn.disabled = false; }
+  }
+}
+
+
+// ── DXF Contour Export ──────────────────────────────────────────────────
+function generateContoursDXF(pts, projectNameStr) {
+  const xVals = pts.map(p => p.x), yVals = pts.map(p => p.y);
+  const minX = Math.min(...xVals), maxX = Math.max(...xVals);
+  const minY = Math.min(...yVals), maxY = Math.max(...yVals);
+  const minZ = Math.min(...pts.map(p => p.z)), maxZ = Math.max(...pts.map(p => p.z));
+  const rangeX = maxX - minX || 1, rangeY = maxY - minY || 1, rangeZ = maxZ - minZ;
+
+  if (rangeZ < 0.1) throw new Error('Terrain is too flat for contour export (< 0.1m elevation range).');
+
+  const COLS = Math.min(200, Math.max(40, Math.round(Math.sqrt(pts.length) * 1.5)));
+  const ROWS = Math.round(COLS * (rangeY / rangeX));
+  const cellW = rangeX / COLS, cellH = rangeY / ROWS;
+
+  // Build interpolation grid
+  const sums = Array.from({ length: ROWS + 1 }, () => new Float64Array(COLS + 1));
+  const cnts = Array.from({ length: ROWS + 1 }, () => new Uint16Array(COLS + 1));
+  pts.forEach(p => {
+    const c = Math.min(COLS, Math.max(0, Math.round((p.x - minX) / rangeX * COLS)));
+    const r = Math.min(ROWS, Math.max(0, Math.round((p.y - minY) / rangeY * ROWS)));
+    sums[r][c] += p.z; cnts[r][c]++;
+  });
+  const grid = Array.from({ length: ROWS + 1 }, (_, r) =>
+    Float64Array.from({ length: COLS + 1 }, (_, c) => cnts[r][c] > 0 ? sums[r][c] / cnts[r][c] : NaN)
+  );
+
+  // Fill empty cells
+  for (let pass = 0; pass < 8; pass++)
+    for (let r = 0; r <= ROWS; r++)
+      for (let c = 0; c <= COLS; c++) {
+        if (!isNaN(grid[r][c])) continue;
+        const nb = [];
+        if (r > 0 && !isNaN(grid[r-1][c])) nb.push(grid[r-1][c]);
+        if (r < ROWS && !isNaN(grid[r+1][c])) nb.push(grid[r+1][c]);
+        if (c > 0 && !isNaN(grid[r][c-1])) nb.push(grid[r][c-1]);
+        if (c < COLS && !isNaN(grid[r][c+1])) nb.push(grid[r][c+1]);
+        if (nb.length) grid[r][c] = nb.reduce((a, b) => a + b, 0) / nb.length;
+      }
+  for (let r = 0; r <= ROWS; r++)
+    for (let c = 0; c <= COLS; c++)
+      if (isNaN(grid[r][c])) grid[r][c] = minZ;
+
+  // Contour interval
+  let interval = 0.5;
+  if (rangeZ > 500) interval = 25;
+  else if (rangeZ > 150) interval = 10;
+  else if (rangeZ > 50) interval = 5;
+  else if (rangeZ > 15) interval = 2;
+  else if (rangeZ > 5) interval = 1;
+  else if (rangeZ > 2) interval = 0.5;
+  else interval = 0.25;
+
+  const levels = [];
+  for (let z = Math.ceil(minZ / interval) * interval; z <= maxZ; z += interval)
+    levels.push(parseFloat(z.toFixed(4)));
+
+  // Marching squares
+  function marchDXF(level) {
+    const segs = [];
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      const tl = grid[r][c], tr = grid[r][c+1], bl = grid[r+1][c], br = grid[r+1][c+1];
+      let idx = 0;
+      if (tl > level) idx |= 1; if (tr > level) idx |= 2;
+      if (br > level) idx |= 4; if (bl > level) idx |= 8;
+      if (idx === 0 || idx === 15) continue;
+      const lerp = (va, vb) => (level - va) / ((vb - va) || 1e-9);
+      const gx = gc => minX + gc * cellW, gy = gr => minY + gr * cellH;
+      const top = [gx(c + lerp(tl, tr)), gy(r), level];
+      const right = [gx(c + 1), gy(r + lerp(tr, br)), level];
+      const bottom = [gx(c + lerp(bl, br)), gy(r + 1), level];
+      const left = [gx(c), gy(r + lerp(tl, bl)), level];
+      switch (idx) {
+        case 1: case 14: segs.push([top, left]); break;
+        case 2: case 13: segs.push([top, right]); break;
+        case 3: case 12: segs.push([left, right]); break;
+        case 4: case 11: segs.push([bottom, right]); break;
+        case 5: segs.push([top, left]); segs.push([bottom, right]); break;
+        case 6: case 9: segs.push([top, bottom]); break;
+        case 7: case 8: segs.push([bottom, left]); break;
+        case 10: segs.push([top, right]); segs.push([bottom, left]); break;
+      }
+    }
+    return segs;
+  }
+
+  // Build DXF
+  let dxf = '';
+  const w = s => { dxf += s + '\n'; };
+  w('0'); w('SECTION'); w('2'); w('HEADER');
+  w('9'); w('$ACADVER'); w('1'); w('AC1027');
+  w('9'); w('$INSUNITS'); w('70'); w('6');
+  w('0'); w('ENDSEC');
+  w('0'); w('SECTION'); w('2'); w('TABLES');
+  w('0'); w('TABLE'); w('2'); w('LAYER'); w('70'); w(String(levels.length + 2));
+  w('0'); w('LAYER'); w('2'); w('0'); w('70'); w('0'); w('62'); w('7'); w('6'); w('Continuous');
+  const majorMod = 5;
+  levels.forEach((level, i) => {
+    const isMajor = Math.round(level / interval) % majorMod === 0;
+    const layerName = `CONTOUR_${level.toFixed(2).replace('.', '_').replace('-', 'N')}`;
+    w('0'); w('LAYER'); w('2'); w(layerName); w('70'); w('0');
+    w('62'); w(isMajor ? '3' : '80'); w('6'); w('Continuous');
+  });
+  w('0'); w('ENDTAB'); w('0'); w('ENDSEC');
+  w('0'); w('SECTION'); w('2'); w('ENTITIES');
+  levels.forEach(level => {
+    const segs = marchDXF(level);
+    if (!segs.length) return;
+    const layerName = `CONTOUR_${level.toFixed(2).replace('.', '_').replace('-', 'N')}`;
+    segs.forEach(([p1, p2]) => {
+      w('0'); w('LINE'); w('8'); w(layerName);
+      w('10'); w(p1[0].toFixed(4)); w('20'); w(p1[1].toFixed(4)); w('30'); w(p1[2].toFixed(4));
+      w('11'); w(p2[0].toFixed(4)); w('21'); w(p2[1].toFixed(4)); w('31'); w(p2[2].toFixed(4));
+    });
+  });
+  w('0'); w('ENDSEC'); w('0'); w('EOF');
+  return { dxf, levels, interval };
+}
+
+function downloadDXF() {
+  const pts = window._cleanOutMetric;
+  if (!pts || !pts.length) return;
+  if (!isPro()) { document.getElementById('pro')?.scrollIntoView({ behavior: 'smooth' }); return; }
+
+  const btn = document.getElementById('download-btn');
+  if (btn) { btn.textContent = '⏳ Tracing contours…'; btn.disabled = true; }
+
+  try {
+    const imperial = exportUnits === 'imperial';
+    const mult = imperial ? M_TO_FT : 1;
+    const exportPts = imperial
+      ? pts.map(p => ({ x: p.x * mult, y: p.y * mult, z: p.z * mult }))
+      : pts;
+
+    const { dxf, levels, interval } = generateContoursDXF(exportPts, projectName);
+    const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const suffix = imperial ? '_ft' : '_m';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([dxf], { type: 'application/dxf' }));
+    a.download = `${safe}_contours_${interval}m${suffix}.dxf`;
+    a.click();
+
+    try { gtag('event', 'dxf_downloaded', { event_category: 'conversion', event_label: safe, dimension3: exportUnits, value: levels.length }); } catch (e) {}
+  } catch (err) {
+    console.error('DXF export error:', err);
+    showError('DXF export failed: ' + err.message);
+  } finally {
+    if (btn) { btn.textContent = '↓ Download DXF'; btn.disabled = false; }
+  }
+}
+</script>
 </html>
