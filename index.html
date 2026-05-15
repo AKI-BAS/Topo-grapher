@@ -5117,6 +5117,12 @@ function restoreProject(index) {
   // Restore CSV data and show result panel
   if (p.csv_data) {
     csvData = p.csv_data;
+    // Rebuild _cleanOutMetric from CSV so download buttons work
+    const csvLines = p.csv_data.split('\n').filter(l => l.trim() && !l.startsWith('X'));
+    window._cleanOutMetric = csvLines.map(l => {
+      const [x, y, z] = l.split(',').map(Number);
+      return { x, y, z };
+    });
     projectName = p.project_name;
     closeSettings();
     showResult(true);
