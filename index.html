@@ -4639,7 +4639,7 @@ async function _initTerrain3D(points, minZ, maxZ, contourInterval) {
   scene.add(contourGroup);
 
   // Toggle state
-  let solidOn = true, contoursOn = true, wireOn = false;
+  let solidOn = false, contoursOn = true, wireOn = false;
 
   function getContourParams() {
     // Solid ON:  2× density (half interval), etched-in look — muted, low opacity
