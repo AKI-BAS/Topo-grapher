@@ -52,13 +52,13 @@
         "@type": "Offer",
         "name": "Free",
         "price": "0",
-        "priceCurrency": "USD"
+        "priceCurrency": "GBP"
       },
       {
         "@type": "Offer",
         "name": "Pro",
-        "price": "19",
-        "priceCurrency": "USD",
+        "price": "39,99",
+        "priceCurrency": "GBP",
         "priceSpecification": {
           "@type": "UnitPriceSpecification",
           "billingDuration": "P1M"
@@ -804,7 +804,7 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
     <div class="user-dropdown" id="user-dropdown">
       <span style="display:block;padding:40px 14px;font-size:12px;color:var(--text-soft);border-bottom:1px solid var(--border);" id="user-email-display"></span>
       <button onclick="openSettings()">Account settings</button>
-      <a href="#pro" id="nav-upgrade-link" onclick="document.getElementById('user-dropdown').classList.remove('show');startCheckout('pro')">Upgrade to Pro →</a>
+      <a href="#pro" id="nav-upgrade-link" onclick="document.getElementById('user-dropdown').classList.remove('show');track('pro_cta_clicked',{source:'nav_dropdown'});startCheckout('pro')">Upgrade to Pro →</a>
       <button onclick="signOut()">Sign out</button>
     </div>
   </div>
@@ -2223,7 +2223,7 @@ function toggleDataSourceTable() {
         <li class="feat-ok">Priority support</li>
         <li class="feat-add">Large site add-on available</li>
       </ul>
-      <button class="tier-cta" id="checkout-btn-pro" onclick="startCheckout('pro')">Get Pro →</button>
+      <button class="tier-cta" id="checkout-btn-pro" onclick="track('pro_cta_clicked',{source:'pricing_card'});startCheckout('pro')">Get Pro →</button>
     </div>
 
     <!-- Company -->
@@ -3212,6 +3212,7 @@ const baseLMI = L.layerGroup([
     // getLatLngs returns nested array for polygon, flat for rectangle
     const ll = Array.isArray(raw[0]) ? raw[0] : raw;
     polygonLatLngs = ll;
+    track('polygon_drawn', { shape: ev.layerType, vertices: ll.length });
     currentTool = null;
     document.getElementById('btn-polygon').classList.remove('active');
     document.getElementById('btn-rect').classList.remove('active');
@@ -3258,6 +3259,7 @@ const baseLMI = L.layerGroup([
 function switchBasemap(name) {
   const bm = window._basemaps;
   if (window._activeBasemap === name) return;
+track('basemap_switched', { basemap: name });
   bm[window._activeBasemap].removeFrom(map);
   bm[name].addTo(map);
   window._activeBasemap = name;
@@ -3406,6 +3408,7 @@ function updatePtCounts(){
 
 function setAccuracy(s){
   selectedSpacing = s;
+track('spacing_changed', { spacing: s });
   [3,6,12,20].forEach(v=>document.getElementById(`acc-${v}`).classList.toggle('selected',v===s));
   updateHint();
 }
@@ -3559,6 +3562,7 @@ function cancelGeneration() {
 
 async function convert(){
   hideError(); showResult(false);
+track('generation_started', { spacing: selectedSpacing, plan: _currentProfile?.plan || 'anon' });
   window._isGenerating = true;
   window._cancelled = false;
   const nEl = document.getElementById('project-name');
@@ -3796,6 +3800,7 @@ updateExportFormatUI();
   }catch(err){
     showProgress(false);
     showError(err.message);
+track('generation_failed', { error: err.message.slice(0, 100), spacing: selectedSpacing });
   }finally{
     document.getElementById('convert-btn').disabled=false;
   }
@@ -3837,6 +3842,7 @@ function getToggleValue(toggleId) {
 
 function setExportUnits(u){
   exportUnits = u;
+track('units_changed', { units: u });
   // Visual state is handled by the toggle's click handler + CSS transition.
   // We only need to trigger data refresh here.
   refreshResultStats();
@@ -5517,6 +5523,7 @@ async function startCheckout(plan) {
     openAuth();
     return;
   }
+track('checkout_started', { plan });
   const priceId = plan === 'company' ? STRIPE_PRICE_COMPANY : STRIPE_PRICE_PRO;
   const btn = document.getElementById('checkout-btn-' + plan);
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
@@ -5675,6 +5682,7 @@ async function submitAuth(type) {
     if (!email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
     const { data, error } = await _sb.auth.signInWithPassword({ email, password });
     if (error) { errEl.textContent = error.message; return; }
+track('signin_completed', { method: 'email' });
     closeAuth();
   } else {
     const email = document.getElementById('signup-email').value.trim();
@@ -5689,6 +5697,7 @@ async function submitAuth(type) {
     console.log('Signup result:', { data, error });
     if (error) { errEl.textContent = error.message; return; }
     errEl.style.color = 'var(--accent)';
+track('signup_completed', { method: 'email' });
     errEl.textContent = 'Check your email to confirm your account.';
   }
 }
@@ -5795,6 +5804,7 @@ async function sendFeedback() {
   if (elapsed < 2000) {
     // Pretend it worked — bot gets fake success, doesn't retry
     successEl.textContent = "✓ Thanks — we've got it.";
+track('feedback_sent', { topic });
     successEl.classList.add('show');
     document.getElementById('fb-message').value = '';
     return;
@@ -5886,12 +5896,14 @@ async function checkDailyLimit() {
       .eq('user_id', _currentUser.id)
       .gte('created_at', today + 'T00:00:00Z');
     if (count >= FREE_DAILY_LIMIT) {
+track('free_limit_hit', { type: 'daily', source: 'server' });
       throw new Error('Free tier limit reached — ' + FREE_DAILY_LIMIT + ' generations per day. <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.');
     }
   } else {
     // Guest — use localStorage
     const used = getGenerationsToday();
     if (used >= FREE_DAILY_LIMIT) {
+ track('free_limit_hit', { type: 'daily', source: 'local' });
       throw new Error('Free tier limit reached. <a href="#" onclick="openAuth()" style="color:var(--accent)">Sign in</a> or <a href="#pro" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.');
     }
   }
@@ -5954,6 +5966,7 @@ document.addEventListener('click',function(e){
 
 // ── Import Guide Panel ────────────────────────────────────────────────────
 function openImportGuide() {
+track('import_guide_opened');
   const overlay = document.getElementById('import-guide-overlay');
   const panel   = document.getElementById('import-guide-panel');
   overlay.style.display = 'block';
@@ -5978,6 +5991,7 @@ function closeImportGuide() {
 }
 
 function switchIGTab(name, btn) {
+track('import_guide_tab', { software: name });
   document.querySelectorAll('.ig-content').forEach(el => { el.style.display = 'none'; });
   document.querySelectorAll('.ig-tab').forEach(t => {
     t.style.borderBottomColor = 'transparent';
@@ -5989,6 +6003,7 @@ function switchIGTab(name, btn) {
 }
 
 function openDataQuality() {
+track('data_quality_opened');
   const overlay = document.getElementById('data-quality-overlay');
   const panel   = document.getElementById('data-quality-panel');
   overlay.style.display = 'block';
@@ -6624,6 +6639,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     _exportFormat = fmt;
+track('export_format_changed', { format: fmt });
     updateDownloadBtnLabel();
   });
 
