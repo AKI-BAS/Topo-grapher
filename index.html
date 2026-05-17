@@ -2696,6 +2696,108 @@ function updateCoordPolygon(points) {
   updateConvertBtn();
   checkDrawnAreaWarning();
 }
+// ── Country detector (bounding-box lookup, no API needed) ──────────────
+// Covers all countries where Topo-grapher has or plans to have data.
+// Ordered by likely usage frequency. Checked top-down, first match wins.
+// For overlapping bboxes (e.g. Denmark/Germany), order matters — put the
+// smaller / higher-priority country first.
+// Format: [code, minLat, maxLat, minLon, maxLon]
+const COUNTRY_BOXES = [
+  // Nordic — high priority (DK has LiDAR, IS has ArcticDEM)
+  ['DK', 54.5, 57.8, 8.0, 15.2],    // Denmark (mainland + islands)
+  ['IS', 63.2, 66.6, -24.6, -13.4],  // Iceland
+  ['NO', 57.9, 71.2, 4.5, 31.2],     // Norway
+  ['SE', 55.3, 69.1, 11.0, 24.2],    // Sweden
+  ['FI', 59.8, 70.1, 20.5, 31.6],    // Finland
+  ['FO', 61.3, 62.4, -7.5, -6.2],    // Faroe Islands
+
+  // UK + Ireland (GPXZ LiDAR)
+  ['GB', 49.8, 60.9, -8.2, 1.8],     // United Kingdom
+  ['IE', 51.3, 55.5, -10.5, -5.9],   // Ireland
+
+  // Western Europe
+  ['NL', 50.7, 53.6, 3.3, 7.2],      // Netherlands
+  ['BE', 49.4, 51.5, 2.5, 6.4],      // Belgium
+  ['LU', 49.4, 50.2, 5.7, 6.5],      // Luxembourg
+  ['FR', 41.3, 51.1, -5.2, 9.6],     // France
+  ['CH', 45.8, 47.8, 5.9, 10.5],     // Switzerland
+  ['AT', 46.3, 49.0, 9.5, 17.2],     // Austria
+  ['DE', 47.2, 55.1, 5.8, 15.1],     // Germany
+
+  // Southern Europe
+  ['ES', 35.9, 43.8, -9.3, 4.3],     // Spain
+  ['PT', 36.9, 42.2, -9.5, -6.1],    // Portugal
+  ['IT', 36.6, 47.1, 6.6, 18.5],     // Italy
+  ['GR', 34.8, 41.8, 19.3, 29.7],    // Greece
+  ['HR', 42.3, 46.6, 13.4, 19.5],    // Croatia
+
+  // Central/Eastern Europe
+  ['PL', 49.0, 54.9, 14.1, 24.2],    // Poland
+  ['CZ', 48.5, 51.1, 12.0, 18.9],    // Czechia
+  ['SK', 47.7, 49.6, 16.8, 22.6],    // Slovakia
+  ['HU', 45.7, 48.6, 16.1, 22.9],    // Hungary
+  ['RO', 43.6, 48.3, 20.2, 30.0],    // Romania
+  ['BG', 41.2, 44.2, 22.3, 28.6],    // Bulgaria
+
+  // Baltics
+  ['EE', 57.5, 59.7, 21.7, 28.2],    // Estonia
+  ['LV', 55.6, 58.1, 20.9, 28.2],    // Latvia
+  ['LT', 53.9, 56.5, 20.9, 26.8],    // Lithuania
+
+  // North America
+  ['US', 24.4, 49.4, -125.0, -66.9], // USA (contiguous)
+  ['US', 51.2, 71.4, -180.0, -129.0],// Alaska
+  ['US', 18.9, 22.3, -160.3, -154.8],// Hawaii
+  ['CA', 41.7, 83.1, -141.0, -52.6], // Canada
+  ['MX', 14.5, 32.7, -118.5, -86.7], // Mexico
+
+  // Asia-Pacific (planned)
+  ['JP', 24.0, 45.6, 122.9, 153.9],  // Japan
+  ['NZ', -47.3, -34.3, 166.3, 178.6],// New Zealand
+  ['AU', -44.0, -10.0, 112.9, 153.6],// Australia
+
+  // Middle East
+  ['AE', 22.6, 26.1, 51.5, 56.4],    // UAE
+  ['SA', 16.3, 32.2, 34.5, 55.7],    // Saudi Arabia
+  ['IL', 29.4, 33.3, 34.2, 35.9],    // Israel
+];
+
+function detectCountry(lat, lon) {
+  for (const [code, minLat, maxLat, minLon, maxLon] of COUNTRY_BOXES) {
+    if (lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon) {
+      return code;
+    }
+  }
+  return null; // Unknown — global fallback regions
+}
+
+
+// ── Resolution parser (from source string) ─────────────────────────────
+// Extracts the numeric resolution in metres from the worker's source label.
+// Examples:
+//   "DHM-Denmark-0.4m"              → 0.4
+//   "GPXZ-UK-1m"                    → 1
+//   "Iceland-ArcticDEM-10m-EGM2008" → 10
+//   "Germany-EU_DTM-30m"            → 30
+//   "open-meteo.com (90m DEM)"      → 90
+//   "USGS-3DEP-1m"                  → 1
+function parseResolution(source) {
+  if (!source) return null;
+  const s = source.toLowerCase();
+  // Try explicit resolution in the string (e.g. "0.4m", "10m", "30m")
+  const match = s.match(/([\d.]+)\s*m/);
+  if (match) return parseFloat(match[1]);
+  // Fallback heuristics
+  if (s.includes('dhm') || s.includes('denmark')) return 0.4;
+  if (s.includes('gpxz')) return 1;
+  if (s.includes('3dep') || s.includes('usgs')) return 1;  // best case
+  if (s.includes('kartverket')) return 1;
+  if (s.includes('arcticdem')) return 10;
+  if (s.includes('eu_dtm') || s.includes('eu-dtm')) return 30;
+  if (s.includes('cop30') || s.includes('copernicus')) return 30;
+  if (s.includes('open-meteo') || s.includes('srtm')) return 90;
+  return null;
+}
 // ── Unit conversion (metric ↔ imperial) ────────────────────────────────
 const M_TO_FT = 3.28084;
 let exportUnits = 'metric';  // 'metric' | 'imperial'
@@ -3603,6 +3705,7 @@ async function convert(){
 track('generation_started', { spacing: selectedSpacing, plan: _currentProfile?.plan || 'anon' });
   window._isGenerating = true;
   window._cancelled = false;
+  window._lastAddonChargePence = 0;
   const nEl = document.getElementById('project-name');
   projectName = nEl.value.trim();
   if(!projectName){ nEl.classList.add('error'); nEl.focus(); showError('Enter a project name first.'); return; }
@@ -5308,6 +5411,7 @@ function showAddonPrompt(areaKm2, addonPrice, autoDowngraded, effectiveSpacing) 
         if (!res.ok || data.error) throw new Error(data.error || 'Payment failed');
 
         // Success — close modal, continue generation
+        window._lastAddonChargePence = Math.round(addonPrice * 100);
         overlay.classList.remove('show');
         resolve(true);
       } catch (err) {
@@ -5795,8 +5899,16 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Log generation to Supabase ─────────────────────────────────────────────
 async function logGeneration(projectName, pointCount, spacing, areaM2, elevSource, csvRaw, polygonJson) {
   if (!_currentUser) return;
-  const isPro = _currentProfile?.plan === 'pro' || _currentProfile?.plan === 'company';
-  const safe = (projectName||'site').replace(/[^a-zA-Z0-9_\-]/g,'_');
+  const _isPro = _currentProfile?.plan === 'pro' || _currentProfile?.plan === 'company';
+  const safe = (projectName || 'site').replace(/[^a-zA-Z0-9_\-]/g, '_');
+
+  let centroidLat = null, centroidLon = null, countryCode = null;
+  if (polygonLatLngs && polygonLatLngs.length > 0) {
+    centroidLat = polygonLatLngs.reduce((s, p) => s + p.lat, 0) / polygonLatLngs.length;
+    centroidLon = polygonLatLngs.reduce((s, p) => s + p.lng, 0) / polygonLatLngs.length;
+    countryCode = detectCountry(centroidLat, centroidLon);
+  }
+
   await _sb.from('generations').insert({
     user_id: _currentUser.id,
     project_name: projectName,
@@ -5804,9 +5916,16 @@ async function logGeneration(projectName, pointCount, spacing, areaM2, elevSourc
     spacing: spacing,
     area_m2: areaM2,
     elevation_source: elevSource,
-    csv_data: isPro ? (csvRaw || null) : null,
-    file_name: isPro ? `${safe}_toposolid.csv` : null,
-    polygon_geojson: polygonJson || null
+    csv_data: _isPro ? (csvRaw || null) : null,
+    file_name: _isPro ? `${safe}_toposolid.csv` : null,
+    polygon_geojson: polygonJson || null,
+    country_code: countryCode,
+    resolution_m: parseResolution(elevSource),
+    centroid_lat: centroidLat ? parseFloat(centroidLat.toFixed(6)) : null,
+    centroid_lon: centroidLon ? parseFloat(centroidLon.toFixed(6)) : null,
+    area_km2: areaM2 ? parseFloat((areaM2 / 1000000).toFixed(4)) : null,
+    addon_charged_pence: window._lastAddonChargePence || 0,
+    user_plan: _currentProfile?.plan || 'free',
   });
 }
 
