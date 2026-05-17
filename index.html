@@ -1427,11 +1427,77 @@ footer { background:var(--bg-card); border-top:1px solid var(--border); padding:
   </p>
 </div>
 
-  <div class="card" id="wireframe-card" style="max-width:1400px;margin:0 auto 12px;padding:22px;">
-    <div class="card-label">// 3D terrain preview</div>
-    <canvas id="wireframe-canvas" style="width:100%;height:500px;display:block;border-radius:6px;background:var(--bg-input);"></canvas>
-    <div style="font-size:11px;color:var(--text-soft);text-align:center;margin-top:8px;letter-spacing:.08em;" id="wireframe-label"></div>
+<div class="card" id="wireframe-card" style="max-width:1400px;margin:0 auto 12px;padding:22px;">
+  <div class="card-label">// 3D terrain preview</div>
+  <div id="terrain3d-wrap" style="position:relative;width:100%;height:clamp(380px,55vh,600px);border-radius:6px;overflow:hidden;">
+    <canvas id="terrain3d-canvas" style="width:100%;height:100%;display:block;cursor:grab;" onmousedown="this.style.cursor='grabbing'" onmouseup="this.style.cursor='grab'"></canvas>
+
+    <!-- Controls overlay -->
+    <div id="terrain3d-controls" style="position:absolute;top:10px;left:10px;display:flex;gap:5px;align-items:center;z-index:10;flex-wrap:wrap;max-width:420px;">
+      <button id="terrain3d-btn-solid" style="
+        background:color-mix(in srgb, var(--bg-card) 75%, transparent);
+        backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+        border:1px solid var(--accent-md);color:var(--accent);
+        padding:6px 12px;border-radius:4px;font-family:'DM Mono',monospace;
+        font-size:11px;cursor:pointer;transition:all var(--dur-micro) var(--ease-out);
+        letter-spacing:var(--ls-loose);
+      ">Solid</button>
+      <button id="terrain3d-btn-contours" style="
+        background:color-mix(in srgb, var(--bg-card) 75%, transparent);
+        backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+        border:1px solid var(--accent-md);color:var(--accent);
+        padding:6px 12px;border-radius:4px;font-family:'DM Mono',monospace;
+        font-size:11px;cursor:pointer;transition:all var(--dur-micro) var(--ease-out);
+        letter-spacing:var(--ls-loose);
+      ">Contours</button>
+      <span style="width:1px;height:18px;background:var(--border-md);flex-shrink:0;margin:0 2px;"></span>
+      <button id="terrain3d-btn-wire" style="
+        background:color-mix(in srgb, var(--bg-card) 75%, transparent);
+        backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+        border:1px solid var(--border-md);color:var(--text-mid);
+        padding:6px 12px;border-radius:4px;font-family:'DM Mono',monospace;
+        font-size:11px;cursor:pointer;transition:all var(--dur-micro) var(--ease-out);
+        letter-spacing:var(--ls-loose);
+      ">Wireframe</button>
+      <button id="terrain3d-btn-reset" style="
+        background:color-mix(in srgb, var(--bg-card) 75%, transparent);
+        backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+        border:1px solid var(--border-md);color:var(--text-mid);
+        padding:6px 12px;border-radius:4px;font-family:'DM Mono',monospace;
+        font-size:11px;cursor:pointer;transition:all var(--dur-micro) var(--ease-out);
+        letter-spacing:var(--ls-loose);
+      ">Reset view</button>
+    </div>
+
+    <!-- Mode label -->
+    <div id="terrain3d-mode" style="
+      position:absolute;top:10px;right:10px;z-index:10;
+      background:color-mix(in srgb, var(--bg-card) 75%, transparent);
+      backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+      border:1px solid var(--accent-md);padding:4px 10px;border-radius:4px;
+      font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);
+      letter-spacing:var(--ls-looser);text-transform:uppercase;
+      pointer-events:none;
+    ">solid + contours</div>
+
+    <!-- Interaction hint -->
+    <div style="position:absolute;bottom:8px;left:10px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text-soft);letter-spacing:var(--ls-loose);z-index:10;pointer-events:none;">
+      Drag to rotate · Scroll to zoom · Right-drag to pan
+    </div>
+
+    <!-- Elevation range badge -->
+    <div id="terrain3d-elev" style="
+      position:absolute;bottom:8px;right:10px;z-index:10;
+      background:color-mix(in srgb, var(--bg-card) 72%, transparent);
+      backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+      border:1px solid var(--border);padding:4px 10px;border-radius:4px;
+      font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mid);
+      font-variant-numeric:tabular-nums;pointer-events:none;
+    "></div>
   </div>
+
+  <div style="font-size:11px;color:var(--text-soft);text-align:center;margin-top:8px;letter-spacing:.08em;font-family:'DM Mono',monospace;" id="wireframe-label"></div>
+</div>
 
 <style>
 /* ─── layout wrapper ─────────────────────────────────────────── */
@@ -2280,6 +2346,7 @@ function toggleDataSourceTable() {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://js.stripe.com/v3/"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 // ── Coordinate Reference Systems (proj4js) ─────────────────────────────
 // ISN93 / Lambert 1993 — EPSG:3057
@@ -4212,309 +4279,520 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 
-// ── 3D Wireframe renderer ───────────────────────────────────────────────────
-let wireframePoints = null, wireframeAnim = null, wireframeAngle = 0;
+// ══════════════════════════════════════════════════════════════════════════
+// 3D TERRAIN VIEWER v5 — Smooth contours, clean edges
+// ══════════════════════════════════════════════════════════════════════════
 
-function buildWireframeGrid(points) {
-  if(!points || points.length === 0) return null;
-  const xVals = points.map(p=>p.x);
-  const yVals = points.map(p=>p.y);
-  const minX=Math.min(...xVals), maxX=Math.max(...xVals);
-  const minY=Math.min(...yVals), maxY=Math.max(...yVals);
-  const rangeX = maxX-minX || 1;
-  const rangeY = maxY-minY || 1;
-
-  // Fixed 40x40 display grid regardless of point count or shape
-  const COLS=40, ROWS=40;
-
-  const sums  = Array.from({length:ROWS}, ()=>new Float32Array(COLS));
-  const cnts  = Array.from({length:ROWS}, ()=>new Uint8Array(COLS));
-
-  points.forEach(p=>{
-    const c = Math.min(COLS-1, Math.floor((p.x-minX)/rangeX*(COLS-0.01)));
-    const r = Math.min(ROWS-1, Math.floor((p.y-minY)/rangeY*(ROWS-0.01)));
-    sums[r][c] += p.z;
-    cnts[r][c]++;
-  });
-
-  // Average filled cells
-  const grid = Array.from({length:ROWS}, (_,r)=>
-    Float32Array.from({length:COLS}, (_,c)=> cnts[r][c]>0 ? sums[r][c]/cnts[r][c] : 0)
-  );
-
-  // Fill empty cells — multiple passes, spread from any non-zero neighbour
-  for(let pass=0;pass<12;pass++){
-    for(let r=0;r<ROWS;r++)
-      for(let c=0;c<COLS;c++)
-        if(cnts[r][c]===0){
-          const nb=[];
-          if(r>0&&grid[r-1][c]!==0) nb.push(grid[r-1][c]);
-          if(r<ROWS-1&&grid[r+1][c]!==0) nb.push(grid[r+1][c]);
-          if(c>0&&grid[r][c-1]!==0) nb.push(grid[r][c-1]);
-          if(c<COLS-1&&grid[r][c+1]!==0) nb.push(grid[r][c+1]);
-          if(nb.length) grid[r][c]=nb.reduce((a,b)=>a+b,0)/nb.length;
-        }
-  }
-
-  // Get real Z stats from filled cells only
-  const zVals = [];
-  for(let r=0;r<ROWS;r++)
-    for(let c=0;c<COLS;c++)
-      if(cnts[r][c]>0) zVals.push(grid[r][c]);
-
-  const minZ = zVals.length ? Math.min(...zVals) : 0;
-  const maxZ = zVals.length ? Math.max(...zVals) : 1;
-  const rangeZ = Math.max(maxZ-minZ, 0.5);
-
-  // Replace remaining zeros with minZ so they don't create fake cliffs
-  for(let r=0;r<ROWS;r++)
-    for(let c=0;c<COLS;c++)
-      if(cnts[r][c]===0 && grid[r][c]===0) grid[r][c] = minZ;
-
-  return {grid, rows:ROWS, cols:COLS, minZ, maxZ, rangeZ};
-}
-
-// Marching squares — returns line segments for a given contour level.
-// Each segment: [r1, c1, r2, c2] in grid coords (fractional allowed).
-function marchingSquares(grid, rows, cols, level){
-  const segs = [];
-  const lerp = (va, vb) => (level - va) / ((vb - va) || 1e-9);
-
-  for(let r=0; r<rows-1; r++){
-    for(let c=0; c<cols-1; c++){
-      const tl = grid[r][c],     tr = grid[r][c+1];
-      const bl = grid[r+1][c],   br = grid[r+1][c+1];
-
-      let idx = 0;
-      if(tl > level) idx |= 1;
-      if(tr > level) idx |= 2;
-      if(br > level) idx |= 4;
-      if(bl > level) idx |= 8;
-      if(idx === 0 || idx === 15) continue;
-
-      const top    = [r,                 c + lerp(tl, tr)];
-      const right  = [r + lerp(tr, br),  c + 1];
-      const bottom = [r + 1,             c + lerp(bl, br)];
-      const left   = [r + lerp(tl, bl),  c];
-
-      switch(idx){
-        case 1:  case 14: segs.push([...top,    ...left  ]); break;
-        case 2:  case 13: segs.push([...top,    ...right ]); break;
-        case 3:  case 12: segs.push([...left,   ...right ]); break;
-        case 4:  case 11: segs.push([...bottom, ...right ]); break;
-        case 5:           segs.push([...top, ...left]); segs.push([...bottom, ...right]); break;
-        case 6:  case 9:  segs.push([...top,    ...bottom]); break;
-        case 7:  case 8:  segs.push([...bottom, ...left ]); break;
-        case 10:          segs.push([...top, ...right]); segs.push([...bottom, ...left]); break;
-      }
-    }
-  }
-  return segs;
-}
-
-function drawWireframe(angle) {
-  const canvas = document.getElementById('wireframe-canvas');
-  if (!canvas || !wireframePoints) return;
-  const W = canvas.offsetWidth || canvas.width || 780;
-  const H = canvas.offsetHeight || canvas.height || 500;
-  if (W === 0 || H === 0) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  if (canvas.width !== W * dpr || canvas.height !== H * dpr) {
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-  }
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  ctx.fillStyle = isDark ? '#0d0d0c' : '#f0ede8';
-  ctx.fillRect(0, 0, W, H);
-
-  const { grid, rows, cols, rangeZ } = wireframePoints;
-
-  // Isometric projection — fill canvas properly
-  const span = Math.max(cols, rows);
-  const tileW = Math.min((W * 0.72) / span, 18);
-  const tileH = tileW * 0.52;
-  const zScale = (H * 0.35) / wireframePoints.rangeZ;
-
-  // Compute projected extents to centre perfectly
-  const cos = Math.cos(angle), sin = Math.sin(angle);
-  function projXY(r, c) {
-    const dx = c - cols/2, dy = r - rows/2;
-    return [dx*cos - dy*sin, dx*sin + dy*cos];
-  }
-  const corners = [[0,0],[0,cols-1],[rows-1,0],[rows-1,cols-1]];
-  const pcs = corners.map(([r,c]) => projXY(r,c));
-  const midPX = (Math.min(...pcs.map(p=>p[0])) + Math.max(...pcs.map(p=>p[0]))) / 2;
-  const midPY = (Math.min(...pcs.map(p=>p[1])) + Math.max(...pcs.map(p=>p[1]))) / 2;
-  const cx = W/2 - midPX * tileW;
-  const cy = H * 0.62 - midPY * tileH;
-
-  function project(r, c, z) {
-    const [px, py] = projXY(r, c);
-    return [cx + px*tileW, cy + py*tileH - z*zScale];
-  }
-
-  const lineAlpha = isDark ? 0.7 : 0.75;
-
-  // Draw rows (left-right lines)
-  for (let r = 0; r < rows; r++) {
-    const t = r / rows;
-    ctx.strokeStyle = isDark
-      ? `rgba(154,186,106,${0.15 + t * lineAlpha})`
-      : `rgba(94,102,49,${0.12 + t * lineAlpha})`;
-    ctx.lineWidth = 0.6;
-    ctx.beginPath();
-    for (let c = 0; c < cols; c++) {
-      const z = (grid[r][c] - wireframePoints.minZ);
-      const [sx, sy] = project(r, c, z);
-      c === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
-    }
-    ctx.stroke();
-  }
-
-  // Draw columns (front-back lines)
-  for (let c = 0; c < cols; c++) {
-    const t = c / cols;
-    ctx.strokeStyle = isDark
-      ? `rgba(154,186,106,${0.08 + t * lineAlpha * 0.6})`
-      : `rgba(94,102,49,${0.06 + t * lineAlpha * 0.6})`;
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    for (let r = 0; r < rows; r++) {
-      const z = (grid[r][c] - wireframePoints.minZ);
-      const [sx, sy] = project(r, c, z);
-      r === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
-    }
-    ctx.stroke();
-  }
-
-  // ── Contour lines ────────────────────────────────────────────────────
-  const levels = wireframePoints.contourLevels || [];
-  if(levels.length){
-    ctx.lineCap = 'round';
-    const interval = wireframePoints.contourInterval || 1;
-    const majorMod = wireframePoints.contourMajorMod || 5;
-
-    for(let i = 0; i < levels.length; i++){
-      const level = levels[i];
-      // Major contours (every 5th) — thicker, brighter green
-      // Minor contours — thinner, softer green
-      const isMajor = Math.round(level / interval) % majorMod === 0;
-
-      if(isMajor){
-        ctx.strokeStyle = isDark ? 'rgba(180,220,120,0.85)' : 'rgba(94,140,40,0.85)';
-        ctx.lineWidth = 1.4;
-      } else {
-        ctx.strokeStyle = isDark ? 'rgba(154,186,106,0.45)' : 'rgba(94,140,40,0.35)';
-        ctx.lineWidth = 0.7;
-      }
-
-      const segs = marchingSquares(grid, rows, cols, level);
-      if(!segs.length) continue;
-      ctx.beginPath();
-      const zOnSurface = level - wireframePoints.minZ;
-      for(const [r1, c1, r2, c2] of segs){
-        const [x1, y1] = project(r1, c1, zOnSurface);
-        const [x2, y2] = project(r2, c2, zOnSurface);
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-      }
-      ctx.stroke();
-    }
-   }
- }
-
-function startWireframeAnim() {
-  if (wireframeAnim) cancelAnimationFrame(wireframeAnim);
-  let lastTime = 0;
-  function frame(ts) {
-    if (ts - lastTime > 50) {
-      wireframeAngle += 0.004;
-      try { drawWireframe(wireframeAngle); } catch(e) { console.warn('wireframe draw error:', e); }
-      lastTime = ts;
-    }
-    wireframeAnim = requestAnimationFrame(frame);
-  }
-  wireframeAnim = requestAnimationFrame(frame);
-}
+let _terrain3dState = null;
 
 function showWireframe(points, minZ, maxZ) {
   const wCard = document.getElementById('wireframe-card');
-  if(!wCard) return;
+  if (!wCard) return;
   wCard.classList.add('show');
 
-  wireframePoints = buildWireframeGrid(points);
-  if(!wireframePoints) return;
-  // Always exaggerate Z for visual clarity — multiply range by 4 minimum
-  wireframePoints.rangeZ = Math.max(wireframePoints.rangeZ * 4, 8);
-
-  // Contour levels — adaptive interval based on elevation range
-  const realRange = wireframePoints.maxZ - wireframePoints.minZ;
-  wireframePoints.contourLevels = [];
-  wireframePoints.contourMajorMod = 5;
+  const realRange = maxZ - minZ;
   let interval = 0.5;
-  if(realRange > 500)      interval = 25;
-  else if(realRange > 150) interval = 10;
-  else if(realRange > 50)  interval = 5;
-  else if(realRange > 15)  interval = 2;
-  else if(realRange > 5)   interval = 1;
-  else if(realRange > 2)   interval = 0.5;
-  else                     interval = 0.25;
-
-  if(realRange > 0.01){
-    const start = Math.ceil(wireframePoints.minZ / interval) * interval;
-    for(let z = start; z < wireframePoints.maxZ; z += interval){
-      wireframePoints.contourLevels.push(z);
-    }
-  }
-  wireframePoints.contourInterval = interval;
-
-  wireframeAngle = -0.5;
+  if (realRange > 500)      interval = 25;
+  else if (realRange > 150) interval = 10;
+  else if (realRange > 50)  interval = 5;
+  else if (realRange > 15)  interval = 2;
+  else if (realRange > 5)   interval = 1;
+  else if (realRange > 2)   interval = 0.5;
+  else                      interval = 0.25;
 
   const intervalStr = interval >= 1 ? interval.toFixed(0) : interval.toFixed(2);
-  document.getElementById('wireframe-label').textContent =
-    'TERRAIN MESH · ' + points.length.toLocaleString() + ' pts · ' +
-    minZ.toFixed(0) + 'm – ' + maxZ.toFixed(0) + 'm elevation · contours every ' +
-    intervalStr + 'm';
+  const labelEl = document.getElementById('wireframe-label');
+  if (labelEl) labelEl.textContent = 'TERRAIN MESH · ' + points.length.toLocaleString() + ' pts · ' + minZ.toFixed(0) + 'm – ' + maxZ.toFixed(0) + 'm · contours every ' + intervalStr + 'm';
+  const elevEl = document.getElementById('terrain3d-elev');
+  if (elevEl) elevEl.textContent = minZ.toFixed(0) + 'm – ' + maxZ.toFixed(0) + 'm (Δ' + realRange.toFixed(0) + 'm)';
 
-  const canvas = document.getElementById('wireframe-canvas');
-
-  let started = false;
-  const ro = new ResizeObserver(() => {
-    if(!started && canvas.offsetWidth > 50 && canvas.offsetHeight > 50) {
-      started = true;
-      ro.disconnect();
-      if(wireframeAnim) cancelAnimationFrame(wireframeAnim);
-      canvas.width = canvas.offsetWidth * Math.min(devicePixelRatio||1,2);
-      canvas.height = canvas.offsetHeight * Math.min(devicePixelRatio||1,2);
-      startWireframeAnim();
-    }
-  });
-  ro.observe(canvas);
-
-  setTimeout(() => {
-    if(!started && canvas.offsetWidth > 50) {
-      started = true;
-      ro.disconnect();
-      if(wireframeAnim) cancelAnimationFrame(wireframeAnim);
-      canvas.width = canvas.offsetWidth * Math.min(devicePixelRatio||1,2);
-      canvas.height = canvas.offsetHeight * Math.min(devicePixelRatio||1,2);
-      startWireframeAnim();
-    }
-  }, 200);
-
-  const themeBtn = document.querySelector('[data-toggle="theme"]');
-if(themeBtn && !themeBtn._wireframeListener) {
-  themeBtn._wireframeListener = true;
-  themeBtn.addEventListener('click', () => {
-      setTimeout(() => { if(wireframeAnim){cancelAnimationFrame(wireframeAnim); startWireframeAnim();} }, 60);
-    });
+  if (_terrain3dState) {
+    _terrain3dState.disposed = true;
+    if (_terrain3dState.animFrame) cancelAnimationFrame(_terrain3dState.animFrame);
+    _terrain3dState.renderer.dispose();
+    _terrain3dState = null;
   }
+
+  requestAnimationFrame(() => { requestAnimationFrame(() => { _initTerrain3D(points, minZ, maxZ, interval); }); });
 }
 
+async function _initTerrain3D(points, minZ, maxZ, contourInterval) {
+  const wrap = document.getElementById('terrain3d-wrap');
+  const canvas = document.getElementById('terrain3d-canvas');
+  if (!wrap || !canvas) return;
+  if (!window.Delaunator) { try { await loadDelaunator(); } catch (e) { return; } }
 
+  const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+  const getBgColor = () => isDark() ? 0x141412 : 0xe8e6e2;
+
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(getBgColor());
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(getBgColor(), 0.0012);
+  const camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 5000);
+
+  scene.add(new THREE.AmbientLight(isDark() ? 0x8a9080 : 0xaabbaa, isDark() ? 0.55 : 0.6));
+  const dirLight = new THREE.DirectionalLight(0xfff8f0, isDark() ? 0.85 : 0.75);
+  dirLight.position.set(80, 120, 60);
+  scene.add(dirLight);
+  const dirLight2 = new THREE.DirectionalLight(isDark() ? 0x6a7e6e : 0x99bb99, 0.25);
+  dirLight2.position.set(-40, 60, -80);
+  scene.add(dirLight2);
+
+  // ── Normalise points to scene space ─────────────────────────────
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  const cxPts = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const cyPts = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const rangeX = Math.max(...xs) - Math.min(...xs) || 1;
+  const rangeY = Math.max(...ys) - Math.min(...ys) || 1;
+  const rangeZ = maxZ - minZ || 0.5;
+  const span = Math.max(rangeX, rangeY);
+  const scale = 100 / span;
+  const zExag = rangeZ < 2 ? 50 : rangeZ < 10 ? 15 : rangeZ < 50 ? 5 : 2;
+
+  const normPts = points.map(p => ({
+    x: (p.x - cxPts) * scale,
+    y: (p.z - minZ) * scale * zExag / (span / rangeZ || 1),
+    z: (p.y - cyPts) * scale,
+    elev: p.z
+  }));
+
+  // ── Triangulate ─────────────────────────────────────────────────
+  const coords2d = new Float64Array(normPts.length * 2);
+  for (let i = 0; i < normPts.length; i++) {
+    coords2d[i * 2] = normPts[i].x;
+    coords2d[i * 2 + 1] = normPts[i].z;
+  }
+  let delaunay;
+  try { delaunay = new Delaunator(coords2d); } catch (e) { return; }
+
+  // ── Edge culling (2× median) ────────────────────────────────────
+  const edgeLens = [];
+  for (let i = 0; i < delaunay.triangles.length; i += 3) {
+    const a = delaunay.triangles[i], b = delaunay.triangles[i + 1], c = delaunay.triangles[i + 2];
+    const d = (i0, i1) => Math.sqrt((normPts[i0].x - normPts[i1].x) ** 2 + (normPts[i0].z - normPts[i1].z) ** 2);
+    edgeLens.push(d(a, b), d(b, c), d(c, a));
+  }
+  edgeLens.sort((a, b) => a - b);
+  const medianEdge = edgeLens[Math.floor(edgeLens.length * 0.5)];
+  const edgeThreshold = medianEdge * 2.0;
+
+  const MIN_ANGLE_RAD = 1.0 * Math.PI / 180;
+  const goodIndices = [];
+  for (let i = 0; i < delaunay.triangles.length; i += 3) {
+    const a = delaunay.triangles[i], b = delaunay.triangles[i + 1], c = delaunay.triangles[i + 2];
+    const ax = normPts[a].x, az = normPts[a].z;
+    const bx = normPts[b].x, bz = normPts[b].z;
+    const cx = normPts[c].x, cz = normPts[c].z;
+    const ab2 = (bx - ax) ** 2 + (bz - az) ** 2;
+    const bc2 = (cx - bx) ** 2 + (cz - bz) ** 2;
+    const ca2 = (ax - cx) ** 2 + (az - cz) ** 2;
+    const ab = Math.sqrt(ab2), bc = Math.sqrt(bc2), ca = Math.sqrt(ca2);
+    if (ab > edgeThreshold || bc > edgeThreshold || ca > edgeThreshold) continue;
+    if (ab < 1e-10 || bc < 1e-10 || ca < 1e-10) continue;
+    const cosA = (ab2 + ca2 - bc2) / (2 * ab * ca);
+    const cosB = (ab2 + bc2 - ca2) / (2 * ab * bc);
+    const cosC = (bc2 + ca2 - ab2) / (2 * bc * ca);
+    const minAngle = Math.acos(Math.min(1, Math.max(-1, Math.max(cosA, cosB, cosC))));
+    if (minAngle < MIN_ANGLE_RAD) continue;
+    goodIndices.push(a, b, c);
+  }
+
+  // ── Build mesh ──────────────────────────────────────────────────
+  const geo = new THREE.BufferGeometry();
+  const positions = new Float32Array(normPts.length * 3);
+  for (let i = 0; i < normPts.length; i++) {
+    positions[i * 3] = normPts[i].x;
+    positions[i * 3 + 1] = normPts[i].y;
+    positions[i * 3 + 2] = normPts[i].z;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setIndex(goodIndices);
+  geo.computeVertexNormals();
+
+  // Earthy olive tint — not pure grey, not full green
+  const meshMat = new THREE.MeshPhongMaterial({
+    color: isDark() ? 0x1e2119 : 0x8a8e80,
+    emissive: isDark() ? 0x080a06 : 0x0a0c08,
+    specular: isDark() ? 0x1a1e16 : 0x2a2e24,
+    shininess: isDark() ? 8 : 12,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1
+  });
+  const terrainMesh = new THREE.Mesh(geo, meshMat);
+  scene.add(terrainMesh);
+
+  // Wireframe — olive green to match terrain tint
+  const wireMat = new THREE.MeshBasicMaterial({
+    color: isDark() ? 0x4a6a3a : 0x6a8a5a,
+    wireframe: true, transparent: true, opacity: 0.0
+  });
+  const wireMesh = new THREE.Mesh(geo, wireMat);
+  scene.add(wireMesh);
+
+  // ── Contour grid (marching squares on interpolated elevation) ───
+  const GCOLS = Math.min(200, Math.max(60, Math.round(Math.sqrt(normPts.length) * 2)));
+  const GROWS = GCOLS;
+  const gMinX = Math.min(...normPts.map(p => p.x)), gMaxX = Math.max(...normPts.map(p => p.x));
+  const gMinZ = Math.min(...normPts.map(p => p.z)), gMaxZ = Math.max(...normPts.map(p => p.z));
+  const gRangeX = gMaxX - gMinX || 1, gRangeZ = gMaxZ - gMinZ || 1;
+  const gCellW = gRangeX / GCOLS, gCellH = gRangeZ / GROWS;
+
+  const gSums = Array.from({ length: GROWS + 1 }, () => new Float64Array(GCOLS + 1));
+  const gCnts = Array.from({ length: GROWS + 1 }, () => new Uint16Array(GCOLS + 1));
+  normPts.forEach(p => {
+    const c = Math.min(GCOLS, Math.max(0, Math.round((p.x - gMinX) / gRangeX * GCOLS)));
+    const r = Math.min(GROWS, Math.max(0, Math.round((p.z - gMinZ) / gRangeZ * GROWS)));
+    gSums[r][c] += p.elev; gCnts[r][c]++;
+  });
+  const elevGrid = Array.from({ length: GROWS + 1 }, (_, r) =>
+    Float64Array.from({ length: GCOLS + 1 }, (_, c) => gCnts[r][c] > 0 ? gSums[r][c] / gCnts[r][c] : NaN)
+  );
+  for (let pass = 0; pass < 16; pass++)
+    for (let r = 0; r <= GROWS; r++)
+      for (let c = 0; c <= GCOLS; c++) {
+        if (!isNaN(elevGrid[r][c])) continue;
+        const nb = [];
+        if (r > 0 && !isNaN(elevGrid[r - 1][c])) nb.push(elevGrid[r - 1][c]);
+        if (r < GROWS && !isNaN(elevGrid[r + 1][c])) nb.push(elevGrid[r + 1][c]);
+        if (c > 0 && !isNaN(elevGrid[r][c - 1])) nb.push(elevGrid[r][c - 1]);
+        if (c < GCOLS && !isNaN(elevGrid[r][c + 1])) nb.push(elevGrid[r][c + 1]);
+        if (nb.length) elevGrid[r][c] = nb.reduce((a, b) => a + b, 0) / nb.length;
+      }
+  for (let r = 0; r <= GROWS; r++)
+    for (let c = 0; c <= GCOLS; c++)
+      if (isNaN(elevGrid[r][c])) elevGrid[r][c] = minZ;
+
+  // Box blur for smoother contours
+  const smoothGrid = Array.from({ length: GROWS + 1 }, (_, r) =>
+    Float64Array.from({ length: GCOLS + 1 }, (_, c) => {
+      let sum = 0, cnt = 0;
+      for (let dr = -1; dr <= 1; dr++)
+        for (let dc = -1; dc <= 1; dc++) {
+          const rr = r + dr, cc = c + dc;
+          if (rr >= 0 && rr <= GROWS && cc >= 0 && cc <= GCOLS) { sum += elevGrid[rr][cc]; cnt++; }
+        }
+      return sum / cnt;
+    })
+  );
+
+  function gridTo3D(gr, gc, elev) {
+    return [gMinX + gc * gCellW, (elev - minZ) * scale * zExag / (span / rangeZ || 1), gMinZ + gr * gCellH];
+  }
+
+  function traceContour(level) {
+    const segs = [];
+    for (let r = 0; r < GROWS; r++) {
+      for (let c = 0; c < GCOLS; c++) {
+        const tl = smoothGrid[r][c], tr = smoothGrid[r][c + 1];
+        const bl = smoothGrid[r + 1][c], br = smoothGrid[r + 1][c + 1];
+        let idx = 0;
+        if (tl > level) idx |= 1; if (tr > level) idx |= 2;
+        if (br > level) idx |= 4; if (bl > level) idx |= 8;
+        if (idx === 0 || idx === 15) continue;
+        const lerp = (va, vb) => Math.max(0, Math.min(1, (level - va) / ((vb - va) || 1e-9)));
+        const top = [r, c + lerp(tl, tr)], right = [r + lerp(tr, br), c + 1];
+        const bottom = [r + 1, c + lerp(bl, br)], left = [r + lerp(tl, bl), c];
+        const pairs = [];
+        switch (idx) {
+          case 1: case 14: pairs.push([top, left]); break;
+          case 2: case 13: pairs.push([top, right]); break;
+          case 3: case 12: pairs.push([left, right]); break;
+          case 4: case 11: pairs.push([bottom, right]); break;
+          case 5: pairs.push([top, left]); pairs.push([bottom, right]); break;
+          case 6: case 9: pairs.push([top, bottom]); break;
+          case 7: case 8: pairs.push([bottom, left]); break;
+          case 10: pairs.push([top, right]); pairs.push([bottom, left]); break;
+        }
+        for (const [p1, p2] of pairs) { segs.push(gridTo3D(p1[0], p1[1], level), gridTo3D(p2[0], p2[1], level)); }
+      }
+    }
+    return segs;
+  }
+
+  // Chaikin smoothing with chain-building
+  function chainAndSmooth(segVerts, passes) {
+    if (segVerts.length < 2) return segVerts;
+    const key = v => (v[0] * 10000 | 0) + ',' + (v[1] * 10000 | 0) + ',' + (v[2] * 10000 | 0);
+    const pairs = [];
+    for (let i = 0; i < segVerts.length; i += 2) pairs.push([segVerts[i], segVerts[i + 1]]);
+    const adj = new Map();
+    pairs.forEach(([a, b], idx) => {
+      const ka = key(a), kb = key(b);
+      if (!adj.has(ka)) adj.set(ka, []); if (!adj.has(kb)) adj.set(kb, []);
+      adj.get(ka).push({ idx, end: 'a' }); adj.get(kb).push({ idx, end: 'b' });
+    });
+    const used = new Uint8Array(pairs.length);
+    const chains = [];
+    for (let si = 0; si < pairs.length; si++) {
+      if (used[si]) continue;
+      used[si] = 1;
+      const chain = [pairs[si][0], pairs[si][1]];
+      let ext = true;
+      while (ext) {
+        ext = false;
+        const k = key(chain[chain.length - 1]);
+        for (const { idx, end } of (adj.get(k) || [])) {
+          if (used[idx]) continue;
+          used[idx] = 1;
+          chain.push(end === 'a' ? pairs[idx][1] : pairs[idx][0]);
+          ext = true; break;
+        }
+      }
+      ext = true;
+      while (ext) {
+        ext = false;
+        const k = key(chain[0]);
+        for (const { idx, end } of (adj.get(k) || [])) {
+          if (used[idx]) continue;
+          used[idx] = 1;
+          chain.unshift(end === 'a' ? pairs[idx][1] : pairs[idx][0]);
+          ext = true; break;
+        }
+      }
+      if (chain.length >= 2) chains.push(chain);
+    }
+    function chaikin(pts) {
+      if (pts.length < 3) return pts;
+      const out = [pts[0]];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const a = pts[i], b = pts[i + 1];
+        out.push([a[0] * .75 + b[0] * .25, a[1] * .75 + b[1] * .25, a[2] * .75 + b[2] * .25]);
+        out.push([a[0] * .25 + b[0] * .75, a[1] * .25 + b[1] * .75, a[2] * .25 + b[2] * .75]);
+      }
+      out.push(pts[pts.length - 1]);
+      return out;
+    }
+    const result = [];
+    for (let chain of chains) {
+      for (let p = 0; p < passes; p++) chain = chaikin(chain);
+      for (let i = 0; i < chain.length - 1; i++) result.push(chain[i], chain[i + 1]);
+    }
+    return result;
+  }
+
+  // ── Contour builder — density adapts to solid on/off ────────────
+  const contourGroup = new THREE.Group();
+  contourGroup.renderOrder = 1;
+  scene.add(contourGroup);
+
+  // Toggle state
+  let solidOn = true, contoursOn = true, wireOn = false;
+
+  function getContourParams() {
+    // Solid ON:  2× density (half interval), etched-in look — muted, low opacity
+    // Solid OFF: 4× density, bright standalone topo-map style
+    const ci = solidOn ? contourInterval / 2 : contourInterval / 4;
+    const majorMod = solidOn ? 5 : 4;
+    // Solid ON:  contours feel carved into the surface — much lower opacity
+    const majorOp = solidOn ? (isDark() ? 0.55 : 0.50) : (isDark() ? 0.9 : 0.8);
+    const minorOp = solidOn ? (isDark() ? 0.18 : 0.16) : (isDark() ? 0.5 : 0.45);
+    return { ci, majorMod, majorOp, minorOp };
+  }
+
+  function buildContours() {
+    // Dispose old
+    for (let i = contourGroup.children.length - 1; i >= 0; i--) {
+      contourGroup.children[i].geometry.dispose();
+      contourGroup.children[i].material.dispose();
+      contourGroup.remove(contourGroup.children[i]);
+    }
+    if (!contoursOn) return;
+
+    const dk = isDark();
+    const { ci, majorMod, majorOp, minorOp } = getContourParams();
+    const levels = [];
+    const startZ = Math.ceil(minZ / ci) * ci;
+    for (let z = startZ; z <= maxZ; z += ci) levels.push(parseFloat(z.toFixed(4)));
+
+    for (const level of levels) {
+      const isMajor = Math.round(level / ci) % majorMod === 0;
+      const rawVerts = traceContour(level);
+      if (rawVerts.length === 0) continue;
+      const smoothed = chainAndSmooth(rawVerts, 2);
+      if (smoothed.length === 0) continue;
+
+      const lp = new Float32Array(smoothed.length * 3);
+      for (let i = 0; i < smoothed.length; i++) {
+        lp[i * 3] = smoothed[i][0];
+        lp[i * 3 + 1] = smoothed[i][1];
+        lp[i * 3 + 2] = smoothed[i][2];
+      }
+      const lineGeo = new THREE.BufferGeometry();
+      lineGeo.setAttribute('position', new THREE.BufferAttribute(lp, 3));
+
+      const lineMat = new THREE.LineBasicMaterial({
+        color: solidOn
+          // On solid: muted olive tones that look etched into the surface
+          ? (isMajor
+            ? (dk ? 0x7a9a5a : 0x5a7a3a)   // major: olive, not bright accent
+            : (dk ? 0x3a5a2a : 0x4a6a3a))   // minor: dark olive, barely visible
+          // Contour-only: bright accent lines carry the whole terrain read
+          : (isMajor
+            ? (dk ? 0x9aba6a : 0x6a8a3a)   // major: full accent green
+            : (dk ? 0x6a8a4a : 0x5a7a4a)), // minor: lighter olive
+        transparent: true,
+        opacity: isMajor ? majorOp : minorOp,
+        depthTest: true, depthWrite: false,
+      });
+
+      contourGroup.add(new THREE.LineSegments(lineGeo, lineMat));
+    }
+  }
+
+  buildContours();
+
+  // ── Ground grid ─────────────────────────────────────────────────
+  const gridSize = Math.max(100, span * scale * 1.2);
+  const grid = new THREE.GridHelper(gridSize, 20,
+    isDark() ? 0x1C4D33 : 0xb0c8a8,
+    isDark() ? 0x142e20 : 0xc4d8bc
+  );
+  grid.position.y = -2;
+  const gMats = Array.isArray(grid.material) ? grid.material : [grid.material];
+  gMats.forEach(m => { m.transparent = true; m.opacity = isDark() ? 0.25 : 0.2; m.depthWrite = false; });
+  scene.add(grid);
+
+  // ── Button styling helpers ──────────────────────────────────────
+  const btnActive = (btn) => {
+    btn.style.borderColor = 'var(--accent-md)';
+    btn.style.color = 'var(--accent)';
+  };
+  const btnInactive = (btn) => {
+    btn.style.borderColor = 'var(--border-md)';
+    btn.style.color = 'var(--text-mid)';
+  };
+
+  function updateModeLabel() {
+    const modeEl = document.getElementById('terrain3d-mode');
+    if (!modeEl) return;
+    const parts = [];
+    if (solidOn) parts.push('solid');
+    if (contoursOn) parts.push('contours');
+    if (wireOn) parts.push('wireframe');
+    modeEl.textContent = parts.join(' + ') || 'wireframe';
+  }
+
+  function syncVisuals() {
+    // Enforce: if both solid and contours are off, wireframe must be on
+    if (!solidOn && !contoursOn && !wireOn) {
+      wireOn = true;
+      btnActive(wireBtn);
+    }
+
+    terrainMesh.visible = solidOn;
+    wireMat.opacity = wireOn ? 0.14 : 0.0;
+    wireMesh.visible = wireOn || true; // always in scene, opacity controls visibility
+    buildContours();
+    updateModeLabel();
+
+    // Button states
+    solidOn ? btnActive(solidBtn) : btnInactive(solidBtn);
+    contoursOn ? btnActive(contoursBtn) : btnInactive(contoursBtn);
+    wireOn ? btnActive(wireBtn) : btnInactive(wireBtn);
+  }
+
+  // ── Button wiring ───────────────────────────────────────────────
+  const solidBtn = document.getElementById('terrain3d-btn-solid');
+  const contoursBtn = document.getElementById('terrain3d-btn-contours');
+  const wireBtn = document.getElementById('terrain3d-btn-wire');
+  const resetBtn = document.getElementById('terrain3d-btn-reset');
+
+  if (solidBtn) solidBtn.onclick = () => { solidOn = !solidOn; syncVisuals(); };
+  if (contoursBtn) contoursBtn.onclick = () => { contoursOn = !contoursOn; syncVisuals(); };
+  if (wireBtn) wireBtn.onclick = () => { wireOn = !wireOn; syncVisuals(); };
+
+  // Initial button states
+  syncVisuals();
+
+  // ── Camera ──────────────────────────────────────────────────────
+  const DEFAULT_ROTX = 1.1, DEFAULT_ROTY = 0.8, DEFAULT_DIST = 180;
+  let rotX = DEFAULT_ROTX, rotY = DEFAULT_ROTY, dist = DEFAULT_DIST;
+  let panX = 0, panY = 0, autoRotate = true;
+  let isDragging = false, isRightDrag = false, prevMX = 0, prevMY = 0;
+
+  if (resetBtn) resetBtn.onclick = () => { rotX = DEFAULT_ROTX; rotY = DEFAULT_ROTY; dist = DEFAULT_DIST; panX = 0; panY = 0; autoRotate = true; };
+
+  canvas.addEventListener('mousedown', e => { isDragging = true; isRightDrag = e.button === 2; autoRotate = false; prevMX = e.clientX; prevMY = e.clientY; });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  window.addEventListener('mouseup', () => { isDragging = false; });
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const dx = e.clientX - prevMX, dy = e.clientY - prevMY;
+    if (isRightDrag) { panX -= dx * 0.15; panY += dy * 0.15; }
+    else { rotY += dx * 0.005; rotX += dy * 0.005; rotX = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, rotX)); }
+    prevMX = e.clientX; prevMY = e.clientY;
+  });
+  canvas.addEventListener('wheel', e => { e.preventDefault(); autoRotate = false; dist += e.deltaY * 0.1; dist = Math.max(40, Math.min(400, dist)); }, { passive: false });
+
+  let touchDist0 = 0, touch1 = false;
+  canvas.addEventListener('touchstart', e => {
+    autoRotate = false;
+    if (e.touches.length === 1) { isDragging = true; isRightDrag = false; prevMX = e.touches[0].clientX; prevMY = e.touches[0].clientY; }
+    else if (e.touches.length === 2) { touch1 = true; const dx = e.touches[1].clientX - e.touches[0].clientX, dy = e.touches[1].clientY - e.touches[0].clientY; touchDist0 = Math.sqrt(dx * dx + dy * dy); }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1 && isDragging) { const dx = e.touches[0].clientX - prevMX, dy = e.touches[0].clientY - prevMY; rotY += dx * 0.005; rotX += dy * 0.005; rotX = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, rotX)); prevMX = e.touches[0].clientX; prevMY = e.touches[0].clientY; }
+    else if (e.touches.length === 2 && touch1) { const dx = e.touches[1].clientX - e.touches[0].clientX, dy = e.touches[1].clientY - e.touches[0].clientY; const d = Math.sqrt(dx * dx + dy * dy); dist *= touchDist0 / d; dist = Math.max(40, Math.min(400, dist)); touchDist0 = d; }
+  }, { passive: false });
+  canvas.addEventListener('touchend', () => { isDragging = false; touch1 = false; });
+
+  // ── Theme sync ──────────────────────────────────────────────────
+  const themeBtn = document.querySelector('[data-toggle="theme"]');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      setTimeout(() => {
+        const dk = isDark();
+        renderer.setClearColor(getBgColor());
+        scene.fog.color.set(getBgColor());
+        // Olive terrain
+        meshMat.color.set(dk ? 0x1e2119 : 0x8a8e80);
+        meshMat.emissive.set(dk ? 0x080a06 : 0x0a0c08);
+        meshMat.specular.set(dk ? 0x1a1e16 : 0x2a2e24);
+        meshMat.shininess = dk ? 8 : 12;
+        // Olive wireframe
+        wireMat.color.set(dk ? 0x4a6a3a : 0x6a8a5a);
+        // Green grid
+        const gm = Array.isArray(grid.material) ? grid.material : [grid.material];
+        gm[0].color.set(dk ? 0x1C4D33 : 0xb0c8a8);
+        if (gm[1]) gm[1].color.set(dk ? 0x142e20 : 0xc4d8bc);
+        gm.forEach(m => { m.opacity = dk ? 0.25 : 0.15; });
+        // Lights
+        scene.children.forEach(c => {
+          if (c.isAmbientLight) { c.color.set(dk ? 0x8a9080 : 0xaabbaa); c.intensity = dk ? 0.55 : 0.6; }
+        });
+        // Rebuild contours with new dark/light colours
+        buildContours();
+      }, 60);
+    });
+  }
+
+  // ── Animate ─────────────────────────────────────────────────────
+  const state = { renderer, scene, camera, terrainMesh, wireMesh, contourGroup, grid, animFrame: null, disposed: false };
+  _terrain3dState = state;
+
+  function animate() {
+    if (state.disposed) return;
+    state.animFrame = requestAnimationFrame(animate);
+    if (autoRotate) rotY += 0.001;
+    camera.position.x = panX + dist * Math.sin(rotX) * Math.cos(rotY);
+    camera.position.y = panY + dist * Math.cos(rotX);
+    camera.position.z = panX + dist * Math.sin(rotX) * Math.sin(rotY);
+    camera.lookAt(panX, 0, panY);
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  const ro = new ResizeObserver(() => { if (state.disposed) return; const w = wrap.clientWidth, h = wrap.clientHeight; if (!w || !h) return; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); });
+  ro.observe(wrap);
+}
 
 // ── Settings ───────────────────────────────────────────────────────────────
 
