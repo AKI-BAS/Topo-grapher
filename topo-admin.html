@@ -418,6 +418,7 @@ function showPage(id, btn) {
   // Lazy-load data
   const loaders = { overview: loadOverview, heatmap: loadHeatmap, countries: loadCountries, priorities: loadPriorities, trends: loadTrends, users: loadUsers, revenue: loadRevenue, feed: loadFeed };
   if (loaders[id]) loaders[id]();
+  if (id === 'heatmap' && _heatmapMap) setTimeout(() => _heatmapMap.invalidateSize(), 300);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────
@@ -652,7 +653,8 @@ async function loadUsers() {
 
 async function loadRevenue() {
   // Pro/Company subscriber count
-  const { count: proCount } = await _sb.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'pro');
+  const { count: proCount } = await _sb.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'pro').eq('is_admin', false);
+const { data: companyProfiles } = await _sb.from('profiles').select('seat_count').eq('plan', 'company').eq('is_company_admin', true).eq('is_admin', false);
   const { data: companyProfiles } = await _sb.from('profiles').select('seat_count').eq('plan', 'company').eq('is_company_admin', true);
   const companySeats = (companyProfiles || []).reduce((s, p) => s + (p.seat_count || 0), 0);
 
@@ -791,7 +793,7 @@ async function loadHeatmap() {
   }
 
   // After a short delay, invalidate size (map might have been display:none)
-  setTimeout(() => _heatmapMap.invalidateSize(), 200);
+  setTimeout(() => { _heatmapMap.invalidateSize(); }, 500);
 
   // Top clusters (country aggregation)
   const clusters = {};
