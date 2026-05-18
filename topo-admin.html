@@ -654,7 +654,6 @@ async function loadUsers() {
 async function loadRevenue() {
   // Pro/Company subscriber count
   const { count: proCount } = await _sb.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'pro').eq('is_admin', false);
-const { data: companyProfiles } = await _sb.from('profiles').select('seat_count').eq('plan', 'company').eq('is_company_admin', true).eq('is_admin', false);
   const { data: companyProfiles } = await _sb.from('profiles').select('seat_count').eq('plan', 'company').eq('is_company_admin', true);
   const companySeats = (companyProfiles || []).reduce((s, p) => s + (p.seat_count || 0), 0);
 
