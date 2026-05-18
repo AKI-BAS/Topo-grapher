@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Topo-grapher · Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Nacelle:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root {
+  --bg: #0A0E08; --bg-card: #111410; --bg-input: #181C15;
+  --text: #EFE3D8; --text-mid: #A8A08E; --text-soft: #6B665A;
+  --accent: #9ABA6A; --accent-md: #4A5E34; --accent-dk: #1A2410;
+  --border: #1E2218; --border-md: #2A3020;
+  --green: #3A5E2A; --green-lt: #5A8E3A;
+  --danger: #E25555;
+  --blue: #4EA0D9; --blue-dk: #1A2E3E;
+  --orange: #E0A050; --orange-dk: #2E2010;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Nacelle',sans-serif;min-height:100vh;overflow-x:hidden;}
+code,pre,.mono{font-family:'DM Mono',monospace;}
+
+/* ── Layout ──────────────────────────────────────────────── */
+.admin-shell{display:flex;min-height:100vh;}
+.admin-sidebar{width:220px;background:var(--bg-card);border-right:1px solid var(--border);padding:24px 0;flex-shrink:0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;}
+.admin-main{flex:1;padding:32px 40px;max-width:1200px;}
+.admin-logo{font-family:'DM Mono',monospace;font-size:14px;color:var(--accent);padding:0 20px 24px;border-bottom:1px solid var(--border);letter-spacing:.06em;}
+.admin-logo em{font-style:normal;color:var(--text-soft);}
+.admin-nav{padding:16px 0;flex:1;}
+.admin-nav-item{display:block;width:100%;background:none;border:none;text-align:left;padding:10px 20px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text-soft);cursor:pointer;letter-spacing:.04em;transition:all .15s;border-left:2px solid transparent;}
+.admin-nav-item:hover{color:var(--text);background:var(--bg-input);}
+.admin-nav-item.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-dk);}
+.admin-nav-sep{height:1px;background:var(--border);margin:8px 20px;}
+.admin-signout{padding:16px 20px;border-top:1px solid var(--border);}
+.admin-signout button{background:none;border:none;color:var(--text-soft);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:.04em;}
+.admin-signout button:hover{color:var(--danger);}
+
+/* ── Page header ─────────────────────────────────────────── */
+.page-header{margin-bottom:32px;}
+.page-title{font-size:24px;font-weight:500;letter-spacing:-.01em;margin-bottom:4px;}
+.page-subtitle{font-family:'DM Mono',monospace;font-size:12px;color:var(--text-soft);letter-spacing:.04em;}
+
+/* ── Stat cards ──────────────────────────────────────────── */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:28px;}
+.stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:18px 20px;}
+.stat-card-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--text-soft);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;}
+.stat-card-value{font-size:28px;font-weight:500;letter-spacing:-.02em;line-height:1;}
+.stat-card-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--text-soft);margin-top:6px;}
+.stat-accent{color:var(--accent);}
+.stat-blue{color:var(--blue);}
+.stat-orange{color:var(--orange);}
+
+/* ── Panels ──────────────────────────────────────────────── */
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:20px;}
+.panel-title{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;}
+.panel-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+
+/* ── Tables ──────────────────────────────────────────────── */
+.admin-table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px;}
+.admin-table th{text-align:left;padding:8px 12px;color:var(--text-soft);font-size:10px;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);font-weight:400;}
+.admin-table td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text-mid);}
+.admin-table tr:hover td{background:var(--bg-input);}
+.admin-table .val{color:var(--text);font-weight:500;}
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:3px;letter-spacing:.06em;font-family:'DM Mono',monospace;}
+.badge-lidar{background:var(--blue-dk);color:var(--blue);border:1px solid rgba(78,160,217,.3);}
+.badge-mid{background:var(--orange-dk);color:var(--orange);border:1px solid rgba(224,160,80,.3);}
+.badge-low{background:#2a1a10;color:#f09975;border:1px solid rgba(216,90,48,.3);}
+.badge-good{background:var(--accent-dk);color:var(--accent);border:1px solid var(--accent-md);}
+
+/* ── Bar chart (CSS-only) ────────────────────────────────── */
+.bar-chart{display:flex;flex-direction:column;gap:6px;}
+.bar-row{display:flex;align-items:center;gap:10px;}
+.bar-label{width:36px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mid);text-align:right;flex-shrink:0;}
+.bar-track{flex:1;height:22px;background:var(--bg-input);border-radius:3px;overflow:hidden;position:relative;}
+.bar-fill{height:100%;border-radius:3px;transition:width .6s ease;}
+.bar-fill-accent{background:linear-gradient(90deg,var(--green),var(--accent));}
+.bar-fill-blue{background:linear-gradient(90deg,#1a4a6a,var(--blue));}
+.bar-fill-orange{background:linear-gradient(90deg,#4a3010,var(--orange));}
+.bar-value{width:50px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text-soft);flex-shrink:0;}
+
+/* ── Priority list ───────────────────────────────────────── */
+.priority-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.priority-item:last-child{border-bottom:none;}
+.priority-rank{width:28px;height:28px;background:var(--accent-dk);border:1px solid var(--accent-md);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);flex-shrink:0;}
+.priority-body{flex:1;min-width:0;}
+.priority-name{font-size:13px;font-weight:500;color:var(--text);margin-bottom:2px;}
+.priority-meta{font-family:'DM Mono',monospace;font-size:11px;color:var(--text-soft);}
+.priority-score{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;flex-shrink:0;}
+.priority-high{color:var(--danger);}
+.priority-med{color:var(--orange);}
+
+/* ── Login screen ────────────────────────────────────────── */
+.login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+.login-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:40px;max-width:380px;width:100%;text-align:center;}
+.login-card h1{font-size:20px;font-weight:500;margin-bottom:6px;}
+.login-card p{font-family:'DM Mono',monospace;font-size:12px;color:var(--text-soft);margin-bottom:24px;}
+.login-field{margin-bottom:12px;text-align:left;}
+.login-field label{display:block;font-family:'DM Mono',monospace;font-size:10px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;}
+.login-field input{width:100%;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;}
+.login-field input:focus{border-color:var(--accent-md);}
+.login-btn{width:100%;background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:12px;border-radius:6px;font-family:'DM Mono',monospace;font-size:13px;cursor:pointer;letter-spacing:.06em;margin-top:8px;}
+.login-btn:hover{background:var(--green-lt);}
+.login-error{font-family:'DM Mono',monospace;font-size:12px;color:var(--danger);margin-top:12px;min-height:16px;}
+
+/* ── Loading ─────────────────────────────────────────────── */
+.loading{text-align:center;padding:40px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text-soft);}
+.spin{display:inline-block;width:20px;height:20px;border:2px solid var(--border-md);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media(max-width:800px){
+  .admin-sidebar{display:none;}
+  .admin-main{padding:20px 16px;}
+  .panel-grid{grid-template-columns:1fr;}
+  .stat-row{grid-template-columns:1fr 1fr;}
+}
+
+/* ── Heatmap ─────────────────────────────────────────────── */
+.heatmap-wrap{width:100%;height:420px;border-radius:6px;overflow:hidden;border:1px solid var(--border);}
+.heatmap-wrap .leaflet-container{background:var(--bg)!important;}
+.heatmap-legend{display:flex;gap:12px;margin-top:10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text-soft);flex-wrap:wrap;}
+.heatmap-legend-dot{width:10px;height:10px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:4px;}
+
+/* ── Sparkline / trend chart ─────────────────────────────── */
+.trend-chart{width:100%;height:120px;position:relative;}
+.trend-chart svg{width:100%;height:100%;}
+.trend-axis-label{position:absolute;font-family:'DM Mono',monospace;font-size:9px;color:var(--text-soft);}
+
+/* ── Recent feed ─────────────────────────────────────────── */
+.feed-item{padding:8px 0;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:12px;}
+.feed-item:last-child{border-bottom:none;}
+.feed-time{color:var(--text-soft);font-size:10px;}
+.feed-project{color:var(--text);font-weight:500;}
+.feed-detail{color:var(--text-mid);}
+</style>
+</head>
+<body>
+
+<!-- ═══ Login Screen ═══ -->
+<div id="login-screen" class="login-screen">
+  <div class="login-card">
+    <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent);letter-spacing:.06em;margin-bottom:16px;">Topo<em style="color:var(--text-soft)">-grapher</em></div>
+    <h1>Admin dashboard</h1>
+    <p>Team access only.</p>
+    <div class="login-field"><label>Email</label><input type="email" id="login-email" placeholder="you@topo-grapher.com"></div>
+    <div class="login-field"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="login-btn" onclick="doLogin()">Sign in →</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ═══ Dashboard Shell ═══ -->
+<div id="dashboard" class="admin-shell" style="display:none;">
+  <aside class="admin-sidebar">
+    <div class="admin-logo">Topo<em>-grapher</em> // admin</div>
+    <nav class="admin-nav">
+      <button class="admin-nav-item active" onclick="showPage('overview',this)">◎ Overview</button>
+      <button class="admin-nav-item" onclick="showPage('heatmap',this)">◈ Site heatmap</button>
+      <button class="admin-nav-item" onclick="showPage('countries',this)">◉ Countries</button>
+      <button class="admin-nav-item" onclick="showPage('priorities',this)">▲ Data priorities</button>
+      <div class="admin-nav-sep"></div>
+      <button class="admin-nav-item" onclick="showPage('trends',this)">◆ Trends</button>
+      <button class="admin-nav-item" onclick="showPage('users',this)">◑ Users</button>
+      <button class="admin-nav-item" onclick="showPage('revenue',this)">◈ Revenue</button>
+      <button class="admin-nav-item" onclick="showPage('feed',this)">◌ Live feed</button>
+    </nav>
+    <div class="admin-signout">
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-soft);margin-bottom:8px;" id="admin-email"></div>
+      <button onclick="doSignOut()">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <!-- ═══ Overview ═══ -->
+    <div id="page-overview">
+      <div class="page-header">
+        <div class="page-title">Overview</div>
+        <div class="page-subtitle" id="overview-updated">Loading…</div>
+      </div>
+
+      <div class="stat-row" id="overview-stats">
+        <div class="stat-card"><div class="stat-card-label">Total generations</div><div class="stat-card-value stat-accent" id="s-total-gens">—</div><div class="stat-card-sub" id="s-total-gens-sub"></div></div>
+        <div class="stat-card"><div class="stat-card-label">Active users</div><div class="stat-card-value stat-blue" id="s-active-users">—</div><div class="stat-card-sub" id="s-active-users-sub"></div></div>
+        <div class="stat-card"><div class="stat-card-label">Countries covered</div><div class="stat-card-value stat-accent" id="s-countries">—</div><div class="stat-card-sub" id="s-countries-sub"></div></div>
+        <div class="stat-card"><div class="stat-card-label">Pro/Company users</div><div class="stat-card-value stat-orange" id="s-pro-users">—</div><div class="stat-card-sub" id="s-pro-users-sub"></div></div>
+      </div>
+
+      <div class="panel-grid">
+        <div class="panel">
+          <div class="panel-title">Top countries (by generations)</div>
+          <div id="overview-country-bars" class="bar-chart"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Resolution distribution</div>
+          <div id="overview-res-bars" class="bar-chart"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Recent generations</div>
+        <div id="overview-recent"></div>
+      </div>
+    </div>
+
+    <!-- ═══ Countries ═══ -->
+    <div id="page-countries" style="display:none;">
+
+    <!-- ═══ Heatmap ═══ -->
+    <div id="page-heatmap" style="display:none;">
+      <div class="page-header">
+        <div class="page-title">Generation heatmap</div>
+        <div class="page-subtitle">Every site generation plotted by centroid — colour-coded by data quality</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span>World map</span><span id="heatmap-count" style="color:var(--text-soft);font-size:10px;"></span></div>
+        <div class="heatmap-wrap" id="heatmap-container"></div>
+        <div class="heatmap-legend">
+          <span><span class="heatmap-legend-dot" style="background:#4EA0D9;"></span> LiDAR (≤1m)</span>
+          <span><span class="heatmap-legend-dot" style="background:#9ABA6A;"></span> Good (10m)</span>
+          <span><span class="heatmap-legend-dot" style="background:#E0A050;"></span> Medium (30m)</span>
+          <span><span class="heatmap-legend-dot" style="background:#E25555;"></span> Low (90m)</span>
+          <span><span class="heatmap-legend-dot" style="background:#888;"></span> Unknown</span>
+        </div>
+      </div>
+      <div class="panel-grid">
+        <div class="panel">
+          <div class="panel-title">Top clusters</div>
+          <div id="heatmap-clusters"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Sites with worst data</div>
+          <div id="heatmap-worst"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Trends ═══ -->
+    <div id="page-trends" style="display:none;">
+      <div class="page-header">
+        <div class="page-title">Generation trends</div>
+        <div class="page-subtitle">Volume over time — spot growth, seasonality, and drop-offs</div>
+      </div>
+      <div class="stat-row" id="trend-stats"></div>
+      <div class="panel">
+        <div class="panel-title">Daily generations (last 30 days)</div>
+        <div class="trend-chart" id="trend-daily-chart"></div>
+      </div>
+      <div class="panel-grid">
+        <div class="panel">
+          <div class="panel-title">By plan (last 30 days)</div>
+          <div id="trend-plan-bars" class="bar-chart"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">By hour of day (UTC)</div>
+          <div id="trend-hour-bars" class="bar-chart"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Weekly volume (last 12 weeks)</div>
+        <div class="trend-chart" id="trend-weekly-chart"></div>
+      </div>
+    </div>
+      <div class="page-header">
+        <div class="page-title">Country breakdown</div>
+        <div class="page-subtitle">Generation volume and data quality by region</div>
+      </div>
+      <div class="panel">
+        <table class="admin-table" id="countries-table">
+          <thead><tr><th>Country</th><th>Generations</th><th>Unique users</th><th>Avg resolution</th><th>Best source</th><th>Data quality</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ Data Priorities ═══ -->
+    <div id="page-priorities" style="display:none;">
+      <div class="page-header">
+        <div class="page-title">Data source priorities</div>
+        <div class="page-subtitle">Where to add LiDAR next — ranked by demand × resolution gap</div>
+      </div>
+      <div class="panel-grid">
+        <div class="panel">
+          <div class="panel-title">Priority ranking</div>
+          <div id="priority-list"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Resolution gap analysis</div>
+          <div id="gap-analysis"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Users ═══ -->
+    <div id="page-users" style="display:none;">
+      <div class="page-header">
+        <div class="page-title">Users</div>
+        <div class="page-subtitle">Signups, plans, and activity</div>
+      </div>
+      <div class="stat-row" id="user-stats"></div>
+      <div class="panel">
+        <div class="panel-title">User breakdown by plan</div>
+        <div id="user-plan-bars" class="bar-chart"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Recent signups</div>
+        <table class="admin-table" id="recent-signups-table">
+          <thead><tr><th>Email</th><th>Plan</th><th>Generations</th><th>Signed up</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ Revenue ═══ -->
+    <div id="page-revenue" style="display:none;">
+      <div class="page-header">
+        <div class="page-title">Revenue</div>
+        <div class="page-subtitle">Subscription and addon income</div>
+      </div>
+      <div class="stat-row" id="revenue-stats"></div>
+      <div class="panel">
+        <div class="panel-title">Addon charges</div>
+        <table class="admin-table" id="addon-table">
+          <thead><tr><th>Project</th><th>Area</th><th>Charge</th><th>User</th><th>Date</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ Live Feed ═══ -->
+    <div id="page-feed" style="display:none;">
+      <div class="page-header">
+        <div class="page-title">Live generation feed</div>
+        <div class="page-subtitle">Last 50 generations across all users</div>
+      </div>
+      <div class="panel" id="feed-panel"></div>
+    </div>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Supabase (same project as main site) ────────────────────────────────
+const SUPABASE_URL = 'https://lkhdwgltwzaxslspxgcx.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxraGR3Z2x0d3pheHNsc3B4Z2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMDk1OTYsImV4cCI6MjA5MTU4NTU5Nn0.nDy7pWgYkr-NFNh5wpIFmfu4tXsLPoPqrdtvzY3__4Q';
+const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const COUNTRY_NAMES = {
+  DK:'Denmark',IS:'Iceland',NO:'Norway',SE:'Sweden',FI:'Finland',GB:'United Kingdom',
+  IE:'Ireland',NL:'Netherlands',BE:'Belgium',FR:'France',CH:'Switzerland',AT:'Austria',
+  DE:'Germany',ES:'Spain',PT:'Portugal',IT:'Italy',GR:'Greece',PL:'Poland',CZ:'Czechia',
+  US:'United States',CA:'Canada',JP:'Japan',NZ:'New Zealand',AU:'Australia',
+  HR:'Croatia',HU:'Hungary',RO:'Romania',SK:'Slovakia',LT:'Lithuania',LV:'Latvia',EE:'Estonia',
+  MX:'Mexico',SA:'Saudi Arabia',AE:'UAE',IL:'Israel',FO:'Faroe Islands',LU:'Luxembourg',BG:'Bulgaria',
+};
+const COUNTRY_FLAGS = {
+  DK:'🇩🇰',IS:'🇮🇸',NO:'🇳🇴',SE:'🇸🇪',FI:'🇫🇮',GB:'🇬🇧',IE:'🇮🇪',NL:'🇳🇱',BE:'🇧🇪',
+  FR:'🇫🇷',CH:'🇨🇭',AT:'🇦🇹',DE:'🇩🇪',ES:'🇪🇸',PT:'🇵🇹',IT:'🇮🇹',GR:'🇬🇷',PL:'🇵🇱',
+  CZ:'🇨🇿',US:'🇺🇸',CA:'🇨🇦',JP:'🇯🇵',NZ:'🇳🇿',AU:'🇦🇺',HR:'🇭🇷',HU:'🇭🇺',RO:'🇷🇴',
+  SK:'🇸🇰',LT:'🇱🇹',LV:'🇱🇻',EE:'🇪🇪',MX:'🇲🇽',SA:'🇸🇦',AE:'🇦🇪',IL:'🇮🇱',FO:'🇫🇴',LU:'🇱🇺',BG:'🇧🇬',
+};
+
+// Known best available resolution per country (what we serve today)
+const BEST_AVAILABLE = {
+  DK:0.4, IS:10, NO:1, GB:1, US:1, CH:0.5, NL:0.5, FR:1,
+};
+
+// ── Auth ────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-password').value;
+  const err = document.getElementById('login-error');
+  err.textContent = '';
+  if (!email || !pass) { err.textContent = 'Fill in both fields.'; return; }
+  const { data, error } = await _sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { err.textContent = error.message; return; }
+  // Check admin flag
+  const { data: isAdmin } = await _sb.rpc('is_current_user_admin');
+  if (!isAdmin) {
+    err.textContent = 'Access denied — not an admin account.';
+    await _sb.auth.signOut();
+    return;
+  }
+  showDashboard(data.session);
+}
+
+async function checkSession() {
+  const { data: { session } } = await _sb.auth.getSession();
+  if (!session) return;
+  const { data: isAdmin } = await _sb.rpc('is_current_user_admin');
+  if (!isAdmin) return;
+  showDashboard(session);
+}
+
+function showDashboard(session) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'flex';
+  document.getElementById('admin-email').textContent = session.user.email;
+  loadOverview();
+}
+
+async function doSignOut() {
+  await _sb.auth.signOut();
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ── Navigation ──────────────────────────────────────────────────────────
+function showPage(id, btn) {
+  document.querySelectorAll('[id^="page-"]').forEach(p => p.style.display = 'none');
+  document.getElementById('page-' + id).style.display = 'block';
+  document.querySelectorAll('.admin-nav-item').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  // Lazy-load data
+  const loaders = { overview: loadOverview, heatmap: loadHeatmap, countries: loadCountries, priorities: loadPriorities, trends: loadTrends, users: loadUsers, revenue: loadRevenue, feed: loadFeed };
+  if (loaders[id]) loaders[id]();
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+function ago(ts) {
+  const mins = Math.round((Date.now() - new Date(ts).getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.round(hrs / 24);
+  if (days < 30) return days + 'd ago';
+  return Math.round(days / 30) + 'mo ago';
+}
+
+function resBadge(res) {
+  if (res === null || res === undefined) return '<span class="badge badge-low">unknown</span>';
+  if (res <= 1) return `<span class="badge badge-lidar">${res}m LiDAR</span>`;
+  if (res <= 10) return `<span class="badge badge-good">${res}m</span>`;
+  if (res <= 30) return `<span class="badge badge-mid">${res}m</span>`;
+  return `<span class="badge badge-low">${res}m</span>`;
+}
+
+function barRow(label, value, max, colorClass = 'bar-fill-accent') {
+  const pct = max > 0 ? Math.max(2, (value / max) * 100) : 0;
+  return `<div class="bar-row">
+    <div class="bar-label">${label}</div>
+    <div class="bar-track"><div class="bar-fill ${colorClass}" style="width:${pct}%"></div></div>
+    <div class="bar-value">${value}</div>
+  </div>`;
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Data loaders ────────────────────────────────────────────────────────
+
+async function loadOverview() {
+  document.getElementById('overview-updated').textContent = 'Loading…';
+
+  // Total generations
+  const { count: totalGens } = await _sb.from('generations').select('*', { count: 'exact', head: true });
+
+  // Last 7 days
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  const { count: weekGens } = await _sb.from('generations').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo);
+
+  // Unique users who have generated
+  const { data: userCounts } = await _sb.from('generations').select('user_id').limit(10000);
+  const uniqueUsers = new Set(userCounts?.map(r => r.user_id) || []).size;
+
+  // Countries
+  const { data: countryData } = await _sb.from('generations').select('country_code').not('country_code', 'is', null).limit(10000);
+  const countryCounts = {};
+  (countryData || []).forEach(r => { countryCounts[r.country_code] = (countryCounts[r.country_code] || 0) + 1; });
+  const uniqueCountries = Object.keys(countryCounts).length;
+
+  // Pro users
+  const { count: proCount } = await _sb.from('profiles').select('*', { count: 'exact', head: true }).in('plan', ['pro', 'company']);
+  const { count: totalUsers } = await _sb.from('profiles').select('*', { count: 'exact', head: true });
+
+  // Stats
+  document.getElementById('s-total-gens').textContent = (totalGens || 0).toLocaleString();
+  document.getElementById('s-total-gens-sub').textContent = (weekGens || 0) + ' this week';
+  document.getElementById('s-active-users').textContent = uniqueUsers;
+  document.getElementById('s-active-users-sub').textContent = (totalUsers || 0) + ' total signups';
+  document.getElementById('s-countries').textContent = uniqueCountries;
+  document.getElementById('s-countries-sub').textContent = Object.entries(countryCounts).sort((a,b) => b[1]-a[1]).slice(0,3).map(([c]) => COUNTRY_FLAGS[c] || c).join(' ');
+  document.getElementById('s-pro-users').textContent = proCount || 0;
+  document.getElementById('s-pro-users-sub').textContent = totalUsers ? Math.round((proCount || 0) / totalUsers * 100) + '% conversion' : '';
+
+  // Country bars
+  const sorted = Object.entries(countryCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const maxCount = sorted[0]?.[1] || 1;
+  document.getElementById('overview-country-bars').innerHTML = sorted.map(([code, count]) =>
+    barRow((COUNTRY_FLAGS[code] || '') + ' ' + code, count, maxCount)
+  ).join('') || '<div class="mono" style="color:var(--text-soft);font-size:12px;">No country data yet</div>';
+
+  // Resolution bars
+  const { data: resData } = await _sb.from('generations').select('resolution_m').not('resolution_m', 'is', null).limit(10000);
+  const resCounts = {};
+  (resData || []).forEach(r => {
+    const label = r.resolution_m <= 1 ? '≤1m (LiDAR)' : r.resolution_m <= 10 ? '10m' : r.resolution_m <= 30 ? '30m' : '90m';
+    resCounts[label] = (resCounts[label] || 0) + 1;
+  });
+  const resOrder = ['≤1m (LiDAR)', '10m', '30m', '90m'];
+  const maxRes = Math.max(...Object.values(resCounts), 1);
+  const resColors = { '≤1m (LiDAR)': 'bar-fill-blue', '10m': 'bar-fill-accent', '30m': 'bar-fill-orange', '90m': 'bar-fill-orange' };
+  document.getElementById('overview-res-bars').innerHTML = resOrder.filter(k => resCounts[k]).map(k =>
+    barRow(k, resCounts[k], maxRes, resColors[k] || 'bar-fill-accent')
+  ).join('') || '<div class="mono" style="color:var(--text-soft);font-size:12px;">No resolution data yet</div>';
+
+  // Recent
+  const { data: recent } = await _sb.from('generations').select('project_name, country_code, resolution_m, elevation_source, area_km2, user_plan, created_at').order('created_at', { ascending: false }).limit(10);
+  document.getElementById('overview-recent').innerHTML = (recent || []).map(r =>
+    `<div class="feed-item">
+      <span class="feed-time">${ago(r.created_at)}</span>
+      <span class="feed-project">${esc(r.project_name || '—')}</span>
+      <span class="feed-detail">${(COUNTRY_FLAGS[r.country_code] || '') + ' ' + (r.country_code || '??')} · ${resBadge(r.resolution_m)} · ${r.user_plan || 'free'}</span>
+    </div>`
+  ).join('') || '<div class="mono" style="color:var(--text-soft);font-size:12px;">No generations yet</div>';
+
+  document.getElementById('overview-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+async function loadCountries() {
+  const { data } = await _sb.from('generations').select('country_code, resolution_m, user_id, elevation_source').not('country_code', 'is', null).limit(10000);
+  if (!data || data.length === 0) {
+    document.querySelector('#countries-table tbody').innerHTML = '<tr><td colspan="6" style="color:var(--text-soft)">No country data yet</td></tr>';
+    return;
+  }
+  const countries = {};
+  data.forEach(r => {
+    const c = r.country_code;
+    if (!countries[c]) countries[c] = { gens: 0, users: new Set(), resolutions: [], sources: new Set() };
+    countries[c].gens++;
+    countries[c].users.add(r.user_id);
+    if (r.resolution_m !== null) countries[c].resolutions.push(r.resolution_m);
+    if (r.elevation_source) countries[c].sources.add(r.elevation_source.split('-')[1] || r.elevation_source);
+  });
+
+  const rows = Object.entries(countries).sort((a, b) => b[1].gens - a[1].gens).map(([code, d]) => {
+    const avgRes = d.resolutions.length ? (d.resolutions.reduce((a, b) => a + b, 0) / d.resolutions.length) : null;
+    const bestRes = d.resolutions.length ? Math.min(...d.resolutions) : null;
+    const quality = bestRes !== null ? (bestRes <= 1 ? 'badge-lidar' : bestRes <= 10 ? 'badge-good' : bestRes <= 30 ? 'badge-mid' : 'badge-low') : 'badge-low';
+    const qualityLabel = bestRes !== null ? (bestRes <= 1 ? 'LiDAR' : bestRes <= 10 ? 'Good' : bestRes <= 30 ? 'Mid' : 'Low') : 'Unknown';
+    return `<tr>
+      <td class="val">${COUNTRY_FLAGS[code] || ''} ${COUNTRY_NAMES[code] || code}</td>
+      <td class="val">${d.gens}</td>
+      <td>${d.users.size}</td>
+      <td>${avgRes !== null ? avgRes.toFixed(1) + 'm' : '—'}</td>
+      <td>${[...d.sources].slice(0, 2).join(', ')}</td>
+      <td><span class="badge ${quality}">${qualityLabel}</span></td>
+    </tr>`;
+  });
+  document.querySelector('#countries-table tbody').innerHTML = rows.join('');
+}
+
+async function loadPriorities() {
+  const { data } = await _sb.from('generations').select('country_code, resolution_m, user_id').not('country_code', 'is', null).limit(10000);
+  if (!data || data.length === 0) {
+    document.getElementById('priority-list').innerHTML = '<div class="mono" style="color:var(--text-soft);font-size:12px;">No data yet</div>';
+    document.getElementById('gap-analysis').innerHTML = '';
+    return;
+  }
+
+  const countries = {};
+  data.forEach(r => {
+    const c = r.country_code;
+    if (!countries[c]) countries[c] = { gens: 0, users: new Set(), resolutions: [] };
+    countries[c].gens++;
+    countries[c].users.add(r.user_id);
+    if (r.resolution_m !== null) countries[c].resolutions.push(r.resolution_m);
+  });
+
+  // Priority score = demand × resolution_gap
+  // demand = gens (normalized), resolution_gap = avg_res / best_possible
+  const maxGens = Math.max(...Object.values(countries).map(d => d.gens), 1);
+  const priorities = Object.entries(countries).map(([code, d]) => {
+    const avgRes = d.resolutions.length ? d.resolutions.reduce((a, b) => a + b, 0) / d.resolutions.length : 90;
+    const bestAvailable = BEST_AVAILABLE[code] || null;
+    const demandScore = d.gens / maxGens;
+    // Resolution gap: how much worse is what they're getting vs what exists?
+    // If we already serve LiDAR there, gap is low. If they're getting 90m and 1m exists, gap is huge.
+    const gapScore = bestAvailable ? Math.log10(avgRes / bestAvailable + 1) : Math.log10(avgRes + 1);
+    const priority = demandScore * gapScore;
+    return { code, gens: d.gens, users: d.users.size, avgRes, bestAvailable, priority, demandScore, gapScore };
+  }).sort((a, b) => b.priority - a.priority);
+
+  // Priority list
+  document.getElementById('priority-list').innerHTML = priorities.slice(0, 10).map((p, i) => {
+    const cls = i < 2 ? 'priority-high' : i < 5 ? 'priority-med' : '';
+    const action = p.bestAvailable && p.avgRes > p.bestAvailable
+      ? `${p.bestAvailable}m available, serving ${p.avgRes.toFixed(0)}m`
+      : p.avgRes > 10 ? `Serving ${p.avgRes.toFixed(0)}m — needs better source` : `${p.avgRes.toFixed(1)}m — good coverage`;
+    return `<div class="priority-item">
+      <div class="priority-rank">${i + 1}</div>
+      <div class="priority-body">
+        <div class="priority-name">${COUNTRY_FLAGS[p.code] || ''} ${COUNTRY_NAMES[p.code] || p.code}</div>
+        <div class="priority-meta">${p.gens} gens · ${p.users} users · ${action}</div>
+      </div>
+      <div class="priority-score ${cls}">${(p.priority * 100).toFixed(0)}</div>
+    </div>`;
+  }).join('');
+
+  // Gap analysis — countries where avg served resolution >> best available
+  const gaps = priorities.filter(p => p.avgRes > 10).sort((a, b) => b.avgRes - a.avgRes);
+  document.getElementById('gap-analysis').innerHTML = gaps.length ? gaps.slice(0, 8).map(p =>
+    `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:12px;">
+      <span>${COUNTRY_FLAGS[p.code] || ''} ${p.code} <span style="color:var(--text-soft)">(${p.gens} gens)</span></span>
+      <span>serving ${resBadge(p.avgRes)} ${p.bestAvailable ? '→ ' + resBadge(p.bestAvailable) + ' available' : ''}</span>
+    </div>`
+  ).join('') : '<div class="mono" style="color:var(--text-soft);font-size:12px;">All countries have good coverage!</div>';
+}
+
+async function loadUsers() {
+  const { data: profiles } = await _sb.from('profiles').select('id, plan, email, created_at').order('created_at', { ascending: false }).limit(200);
+  if (!profiles) return;
+
+  const planCounts = { free: 0, pro: 0, company: 0 };
+  profiles.forEach(p => { planCounts[p.plan] = (planCounts[p.plan] || 0) + 1; });
+  const total = profiles.length;
+
+  document.getElementById('user-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-card-label">Total users</div><div class="stat-card-value stat-accent">${total}</div></div>
+    <div class="stat-card"><div class="stat-card-label">Free</div><div class="stat-card-value" style="color:var(--text-mid)">${planCounts.free}</div></div>
+    <div class="stat-card"><div class="stat-card-label">Pro</div><div class="stat-card-value stat-blue">${planCounts.pro}</div></div>
+    <div class="stat-card"><div class="stat-card-label">Company</div><div class="stat-card-value stat-orange">${planCounts.company}</div></div>
+  `;
+
+  const maxPlan = Math.max(...Object.values(planCounts), 1);
+  document.getElementById('user-plan-bars').innerHTML =
+    barRow('Free', planCounts.free, maxPlan) +
+    barRow('Pro', planCounts.pro, maxPlan, 'bar-fill-blue') +
+    barRow('Team', planCounts.company, maxPlan, 'bar-fill-orange');
+
+  // Recent signups with generation count
+  const { data: genCounts } = await _sb.from('generations').select('user_id').limit(10000);
+  const userGenMap = {};
+  (genCounts || []).forEach(r => { userGenMap[r.user_id] = (userGenMap[r.user_id] || 0) + 1; });
+
+  document.querySelector('#recent-signups-table tbody').innerHTML = profiles.slice(0, 20).map(p => {
+    const planBadge = p.plan === 'pro' ? '<span class="badge badge-lidar">Pro</span>'
+      : p.plan === 'company' ? '<span class="badge badge-good">Company</span>'
+      : '<span class="badge badge-low">Free</span>';
+    return `<tr>
+      <td class="val">${esc(p.email || '—')}</td>
+      <td>${planBadge}</td>
+      <td>${userGenMap[p.id] || 0}</td>
+      <td>${ago(p.created_at)}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadRevenue() {
+  // Pro/Company subscriber count
+  const { count: proCount } = await _sb.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'pro');
+  const { data: companyProfiles } = await _sb.from('profiles').select('seat_count').eq('plan', 'company').eq('is_company_admin', true);
+  const companySeats = (companyProfiles || []).reduce((s, p) => s + (p.seat_count || 0), 0);
+
+  // MRR estimate (using prices from memory)
+  const proMRR = (proCount || 0) * 39.99;
+  const companyMRR = companySeats * 29.99;
+  const totalMRR = proMRR + companyMRR;
+
+  // Addon revenue
+  const { data: addons } = await _sb.from('generations').select('addon_charged_pence, project_name, area_km2, user_plan, created_at').gt('addon_charged_pence', 0).order('created_at', { ascending: false }).limit(50);
+  const totalAddon = (addons || []).reduce((s, r) => s + (r.addon_charged_pence || 0), 0);
+
+  document.getElementById('revenue-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-card-label">Estimated MRR</div><div class="stat-card-value stat-accent">£${totalMRR.toFixed(2)}</div><div class="stat-card-sub">${proCount || 0} Pro + ${companySeats} Company seats</div></div>
+    <div class="stat-card"><div class="stat-card-label">Pro MRR</div><div class="stat-card-value stat-blue">£${proMRR.toFixed(2)}</div><div class="stat-card-sub">${proCount || 0} × £39.99</div></div>
+    <div class="stat-card"><div class="stat-card-label">Company MRR</div><div class="stat-card-value stat-orange">£${companyMRR.toFixed(2)}</div><div class="stat-card-sub">${companySeats} seats × £29.99</div></div>
+    <div class="stat-card"><div class="stat-card-label">Addon revenue (total)</div><div class="stat-card-value" style="color:var(--text-mid);">£${(totalAddon / 100).toFixed(2)}</div><div class="stat-card-sub">${(addons || []).length} charges</div></div>
+  `;
+
+  document.querySelector('#addon-table tbody').innerHTML = (addons || []).length
+    ? addons.map(r => `<tr>
+        <td class="val">${esc(r.project_name || '—')}</td>
+        <td>${r.area_km2 ? r.area_km2.toFixed(1) + ' km²' : '—'}</td>
+        <td class="val">£${(r.addon_charged_pence / 100).toFixed(2)}</td>
+        <td>${r.user_plan || '—'}</td>
+        <td>${ago(r.created_at)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" style="color:var(--text-soft)">No addon charges yet</td></tr>';
+}
+
+async function loadFeed() {
+  const { data } = await _sb.from('generations')
+    .select('project_name, country_code, resolution_m, elevation_source, area_km2, user_plan, point_count, spacing, created_at')
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  document.getElementById('feed-panel').innerHTML = (data || []).map(r =>
+    `<div class="feed-item">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+          <span class="feed-time">${ago(r.created_at)}</span>
+          <span class="feed-project">${esc(r.project_name || '—')}</span>
+        </div>
+        <div class="feed-detail">
+          ${COUNTRY_FLAGS[r.country_code] || '🌍'} ${r.country_code || '??'}
+          · ${resBadge(r.resolution_m)}
+          · ${r.point_count ? r.point_count.toLocaleString() + ' pts' : '—'}
+          · ${r.spacing ? r.spacing + 'm' : '—'}
+          ${r.area_km2 ? ' · ' + r.area_km2.toFixed(2) + ' km²' : ''}
+          · <span style="color:${r.user_plan === 'pro' || r.user_plan === 'company' ? 'var(--blue)' : 'var(--text-soft)'}">${r.user_plan || 'free'}</span>
+        </div>
+      </div>
+    </div>`
+  ).join('') || '<div class="mono" style="color:var(--text-soft);font-size:12px;">No generations yet</div>';
+}
+
+// ── Heatmap ──────────────────────────────────────────────────────────────
+let _heatmapMap = null;
+let _heatmapLoaded = false;
+
+async function loadHeatmap() {
+  const { data } = await _sb.from('generations')
+    .select('centroid_lat, centroid_lon, resolution_m, country_code, project_name, created_at')
+    .not('centroid_lat', 'is', null)
+    .not('centroid_lon', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(5000);
+
+  if (!data || data.length === 0) {
+    document.getElementById('heatmap-container').innerHTML = '<div class="loading"><div class="spin"></div><div>No location data yet — generate some sites first</div></div>';
+    return;
+  }
+
+  document.getElementById('heatmap-count').textContent = data.length + ' sites plotted';
+
+  // Init map once
+  if (!_heatmapMap) {
+    _heatmapMap = L.map('heatmap-container', {
+      center: [52, 10], zoom: 4,
+      zoomControl: true,
+      attributionControl: false,
+    });
+    // Dark tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 18, noWrap: true
+    }).addTo(_heatmapMap);
+  }
+
+  // Clear old markers
+  if (_heatmapMap._markerGroup) {
+    _heatmapMap.removeLayer(_heatmapMap._markerGroup);
+  }
+  const markerGroup = L.layerGroup();
+  _heatmapMap._markerGroup = markerGroup;
+
+  // Resolution → colour
+  function resColor(res) {
+    if (res === null || res === undefined) return '#888';
+    if (res <= 1) return '#4EA0D9';
+    if (res <= 10) return '#9ABA6A';
+    if (res <= 30) return '#E0A050';
+    return '#E25555';
+  }
+
+  // Plot each generation as a circle marker
+  const bounds = [];
+  data.forEach(r => {
+    const lat = parseFloat(r.centroid_lat);
+    const lon = parseFloat(r.centroid_lon);
+    if (!isFinite(lat) || !isFinite(lon)) return;
+    bounds.push([lat, lon]);
+    const color = resColor(r.resolution_m);
+    const circle = L.circleMarker([lat, lon], {
+      radius: 6,
+      fillColor: color,
+      color: color,
+      weight: 1,
+      opacity: 0.8,
+      fillOpacity: 0.5,
+    });
+    circle.bindPopup(`
+      <div style="font-family:'DM Mono',monospace;font-size:12px;line-height:1.8;">
+        <strong>${esc(r.project_name || '—')}</strong><br>
+        ${COUNTRY_FLAGS[r.country_code] || ''} ${COUNTRY_NAMES[r.country_code] || r.country_code || '??'}<br>
+        ${r.resolution_m !== null ? r.resolution_m + 'm resolution' : 'Unknown resolution'}<br>
+        <span style="opacity:.6">${ago(r.created_at)}</span>
+      </div>
+    `);
+    markerGroup.addLayer(circle);
+  });
+  markerGroup.addTo(_heatmapMap);
+
+  // Fit bounds
+  if (bounds.length > 0) {
+    _heatmapMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 6 });
+  }
+
+  // After a short delay, invalidate size (map might have been display:none)
+  setTimeout(() => _heatmapMap.invalidateSize(), 200);
+
+  // Top clusters (country aggregation)
+  const clusters = {};
+  data.forEach(r => {
+    const c = r.country_code || '??';
+    if (!clusters[c]) clusters[c] = 0;
+    clusters[c]++;
+  });
+  const sortedClusters = Object.entries(clusters).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  document.getElementById('heatmap-clusters').innerHTML = sortedClusters.map(([code, count]) =>
+    `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:12px;">
+      <span>${COUNTRY_FLAGS[code] || '🌍'} ${COUNTRY_NAMES[code] || code}</span>
+      <span class="val">${count} sites</span>
+    </div>`
+  ).join('');
+
+  // Sites with worst data
+  const worst = data.filter(r => r.resolution_m && r.resolution_m >= 30)
+    .sort((a, b) => (b.resolution_m || 0) - (a.resolution_m || 0))
+    .slice(0, 8);
+  document.getElementById('heatmap-worst').innerHTML = worst.length
+    ? worst.map(r =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:12px;">
+        <span>${COUNTRY_FLAGS[r.country_code] || '🌍'} ${esc(r.project_name || '—')}</span>
+        <span>${resBadge(r.resolution_m)}</span>
+      </div>`
+    ).join('')
+    : '<div class="mono" style="color:var(--text-soft);font-size:12px;">All sites have good data!</div>';
+}
+
+// ── Trends ──────────────────────────────────────────────────────────────
+
+function buildSVGChart(container, labels, values, color = 'var(--accent)', fillColor = 'rgba(154,186,106,0.15)') {
+  const el = document.getElementById(container);
+  if (!el) return;
+  const W = el.clientWidth || 600, H = el.clientHeight || 120;
+  const pad = { top: 10, right: 10, bottom: 24, left: 40 };
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+  const maxVal = Math.max(...values, 1);
+  const n = values.length;
+  if (n === 0) { el.innerHTML = '<div class="mono" style="color:var(--text-soft);font-size:12px;">No data yet</div>'; return; }
+
+  const xStep = chartW / Math.max(n - 1, 1);
+  const points = values.map((v, i) => ({
+    x: pad.left + i * xStep,
+    y: pad.top + chartH - (v / maxVal) * chartH,
+  }));
+
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const areaPath = linePath + ` L${points[n-1].x.toFixed(1)},${pad.top + chartH} L${points[0].x.toFixed(1)},${pad.top + chartH} Z`;
+
+  // Y-axis labels
+  const yLabels = [0, Math.round(maxVal / 2), maxVal].map(v =>
+    `<text x="${pad.left - 6}" y="${pad.top + chartH - (v / maxVal) * chartH + 3}" text-anchor="end" fill="var(--text-soft)" font-family="DM Mono,monospace" font-size="9">${v}</text>`
+  );
+  // Y gridlines
+  const yGrids = [0, 0.25, 0.5, 0.75, 1].map(f =>
+    `<line x1="${pad.left}" y1="${pad.top + chartH * (1 - f)}" x2="${W - pad.right}" y2="${pad.top + chartH * (1 - f)}" stroke="var(--border)" stroke-width="0.5"/>`
+  );
+
+  // X-axis labels (every ~5th label)
+  const labelEvery = Math.max(1, Math.floor(n / 6));
+  const xLabels = labels.map((l, i) => {
+    if (i % labelEvery !== 0 && i !== n - 1) return '';
+    return `<text x="${points[i].x.toFixed(1)}" y="${H - 4}" text-anchor="middle" fill="var(--text-soft)" font-family="DM Mono,monospace" font-size="9">${l}</text>`;
+  }).join('');
+
+  // Dots on data points
+  const dots = points.map((p, i) =>
+    `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${color}" opacity="0.8"><title>${labels[i]}: ${values[i]}</title></circle>`
+  ).join('');
+
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    ${yGrids.join('')}
+    ${yLabels.join('')}
+    <path d="${areaPath}" fill="${fillColor}" />
+    <path d="${linePath}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}
+    ${xLabels}
+  </svg>`;
+}
+
+async function loadTrends() {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+  const { data } = await _sb.from('generations')
+    .select('created_at, user_plan, country_code')
+    .gte('created_at', thirtyDaysAgo)
+    .order('created_at', { ascending: true })
+    .limit(10000);
+
+  if (!data || data.length === 0) {
+    document.getElementById('trend-stats').innerHTML = '<div class="stat-card"><div class="stat-card-label">No data</div><div class="stat-card-value" style="color:var(--text-soft)">—</div></div>';
+    return;
+  }
+
+  // ── Stat cards ──
+  const today = new Date().toISOString().slice(0, 10);
+  const todayCount = data.filter(r => r.created_at.slice(0, 10) === today).length;
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  const weekCount = data.filter(r => r.created_at >= weekAgo).length;
+  const prevWeekStart = new Date(Date.now() - 14 * 86400000).toISOString();
+  const prevWeekCount = data.filter(r => r.created_at >= prevWeekStart && r.created_at < weekAgo).length;
+  const weekDelta = prevWeekCount > 0 ? Math.round((weekCount - prevWeekCount) / prevWeekCount * 100) : 0;
+  const avgDaily = Math.round(data.length / 30 * 10) / 10;
+
+  document.getElementById('trend-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-card-label">Today</div><div class="stat-card-value stat-accent">${todayCount}</div></div>
+    <div class="stat-card"><div class="stat-card-label">This week</div><div class="stat-card-value stat-blue">${weekCount}</div><div class="stat-card-sub">${weekDelta >= 0 ? '↑' : '↓'} ${Math.abs(weekDelta)}% vs prev week</div></div>
+    <div class="stat-card"><div class="stat-card-label">30-day total</div><div class="stat-card-value stat-accent">${data.length}</div></div>
+    <div class="stat-card"><div class="stat-card-label">Daily average</div><div class="stat-card-value stat-orange">${avgDaily}</div></div>
+  `;
+
+  // ── Daily chart ──
+  const dailyCounts = {};
+  data.forEach(r => {
+    const day = r.created_at.slice(0, 10);
+    dailyCounts[day] = (dailyCounts[day] || 0) + 1;
+  });
+  // Fill in zero days
+  const days = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    days.push(d);
+  }
+  const dailyLabels = days.map(d => d.slice(5)); // "MM-DD"
+  const dailyValues = days.map(d => dailyCounts[d] || 0);
+
+  // Need to wait for the container to be visible
+  requestAnimationFrame(() => {
+    buildSVGChart('trend-daily-chart', dailyLabels, dailyValues, '#9ABA6A', 'rgba(154,186,106,0.12)');
+  });
+
+  // ── By plan ──
+  const planCounts = { free: 0, pro: 0, company: 0 };
+  data.forEach(r => {
+    const p = r.user_plan || 'free';
+    planCounts[p] = (planCounts[p] || 0) + 1;
+  });
+  const maxPlan = Math.max(...Object.values(planCounts), 1);
+  document.getElementById('trend-plan-bars').innerHTML =
+    barRow('Free', planCounts.free || 0, maxPlan) +
+    barRow('Pro', planCounts.pro || 0, maxPlan, 'bar-fill-blue') +
+    barRow('Team', planCounts.company || 0, maxPlan, 'bar-fill-orange');
+
+  // ── By hour ──
+  const hourCounts = new Array(24).fill(0);
+  data.forEach(r => {
+    const h = new Date(r.created_at).getUTCHours();
+    hourCounts[h]++;
+  });
+  const maxHour = Math.max(...hourCounts, 1);
+  // Show every 3rd hour
+  document.getElementById('trend-hour-bars').innerHTML = hourCounts.map((c, h) => {
+    if (h % 3 !== 0) return '';
+    return barRow(String(h).padStart(2, '0') + ':00', c, maxHour, 'bar-fill-accent');
+  }).filter(Boolean).join('');
+
+  // ── Weekly chart ──
+  const ninetyDaysAgo = new Date(Date.now() - 84 * 86400000).toISOString();
+  const { data: weeklyData } = await _sb.from('generations')
+    .select('created_at')
+    .gte('created_at', ninetyDaysAgo)
+    .order('created_at', { ascending: true })
+    .limit(10000);
+
+  const weekCounts = {};
+  (weeklyData || []).forEach(r => {
+    const d = new Date(r.created_at);
+    const weekStart = new Date(d);
+    weekStart.setDate(d.getDate() - d.getDay());
+    const key = weekStart.toISOString().slice(0, 10);
+    weekCounts[key] = (weekCounts[key] || 0) + 1;
+  });
+  const weekKeys = Object.keys(weekCounts).sort();
+  const weekLabels = weekKeys.map(k => k.slice(5));
+  const weekValues = weekKeys.map(k => weekCounts[k]);
+
+  requestAnimationFrame(() => {
+    buildSVGChart('trend-weekly-chart', weekLabels, weekValues, '#4EA0D9', 'rgba(78,160,217,0.1)');
+  });
+}
+
+// ── Init ────────────────────────────────────────────────────────────────
+checkSession();
+</script>
+</body>
+</html>
