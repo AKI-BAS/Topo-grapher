@@ -265,7 +265,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   .donut-wrap{flex-direction:column!important;align-items:center!important;gap:16px!important;}
 
   /* ── Heatmap: fill panel ── */
-  .heatmap-wrap{height:260px!important;}
+  .heatmap-wrap{height:300px!important;flex:none!important;}
+  .heatmap-wrap .leaflet-container{height:100%!important;width:100%!important;}
+  #body-heatmap{display:flex;flex-direction:column;}
 
   /* ── Login box full-width ── */
   .login-box{width:calc(100vw - 32px);padding:28px 20px;}
@@ -719,6 +721,34 @@ async function loadKPIs(){
 
 // ── Heatmap ───────────────────────────────────────────────────
 let _hmap=null;
+let _hmapData=null; // stash data for deferred mobile init
+let _hmapInited=false;
+
+function _initLeafletMap(){
+  const container=document.getElementById('heatmap-container');
+  if(!container||!_hmapData||_hmapInited)return;
+  // Don't init if container has zero size (hidden panel)
+  if(container.offsetWidth===0&&container.offsetHeight===0)return;
+
+  _hmapInited=true;
+  const theme=document.documentElement.getAttribute('data-theme')||'dark';
+  const tileUrl=theme==='light'?'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png':'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+  if(!_hmap){_hmap=L.map('heatmap-container',{center:[52,10],zoom:4,zoomControl:true,attributionControl:false,maxBounds:[[-85,-180],[85,180]],maxBoundsViscosity:1.0,minZoom:2});L.tileLayer(tileUrl,{maxZoom:18,noWrap:true}).addTo(_hmap);}
+  _populateHeatmap(_hmapData);
+}
+
+function _populateHeatmap(data){
+  if(!_hmap)return;
+  if(_hmap._mg)_hmap.removeLayer(_hmap._mg);
+  const mg=L.layerGroup();_hmap._mg=mg;
+  const bounds=[];
+  data.forEach(r=>{const lat=+r.centroid_lat,lon=+r.centroid_lon;if(!isFinite(lat)||!isFinite(lon))return;bounds.push([lat,lon]);const c=r.resolution_m==null?'#666':r.resolution_m<=1?'#4EA0D9':r.resolution_m<=10?'#9ABA6A':r.resolution_m<=30?'#E0A050':'#E25555';mg.addLayer(L.circleMarker([lat,lon],{radius:6,fillColor:c,color:c,weight:1,opacity:.8,fillOpacity:.5}).bindPopup(`<div style="font-family:DM Mono,monospace;font-size:11px;line-height:1.7;"><strong>${esc(r.project_name||'—')}</strong><br>${CF[r.country_code]||''} ${CN[r.country_code]||r.country_code||'??'}<br>${r.resolution_m!=null?r.resolution_m+'m':'Unknown'}<br><span style="opacity:.6">${ago(r.created_at)}</span></div>`));});
+  mg.addTo(_hmap);
+  if(bounds.length)_hmap.fitBounds(bounds,{padding:[20,20],maxZoom:6});
+  setTimeout(()=>_hmap.invalidateSize(),400);
+}
+
 async function loadHeatmap(){
   const body = document.getElementById('body-heatmap');
   body.innerHTML = `<div class="heatmap-wrap" id="heatmap-container"></div>
@@ -733,20 +763,11 @@ async function loadHeatmap(){
   const{data}=await _sb.from('generations').select('centroid_lat,centroid_lon,resolution_m,country_code,project_name,created_at').not('centroid_lat','is',null).not('centroid_lon','is',null).order('created_at',{ascending:false}).limit(5000);
   if(!data||!data.length){document.getElementById('heatmap-container').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:DM Mono,monospace;font-size:12px;color:var(--muted);">No location data yet</div>';return;}
   document.getElementById('badge-heatmap').textContent=data.length+' sites';
+  _hmapData=data;
 
-  const theme = document.documentElement.getAttribute('data-theme') || 'dark';
-  const tileUrl = theme === 'light'
-    ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-
-  if(!_hmap){_hmap=L.map('heatmap-container',{center:[52,10],zoom:4,zoomControl:true,attributionControl:false,maxBounds:[[-85,-180],[85,180]],maxBoundsViscosity:1.0,minZoom:2});L.tileLayer(tileUrl,{maxZoom:18,noWrap:true}).addTo(_hmap);}
-  if(_hmap._mg)_hmap.removeLayer(_hmap._mg);
-  const mg=L.layerGroup();_hmap._mg=mg;
-  const bounds=[];
-  data.forEach(r=>{const lat=+r.centroid_lat,lon=+r.centroid_lon;if(!isFinite(lat)||!isFinite(lon))return;bounds.push([lat,lon]);const c=r.resolution_m==null?'#666':r.resolution_m<=1?'#4EA0D9':r.resolution_m<=10?'#9ABA6A':r.resolution_m<=30?'#E0A050':'#E25555';mg.addLayer(L.circleMarker([lat,lon],{radius:6,fillColor:c,color:c,weight:1,opacity:.8,fillOpacity:.5}).bindPopup(`<div style="font-family:DM Mono,monospace;font-size:11px;line-height:1.7;"><strong>${esc(r.project_name||'—')}</strong><br>${CF[r.country_code]||''} ${CN[r.country_code]||r.country_code||'??'}<br>${r.resolution_m!=null?r.resolution_m+'m':'Unknown'}<br><span style="opacity:.6">${ago(r.created_at)}</span></div>`));});
-  mg.addTo(_hmap);
-  if(bounds.length)_hmap.fitBounds(bounds,{padding:[20,20],maxZoom:6});
-  setTimeout(()=>_hmap.invalidateSize(),400);
+  // On desktop, container is visible → init immediately
+  // On mobile, container is display:none → defer to tab switch
+  _initLeafletMap();
 }
 
 // ── Revenue ───────────────────────────────────────────────────
@@ -907,21 +928,22 @@ async function loadCountryBars(){
 
 // ── Live feed ─────────────────────────────────────────────────
 async function loadFeed(){
-  const{data:gens}=await _sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,created_at').order('created_at',{ascending:false}).limit(30);
+  const{data:gens}=await _sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,created_at').order('created_at',{ascending:false}).limit(30);
   const{data:signups}=await _sb.from('profiles').select('email,plan,created_at').order('created_at',{ascending:false}).limit(10);
   const items=[];
-  (gens||[]).forEach(r=>items.push({type:r.user_plan==='pro'||r.user_plan==='company'?'pro':'gen',time:r.created_at,main:`${CF[r.country_code]||'🌍'} ${esc(r.project_name||'—')}`,meta:`${r.user_plan||'free'} · ${r.point_count?r.point_count.toLocaleString()+'pts':''} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}`}));
-  (signups||[]).forEach(r=>items.push({type:r.plan!=='free'?'upgrade':'signup',time:r.created_at,main:`New ${r.plan!=='free'?r.plan+' subscriber':'signup'} · ${esc((r.email||'').split('@')[0])}`,meta:r.plan!=='free'?r.plan+' tier':'free tier'}));
+  (gens||[]).forEach(r=>items.push({type:r.user_plan==='pro'||r.user_plan==='company'?'pro':'gen',time:r.created_at,dl:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${esc(r.project_name||'—')}`,meta:`${r.user_plan||'free'} · ${r.point_count?r.point_count.toLocaleString()+'pts':''} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}`}));
+  (signups||[]).forEach(r=>items.push({type:r.plan!=='free'?'upgrade':'signup',time:r.created_at,dl:null,main:`New ${r.plan!=='free'?r.plan+' subscriber':'signup'} · ${esc((r.email||'').split('@')[0])}`,meta:r.plan!=='free'?r.plan+' tier':'free tier'}));
   items.sort((a,b)=>new Date(b.time)-new Date(a.time));
   const icons={gen:'◇',pro:'⬡',signup:'★',upgrade:'↑'};
   const typeClasses={gen:'feed-type-gen',pro:'feed-type-pro',signup:'feed-type-signup',upgrade:'feed-type-upgrade'};
+  const dlDot=i=>i.dl===null?'':(i.dl?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:5px;vertical-align:middle;" title="Exported"></span>':'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--border2);margin-left:5px;vertical-align:middle;" title="No export"></span>');
 
   document.getElementById('badge-feed').textContent='Live tail';
   document.getElementById('body-feed').innerHTML=`<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
     <input id="feed-delete-name" type="text" placeholder="Project name to purge…" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:'DM Mono',monospace;font-size:11px;outline:none;border-radius:3px;">
     <button onclick="purgeByName()" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red);background:none;border:1px solid var(--red);padding:5px 10px;cursor:pointer;letter-spacing:.04em;border-radius:3px;white-space:nowrap;transition:all .15s;" onmouseover="this.style.background='rgba(226,85,85,.15)'" onmouseout="this.style.background='none'">⌫ Purge</button>
   </div>
-  <div class="feed">${items.slice(0,20).map(i=>`<div class="feed-item"><div class="feed-type ${typeClasses[i.type]}">${icons[i.type]}</div><div class="feed-content"><div class="feed-main">${i.main}</div><div class="feed-meta">${i.meta}</div></div><div class="feed-time">${ago(i.time)}</div></div>`).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No activity yet</div>'}</div>`;
+  <div class="feed">${items.slice(0,20).map(i=>`<div class="feed-item"><div class="feed-type ${typeClasses[i.type]}">${icons[i.type]}</div><div class="feed-content"><div class="feed-main">${i.main}${dlDot(i)}</div><div class="feed-meta">${i.meta}</div></div><div class="feed-time">${ago(i.time)}</div></div>`).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No activity yet</div>'}</div>`;
 }
 async function purgeByName(){
   const inp=document.getElementById('feed-delete-name');
@@ -1170,8 +1192,11 @@ function switchMobTab(id) {
   _mobActiveTab = id;
   document.querySelectorAll('.mob-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
   document.querySelectorAll('.mob-panel').forEach(p => p.classList.toggle('active', p.id === 'mob-panel-' + id));
-  // Leaflet needs a size invalidation when its panel becomes visible
-  if (id === 'heatmap' && _hmap) setTimeout(() => _hmap.invalidateSize(), 80);
+  // Leaflet needs init + size invalidation when its panel becomes visible
+  if (id === 'heatmap') {
+    if (!_hmapInited && _hmapData) setTimeout(() => _initLeafletMap(), 50);
+    else if (_hmap) setTimeout(() => _hmap.invalidateSize(), 80);
+  }
   // Scroll active tab into view
   const activeBtn = document.querySelector(`.mob-tab[data-tab="${id}"]`);
   if (activeBtn) activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
