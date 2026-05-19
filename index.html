@@ -6776,13 +6776,13 @@ function updateExportFormatUI() {
 
   // Hide IFC/DXF options for free users
   toggle.querySelectorAll('.tg__option').forEach(opt => {
-    if (opt.dataset.value === 'ifc' || opt.dataset.value === 'dxf') {
+    if (opt.dataset.value === 'ifc') {
       opt.style.display = pro ? '' : 'none';
     }
   });
 
   // If not pro and format was ifc/dxf, reset to csv
-  if (!pro && _exportFormat !== 'csv') {
+  if (!pro && _exportFormat === 'ifc') {
     _exportFormat = 'csv';
     toggle.querySelectorAll('.tg__option').forEach(o =>
       o.setAttribute('aria-pressed', o.dataset.value === 'csv' ? 'true' : 'false')
@@ -6815,7 +6815,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fmt = btn.dataset.value;
 
     // Pro gate for IFC/DXF
-    if ((fmt === 'ifc' || fmt === 'dxf') && !isPro()) {
+    if (fmt === 'ifc' && !isPro()) {
       document.getElementById('pro')?.scrollIntoView({ behavior: 'smooth' });
       // Reset toggle back to csv
       toggle.querySelectorAll('.tg__option').forEach(o =>
@@ -7035,7 +7035,6 @@ DATA;
 async function downloadIFC() {
   const pts = window._cleanOutMetric;
   if (!pts || !pts.length) return;
-  if (!isPro()) { document.getElementById('pro')?.scrollIntoView({ behavior: 'smooth' }); return; }
 
   const btn = document.getElementById('download-btn');
   if (btn) { btn.textContent = '⏳ Building mesh…'; btn.disabled = true; }
@@ -7189,7 +7188,6 @@ function generateContoursDXF(pts, projectNameStr) {
 function downloadDXF() {
   const pts = window._cleanOutMetric;
   if (!pts || !pts.length) return;
-  if (!isPro()) { document.getElementById('pro')?.scrollIntoView({ behavior: 'smooth' }); return; }
 
   const btn = document.getElementById('download-btn');
   if (btn) { btn.textContent = '⏳ Tracing contours…'; btn.disabled = true; }
