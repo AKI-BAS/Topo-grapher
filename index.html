@@ -7269,7 +7269,8 @@ async function logDownloadFormat(fmt) {
     if (data && data[0]) {
       await _sb.from('generations')
         .update({ file_name: fileName })
-        .eq('id', data[0].id);
+        .eq('id', data[0].id)
+        .select();
     }
   } catch(e) {}
 }
