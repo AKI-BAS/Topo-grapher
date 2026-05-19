@@ -323,7 +323,6 @@ const WIN_DEFS = [
   { id: 'users',     title: 'Users',          icon: '◉', w: 340, h: 280 },
   { id: 'countries', title: 'Countries',      icon: '⚑', w: 340, h: 300 },
   { id: 'feed',      title: 'Live Feed',      icon: '◇', w: 400, h: 420 },
-  { id: 'signups',   title: 'Signups',        icon: '★', w: 400, h: 380 },
 ];
 
 let _zIndex = 10;
@@ -350,8 +349,8 @@ function getDefaultLayout() {
     [{ id:'kpis', hFrac: 0.30 }, { id:'trends', hFrac: 0.70 }],
     // col 1: Heatmap (tall) + Funnel
     [{ id:'heatmap', hFrac: 0.55 }, { id:'funnel', hFrac: 0.45 }],
-    // col 2: Revenue + LiDAR gaps + Users + Countries + Feed + Signups
-    [{ id:'revenue', hFrac: 0.24 }, { id:'gaps', hFrac: 0.18 }, { id:'users', hFrac: 0.15 }, { id:'countries', hFrac: 0.13 }, { id:'feed', hFrac: 0.15 }, { id:'signups', hFrac: 0.15 }],
+    // col 2: Revenue + LiDAR gaps + Users + Countries + Feed
+    [{ id:'revenue', hFrac: 0.28 }, { id:'gaps', hFrac: 0.22 }, { id:'users', hFrac: 0.18 }, { id:'countries', hFrac: 0.16 }, { id:'feed', hFrac: 0.16 }],
   ];
 
   colMap.forEach((entries, col) => {
@@ -832,32 +831,6 @@ async function loadFeed(){
   document.getElementById('body-feed').innerHTML=`<div class="feed">${items.slice(0,20).map(i=>`<div class="feed-item"><div class="feed-type ${typeClasses[i.type]}">${icons[i.type]}</div><div class="feed-content"><div class="feed-main">${i.main}</div><div class="feed-meta">${i.meta}</div></div><div class="feed-time">${ago(i.time)}</div></div>`).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No activity yet</div>'}</div>`;
 }
 
-// ── Signups list ──────────────────────────────────────────────
-async function loadSignups(){
-  const{data}=await _sb.from('profiles').select('email,plan,created_at,is_company_admin').order('created_at',{ascending:false}).limit(50);
-  if(!data||!data.length){document.getElementById('body-signups').innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">No signups yet</div>';return;}
-  document.getElementById('badge-signups').textContent=data.length+' latest';
-  const planColors={free:'var(--muted)',pro:'var(--blue)',company:'var(--purple)'};
-  const planBg={free:'var(--surface2)',pro:'var(--blue-dk)',company:'rgba(139,122,198,.12)'};
-  document.getElementById('body-signups').innerHTML=`<div style="display:flex;flex-direction:column;gap:0;max-height:100%;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;">
-    ${data.map(u=>{
-      const email=esc(u.email||'—');
-      const plan=u.plan||'free';
-      const isAdmin=u.is_company_admin?'<span style="font-family:DM Mono,monospace;font-size:8px;color:var(--amber);margin-left:4px;">ADMIN</span>':'';
-      return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(30,36,24,.5);">
-        <div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;border:1px solid rgba(154,186,106,.3);color:var(--accent);background:var(--accent-dk);border-radius:4px;flex-shrink:0;">★</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${email}${isAdmin}</div>
-          <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);margin-top:1px;">
-            <span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;background:${planBg[plan]||planBg.free};color:${planColors[plan]||planColors.free};border:1px solid ${planColors[plan]||planColors.free}30;margin-right:6px;">${plan.toUpperCase()}</span>
-            ${ago(u.created_at)}
-          </div>
-        </div>
-      </div>`;
-    }).join('')}
-  </div>`;
-}
-
 // ══════════════════════════════════════════════════════════════
 // AUTH & INIT
 // ══════════════════════════════════════════════════════════════
@@ -893,7 +866,7 @@ async function doSignOut(){await _sb.auth.signOut();location.reload();}
 function updateClock(){document.getElementById('clock').textContent=new Date().toUTCString().slice(17,25)+' UTC';}
 setInterval(updateClock,1000);
 
-const LAYOUT_VERSION = 3; // Bump to invalidate old localStorage layouts
+const LAYOUT_VERSION = 2; // Bump to invalidate old localStorage layouts
 
 function initWindows() {
   // Check layout version — invalidate old formats
@@ -925,7 +898,8 @@ window.addEventListener('resize', () => {
 
 async function loadAll(){
   updateClock();
-  await Promise.all([loadKPIs(),loadHeatmap(),loadRevenue(),loadTrends(),loadFunnel(),loadGapTable(),loadDonut(),loadCountryBars(),loadFeed(),loadSignups()]);
+  await Promise.all([loadKPIs(),loadHeatmap(),loadRevenue(),loadTrends(),loadFunnel(),loadGapTable(),loadDonut(),loadCountryBars(),loadFeed()]);
+  setInterval(loadFeed, 30000);
 }
 
 checkSession();
