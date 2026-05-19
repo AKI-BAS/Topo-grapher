@@ -5898,19 +5898,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── Log generation to Supabase ─────────────────────────────────────────────
 async function logGeneration(projectName, pointCount, spacing, areaM2, elevSource, csvRaw, polygonJson) {
-  if (!_currentUser) return;
   const _isPro = _currentProfile?.plan === 'pro' || _currentProfile?.plan === 'company';
   const safe = (projectName || 'site').replace(/[^a-zA-Z0-9_\-]/g, '_');
-
   let centroidLat = null, centroidLon = null, countryCode = null;
   if (polygonLatLngs && polygonLatLngs.length > 0) {
     centroidLat = polygonLatLngs.reduce((s, p) => s + p.lat, 0) / polygonLatLngs.length;
     centroidLon = polygonLatLngs.reduce((s, p) => s + p.lng, 0) / polygonLatLngs.length;
     countryCode = detectCountry(centroidLat, centroidLon);
   }
-
   await _sb.from('generations').insert({
-    user_id: _currentUser.id,
+    user_id: _currentUser ? _currentUser.id : null,
     project_name: projectName,
     point_count: pointCount,
     spacing: spacing,
@@ -5925,7 +5922,7 @@ async function logGeneration(projectName, pointCount, spacing, areaM2, elevSourc
     centroid_lon: centroidLon ? parseFloat(centroidLon.toFixed(6)) : null,
     area_km2: areaM2 ? parseFloat((areaM2 / 1000000).toFixed(4)) : null,
     addon_charged_pence: window._lastAddonChargePence || 0,
-    user_plan: _currentProfile?.plan || 'free',
+    user_plan: _currentUser ? (_currentProfile?.plan || 'free') : 'anon',
   });
 }
 
