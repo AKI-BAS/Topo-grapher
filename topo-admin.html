@@ -253,7 +253,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <span class="topbar-user" id="admin-email"></span>
       <button class="layout-btn" onclick="savePreferredLayout()" title="Save current window positions as your preferred layout">💾 Save layout</button>
       <button class="layout-btn" onclick="resetLayout()" title="Reset windows to your saved layout (or default if none saved)">⊞ Reset layout</button>
-      <button class="layout-btn" id="clear-layout-btn" onclick="clearPreferredLayout()" title="Clear saved layout and revert to factory default" style="display:none;">✕ Clear saved</button>
       <div class="theme-toggle" id="theme-toggle">
         <button class="theme-toggle-opt active" data-theme="dark" onclick="setAdminTheme('dark')">☾</button>
         <button class="theme-toggle-opt" data-theme="light" onclick="setAdminTheme('light')">☀</button>
@@ -981,9 +980,6 @@ function initWindows() {
   // Build dock
   buildDock();
   saveLayout();
-  // Show "Clear saved" button if a preferred layout exists
-  const clrBtn = document.getElementById('clear-layout-btn');
-  if (clrBtn && localStorage.getItem('topo-admin-preferred-layout')) clrBtn.style.display = '';
 }
 
 // Re-tile on browser window resize (debounced)
