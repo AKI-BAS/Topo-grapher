@@ -5914,7 +5914,7 @@ async function logGeneration(projectName, pointCount, spacing, areaM2, elevSourc
     area_m2: areaM2,
     elevation_source: elevSource,
     csv_data: _isPro ? (csvRaw || null) : null,
-    file_name: _isPro ? `${safe}_toposolid.csv` : null,
+    file_name: `${safe}_toposolid.csv`,
     polygon_geojson: polygonJson || null,
     country_code: countryCode,
     resolution_m: parseResolution(elevSource),
@@ -6824,6 +6824,8 @@ function handleDownload() {
   if (_exportFormat === 'ifc') downloadIFC();
   else if (_exportFormat === 'dxf') downloadDXF();
   else downloadCSV();
+  // Update the generation row with the actual export format
+  logDownloadFormat(_exportFormat);
 }
 
 
@@ -7251,6 +7253,25 @@ function downloadDXF() {
   } finally {
     if (btn) { btn.textContent = '↓ Download DXF'; btn.disabled = false; }
   }
+}
+async function logDownloadFormat(fmt) {
+  if (!_currentUser) return;
+  const safe = (projectName || 'site').replace(/[^a-zA-Z0-9_\-]/g, '_');
+  const ext = fmt === 'ifc' ? '.ifc' : fmt === 'dxf' ? '.dxf' : '.csv';
+  const fileName = safe + '_toposolid' + ext;
+  // Update the most recent generation row for this user
+  try {
+    const { data } = await _sb.from('generations')
+      .select('id')
+      .eq('user_id', _currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (data && data[0]) {
+      await _sb.from('generations')
+        .update({ file_name: fileName })
+        .eq('id', data[0].id);
+    }
+  } catch(e) {}
 }
 </script>
 </html>
