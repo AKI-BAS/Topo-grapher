@@ -859,32 +859,73 @@ async function loadSignups(){
   </div>`;
 }
 
-// ── Export formats breakdown ─────────────────────────────────
+// ── Downloads / Export formats breakdown ─────────────────────
 async function loadExportFormats(){
-  const{data}=await _sb.from('generations').select('file_name').not('file_name','is',null).limit(10000);
-  if(!data||!data.length){document.getElementById('body-formats').innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">No export data yet</div>';return;}
+  const el=document.getElementById('body-formats');
+  const badge=document.getElementById('badge-formats');
+
+  // Try dedicated downloads table first, fall back to file_name on generations
+  let rows=[], source='';
+  const{data:dlRows,error:dlErr}=await _sb.from('downloads').select('file_format,created_at').limit(10000);
+  if(!dlErr&&dlRows&&dlRows.length){
+    rows=dlRows.map(r=>({fmt:(r.file_format||'').toLowerCase().replace(/^\./,''),date:r.created_at}));
+    source='downloads';
+  } else {
+    // Fall back: infer format from file_name on generations
+    const{data:genRows}=await _sb.from('generations').select('file_name,created_at').not('file_name','is',null).limit(10000);
+    if(genRows&&genRows.length){
+      rows=genRows.map(r=>{
+        const fn=(r.file_name||'').toLowerCase();
+        const fmt=fn.endsWith('.ifc')?'ifc':fn.endsWith('.dxf')?'dxf':fn.endsWith('.csv')?'csv':'other';
+        return{fmt,date:r.created_at};
+      });
+      source='generations.file_name';
+    }
+  }
+
+  if(!rows.length){
+    el.innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;line-height:1.8;">No download data found.<br><span style="opacity:.6;">Add a <code>downloads</code> table or populate <code>file_name</code> on generations.</span></div>';
+    badge.textContent='0 downloads';
+    return;
+  }
+
+  const total=rows.length;
+  badge.textContent=total.toLocaleString()+' downloads';
+
+  // Format counts
   const fc={csv:0,ifc:0,dxf:0,other:0};
-  data.forEach(r=>{
-    const fn=(r.file_name||'').toLowerCase();
-    if(fn.endsWith('.ifc'))fc.ifc++;
-    else if(fn.endsWith('.dxf'))fc.dxf++;
-    else if(fn.endsWith('.csv'))fc.csv++;
-    else fc.other++;
-  });
-  const total=data.length;
-  document.getElementById('badge-formats').textContent=total+' exports';
+  rows.forEach(r=>{const k=fc[r.fmt]!==undefined?r.fmt:'other';fc[k]++;});
   const mx=Math.max(fc.csv,fc.ifc,fc.dxf,fc.other,1);
-  document.getElementById('body-formats').innerHTML=`<div class="bar-chart-h">
-    ${barRow('CSV',fc.csv,mx,'bar-fill-accent')}
-    ${barRow('IFC',fc.ifc,mx,'bar-fill-blue')}
-    ${barRow('DXF',fc.dxf,mx,'bar-fill-amber')}
-    ${fc.other?barRow('Other',fc.other,mx,'bar-fill-red'):''}
-  </div>
-  <div style="margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
-    <div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:2px;">CSV</div><div style="font-size:16px;font-weight:500;color:var(--accent);">${total>0?Math.round(fc.csv/total*100):0}%</div></div>
-    <div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:2px;">IFC</div><div style="font-size:16px;font-weight:500;color:var(--blue);">${total>0?Math.round(fc.ifc/total*100):0}%</div></div>
-    <div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:2px;">DXF</div><div style="font-size:16px;font-weight:500;color:var(--amber);">${total>0?Math.round(fc.dxf/total*100):0}%</div></div>
-  </div>`;
+
+  // 30-day trend bucketed by day
+  const ago30=new Date(Date.now()-30*864e5).toISOString();
+  const recent=rows.filter(r=>r.date>=ago30);
+  const dc={};recent.forEach(r=>{const d=(r.date||'').slice(0,10);dc[d]=(dc[d]||0)+1;});
+  const days=[];for(let i=29;i>=0;i--)days.push(new Date(Date.now()-i*864e5).toISOString().slice(0,10));
+  const trendVals=days.map(d=>dc[d]||0);
+  const trendMax=Math.max(...trendVals,1);
+
+  // 7-day count
+  const wk=new Date(Date.now()-7*864e5).toISOString();
+  const weekDl=rows.filter(r=>r.date>=wk).length;
+
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;text-align:center;">
+      <div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:2px;">TOTAL</div><div style="font-size:18px;font-weight:500;color:var(--accent);">${total.toLocaleString()}</div></div>
+      <div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:2px;">THIS WEEK</div><div style="font-size:18px;font-weight:500;color:var(--blue);">${weekDl}</div></div>
+      <div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:2px;">DL RATE</div><div style="font-size:18px;font-weight:500;color:var(--text);">${total>0?Math.round(weekDl/total*100):0}%</div></div>
+    </div>
+    <div class="bar-chart-h" style="margin-bottom:12px;">
+      ${barRow('CSV',fc.csv,mx,'bar-fill-accent')}
+      ${barRow('IFC',fc.ifc,mx,'bar-fill-blue')}
+      ${barRow('DXF',fc.dxf,mx,'bar-fill-amber')}
+      ${fc.other?barRow('Other',fc.other,mx,'bar-fill-red'):''}
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;">30-day trend</div>
+    <div class="chart-area" id="dl-trend-chart" style="height:80px;"></div>
+    <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--border2);margin-top:6px;text-align:right;">source: ${source}</div>
+  `;
+  requestAnimationFrame(()=>buildSVG('dl-trend-chart',days.map(d=>d.slice(5)),trendVals,'var(--blue)'));
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -922,7 +963,7 @@ async function doSignOut(){await _sb.auth.signOut();location.reload();}
 function updateClock(){document.getElementById('clock').textContent=new Date().toUTCString().slice(17,25)+' UTC';}
 setInterval(updateClock,1000);
 
-const LAYOUT_VERSION = 4; // Bump to invalidate old localStorage layouts
+const LAYOUT_VERSION = 5; // Bump to invalidate old localStorage layouts
 
 function initWindows() {
   // Check layout version — invalidate old formats
