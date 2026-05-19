@@ -6804,14 +6804,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const fmt = btn.dataset.value;
 
-      // Reset toggle back to csv
-      toggle.querySelectorAll('.tg__option').forEach(o =>
-        o.setAttribute('aria-pressed', o.dataset.value === 'csv' ? 'true' : 'false')
-      );
-      if (typeof layoutToggle === 'function') layoutToggle(toggle);
-      return;
-    }
-
     _exportFormat = fmt;
 track('export_format_changed', { format: fmt });
     updateDownloadBtnLabel();
