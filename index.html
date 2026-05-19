@@ -6776,18 +6776,8 @@ function updateExportFormatUI() {
 
   // Hide IFC/DXF options for free users
   toggle.querySelectorAll('.tg__option').forEach(opt => {
-    if (opt.dataset.value === 'ifc') {
-      opt.style.display = pro ? '' : 'none';
-    }
   });
 
-  // If not pro and format was ifc/dxf, reset to csv
-  if (!pro && _exportFormat === 'ifc') {
-    _exportFormat = 'csv';
-    toggle.querySelectorAll('.tg__option').forEach(o =>
-      o.setAttribute('aria-pressed', o.dataset.value === 'csv' ? 'true' : 'false')
-    );
-  }
 
   // Re-layout thumb after showing/hiding options
   if (typeof layoutToggle === 'function') layoutToggle(toggle);
@@ -6814,9 +6804,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const fmt = btn.dataset.value;
 
-    // Pro gate for IFC/DXF
-    if (fmt === 'ifc' && !isPro()) {
-      document.getElementById('pro')?.scrollIntoView({ behavior: 'smooth' });
       // Reset toggle back to csv
       toggle.querySelectorAll('.tg__option').forEach(o =>
         o.setAttribute('aria-pressed', o.dataset.value === 'csv' ? 'true' : 'false')
@@ -7067,7 +7054,10 @@ async function downloadIFC() {
 }
 
 
-// ── DXF Contour Export ──────────────────────────────────────────────────
+// ── DXF Contour Export — Fixed for universal compatibility ──────────────
+// Uses AC1009 (DXF R12) format — no entity handles needed, supported by
+// AutoCAD, Revit, Rhino, ArchiCAD, SketchUp, QGIS, and all DXF viewers.
+// Previous version declared AC1027 without handles → rejected by parsers.
 function generateContoursDXF(pts, projectNameStr) {
   const xVals = pts.map(p => p.x), yVals = pts.map(p => p.y);
   const minX = Math.min(...xVals), maxX = Math.max(...xVals);
@@ -7152,36 +7142,91 @@ function generateContoursDXF(pts, projectNameStr) {
     return segs;
   }
 
-  // Build DXF
-  let dxf = '';
-  const w = s => { dxf += s + '\n'; };
-  w('0'); w('SECTION'); w('2'); w('HEADER');
-  w('9'); w('$ACADVER'); w('1'); w('AC1027');
-  w('9'); w('$INSUNITS'); w('70'); w('6');
-  w('0'); w('ENDSEC');
-  w('0'); w('SECTION'); w('2'); w('TABLES');
-  w('0'); w('TABLE'); w('2'); w('LAYER'); w('70'); w(String(levels.length + 2));
-  w('0'); w('LAYER'); w('2'); w('0'); w('70'); w('0'); w('62'); w('7'); w('6'); w('Continuous');
+  // ── Build DXF R12 (AC1009) ────────────────────────────────────
   const majorMod = 5;
-  levels.forEach((level, i) => {
+  let dxf = '';
+  const w = s => { dxf += s + '\r\n'; };
+
+  // HEADER
+  w('  0'); w('SECTION');
+  w('  2'); w('HEADER');
+  w('  9'); w('$ACADVER');
+  w('  1'); w('AC1009');
+  w('  9'); w('$INSUNITS');
+  w(' 70'); w('     6');
+  w('  9'); w('$EXTMIN');
+  w(' 10'); w(minX.toFixed(4));
+  w(' 20'); w(minY.toFixed(4));
+  w(' 30'); w(minZ.toFixed(4));
+  w('  9'); w('$EXTMAX');
+  w(' 10'); w(maxX.toFixed(4));
+  w(' 20'); w(maxY.toFixed(4));
+  w(' 30'); w(maxZ.toFixed(4));
+  w('  0'); w('ENDSEC');
+
+  // TABLES
+  w('  0'); w('SECTION');
+  w('  2'); w('TABLES');
+
+  // LTYPE table — Continuous linetype definition
+  w('  0'); w('TABLE');
+  w('  2'); w('LTYPE');
+  w(' 70'); w('     1');
+  w('  0'); w('LTYPE');
+  w('  2'); w('CONTINUOUS');
+  w(' 70'); w('     0');
+  w('  3'); w('Solid line');
+  w(' 72'); w('    65');
+  w(' 73'); w('     0');
+  w(' 40'); w('0.0');
+  w('  0'); w('ENDTAB');
+
+  // LAYER table
+  w('  0'); w('TABLE');
+  w('  2'); w('LAYER');
+  w(' 70'); w(String(levels.length + 1).padStart(6));
+  // Default layer
+  w('  0'); w('LAYER');
+  w('  2'); w('0');
+  w(' 70'); w('     0');
+  w(' 62'); w('     7');
+  w('  6'); w('CONTINUOUS');
+  // Contour layers — major=green(3), minor=dark grey(8)
+  levels.forEach(level => {
     const isMajor = Math.round(level / interval) % majorMod === 0;
-    const layerName = `CONTOUR_${level.toFixed(2).replace('.', '_').replace('-', 'N')}`;
-    w('0'); w('LAYER'); w('2'); w(layerName); w('70'); w('0');
-    w('62'); w(isMajor ? '3' : '80'); w('6'); w('Continuous');
+    const layerName = 'CONTOUR_' + level.toFixed(2).replace('.', '_').replace('-', 'N');
+    w('  0'); w('LAYER');
+    w('  2'); w(layerName);
+    w(' 70'); w('     0');
+    w(' 62'); w(isMajor ? '     3' : '     8');
+    w('  6'); w('CONTINUOUS');
   });
-  w('0'); w('ENDTAB'); w('0'); w('ENDSEC');
-  w('0'); w('SECTION'); w('2'); w('ENTITIES');
+  w('  0'); w('ENDTAB');
+  w('  0'); w('ENDSEC');
+
+  // ENTITIES
+  w('  0'); w('SECTION');
+  w('  2'); w('ENTITIES');
   levels.forEach(level => {
     const segs = marchDXF(level);
     if (!segs.length) return;
-    const layerName = `CONTOUR_${level.toFixed(2).replace('.', '_').replace('-', 'N')}`;
+    const layerName = 'CONTOUR_' + level.toFixed(2).replace('.', '_').replace('-', 'N');
     segs.forEach(([p1, p2]) => {
-      w('0'); w('LINE'); w('8'); w(layerName);
-      w('10'); w(p1[0].toFixed(4)); w('20'); w(p1[1].toFixed(4)); w('30'); w(p1[2].toFixed(4));
-      w('11'); w(p2[0].toFixed(4)); w('21'); w(p2[1].toFixed(4)); w('31'); w(p2[2].toFixed(4));
+      w('  0'); w('LINE');
+      w('  8'); w(layerName);
+      w(' 10'); w(p1[0].toFixed(4));
+      w(' 20'); w(p1[1].toFixed(4));
+      w(' 30'); w(p1[2].toFixed(4));
+      w(' 11'); w(p2[0].toFixed(4));
+      w(' 21'); w(p2[1].toFixed(4));
+      w(' 31'); w(p2[2].toFixed(4));
     });
   });
-  w('0'); w('ENDSEC'); w('0'); w('EOF');
+  w('  0'); w('ENDSEC');
+
+  // EOF
+  w('  0'); w('EOF');
+
   return { dxf, levels, interval };
 }
 
