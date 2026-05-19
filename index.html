@@ -2784,13 +2784,12 @@ function detectCountry(lat, lon) {
 function parseResolution(source) {
   if (!source) return null;
   const s = source.toLowerCase();
-  // Try explicit resolution in the string (e.g. "0.4m", "10m", "30m")
   const match = s.match(/([\d.]+)\s*m/);
   if (match) return parseFloat(match[1]);
   // Fallback heuristics
   if (s.includes('dhm') || s.includes('denmark')) return 0.4;
   if (s.includes('gpxz')) return 1;
-  if (s.includes('3dep') || s.includes('usgs')) return 1;  // best case
+  if (s.includes('3dep') || s.includes('usgs')) return 1;
   if (s.includes('kartverket')) return 1;
   if (s.includes('arcticdem')) return 10;
   if (s.includes('eu_dtm') || s.includes('eu-dtm')) return 30;
@@ -4081,6 +4080,10 @@ function updateElevationSourceBanner(source, isPro) {
     tier = 'lidar'; resText = '1m resolution · IGN RGE ALTI France'; sourceLabel = 'LiDAR 1m';
   } else if(s.includes('swissalti') || s.includes('ahn3') || s.includes('ahn4')) {
     tier = 'lidar'; resText = '0.5–1m resolution · National LiDAR'; sourceLabel = 'LiDAR 1m';
+ } else if(s.includes('germany') && (s.includes('1m') || s.includes('dgm1') || s.includes('dgm'))) {
+    tier = 'lidar'; resText = '1m resolution · German state LiDAR (DGM1)'; sourceLabel = 'LiDAR 1m';
+  } else if(s.includes('ea-dtm1') || s.includes('ea_dtm1') || (s.includes('england') && s.includes('1m'))) {
+    tier = 'lidar'; resText = '1m resolution · Environment Agency DTM England'; sourceLabel = 'LiDAR 1m';
 
   // ── Tier: High (10m self-hosted / stereo) ───────────────────────────
   } else if(s.includes('arcticdem')) {
@@ -4088,8 +4091,8 @@ function updateElevationSourceBanner(source, isPro) {
     // for Iceland and we self-host it on R2 — worth foregrounding.
     tier = 'high'; resText = '10m resolution · ArcticDEM (best available for Iceland)'; sourceLabel = '10m DEM';
 
-  // ── Tier: Mid (30m — EU_DTM, COP30, SRTM) ──────────────────────────
-  } else if(s.includes('eu_dtm')) {
+  // ── Tier: Mid (30m — EU_DTM, COP30, SRTM) ────────────────────────── 
+} else if(s.includes('eu_dtm')) {
     tier = 'mid'; resText = '30m resolution · Continental Europe DTM'; sourceLabel = '30m DEM';
     upgradeMsg = !isPro ? 'Pro users get national LiDAR (0.4–1m) where available — up to 75× more accurate for flat terrain.' : '';
   } else if(s.includes('cop30') || s.includes('copernicus')) {
