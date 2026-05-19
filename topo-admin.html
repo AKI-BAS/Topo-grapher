@@ -220,6 +220,61 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 /* ── Layout preset buttons ─────────────────────────────────── */
 .layout-btn{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:none;border:1px solid var(--border);padding:4px 10px;cursor:pointer;letter-spacing:.04em;transition:all .15s;border-radius:6px;}
 .layout-btn:hover{color:var(--text-mid);border-color:var(--border2);}
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE LAYOUT  (≤768 px)
+   ══════════════════════════════════════════════════════════════ */
+@media(max-width:768px){
+  /* Kill desktop chrome */
+  body{overflow:hidden auto;}
+  .canvas,.dock{display:none!important;}
+  /* Hide bulky topbar items */
+  .topbar{padding:0 12px;gap:8px;}
+  .topbar-slash,.topbar-page,.topbar-time,.live-badge,
+  .layout-btn{display:none!important;}
+  .topbar-user{font-size:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .logout-btn{padding:4px 8px;font-size:9px;}
+
+  /* ── Mobile shell ── */
+  .mobile-shell{display:flex;flex-direction:column;position:fixed;top:48px;left:0;right:0;bottom:0;}
+
+  /* ── Tab bar ── */
+  .mob-tabs{display:flex;overflow-x:auto;overflow-y:hidden;gap:0;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .mob-tabs::-webkit-scrollbar{display:none;}
+  .mob-tab{flex-shrink:0;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:0 14px;height:38px;display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;letter-spacing:.04em;white-space:nowrap;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;}
+  .mob-tab .tab-icon{font-size:12px;}
+  .mob-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+  /* ── Panel container ── */
+  .mob-panels{flex:1;overflow:hidden;position:relative;}
+  .mob-panel{position:absolute;inset:0;overflow-y:auto;padding:14px;display:none;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;}
+  .mob-panel.active{display:block;}
+  .mob-panel::-webkit-scrollbar{width:3px;}
+  .mob-panel::-webkit-scrollbar-thumb{background:var(--border2);}
+
+  /* ── Panel header ── */
+  .mob-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  .mob-panel-title{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
+  .mob-panel-badge{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);padding:2px 7px;border-radius:4px;}
+
+  /* ── KPI grid → 2-col on mobile ── */
+  .kpi-grid{grid-template-columns:repeat(2,1fr)!important;}
+  .kpi-value{font-size:18px!important;}
+
+  /* ── Donut: stack on narrow ── */
+  .donut-wrap{flex-direction:column!important;align-items:center!important;gap:16px!important;}
+
+  /* ── Heatmap: fill panel ── */
+  .heatmap-wrap{height:260px!important;}
+
+  /* ── Login box full-width ── */
+  .login-box{width:calc(100vw - 32px);padding:28px 20px;}
+}
+
+/* ── Mobile shell hidden on desktop ── */
+@media(min-width:769px){
+  .mobile-shell{display:none!important;}
+}
 </style>
 </head>
 <body>
@@ -266,6 +321,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
   <!-- Dock -->
   <div class="dock" id="dock"></div>
+
+  <!-- ═══ MOBILE SHELL ═══ -->
+  <div class="mobile-shell" id="mobile-shell" style="display:none;">
+    <div class="mob-tabs" id="mob-tabs"></div>
+    <div class="mob-panels" id="mob-panels"></div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -326,6 +387,7 @@ const WIN_DEFS = [
   { id: 'feed',      title: 'Live Feed',      icon: '◇', w: 400, h: 420 },
   { id: 'signups',   title: 'Signups',        icon: '★', w: 400, h: 380 },
   { id: 'formats',   title: 'Export Formats',  icon: '⤓', w: 360, h: 300 },
+  { id: 'dlrate',    title: 'Download Rate',   icon: '↓', w: 360, h: 300 },
 ];
 
 let _zIndex = 10;
@@ -352,8 +414,8 @@ function getDefaultLayout() {
     [{ id:'kpis', hFrac: 0.30 }, { id:'trends', hFrac: 0.70 }],
     // col 1: Heatmap (tall) + Funnel
     [{ id:'heatmap', hFrac: 0.55 }, { id:'funnel', hFrac: 0.45 }],
-    // col 2: Revenue + LiDAR gaps + Users + Countries + Feed + Signups + Formats
-    [{ id:'revenue', hFrac: 0.20 }, { id:'gaps', hFrac: 0.16 }, { id:'users', hFrac: 0.13 }, { id:'countries', hFrac: 0.11 }, { id:'feed', hFrac: 0.14 }, { id:'signups', hFrac: 0.13 }, { id:'formats', hFrac: 0.13 }],
+    // col 2: Revenue + LiDAR gaps + Users + Countries + Feed + Signups + Formats + DL Rate
+    [{ id:'revenue', hFrac: 0.18 }, { id:'gaps', hFrac: 0.14 }, { id:'users', hFrac: 0.12 }, { id:'countries', hFrac: 0.10 }, { id:'feed', hFrac: 0.13 }, { id:'signups', hFrac: 0.12 }, { id:'formats', hFrac: 0.11 }, { id:'dlrate', hFrac: 0.10 }],
   ];
 
   colMap.forEach((entries, col) => {
@@ -926,6 +988,46 @@ async function loadExportFormats(){
   </div>`;
 }
 
+// ── Download rate (gen → export conversion) ──────────────────
+async function loadDownloadRate(){
+  const{count:totalGens}=await _sb.from('generations').select('*',{count:'exact',head:true});
+  const{count:withFile}=await _sb.from('generations').select('*',{count:'exact',head:true}).not('file_name','is',null);
+  const total=totalGens||0,dl=withFile||0;
+  const rate=total>0?Math.round(dl/total*100):0;
+  const noFile=total-dl;
+
+  // Weekly breakdown
+  const weekAgo=new Date(Date.now()-7*864e5).toISOString();
+  const{count:weekGens}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',weekAgo);
+  const{count:weekDl}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',weekAgo).not('file_name','is',null);
+  const weekRate=(weekGens||0)>0?Math.round((weekDl||0)/(weekGens||1)*100):0;
+
+  // By plan
+  const{data:planData}=await _sb.from('generations').select('user_plan,file_name').limit(10000);
+  const plans={free:{gen:0,dl:0},pro:{gen:0,dl:0},company:{gen:0,dl:0}};
+  (planData||[]).forEach(r=>{const p=r.user_plan||'free';if(!plans[p])plans[p]={gen:0,dl:0};plans[p].gen++;if(r.file_name)plans[p].dl++;});
+
+  const planColors={free:'var(--muted)',pro:'var(--blue)',company:'var(--purple)'};
+
+  document.getElementById('badge-dlrate').textContent=rate+'% overall';
+  document.getElementById('body-dlrate').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+      <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">OVERALL</div><div style="font-size:22px;font-weight:500;color:var(--accent);">${rate}%</div></div>
+      <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">THIS WEEK</div><div style="font-size:22px;font-weight:500;color:var(--blue);">${weekRate}%</div></div>
+      <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">NO EXPORT</div><div style="font-size:22px;font-weight:500;color:var(--amber);">${noFile}</div></div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:4px;"><span>EXPORTED</span><span>${dl.toLocaleString()} / ${total.toLocaleString()}</span></div>
+      <div style="height:8px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:${rate}%;background:linear-gradient(90deg,var(--green),var(--accent));transition:width .6s cubic-bezier(.16,1,.3,1);"></div>
+      </div>
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">By plan</div>
+    <div class="bar-chart-h">
+      ${['free','pro','company'].map(p=>{const d=plans[p];const r=d.gen>0?Math.round(d.dl/d.gen*100):0;return barRow(p.charAt(0).toUpperCase()+p.slice(1)+' '+r+'%',d.dl,Math.max(d.gen,1),'bar-fill-'+(p==='free'?'accent':p==='pro'?'blue':'purple'));}).join('')}
+    </div>`;
+}
+
 // ══════════════════════════════════════════════════════════════
 // AUTH & INIT
 // ══════════════════════════════════════════════════════════════
@@ -953,7 +1055,11 @@ function showDashboard(session){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('dashboard').style.display='block';
   document.getElementById('admin-email').textContent=session.user.email;
-  initWindows();
+  if (IS_MOBILE()) {
+    initMobileShell();
+  } else {
+    initWindows();
+  }
   loadAll();
 }
 async function doSignOut(){await _sb.auth.signOut();location.reload();}
@@ -961,7 +1067,7 @@ async function doSignOut(){await _sb.auth.signOut();location.reload();}
 function updateClock(){document.getElementById('clock').textContent=new Date().toUTCString().slice(17,25)+' UTC';}
 setInterval(updateClock,1000);
 
-const LAYOUT_VERSION = 4; // Bump to invalidate old localStorage layouts
+const LAYOUT_VERSION = 5; // Bump to invalidate old localStorage layouts (added dlrate window)
 
 function initWindows() {
   // Check layout version — invalidate old formats
@@ -993,9 +1099,82 @@ window.addEventListener('resize', () => {
 
 async function loadAll(){
   updateClock();
-  await Promise.all([loadKPIs(),loadHeatmap(),loadRevenue(),loadTrends(),loadFunnel(),loadGapTable(),loadDonut(),loadCountryBars(),loadFeed(),loadSignups(),loadExportFormats()]);
+  await Promise.all([loadKPIs(),loadHeatmap(),loadRevenue(),loadTrends(),loadFunnel(),loadGapTable(),loadDonut(),loadCountryBars(),loadFeed(),loadSignups(),loadExportFormats(),loadDownloadRate()]);
   // Auto-refresh live panels every 30s
   setInterval(()=>Promise.all([loadFeed(),loadSignups(),loadKPIs()]),30000);
+}
+
+// ══════════════════════════════════════════════════════════════
+// MOBILE LAYOUT SYSTEM
+// Activates when viewport ≤ 768 px. Replaces the floating-window
+// canvas with a scrollable tab interface. All data loaders are
+// shared — they still write to the same body-* IDs, which now
+// live inside .mob-panel divs instead of .win-body divs.
+// ══════════════════════════════════════════════════════════════
+
+const IS_MOBILE = () => window.matchMedia('(max-width:768px)').matches;
+
+// Ordered tabs for mobile (subset + order chosen for mobile UX)
+const MOB_TABS = [
+  { id:'kpis',      title:'KPIs',       icon:'◈' },
+  { id:'feed',      title:'Feed',       icon:'◇' },
+  { id:'trends',    title:'Trends',     icon:'⟋' },
+  { id:'signups',   title:'Signups',    icon:'★' },
+  { id:'revenue',   title:'Revenue',    icon:'£' },
+  { id:'funnel',    title:'Funnel',     icon:'▽' },
+  { id:'heatmap',   title:'Map',        icon:'◎' },
+  { id:'users',     title:'Users',      icon:'◉' },
+  { id:'countries', title:'Countries',  icon:'⚑' },
+  { id:'gaps',      title:'Priority',   icon:'⊿' },
+  { id:'formats',   title:'Formats',    icon:'⤓' },
+  { id:'dlrate',    title:'DL Rate',    icon:'↓' },
+];
+
+let _mobActiveTab = MOB_TABS[0].id;
+
+function initMobileShell() {
+  const shell = document.getElementById('mobile-shell');
+  const tabBar = document.getElementById('mob-tabs');
+  const panels = document.getElementById('mob-panels');
+  shell.style.display = 'flex';
+
+  // Build tabs + panels
+  tabBar.innerHTML = '';
+  panels.innerHTML = '';
+
+  MOB_TABS.forEach((t, i) => {
+    // Tab button
+    const btn = document.createElement('button');
+    btn.className = 'mob-tab' + (i === 0 ? ' active' : '');
+    btn.dataset.tab = t.id;
+    btn.innerHTML = `<span class="tab-icon">${t.icon}</span>${t.title}`;
+    btn.addEventListener('click', () => switchMobTab(t.id));
+    tabBar.appendChild(btn);
+
+    // Panel
+    const panel = document.createElement('div');
+    panel.className = 'mob-panel' + (i === 0 ? ' active' : '');
+    panel.id = 'mob-panel-' + t.id;
+    panel.innerHTML = `
+      <div class="mob-panel-header">
+        <span class="mob-panel-title">${t.title}</span>
+        <span class="mob-panel-badge" id="badge-${t.id}"></span>
+      </div>
+      <div id="body-${t.id}"><div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">Loading…</div></div>
+    `;
+    panels.appendChild(panel);
+  });
+}
+
+function switchMobTab(id) {
+  _mobActiveTab = id;
+  document.querySelectorAll('.mob-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+  document.querySelectorAll('.mob-panel').forEach(p => p.classList.toggle('active', p.id === 'mob-panel-' + id));
+  // Leaflet needs a size invalidation when its panel becomes visible
+  if (id === 'heatmap' && _hmap) setTimeout(() => _hmap.invalidateSize(), 80);
+  // Scroll active tab into view
+  const activeBtn = document.querySelector(`.mob-tab[data-tab="${id}"]`);
+  if (activeBtn) activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
 
 checkSession();
