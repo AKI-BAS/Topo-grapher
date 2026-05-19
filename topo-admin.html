@@ -830,14 +830,11 @@ async function loadFeed(){
   const typeClasses={gen:'feed-type-gen',pro:'feed-type-pro',signup:'feed-type-signup',upgrade:'feed-type-upgrade'};
 
   document.getElementById('badge-feed').textContent='Live tail';
-  document.getElementById('body-feed').innerHTML=`<div class="feed">${items.slice(0,20).map(i=>`<div class="feed-item"><div class="feed-type 
-document.getElementById('badge-feed').textContent='Live tail';
   document.getElementById('body-feed').innerHTML=`<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
     <input id="feed-delete-name" type="text" placeholder="Project name to purge…" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:'DM Mono',monospace;font-size:11px;outline:none;border-radius:3px;">
     <button onclick="purgeByName()" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red);background:none;border:1px solid var(--red);padding:5px 10px;cursor:pointer;letter-spacing:.04em;border-radius:3px;white-space:nowrap;transition:all .15s;" onmouseover="this.style.background='rgba(226,85,85,.15)'" onmouseout="this.style.background='none'">⌫ Purge</button>
   </div>
   <div class="feed">${items.slice(0,20).map(i=>`<div class="feed-item"><div class="feed-type ${typeClasses[i.type]}">${icons[i.type]}</div><div class="feed-content"><div class="feed-main">${i.main}</div><div class="feed-meta">${i.meta}</div></div><div class="feed-time">${ago(i.time)}</div></div>`).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No activity yet</div>'}</div>`;
-${typeClasses[i.type]}">${icons[i.type]}</div><div class="feed-content"><div class="feed-main">${i.main}</div><div class="feed-meta">${i.meta}</div></div><div class="feed-time">${ago(i.time)}</div></div>`).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No activity yet</div>'}</div>`;
 }
 async function purgeByName(){
   const inp=document.getElementById('feed-delete-name');
