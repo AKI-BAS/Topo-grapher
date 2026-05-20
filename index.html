@@ -3012,6 +3012,15 @@ function nextWorker() {
   _workerIdx++;
   return url;
 }
+const FRANCE_WORKER = 'https://france-elevation.svanur300.workers.dev';
+
+function isInFrance(lat, lon) {
+  return lat >= 41.3 && lat <= 51.1 && lon >= -5.2 && lon <= 9.6;
+}
+
+function allPointsInFrance(pts) {
+  return pts.length > 0 && pts.every(p => isInFrance(p.lat, p.lon));
+}
 
 async function tryWorkerSingle(pts, onProgress){
   // Single-worker POST: used for Precise flow (dense grids) where the
@@ -3232,6 +3241,38 @@ async function fetchElevations(pts,onP){
   //  - Site (≤600 pts): 7 parallel GETs across 7 workers. Faster for sparse
   //    grids because each worker handles a slice independently.
   const USE_SINGLE_POST = pts.length > 600;
+// ── France: dedicated IGN RGE ALTI 1m worker ───────────────────────
+  if (allPointsInFrance(pts)) {
+    try {
+      const body = {
+        lats: pts.map(p => parseFloat(p.lat.toFixed(6))),
+        lons: pts.map(p => parseFloat(p.lon.toFixed(6)))
+      };
+      onP(0, 'Fetching elevation data…', `${pts.length} points · IGN France 1m`);
+      let r = await fetch(FRANCE_WORKER + '/elevation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (r.status === 429 || r.status === 500) {
+        await sleep(2000);
+        r = await fetch(FRANCE_WORKER + '/elevation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+      }
+      if (r.ok) {
+        const d = await r.json();
+        if (Array.isArray(d.elevations) && d.elevations.length === pts.length && !looksLikeFailure(d.elevations)) {
+          onP(0.95, 'Fetching elevation data…', 'IGN RGE ALTI 1m');
+          return { elevations: d.elevations, source: d.source || 'IGN RGE ALTI 1m' };
+        }
+      }
+    } catch (e) {
+      console.warn('France worker failed, falling through:', e.message);
+    }
+  }
   try{
     if(USE_SINGLE_POST){
       onP(0,'Fetching elevation data…',`${pts.length} points · single request`);
