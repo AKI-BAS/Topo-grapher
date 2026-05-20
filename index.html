@@ -3861,9 +3861,9 @@ csvData = 'X,Y,Z\n'+cleanOut.map(p=>`${p.x},${p.y},${p.z}`).join('\n');
         const warn = document.getElementById('elevation-quality-warn');
         if (warn) {
           warn.style.display = 'block';
-          warn.innerHTML = '⚠ Low resolution elevation detected (' + uniqueZ + ' unique values across ' + cleanOut.length + ' points). ' +
-            'For better accuracy, consider importing a KMZ file from Google Earth. ' +
-            '<a href="#tool" style="color:var(--accent)">Learn more</a>';
+         warn.innerHTML = '⚠ Limited resolution (' + uniqueZ + ' unique values across ' + cleanOut.length + ' points). ' +
+            'For better accuracy, try a smaller area with a higher point count (e.g. Precise spacing). ' +
+            'Want better data here? <a href="mailto:aki@topo-grapher.com?subject=Data%20coverage%20request&body=Location%3A%20" style="color:var(--accent)">Let us know</a> — we\'re actively expanding coverage.';
         }
       }, 600);
     } else {
