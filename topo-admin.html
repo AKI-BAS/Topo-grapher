@@ -134,7 +134,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 /* ── Bar chart ─────────────────────────────────────────────── */
 .bar-chart-h{display:flex;flex-direction:column;gap:5px;}
 .bar-row{display:flex;align-items:center;gap:8px;}
-.bar-label{width:44px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mid);text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bar-label{width:56px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mid);text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .bar-track{flex:1;height:18px;background:var(--surface2);overflow:hidden;position:relative;border-radius:2px;}
 .bar-fill{height:100%;transition:width .6s cubic-bezier(.16,1,.3,1);}
 .bar-fill-accent{background:linear-gradient(90deg,var(--green),var(--accent));}
@@ -308,7 +308,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="live-badge"><div class="live-dot"></div>LIVE</div>
       <span class="topbar-time" id="clock">--:--:--</span>
       <span class="topbar-user" id="admin-email"></span>
-      <button class="layout-btn" onclick="savePreferredLayout()" title="Save current window positions as your preferred layout">💾 Save layout</button>
+      <button class="layout-btn" onclick="savePreferredLayout()" title="Save layout to localStorage + copy JSON to clipboard (paste as PREFERRED_LAYOUT to persist across cookie clears)">💾 Save layout</button>
       <button class="layout-btn" onclick="resetLayout()" title="Reset windows to your saved layout (or default if none saved)">⊞ Reset layout</button>
       <div class="theme-toggle" id="theme-toggle">
         <button class="theme-toggle-opt active" data-theme="dark" onclick="setAdminTheme('dark')">☾</button>
@@ -448,7 +448,12 @@ function loadLayout() {
 
 function savePreferredLayout() {
   try {
-    localStorage.setItem('topo-admin-preferred-layout', JSON.stringify(_winState));
+    const json = JSON.stringify(_winState);
+    localStorage.setItem('topo-admin-preferred-layout', json);
+    // Copy to clipboard so you can paste it as PREFERRED_LAYOUT in the file
+    navigator.clipboard.writeText(json).then(() => {
+      console.log('Layout JSON copied to clipboard — paste as PREFERRED_LAYOUT value in topo-admin.html to persist across cookie clears');
+    }).catch(() => {});
     const btn = document.getElementById('clear-layout-btn');
     if (btn) btn.style.display = '';
   } catch(e) {}
@@ -471,7 +476,9 @@ function loadPreferredLayout() {
 
 function resetLayout() {
   const preferred = loadPreferredLayout();
-  _winState = preferred ? JSON.parse(JSON.stringify(preferred)) : getDefaultLayout();
+  _winState = preferred ? JSON.parse(JSON.stringify(preferred))
+             : PREFERRED_LAYOUT ? JSON.parse(JSON.stringify(PREFERRED_LAYOUT))
+             : getDefaultLayout();
   _preZoom = {}; // Clear any zoom memory
   saveLayout();
   // Animate windows back into place
@@ -1091,11 +1098,19 @@ setInterval(updateClock,1000);
 
 const LAYOUT_VERSION = 5; // Bump to invalidate old localStorage layouts (added dlrate window)
 
+// Hardcoded preferred layout — survives cookie/localStorage clearing.
+// Paste your layout JSON here (from "Save layout" clipboard copy) to persist it in the file.
+const PREFERRED_LAYOUT = null; // Replace null with JSON object to hardcode a layout
+
 function initWindows() {
   // Check layout version — invalidate old formats
   const savedVersion = parseInt(localStorage.getItem('topo-admin-layout-v') || '0');
   if (savedVersion < LAYOUT_VERSION || !loadLayout()) {
-    _winState = getDefaultLayout();
+    // Try localStorage preferred, then hardcoded PREFERRED_LAYOUT, then computed default
+    const preferred = loadPreferredLayout();
+    _winState = preferred ? JSON.parse(JSON.stringify(preferred))
+               : PREFERRED_LAYOUT ? JSON.parse(JSON.stringify(PREFERRED_LAYOUT))
+               : getDefaultLayout();
   }
   localStorage.setItem('topo-admin-layout-v', LAYOUT_VERSION);
   // Ensure all windows exist in state (in case new ones were added)
