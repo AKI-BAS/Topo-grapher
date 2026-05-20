@@ -2125,6 +2125,20 @@ function declineCookies() {
               <td style="padding:9px 14px;color:var(--text-mid);">swisstopo</td>
               <td style="padding:9px 14px;color:var(--text-soft);">Open use</td>
             </tr>
+<tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇫🇷 France</td>
+              <td style="padding:9px 14px;color:var(--text);">IGN RGE ALTI</td>
+              <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:1px 6px;border-radius:2px;font-size:10px;">1m</span></td>
+              <td style="padding:9px 14px;color:var(--text-mid);">IGN France</td>
+              <td style="padding:9px 14px;color:var(--text-soft);"><a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/" target="_blank" rel="noopener" style="color:var(--text-soft);text-decoration:underline;text-underline-offset:2px;">Licence Ouverte 2.0</a></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇨🇦 Canada</td>
+              <td style="padding:9px 14px;color:var(--text);">NRCan CDEM</td>
+              <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:1px 6px;border-radius:2px;font-size:10px;">~20m</span></td>
+              <td style="padding:9px 14px;color:var(--text-mid);">Natural Resources Canada</td>
+              <td style="padding:9px 14px;color:var(--text-soft);"><a href="https://open.canada.ca/en/open-government-licence-canada" target="_blank" rel="noopener" style="color:var(--text-soft);text-decoration:underline;text-underline-offset:2px;">OGL Canada</a></td>
+            </tr>
  
             <!-- Continental / regional -->
             <tr style="border-bottom:1px solid var(--border);background:var(--bg-input);">
@@ -2162,13 +2176,6 @@ function declineCookies() {
               <td style="padding:9px 14px;"><span style="color:var(--text-soft);border:1px dashed var(--border-md);padding:1px 6px;border-radius:2px;font-size:10px;">0.5m</span></td>
               <td style="padding:9px 14px;color:var(--text-soft);">PDOK</td>
               <td style="padding:9px 14px;color:var(--text-soft);">CC0</td>
-            </tr>
-            <tr style="border-bottom:1px solid var(--border);opacity:0.6;">
-              <td style="padding:9px 14px;color:var(--text);">🇫🇷 France</td>
-              <td style="padding:9px 14px;color:var(--text-mid);">IGN RGE ALTI</td>
-              <td style="padding:9px 14px;"><span style="color:var(--text-soft);border:1px dashed var(--border-md);padding:1px 6px;border-radius:2px;font-size:10px;">1m</span></td>
-              <td style="padding:9px 14px;color:var(--text-soft);">IGN France</td>
-              <td style="padding:9px 14px;color:var(--text-soft);">Licence Ouverte</td>
             </tr>
             <tr style="opacity:0.6;">
               <td style="padding:9px 14px;color:var(--text);">🇯🇵 Japan</td>
@@ -3021,6 +3028,15 @@ function isInFrance(lat, lon) {
 function allPointsInFrance(pts) {
   return pts.length > 0 && pts.every(p => isInFrance(p.lat, p.lon));
 }
+const CANADA_WORKER = 'https://canada-elevation.svanur300.workers.dev';
+
+function isInCanada(lat, lon) {
+  return lat >= 41.7 && lat <= 83.1 && lon >= -141.0 && lon <= -52.6;
+}
+
+function allPointsInCanada(pts) {
+  return pts.length > 0 && pts.every(p => isInCanada(p.lat, p.lon));
+}
 
 async function tryWorkerSingle(pts, onProgress){
   // Single-worker POST: used for Precise flow (dense grids) where the
@@ -3271,6 +3287,38 @@ async function fetchElevations(pts,onP){
       }
     } catch (e) {
       console.warn('France worker failed, falling through:', e.message);
+    }
+  }
+// ── Canada: dedicated NRCan CDEM 20m worker ────────────────────────
+  if (allPointsInCanada(pts)) {
+    try {
+      const body = {
+        lats: pts.map(p => parseFloat(p.lat.toFixed(6))),
+        lons: pts.map(p => parseFloat(p.lon.toFixed(6)))
+      };
+      onP(0, 'Fetching elevation data…', `${pts.length} points · NRCan Canada 20m`);
+      let r = await fetch(CANADA_WORKER + '/elevation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (r.status === 429 || r.status === 500) {
+        await sleep(2000);
+        r = await fetch(CANADA_WORKER + '/elevation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+      }
+      if (r.ok) {
+        const d = await r.json();
+        if (Array.isArray(d.elevations) && d.elevations.length === pts.length && !looksLikeFailure(d.elevations)) {
+          onP(0.95, 'Fetching elevation data…', 'NRCan CDEM 20m');
+          return { elevations: d.elevations, source: d.source || 'NRCan CDEM 20m' };
+        }
+      }
+    } catch (e) {
+      console.warn('Canada worker failed, falling through:', e.message);
     }
   }
   try{
