@@ -344,7 +344,11 @@ const _sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 // ── Constants ─────────────────────────────────────────────────
 const CN={DK:'Denmark',IS:'Iceland',NO:'Norway',SE:'Sweden',FI:'Finland',GB:'United Kingdom',IE:'Ireland',NL:'Netherlands',BE:'Belgium',FR:'France',CH:'Switzerland',AT:'Austria',DE:'Germany',ES:'Spain',PT:'Portugal',IT:'Italy',GR:'Greece',PL:'Poland',CZ:'Czechia',US:'United States',CA:'Canada',JP:'Japan',NZ:'New Zealand',AU:'Australia',HR:'Croatia',HU:'Hungary',RO:'Romania',SK:'Slovakia',LT:'Lithuania',LV:'Latvia',EE:'Estonia',MX:'Mexico',SA:'Saudi Arabia',AE:'UAE',IL:'Israel',FO:'Faroe Islands',LU:'Luxembourg',BG:'Bulgaria'};
-const CF={DK:'🇩🇰',IS:'🇮🇸',NO:'🇳🇴',SE:'🇸🇪',FI:'🇫🇮',GB:'🇬🇧',IE:'🇮🇪',NL:'🇳🇱',BE:'🇧🇪',FR:'🇫🇷',CH:'🇨🇭',AT:'🇦🇹',DE:'🇩🇪',ES:'🇪🇸',PT:'🇵🇹',IT:'🇮🇹',GR:'🇬🇷',PL:'🇵🇱',CZ:'🇨🇿',US:'🇺🇸',CA:'🇨🇦',JP:'🇯🇵',NZ:'🇳🇿',AU:'🇦🇺',HR:'🇭🇷',HU:'🇭🇺',RO:'🇷🇴',SK:'🇸🇰',LT:'🇱🇹',LV:'🇱🇻',EE:'🇪🇪',MX:'🇲🇽',SA:'🇸🇦',AE:'🇦🇪',IL:'🇮🇱',FO:'🇫🇴',LU:'🇱🇺',BG:'🇧🇬'};
+const CF={};
+// Flag helper — returns inline <img> from flagcdn (works on Windows where emoji flags don't render)
+function flag(code){return code?`<img src="https://flagcdn.com/16x12/${code.toLowerCase()}.png" srcset="https://flagcdn.com/32x24/${code.toLowerCase()}.png 2x" width="16" height="12" alt="${code}" style="vertical-align:middle;border-radius:1px;" onerror="this.replaceWith(document.createTextNode('${code}'))">`:'';}
+// Populate CF with img tags for all known codes
+Object.keys(CN).forEach(c=>{CF[c]=flag(c);});
 const BEST_RES={DK:0.4,IS:10,NO:1,GB:1,US:1,CH:0.5,NL:0.5,FR:1};
 
 // ── Theme ─────────────────────────────────────────────────────
