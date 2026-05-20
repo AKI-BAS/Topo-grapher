@@ -1100,7 +1100,7 @@ const LAYOUT_VERSION = 5; // Bump to invalidate old localStorage layouts (added 
 
 // Hardcoded preferred layout — survives cookie/localStorage clearing.
 // Paste your layout JSON here (from "Save layout" clipboard copy) to persist it in the file.
-const PREFERRED_LAYOUT = null; // Replace null with JSON object to hardcode a layout
+const PREFERRED_LAYOUT = {"kpis":{"x":12,"y":12,"w":967,"h":258,"visible":true,"zIndex":10},"trends":{"x":14,"y":274,"w":964,"h":510,"visible":true,"zIndex":35},"heatmap":{"x":988,"y":12,"w":812,"h":672,"visible":true,"zIndex":24},"funnel":{"x":15,"y":790,"w":962,"h":180,"visible":true,"zIndex":45},"revenue":{"x":1812,"y":12,"w":736,"h":207,"visible":true,"zIndex":14},"gaps":{"x":1812,"y":231,"w":736,"h":161,"visible":true,"zIndex":15},"users":{"x":987,"y":687,"w":811,"h":180,"visible":true,"zIndex":38},"countries":{"x":15,"y":972,"w":960,"h":208,"visible":true,"zIndex":47},"feed":{"x":1810,"y":419,"w":731,"h":300,"visible":true,"zIndex":40},"signups":{"x":1810,"y":724,"w":733,"h":266,"visible":true,"zIndex":41},"formats":{"x":1810,"y":999,"w":737,"h":180,"visible":true,"zIndex":23},"dlrate":{"x":987,"y":872,"w":812,"h":311,"visible":true,"zIndex":48}}; // Replace null with JSON object to hardcode a layout
 
 function initWindows() {
   // Check layout version — invalidate old formats
