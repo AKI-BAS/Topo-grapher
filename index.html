@@ -5384,7 +5384,7 @@ function updateSeatChangeTotal() {
   let n = parseInt(input.value) || minAllowed;
   if (n < minAllowed) { n = minAllowed; input.value = String(n); }
   if (n > 100) { n = 100; input.value = String(n); }
-  totalEl.textContent = '£' + (n * 19.99).toFixed(2) + '/month';
+  totalEl.textContent = '£' + (n * 29.99).toFixed(2) + '/month';
 }
 
 async function confirmSeatChange() {
@@ -6061,7 +6061,7 @@ async function logGeneration(projectName, pointCount, spacing, areaM2, elevSourc
 function updateSeatTotal() {
   const n = Math.max(2, parseInt(document.getElementById('seat-count-input').value) || 2);
   document.getElementById('seat-count-input').value = n;
-  const total = (n * 19.99).toFixed(2);
+  const total = (n * 29.99).toFixed(2);
   document.getElementById('seat-total').textContent = '£' + total + '/month';
 }
 
@@ -6640,7 +6640,7 @@ window.track = function(event, params) {
         <button onclick="const i=document.getElementById('seat-count-input');i.value=parseInt(i.value)+1;updateSeatTotal()" style="width:36px;height:36px;background:var(--bg-input);border:1px solid var(--border-md);border-radius:5px;font-size:18px;cursor:pointer;color:var(--text);">+</button>
       </div>
       <div style="font-size:22px;font-weight:500;font-family:'Syne',sans-serif;color:var(--accent);margin-bottom:4px;" id="seat-total">£39.98/month</div>
-      <div style="font-size:12px;color:var(--text-soft);margin-bottom:22px;">£19.99 per seat · billed monthly</div>
+      <div style="font-size:12px;color:var(--text-soft);margin-bottom:22px;">£29.99 per seat · billed monthly</div>
       <button onclick="confirmSeatCheckout()" style="width:100%;background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:14px;border-radius:6px;font-family:'DM Mono',monospace;font-size:13px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;">Continue to payment →</button>
     </div>
   </div>
