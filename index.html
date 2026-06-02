@@ -152,7 +152,6 @@ nav.scrolled { background: color-mix(in srgb, var(--bg-card) 88%, transparent); 
 .nav-brand { display:flex; align-items:center; gap:14px; text-decoration:none; cursor:pointer; transition:opacity .15s; }
 .nav-brand:hover { opacity:.82; }
 .site-logo img { height:40px; width:auto; display:block; transition:filter .2s; }
-[data-theme="dark"] .site-logo img { filter: invert(1) hue-rotate(180deg); }
 .nav-logo { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: var(--ls-tight); }
 .nav-logo em { color: var(--accent); font-style: normal; }
 .nav-logo-icon { flex-shrink: 0; color: var(--accent); }
@@ -935,7 +934,7 @@ function declineCookies() {
 
 <nav id="main-nav">
   <a class="nav-brand site-logo" href="#" onclick="location.reload();return false;" aria-label="Topo-grapher home">
-    <img src="../../Favicon image/Light logo.png" alt="Topo-grapher logo" style="height:40px;width:auto;display:block;transition:filter .2s;">
+    <img id="nav-logo-img" src="Dark_logo.png" alt="Topo-grapher logo" style="height:40px;width:auto;display:block;transition:opacity .2s;">
     <span class="nav-logo">Topo<em>-grapher</em></span>
   </a>
   <div class="nav-right">
@@ -2125,6 +2124,8 @@ function toggleTheme() {
   var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
   html.setAttribute('data-theme', next);
   localStorage.setItem('topo-theme', next);
+  var logoImg = document.getElementById('nav-logo-img');
+  if (logoImg) logoImg.src = next === 'dark' ? 'Dark_logo.png' : 'Light_logo.png';
   document.querySelectorAll('.tg--theme .tg__option').forEach(function(o) {
     o.setAttribute('aria-pressed', o.dataset.value === next ? 'true' : 'false');
   });
