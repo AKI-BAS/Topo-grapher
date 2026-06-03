@@ -221,6 +221,14 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .layout-btn{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:none;border:1px solid var(--border);padding:4px 10px;cursor:pointer;letter-spacing:.04em;transition:all .15s;border-radius:6px;}
 .layout-btn:hover{color:var(--text-mid);border-color:var(--border2);}
 
+/* ── Period picker ─────────────────────────────────────────── */
+.period-picker{display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;flex-shrink:0;}
+.period-btn{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:none;border:none;border-right:1px solid var(--border);padding:4px 9px;cursor:pointer;letter-spacing:.03em;transition:all .12s;white-space:nowrap;}
+.period-btn:last-child{border-right:none;}
+.period-btn:hover{color:var(--text-mid);background:var(--surface2);}
+.period-btn.active{color:var(--accent);background:var(--accent-dk);}
+@media(max-width:768px){.period-picker{display:none;}}
+
 /* ══════════════════════════════════════════════════════════════
    MOBILE LAYOUT  (≤768 px)
    ══════════════════════════════════════════════════════════════ */
@@ -307,6 +315,16 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="topbar-right">
       <div class="live-badge"><div class="live-dot"></div>LIVE</div>
       <span class="topbar-time" id="clock">--:--:--</span>
+      <!-- Period picker -->
+      <div class="period-picker" id="period-picker">
+        <button class="period-btn" data-period="1d"  onclick="setPeriod('1d')">1D</button>
+        <button class="period-btn" data-period="7d"  onclick="setPeriod('7d')">7D</button>
+        <button class="period-btn active" data-period="30d" onclick="setPeriod('30d')">30D</button>
+        <button class="period-btn" data-period="3m"  onclick="setPeriod('3m')">3M</button>
+        <button class="period-btn" data-period="6m"  onclick="setPeriod('6m')">6M</button>
+        <button class="period-btn" data-period="12m" onclick="setPeriod('12m')">12M</button>
+        <button class="period-btn" data-period="all" onclick="setPeriod('all')">ALL</button>
+      </div>
       <span class="topbar-user" id="admin-email"></span>
       <button class="layout-btn" onclick="savePreferredLayout()" title="Save layout to localStorage + copy JSON to clipboard (paste as PREFERRED_LAYOUT to persist across cookie clears)">💾 Save layout</button>
       <button class="layout-btn" onclick="resetLayout()" title="Reset windows to your saved layout (or default if none saved)">⊞ Reset layout</button>
@@ -350,6 +368,58 @@ function flag(code){return code?`<img src="https://flagcdn.com/16x12/${code.toLo
 // Populate CF with img tags for all known codes
 Object.keys(CN).forEach(c=>{CF[c]=flag(c);});
 const BEST_RES={DK:0.4,IS:10,NO:1,GB:1,US:1,CH:0.5,NL:0.5,FR:1};
+
+// ── Global time period ────────────────────────────────────────
+// All time-sensitive panels respect this. Panels that are
+// inherently point-in-time (MRR, user counts) always use
+// current totals but show period-scoped deltas.
+let _period = '30d'; // default
+
+function periodStart(p) {
+  p = p || _period;
+  if (p === 'all') return null;
+  const now = Date.now();
+  const ms = {
+    '1d':  1   * 864e5,
+    '7d':  7   * 864e5,
+    '30d': 30  * 864e5,
+    '3m':  91  * 864e5,
+    '6m':  182 * 864e5,
+    '12m': 365 * 864e5,
+  }[p];
+  return ms ? new Date(now - ms).toISOString() : null;
+}
+
+function periodLabel(p) {
+  return { '1d':'Last 24h', '7d':'Last 7 days', '30d':'Last 30 days',
+           '3m':'Last 3 months', '6m':'Last 6 months', '12m':'Last 12 months',
+           'all':'All time' }[p] || p;
+}
+
+// Number of chart buckets and bucket size for a given period
+function periodBuckets(p) {
+  return {
+    '1d':  { n: 24, unit: 'hour',  fmt: h => String(h).padStart(2,'0')+':00' },
+    '7d':  { n: 7,  unit: 'day',   fmt: d => d.slice(5) },
+    '30d': { n: 30, unit: 'day',   fmt: d => d.slice(5) },
+    '3m':  { n: 13, unit: 'week',  fmt: d => d.slice(5) },
+    '6m':  { n: 26, unit: 'week',  fmt: d => d.slice(5) },
+    '12m': { n: 12, unit: 'month', fmt: d => d.slice(0,7) },
+    'all': { n: 12, unit: 'month', fmt: d => d.slice(0,7) },
+  }[p] || { n: 30, unit: 'day', fmt: d => d.slice(5) };
+}
+
+function setPeriod(p) {
+  _period = p;
+  document.querySelectorAll('.period-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.period === p)
+  );
+  // Re-run all period-sensitive panels in parallel
+  Promise.all([
+    loadKPIs(), loadTrends(), loadFunnel(),
+    loadCountryBars(), loadGapTable(), loadDownloadRate(), loadFeed()
+  ]);
+}
 
 // ── Theme ─────────────────────────────────────────────────────
 function setAdminTheme(theme) {
@@ -704,29 +774,52 @@ function buildSVG(id,labels,values,color='#9ABA6A',fill='rgba(154,186,106,.1)'){
 
 // ── KPIs ──────────────────────────────────────────────────────
 async function loadKPIs(){
-  const{count:totalGens}=await _sb.from('generations').select('*',{count:'exact',head:true});
-  const weekAgo=new Date(Date.now()-7*864e5).toISOString();
-  const prevWeekAgo=new Date(Date.now()-14*864e5).toISOString();
-  const{count:weekGens}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',weekAgo);
-  const{count:prevWeekGens}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',prevWeekAgo).lt('created_at',weekAgo);
-  const{data:uids}=await _sb.from('generations').select('user_id').limit(10000);
-  const activeUsers=new Set((uids||[]).map(r=>r.user_id)).size;
-  const{count:proCount}=await _sb.from('profiles').select('*',{count:'exact',head:true}).in('plan',['pro','company']).eq('is_admin',false);
-  const{count:totalUsers}=await _sb.from('profiles').select('*',{count:'exact',head:true});
-  const{data:resAll}=await _sb.from('generations').select('resolution_m').not('resolution_m','is',null).limit(10000);
-  const avgRes=resAll&&resAll.length?Math.round(resAll.reduce((s,r)=>s+r.resolution_m,0)/resAll.length*10)/10:null;
-  const weekDelta=prevWeekGens>0?Math.round((weekGens-prevWeekGens)/prevWeekGens*100):0;
-  const{data:compProf}=await _sb.from('profiles').select('seat_count').eq('plan','company').eq('is_company_admin',true).eq('is_admin',false);
-  const compSeats=(compProf||[]).reduce((s,p)=>s+(p.seat_count||0),0);
-  const mrr=(proCount||0)*39.99+compSeats*29.99;
+  const since = periodStart();
+  const prevMs = { '1d':1,'7d':7,'30d':30,'3m':91,'6m':182,'12m':365,'all':365 }[_period] * 864e5;
+  const prevSince = new Date(Date.now() - prevMs * 2).toISOString();
+  const prevEnd   = since || new Date(0).toISOString();
+
+  // Gens in period
+  let gQ = _sb.from('generations').select('*',{count:'exact',head:true});
+  if (since) gQ = gQ.gte('created_at', since);
+  const {count:periodGens} = await gQ;
+
+  // Gens in previous equal period (for delta)
+  let pgQ = _sb.from('generations').select('*',{count:'exact',head:true}).lt('created_at', prevEnd);
+  if (_period !== 'all') pgQ = pgQ.gte('created_at', prevSince);
+  const {count:prevGens} = await pgQ;
+
+  const {count:totalGens} = await _sb.from('generations').select('*',{count:'exact',head:true});
+
+  // Active users in period
+  let uQ = _sb.from('generations').select('user_id').limit(10000);
+  if (since) uQ = uQ.gte('created_at', since);
+  const {data:uids} = await uQ;
+  const activeUsers = new Set((uids||[]).map(r=>r.user_id)).size;
+
+  // Pro / company — always current snapshot
+  const {count:proCount} = await _sb.from('profiles').select('*',{count:'exact',head:true}).in('plan',['pro','company']).eq('is_admin',false);
+  const {count:totalUsers} = await _sb.from('profiles').select('*',{count:'exact',head:true});
+  const {data:compProf} = await _sb.from('profiles').select('seat_count').eq('plan','company').eq('is_company_admin',true).eq('is_admin',false);
+  const compSeats = (compProf||[]).reduce((s,p)=>s+(p.seat_count||0),0);
+  const mrr = (proCount||0)*39.99 + compSeats*29.99;
+
+  // Avg resolution in period
+  let rQ = _sb.from('generations').select('resolution_m').not('resolution_m','is',null).limit(10000);
+  if (since) rQ = rQ.gte('created_at', since);
+  const {data:resAll} = await rQ;
+  const avgRes = resAll&&resAll.length ? Math.round(resAll.reduce((s,r)=>s+r.resolution_m,0)/resAll.length*10)/10 : null;
+
+  const delta = prevGens>0 ? Math.round(((periodGens||0)-prevGens)/prevGens*100) : 0;
+  const lbl = periodLabel(_period);
 
   document.getElementById('body-kpis').innerHTML=`<div class="kpi-grid">
     <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">MRR</div><div class="kpi-value" style="color:var(--accent)">£${mrr.toFixed(0)}</div><div class="kpi-delta">${proCount||0} Pro + ${compSeats} seats</div></div>
-    <div class="kpi" style="--kpi-color:var(--blue)"><div class="kpi-label">Gens / week</div><div class="kpi-value" style="color:var(--blue)">${weekGens||0}</div><div class="kpi-delta ${weekDelta>=0?'delta-up':'delta-down'}">${weekDelta>=0?'↑':'↓'} ${Math.abs(weekDelta)}% vs prev</div></div>
-    <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">Active users</div><div class="kpi-value">${activeUsers}</div><div class="kpi-delta">${totalUsers||0} total signups</div></div>
+    <div class="kpi" style="--kpi-color:var(--blue)"><div class="kpi-label">Gens · ${lbl}</div><div class="kpi-value" style="color:var(--blue)">${(periodGens||0).toLocaleString()}</div><div class="kpi-delta ${delta>=0?'delta-up':'delta-down'}">${delta>=0?'↑':'↓'} ${Math.abs(delta)}% vs prev period</div></div>
+    <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">Active users · ${lbl}</div><div class="kpi-value">${activeUsers}</div><div class="kpi-delta">${totalUsers||0} total signups</div></div>
     <div class="kpi" style="--kpi-color:var(--purple)"><div class="kpi-label">Pro subs</div><div class="kpi-value" style="color:var(--purple)">${proCount||0}</div><div class="kpi-delta">${totalUsers?Math.round((proCount||0)/totalUsers*100):0}% conversion</div></div>
-    <div class="kpi" style="--kpi-color:${avgRes&&avgRes>15?'var(--amber)':'var(--accent)'}"><div class="kpi-label">Avg resolution</div><div class="kpi-value">${avgRes?avgRes+'m':'—'}</div><div class="kpi-delta">${avgRes&&avgRes>30?'↓ needs more LiDAR':'data quality'}</div></div>
-    <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">Total gens</div><div class="kpi-value">${(totalGens||0).toLocaleString()}</div><div class="kpi-delta">all time</div></div>
+    <div class="kpi" style="--kpi-color:${avgRes&&avgRes>15?'var(--amber)':'var(--accent)'}"><div class="kpi-label">Avg resolution · ${lbl}</div><div class="kpi-value">${avgRes?avgRes+'m':'—'}</div><div class="kpi-delta">${avgRes&&avgRes>30?'↓ needs more LiDAR':'data quality'}</div></div>
+    <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">Total gens (all time)</div><div class="kpi-value">${(totalGens||0).toLocaleString()}</div><div class="kpi-delta">all time</div></div>
   </div>`;
 }
 
@@ -810,64 +903,146 @@ async function loadRevenue(){
 // ── Trends ────────────────────────────────────────────────────
 let _trendData = null;
 async function loadTrends(){
-  const ago30=new Date(Date.now()-30*864e5).toISOString();
-  const{data}=await _sb.from('generations').select('created_at,user_plan').gte('created_at',ago30).order('created_at',{ascending:true}).limit(10000);
+  const since = periodStart();
+  let q = _sb.from('generations').select('created_at,user_plan').order('created_at',{ascending:true}).limit(10000);
+  if (since) q = q.gte('created_at', since);
+  const {data} = await q;
   _trendData = data;
-  if(!data||!data.length) return;
+  if (!data||!data.length) {
+    document.getElementById('body-trends').innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">No data for this period</div>';
+    return;
+  }
 
-  document.getElementById('badge-trends').textContent='30 days';
-  const today=new Date().toISOString().slice(0,10);
-  const todayC=data.filter(r=>r.created_at.slice(0,10)===today).length;
-  const wk=new Date(Date.now()-7*864e5).toISOString();
-  const weekC=data.filter(r=>r.created_at>=wk).length;
+  const {n, unit, fmt} = periodBuckets(_period);
+  document.getElementById('badge-trends').textContent = periodLabel(_period);
 
-  const dc={};data.forEach(r=>{const d=r.created_at.slice(0,10);dc[d]=(dc[d]||0)+1;});
-  const days=[];for(let i=29;i>=0;i--){days.push(new Date(Date.now()-i*864e5).toISOString().slice(0,10));}
+  // Build bucket keys
+  const now = new Date();
+  const buckets = [];
+  if (unit === 'hour') {
+    for (let i = n-1; i >= 0; i--) {
+      const d = new Date(now - i*3600000);
+      buckets.push(d.toISOString().slice(0,13)); // "2025-06-01T14"
+    }
+  } else if (unit === 'day') {
+    for (let i = n-1; i >= 0; i--) {
+      buckets.push(new Date(now - i*864e5).toISOString().slice(0,10));
+    }
+  } else if (unit === 'week') {
+    for (let i = n-1; i >= 0; i--) {
+      const d = new Date(now - i*7*864e5);
+      // Monday of that week
+      const day = d.getDay(), diff = (day+6)%7;
+      const mon = new Date(d - diff*864e5);
+      buckets.push(mon.toISOString().slice(0,10));
+    }
+  } else { // month
+    for (let i = n-1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+      buckets.push(d.toISOString().slice(0,7));
+    }
+  }
 
-  const hc=new Array(24).fill(0);data.forEach(r=>{hc[new Date(r.created_at).getUTCHours()]++;});
-  const mh=Math.max(...hc,1);
+  // Count gens per bucket
+  const dc = {};
+  data.forEach(r => {
+    let key;
+    const ts = r.created_at;
+    if (unit === 'hour')  key = ts.slice(0,13);
+    else if (unit === 'day')  key = ts.slice(0,10);
+    else if (unit === 'week') {
+      const d = new Date(ts), day = d.getDay(), diff = (day+6)%7;
+      key = new Date(d - diff*864e5).toISOString().slice(0,10);
+    } else key = ts.slice(0,7);
+    dc[key] = (dc[key]||0) + 1;
+  });
+
+  const labels = buckets.map(b => fmt(b));
+  const values = buckets.map(b => dc[b]||0);
+
+  const today = unit==='day' ? now.toISOString().slice(0,10) : null;
+  const periodTotal = values.reduce((a,b)=>a+b,0);
+  const avg = (periodTotal/n).toFixed(1);
+
+  // Hour-of-day histogram (always from the selected period data)
+  const hc = new Array(24).fill(0);
+  data.forEach(r => { hc[new Date(r.created_at).getUTCHours()]++; });
+  const mh = Math.max(...hc, 1);
 
   document.getElementById('body-trends').innerHTML=`
     <div style="display:flex;gap:16px;margin-bottom:12px;">
-      <div style="text-align:center;flex:1;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">TODAY</div><div style="font-size:18px;font-weight:500;color:var(--accent);">${todayC}</div></div>
-      <div style="text-align:center;flex:1;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">THIS WEEK</div><div style="font-size:18px;font-weight:500;color:var(--blue);">${weekC}</div></div>
-      <div style="text-align:center;flex:1;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">DAILY AVG</div><div style="font-size:18px;font-weight:500;color:var(--text);">${(data.length/30).toFixed(1)}</div></div>
+      <div style="text-align:center;flex:1;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">PERIOD TOTAL</div><div style="font-size:18px;font-weight:500;color:var(--accent);">${periodTotal.toLocaleString()}</div></div>
+      <div style="text-align:center;flex:1;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">AVG / ${unit.toUpperCase()}</div><div style="font-size:18px;font-weight:500;color:var(--blue);">${avg}</div></div>
+      <div style="text-align:center;flex:1;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">PEAK</div><div style="font-size:18px;font-weight:500;color:var(--text);">${Math.max(...values)}</div></div>
     </div>
     <div class="chart-area" id="trend-chart"></div>
-    <div style="margin-top:12px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">By hour (UTC)</div>
+    <div style="margin-top:12px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">By hour UTC · ${periodLabel(_period)}</div>
     <div class="bar-chart-h">${[0,3,6,9,12,15,18,21].map(h=>barRow(String(h).padStart(2,'0')+':00',hc[h],mh,'bar-fill-accent')).join('')}</div>
   `;
-  requestAnimationFrame(()=>buildSVG('trend-chart',days.map(d=>d.slice(5)),days.map(d=>dc[d]||0)));
+  requestAnimationFrame(() => buildSVG('trend-chart', labels, values));
 }
 
 function loadTrendsChart() {
   if (!_trendData) return;
-  const dc={};_trendData.forEach(r=>{const d=r.created_at.slice(0,10);dc[d]=(dc[d]||0)+1;});
-  const days=[];for(let i=29;i>=0;i--){days.push(new Date(Date.now()-i*864e5).toISOString().slice(0,10));}
-  requestAnimationFrame(()=>buildSVG('trend-chart',days.map(d=>d.slice(5)),days.map(d=>dc[d]||0)));
+  const {n, unit, fmt} = periodBuckets(_period);
+  const now = new Date();
+  const buckets = [];
+  if (unit === 'hour') {
+    for (let i = n-1; i >= 0; i--) buckets.push(new Date(now - i*3600000).toISOString().slice(0,13));
+  } else if (unit === 'day') {
+    for (let i = n-1; i >= 0; i--) buckets.push(new Date(now - i*864e5).toISOString().slice(0,10));
+  } else if (unit === 'week') {
+    for (let i = n-1; i >= 0; i--) {
+      const d = new Date(now - i*7*864e5), day = d.getDay(), diff = (day+6)%7;
+      buckets.push(new Date(d - diff*864e5).toISOString().slice(0,10));
+    }
+  } else {
+    for (let i = n-1; i >= 0; i--) {
+      buckets.push(new Date(now.getFullYear(), now.getMonth()-i, 1).toISOString().slice(0,7));
+    }
+  }
+  const dc = {};
+  _trendData.forEach(r => {
+    let key;
+    if (unit==='hour') key=r.created_at.slice(0,13);
+    else if (unit==='day') key=r.created_at.slice(0,10);
+    else if (unit==='week') { const d=new Date(r.created_at),dy=d.getDay(),diff=(dy+6)%7; key=new Date(d-diff*864e5).toISOString().slice(0,10); }
+    else key=r.created_at.slice(0,7);
+    dc[key]=(dc[key]||0)+1;
+  });
+  requestAnimationFrame(() => buildSVG('trend-chart', buckets.map(b=>fmt(b)), buckets.map(b=>dc[b]||0)));
 }
 
 // ── Funnel ────────────────────────────────────────────────────
 async function loadFunnel(){
+  const since = periodStart();
   const{count:totalSignups}=await _sb.from('profiles').select('*',{count:'exact',head:true});
-  const{data:genUsers}=await _sb.from('generations').select('user_id').limit(10000);
+
+  let genQ = _sb.from('generations').select('user_id').limit(10000);
+  if (since) genQ = genQ.gte('created_at', since);
+  const{data:genUsers}=await genQ;
+
   const uniqueGenUsers=new Set((genUsers||[]).map(r=>r.user_id)).size;
   const userGenCount={};(genUsers||[]).forEach(r=>{userGenCount[r.user_id]=(userGenCount[r.user_id]||0)+1;});
   const returnUsers=Object.values(userGenCount).filter(c=>c>=2).length;
   const{count:proUsers}=await _sb.from('profiles').select('*',{count:'exact',head:true}).in('plan',['pro','company']).eq('is_admin',false);
-  const{data:proGenUsers}=await _sb.from('generations').select('user_id,user_plan').in('user_plan',['pro','company']).limit(10000);
+
+  let proGenQ = _sb.from('generations').select('user_id,user_plan').in('user_plan',['pro','company']).limit(10000);
+  if (since) proGenQ = proGenQ.gte('created_at', since);
+  const{data:proGenUsers}=await proGenQ;
+
   const proGenCount={};(proGenUsers||[]).forEach(r=>{proGenCount[r.user_id]=(proGenCount[r.user_id]||0)+1;});
   const repeatPro=Object.values(proGenCount).filter(c=>c>=2).length;
 
   const steps=[
-    {name:'Signups',count:totalSignups||0,color:'var(--accent)'},
-    {name:'First generation',count:uniqueGenUsers,color:'var(--blue)'},
+    {name:'Total signups',count:totalSignups||0,color:'var(--accent)'},
+    {name:`Generated · ${periodLabel(_period)}`,count:uniqueGenUsers,color:'var(--blue)'},
     {name:'Return visit (2+ gens)',count:returnUsers,color:'#6A8AD9'},
     {name:'Pro/Company upgrade',count:proUsers||0,color:'var(--purple)'},
     {name:'Repeat Pro usage',count:repeatPro,color:'var(--amber)'},
   ];
   const maxC=steps[0].count||1;
-  document.getElementById('badge-funnel').textContent='All time';
+  document.getElementById('badge-funnel').textContent=periodLabel(_period);
   document.getElementById('body-funnel').innerHTML=`<div class="funnel">${steps.map(s=>{
     const pct=maxC>0?Math.round(s.count/maxC*100):0;
     return`<div class="funnel-step"><div class="funnel-label"><span class="funnel-name">${s.name}</span><span class="funnel-count">${s.count.toLocaleString()}</span></div><div class="funnel-bar-bg"><div class="funnel-bar-fill" style="width:0%;background:${s.color}" data-w="${pct}"></div></div><div class="funnel-pct">${pct}%</div></div>`;
@@ -877,7 +1052,10 @@ async function loadFunnel(){
 
 // ── Gap table ─────────────────────────────────────────────────
 async function loadGapTable(){
-  const{data}=await _sb.from('generations').select('country_code,resolution_m,user_id').not('country_code','is',null).limit(10000);
+  const since = periodStart();
+  let q = _sb.from('generations').select('country_code,resolution_m,user_id').not('country_code','is',null).limit(10000);
+  if (since) q = q.gte('created_at', since);
+  const{data}=await q;
   if(!data||!data.length){document.getElementById('body-gaps').innerHTML='<div style="color:var(--muted);font-family:DM Mono,monospace;font-size:11px;">No data</div>';return;}
   const cc={};data.forEach(r=>{const c=r.country_code;if(!cc[c])cc[c]={gens:0,users:new Set(),res:[]};cc[c].gens++;cc[c].users.add(r.user_id);if(r.resolution_m!=null)cc[c].res.push(r.resolution_m);});
   const maxG=Math.max(...Object.values(cc).map(d=>d.gens),1);
@@ -929,17 +1107,23 @@ async function loadDonut(){
 
 // ── Country bars ──────────────────────────────────────────────
 async function loadCountryBars(){
-  const{data}=await _sb.from('generations').select('country_code').not('country_code','is',null).limit(10000);
+  const since = periodStart();
+  let q = _sb.from('generations').select('country_code').not('country_code','is',null).limit(10000);
+  if (since) q = q.gte('created_at', since);
+  const{data}=await q;
   const cc={};(data||[]).forEach(r=>{cc[r.country_code]=(cc[r.country_code]||0)+1;});
   const sorted=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const mx=sorted[0]?.[1]||1;
-  document.getElementById('badge-countries').textContent='By generations';
+  document.getElementById('badge-countries').textContent=periodLabel(_period);
   document.getElementById('body-countries').innerHTML=`<div class="bar-chart-h">${sorted.map(([code,count])=>barRow((CF[code]||'')+' '+code,count,mx)).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No country data</div>'}</div>`;
 }
 
 // ── Live feed ─────────────────────────────────────────────────
 async function loadFeed(){
-  const{data:gens}=await _sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,created_at').order('created_at',{ascending:false}).limit(30);
+  const since = periodStart();
+  let gQ = _sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,created_at').order('created_at',{ascending:false}).limit(30);
+  if (since) gQ = gQ.gte('created_at', since);
+  const{data:gens}=await gQ;
   const{data:signups}=await _sb.from('profiles').select('email,plan,created_at').order('created_at',{ascending:false}).limit(10);
   const items=[];
   (gens||[]).forEach(r=>items.push({type:r.user_plan==='pro'||r.user_plan==='company'?'pro':'gen',time:r.created_at,dl:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${esc(r.project_name||'—')}`,meta:`${r.user_plan||'free'} · ${r.point_count?r.point_count.toLocaleString()+'pts':''} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}`}));
@@ -949,7 +1133,7 @@ async function loadFeed(){
   const typeClasses={gen:'feed-type-gen',pro:'feed-type-pro',signup:'feed-type-signup',upgrade:'feed-type-upgrade'};
   const dlDot=i=>i.dl===null?'':(i.dl?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:5px;vertical-align:middle;" title="Exported"></span>':'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--border2);margin-left:5px;vertical-align:middle;" title="No export"></span>');
 
-  document.getElementById('badge-feed').textContent='Live tail';
+  document.getElementById('badge-feed').textContent=periodLabel(_period);
   document.getElementById('body-feed').innerHTML=`<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
     <input id="feed-delete-name" type="text" placeholder="Project name to purge…" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:'DM Mono',monospace;font-size:11px;outline:none;border-radius:3px;">
     <button onclick="purgeByName()" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red);background:none;border:1px solid var(--red);padding:5px 10px;cursor:pointer;letter-spacing:.04em;border-radius:3px;white-space:nowrap;transition:all .15s;" onmouseover="this.style.background='rgba(226,85,85,.15)'" onmouseout="this.style.background='none'">⌫ Purge</button>
@@ -1023,34 +1207,47 @@ async function loadExportFormats(){
 
 // ── Download rate (gen → export conversion) ──────────────────
 async function loadDownloadRate(){
-  const{count:totalGens}=await _sb.from('generations').select('*',{count:'exact',head:true});
-  const{count:withFile}=await _sb.from('generations').select('*',{count:'exact',head:true}).not('file_name','is',null);
+  const since = periodStart();
+
+  let totalQ = _sb.from('generations').select('*',{count:'exact',head:true});
+  let dlQ    = _sb.from('generations').select('*',{count:'exact',head:true}).not('file_name','is',null);
+  if (since) { totalQ = totalQ.gte('created_at',since); dlQ = dlQ.gte('created_at',since); }
+  const{count:totalGens}=await totalQ;
+  const{count:withFile}=await dlQ;
+
   const total=totalGens||0,dl=withFile||0;
   const rate=total>0?Math.round(dl/total*100):0;
   const noFile=total-dl;
 
-  // Weekly breakdown
-  const weekAgo=new Date(Date.now()-7*864e5).toISOString();
-  const{count:weekGens}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',weekAgo);
-  const{count:weekDl}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',weekAgo).not('file_name','is',null);
-  const weekRate=(weekGens||0)>0?Math.round((weekDl||0)/(weekGens||1)*100):0;
+  // Previous period for comparison
+  const prevMs = { '1d':1,'7d':7,'30d':30,'3m':91,'6m':182,'12m':365,'all':365 }[_period]*864e5;
+  const prevEnd = since || new Date(0).toISOString();
+  const prevStart = new Date(Date.now()-prevMs*2).toISOString();
+  let prevTQ = _sb.from('generations').select('*',{count:'exact',head:true}).lt('created_at',prevEnd);
+  let prevDQ = _sb.from('generations').select('*',{count:'exact',head:true}).not('file_name','is',null).lt('created_at',prevEnd);
+  if (_period!=='all'){prevTQ=prevTQ.gte('created_at',prevStart);prevDQ=prevDQ.gte('created_at',prevStart);}
+  const [{count:prevTotal},{count:prevDl}] = await Promise.all([prevTQ,prevDQ]);
+  const prevRate = (prevTotal||0)>0 ? Math.round((prevDl||0)/(prevTotal||1)*100) : 0;
+  const rateDelta = rate - prevRate;
 
-  // By plan
-  const{data:planData}=await _sb.from('generations').select('user_plan,file_name').limit(10000);
+  // By plan (in period)
+  let planQ = _sb.from('generations').select('user_plan,file_name').limit(10000);
+  if (since) planQ = planQ.gte('created_at',since);
+  const{data:planData}=await planQ;
   const plans={free:{gen:0,dl:0},pro:{gen:0,dl:0},company:{gen:0,dl:0}};
   (planData||[]).forEach(r=>{const p=r.user_plan||'free';if(!plans[p])plans[p]={gen:0,dl:0};plans[p].gen++;if(r.file_name)plans[p].dl++;});
 
   const planColors={free:'var(--muted)',pro:'var(--blue)',company:'var(--purple)'};
 
-  document.getElementById('badge-dlrate').textContent=rate+'% overall';
+  document.getElementById('badge-dlrate').textContent=rate+'% · '+periodLabel(_period);
   document.getElementById('body-dlrate').innerHTML=`
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
-      <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">OVERALL</div><div style="font-size:22px;font-weight:500;color:var(--accent);">${rate}%</div></div>
-      <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">THIS WEEK</div><div style="font-size:22px;font-weight:500;color:var(--blue);">${weekRate}%</div></div>
+      <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">EXPORT RATE</div><div style="font-size:22px;font-weight:500;color:var(--accent);">${rate}%</div></div>
+      <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">VS PREV PERIOD</div><div style="font-size:22px;font-weight:500;color:${rateDelta>=0?'var(--accent)':'var(--red)'};">${rateDelta>=0?'↑':'↓'}${Math.abs(rateDelta)}pp</div></div>
       <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">NO EXPORT</div><div style="font-size:22px;font-weight:500;color:var(--amber);">${noFile}</div></div>
     </div>
     <div style="margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:4px;"><span>EXPORTED</span><span>${dl.toLocaleString()} / ${total.toLocaleString()}</span></div>
+      <div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:4px;"><span>EXPORTED · ${periodLabel(_period)}</span><span>${dl.toLocaleString()} / ${total.toLocaleString()}</span></div>
       <div style="height:8px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;overflow:hidden;">
         <div style="height:100%;width:${rate}%;background:linear-gradient(90deg,var(--green),var(--accent));transition:width .6s cubic-bezier(.16,1,.3,1);"></div>
       </div>
