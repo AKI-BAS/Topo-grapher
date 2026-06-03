@@ -225,20 +225,14 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
    MOBILE LAYOUT  (≤768 px)
    ══════════════════════════════════════════════════════════════ */
 @media(max-width:768px){
-  /* Kill desktop chrome */
   body{overflow:hidden auto;}
   .canvas,.dock{display:none!important;}
-  /* Hide bulky topbar items but keep blast button + theme toggle */
-  .topbar{padding:0 10px;gap:6px;}
+  /* Restore original clean topbar — period picker + blast button moved off-topbar */
+  .topbar{padding:0 12px;gap:8px;}
   .topbar-slash,.topbar-page,.topbar-time,.live-badge,
-  .layout-btn{display:none!important;}
-  .topbar-user{font-size:10px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .layout-btn,.period-picker,.blast-topbar-btn{display:none!important;}
+  .topbar-user{font-size:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .logout-btn{padding:4px 8px;font-size:9px;}
-  /* Period picker: compact on mobile */
-  .period-picker{display:flex!important;}
-  .period-btn{padding:3px 6px;font-size:9px;}
-  /* Blast button: show on mobile, compact */
-  .blast-topbar-btn{display:flex!important;}
 
   /* ── Mobile shell ── */
   .mobile-shell{display:flex;flex-direction:column;position:fixed;top:48px;left:0;right:0;bottom:0;}
@@ -277,22 +271,67 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   /* ── Login box full-width ── */
   .login-box{width:calc(100vw - 32px);padding:28px 20px;}
 
-  /* ── Blast modal: full-screen on mobile ── */
+  /* ── Blast modal: bottom sheet on mobile ── */
   .blast-overlay{padding:0!important;align-items:flex-end!important;}
-  .blast-modal{width:100%!important;max-width:100%!important;max-height:95vh!important;border-radius:14px 14px 0 0!important;}
-  .blast-templates{flex-wrap:wrap;}
-  .blast-audience{flex-wrap:wrap;}
-  .blast-footer{flex-wrap:wrap;gap:8px;}
-  .blast-footer .blast-btn{flex:1;}
-  /* Preview overlay: full screen on mobile */
+  .blast-modal{width:100%!important;max-width:100%!important;max-height:92vh!important;
+               border-radius:14px 14px 0 0!important;resize:none!important;}
+  /* ── Preview overlay: full-screen on mobile ── */
   .blast-preview-overlay{padding:0!important;}
-  .blast-preview-frame-wrap{width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;border-radius:0!important;}
+  .blast-preview-frame-wrap{width:100%!important;height:100%!important;
+                             max-width:100%!important;max-height:100%!important;
+                             border-radius:0!important;resize:none!important;}
+  /* ── Period FAB: visible on mobile ── */
+  .mob-period-fab{display:flex!important;}
+  /* ── Period popover ── */
+  .period-popover{display:none;position:fixed;bottom:70px;right:14px;z-index:8000;
+    background:var(--surface);border:1px solid var(--border2);border-radius:10px;
+    padding:10px;box-shadow:0 8px 32px rgba(0,0,0,.5);
+    flex-direction:column;gap:4px;min-width:150px;}
+  .period-popover.show{display:flex;}
+  .period-pop-btn{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);
+    background:none;border:1px solid transparent;padding:9px 14px;border-radius:6px;
+    cursor:pointer;letter-spacing:.04em;text-align:left;transition:all .12s;}
+  .period-pop-btn:hover{background:var(--surface2);color:var(--text);}
+  .period-pop-btn.active{background:var(--accent-dk);border-color:var(--accent2);color:var(--accent);}
 }
 
-/* ── Mobile shell hidden on desktop ── */
+/* ── Mobile shell + FAB hidden on desktop ── */
 @media(min-width:769px){
   .mobile-shell{display:none!important;}
+  .mob-period-fab{display:none!important;}
+  .period-popover{display:none!important;}
 }
+
+/* ══════════════════════════════════════════════════════════════
+   RESIZABLE MODAL — desktop only (mobile overrides with !important above)
+   CSS resize:both lets user drag bottom-right corner to resize.
+   ══════════════════════════════════════════════════════════════ */
+.resizable-modal{
+  resize:both;
+  overflow:hidden;
+  min-width:420px; min-height:320px;
+  max-width:min(1100px,96vw); max-height:92vh;
+}
+.resizable-modal::after{
+  content:'';position:absolute;bottom:4px;right:4px;
+  width:10px;height:10px;pointer-events:none;
+  border-right:2px solid var(--border2);border-bottom:2px solid var(--border2);
+  border-radius:0 0 3px 0;opacity:.5;
+}
+
+/* ── Mobile period FAB (shown via media query above) ── */
+.mob-period-fab{
+  display:none; /* default hidden; shown on mobile via @media */
+  position:fixed;bottom:16px;right:16px;z-index:1500;
+  width:46px;height:46px;border-radius:50%;
+  background:var(--surface);border:1px solid var(--border2);
+  box-shadow:0 4px 16px rgba(0,0,0,.45);cursor:pointer;
+  align-items:center;justify-content:center;
+  font-family:'DM Mono',monospace;transition:background .15s;
+  flex-direction:column;gap:0;
+}
+.mob-period-fab:hover{background:var(--surface2);}
+.mob-period-fab-lbl{font-size:9px;color:var(--accent);letter-spacing:.04em;line-height:1;}
 
 /* ── Blast topbar button — always visible ── */
 .blast-topbar-btn{font-family:'DM Mono',monospace;font-size:10px;color:#9aba6a;background:none;border:1px solid var(--green-lt,#5A8E3A);padding:4px 10px;cursor:pointer;letter-spacing:.04em;transition:all .15s;border-radius:6px;white-space:nowrap;}
@@ -424,9 +463,24 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="mob-panels" id="mob-panels"></div>
   </div>
 
+  <!-- ═══ MOBILE PERIOD FAB + POPOVER (phone only) ═══ -->
+  <button class="mob-period-fab" id="mob-period-fab" onclick="togglePeriodPopover()" aria-label="Change time period">
+    <span class="mob-period-fab-lbl" id="mob-period-fab-lbl">30D</span>
+  </button>
+  <div class="period-popover" id="period-popover">
+    <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;padding:2px 4px 8px;border-bottom:1px solid var(--border);margin-bottom:4px;">Time period</div>
+    <button class="period-pop-btn" data-period="1d"  onclick="setPeriod('1d');togglePeriodPopover()">Last 24 hours</button>
+    <button class="period-pop-btn" data-period="7d"  onclick="setPeriod('7d');togglePeriodPopover()">Last 7 days</button>
+    <button class="period-pop-btn active" data-period="30d" onclick="setPeriod('30d');togglePeriodPopover()">Last 30 days</button>
+    <button class="period-pop-btn" data-period="3m"  onclick="setPeriod('3m');togglePeriodPopover()">Last 3 months</button>
+    <button class="period-pop-btn" data-period="6m"  onclick="setPeriod('6m');togglePeriodPopover()">Last 6 months</button>
+    <button class="period-pop-btn" data-period="12m" onclick="setPeriod('12m');togglePeriodPopover()">Last 12 months</button>
+    <button class="period-pop-btn" data-period="all" onclick="setPeriod('all');togglePeriodPopover()">All time</button>
+  </div>
+
   <!-- ═══ EMAIL BLAST MODAL ═══ -->
   <div class="blast-overlay" id="blast-overlay" onclick="if(event.target===this)closeBlast()">
-    <div class="blast-modal">
+    <div class="blast-modal resizable-modal" id="blast-modal">
       <div class="blast-header">
         <div class="blast-header-left">
           <div class="blast-title">✉ Email Blast</div>
@@ -490,7 +544,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
   <!-- ═══ EMAIL PREVIEW OVERLAY ═══ -->
   <div class="blast-preview-overlay" id="blast-preview-overlay" onclick="if(event.target===this)closeBlastPreview()">
-    <div class="blast-preview-frame-wrap">
+    <div class="blast-preview-frame-wrap resizable-modal">
       <div class="blast-preview-bar">
         <span class="blast-preview-bar-title">Email preview — rendered as recipients will see it</span>
         <button class="blast-preview-bar-close" onclick="closeBlastPreview()">✕</button>
@@ -1423,8 +1477,34 @@ function periodBuckets(p) {
 }
 function setPeriod(p) {
   _period = p;
+  // Sync desktop period-btn strip
   document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b.dataset.period===p));
+  // Sync mobile popover buttons
+  document.querySelectorAll('.period-pop-btn').forEach(b => b.classList.toggle('active', b.dataset.period===p));
+  // Update FAB label
+  const fab = document.getElementById('mob-period-fab-lbl');
+  if (fab) fab.textContent = p.toUpperCase();
   Promise.all([loadKPIs(),loadTrends(),loadFunnel(),loadCountryBars(),loadGapTable(),loadDownloadRate(),loadFeed()]);
+}
+
+function togglePeriodPopover() {
+  const pop = document.getElementById('period-popover');
+  if (!pop) return;
+  const opening = !pop.classList.contains('show');
+  pop.classList.toggle('show', opening);
+  if (opening) {
+    // Close on next outside click
+    setTimeout(() => {
+      function outside(e) {
+        const fab = document.getElementById('mob-period-fab');
+        if (!pop.contains(e.target) && e.target !== fab && !fab?.contains(e.target)) {
+          pop.classList.remove('show');
+          document.removeEventListener('click', outside);
+        }
+      }
+      document.addEventListener('click', outside);
+    }, 10);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
