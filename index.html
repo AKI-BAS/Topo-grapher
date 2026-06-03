@@ -5243,7 +5243,8 @@ async function _initTerrain3D(points, minZ, maxZ, contourInterval, wrapId, canva
   if(wireBtn)     wireBtn.onclick    =()=>{wireOn=!wireOn;syncVisuals();};
 
   // ── Buildings layer ──────────────────────────────────────────────
-  const buildingGroup     = new THREE.Group(); scene.add(buildingGroup);
+  const buildingGroup     = new THREE.Group();
+  buildingGroup.renderOrder = 1; scene.add(buildingGroup);
   const buildingEdgeGroup = new THREE.Group(); scene.add(buildingEdgeGroup);
   buildingGroup.visible     = false;
   buildingEdgeGroup.visible = false;
@@ -5838,9 +5839,10 @@ async function _initTerrain3D(points, minZ, maxZ, contourInterval, wrapId, canva
     const mat = new THREE.MeshStandardMaterial({
       color: _buildingColor(b.type), roughness: 0.6, metalness: 0.05,
       transparent: true, opacity: 0.85,
-      depthWrite: true,   // transparent mesh must not write depth — prevents black patches on terrain below
+      depthWrite: false,   // transparent mesh must not write depth — prevents black patches on terrain below
     });
     const mesh = new THREE.Mesh(bldGeo, mat);
+    mesh.renderOrder = 1;
     buildingGroup.add(mesh);
 
     // Edge lines for architectural clarity
