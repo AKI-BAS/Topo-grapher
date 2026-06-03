@@ -228,12 +228,17 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   /* Kill desktop chrome */
   body{overflow:hidden auto;}
   .canvas,.dock{display:none!important;}
-  /* Hide bulky topbar items */
-  .topbar{padding:0 12px;gap:8px;}
+  /* Hide bulky topbar items but keep blast button + theme toggle */
+  .topbar{padding:0 10px;gap:6px;}
   .topbar-slash,.topbar-page,.topbar-time,.live-badge,
   .layout-btn{display:none!important;}
-  .topbar-user{font-size:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .topbar-user{font-size:10px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .logout-btn{padding:4px 8px;font-size:9px;}
+  /* Period picker: compact on mobile */
+  .period-picker{display:flex!important;}
+  .period-btn{padding:3px 6px;font-size:9px;}
+  /* Blast button: show on mobile, compact */
+  .blast-topbar-btn{display:flex!important;}
 
   /* ── Mobile shell ── */
   .mobile-shell{display:flex;flex-direction:column;position:fixed;top:48px;left:0;right:0;bottom:0;}
@@ -271,6 +276,17 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
   /* ── Login box full-width ── */
   .login-box{width:calc(100vw - 32px);padding:28px 20px;}
+
+  /* ── Blast modal: full-screen on mobile ── */
+  .blast-overlay{padding:0!important;align-items:flex-end!important;}
+  .blast-modal{width:100%!important;max-width:100%!important;max-height:95vh!important;border-radius:14px 14px 0 0!important;}
+  .blast-templates{flex-wrap:wrap;}
+  .blast-audience{flex-wrap:wrap;}
+  .blast-footer{flex-wrap:wrap;gap:8px;}
+  .blast-footer .blast-btn{flex:1;}
+  /* Preview overlay: full screen on mobile */
+  .blast-preview-overlay{padding:0!important;}
+  .blast-preview-frame-wrap{width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;border-radius:0!important;}
 }
 
 /* ── Mobile shell hidden on desktop ── */
@@ -278,11 +294,22 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   .mobile-shell{display:none!important;}
 }
 
+/* ── Blast topbar button — always visible ── */
+.blast-topbar-btn{font-family:'DM Mono',monospace;font-size:10px;color:#9aba6a;background:none;border:1px solid var(--green-lt,#5A8E3A);padding:4px 10px;cursor:pointer;letter-spacing:.04em;transition:all .15s;border-radius:6px;white-space:nowrap;}
+.blast-topbar-btn:hover{background:var(--accent-dk);border-color:var(--accent2);}
+
+/* ── Period picker ─────────────────────────────────────────── */
+.period-picker{display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;flex-shrink:0;}
+.period-btn{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:none;border:none;border-right:1px solid var(--border);padding:4px 9px;cursor:pointer;letter-spacing:.03em;transition:all .12s;white-space:nowrap;}
+.period-btn:last-child{border-right:none;}
+.period-btn:hover{color:var(--text-mid);background:var(--surface2);}
+.period-btn.active{color:var(--accent);background:var(--accent-dk);}
+
 /* ── Email blast modal ─────────────────────────────────────── */
 .blast-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;display:none;align-items:center;justify-content:center;padding:20px;}
 .blast-overlay.show{display:flex;}
 .blast-modal{background:var(--surface);border:1px solid var(--border2);border-radius:10px;width:min(680px,96vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.6);}
-.blast-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;}
+.blast-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .blast-header-left{display:flex;flex-direction:column;gap:3px;}
 .blast-title{font-family:'DM Mono',monospace;font-size:13px;color:var(--text);letter-spacing:.04em;}
 .blast-subtitle{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);}
@@ -294,33 +321,44 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .blast-tpl-btn{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);padding:5px 11px;border-radius:5px;cursor:pointer;letter-spacing:.03em;transition:all .14s;white-space:nowrap;}
 .blast-tpl-btn:hover{border-color:var(--accent2);color:var(--accent);}
 .blast-tpl-btn.active{background:var(--accent-dk);border-color:var(--accent2);color:var(--accent);}
-.blast-audience{display:flex;gap:6px;}
+.blast-audience{display:flex;gap:6px;flex-wrap:wrap;}
 .blast-aud-btn{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);padding:5px 14px;border-radius:5px;cursor:pointer;letter-spacing:.03em;transition:all .14s;}
 .blast-aud-btn:hover{border-color:var(--blue);color:var(--blue);}
 .blast-aud-btn.active{background:var(--blue-dk);border-color:var(--blue);color:var(--blue);}
 .blast-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:9px 12px;font-family:'DM Mono',monospace;font-size:12px;outline:none;border-radius:4px;transition:border-color .15s;box-sizing:border-box;}
 .blast-input:focus{border-color:var(--accent2);}
-.blast-textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 12px;font-family:'DM Mono',monospace;font-size:12px;outline:none;border-radius:4px;transition:border-color .15s;resize:vertical;min-height:160px;line-height:1.7;box-sizing:border-box;}
+.blast-textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 12px;font-family:'DM Mono',monospace;font-size:12px;outline:none;border-radius:4px;transition:border-color .15s;resize:vertical;min-height:140px;line-height:1.7;box-sizing:border-box;}
 .blast-textarea:focus{border-color:var(--accent2);}
 .blast-preview-box{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:12px 14px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);line-height:1.6;}
-.blast-footer{padding:16px 24px;border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;}
-.blast-recipient-count{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);}
+.blast-footer{padding:14px 24px;border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.blast-recipient-count{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap;}
 .blast-recipient-count span{color:var(--text);}
-.blast-btn{font-family:'DM Mono',monospace;font-size:11px;padding:8px 18px;border-radius:5px;cursor:pointer;letter-spacing:.06em;transition:all .15s;white-space:nowrap;}
-.blast-btn-preview{background:var(--surface2);border:1px solid var(--border2);color:var(--text-mid);}
-.blast-btn-preview:hover{border-color:var(--accent2);color:var(--accent);}
+.blast-footer-btns{display:flex;gap:7px;flex-wrap:wrap;}
+.blast-btn{font-family:'DM Mono',monospace;font-size:11px;padding:8px 14px;border-radius:5px;cursor:pointer;letter-spacing:.05em;transition:all .15s;white-space:nowrap;border:none;}
+.blast-btn-secondary{background:var(--surface2);border:1px solid var(--border2);color:var(--text-mid);}
+.blast-btn-secondary:hover{border-color:var(--accent2);color:var(--accent);}
 .blast-btn-send{background:var(--green);border:1px solid var(--green-lt);color:#EFE3D8;}
 .blast-btn-send:hover{background:var(--green-lt);}
 .blast-btn-send:disabled{opacity:.4;cursor:not-allowed;}
 .blast-confirm{background:rgba(224,160,80,.07);border:1px solid rgba(224,160,80,.3);border-radius:6px;padding:14px 16px;display:none;flex-direction:column;gap:10px;}
 .blast-confirm.show{display:flex;}
 .blast-confirm-warn{font-family:'DM Mono',monospace;font-size:11px;color:var(--amber);line-height:1.65;}
-.blast-confirm-actions{display:flex;gap:8px;}
+.blast-confirm-actions{display:flex;gap:8px;flex-wrap:wrap;}
 .blast-btn-abort{background:var(--surface2);border:1px solid var(--border2);color:var(--text-mid);}
 .blast-btn-abort:hover{border-color:var(--red);color:var(--red);}
 .blast-btn-confirm{background:#7a3e10;border:1px solid var(--amber);color:var(--amber);}
 .blast-btn-confirm:hover{background:#9a4e18;}
-.blast-status{font-family:'DM Mono',monospace;font-size:11px;min-height:16px;}
+.blast-status{font-family:'DM Mono',monospace;font-size:11px;min-height:16px;padding:0 2px;}
+
+/* ── Email preview overlay ─────────────────────────────────── */
+.blast-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9500;display:none;align-items:center;justify-content:center;padding:20px;}
+.blast-preview-overlay.show{display:flex;}
+.blast-preview-frame-wrap{background:#111110;border:1px solid #2c2b28;border-radius:8px;width:min(620px,98vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.7);}
+.blast-preview-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #2c2b28;flex-shrink:0;background:#1c1b19;}
+.blast-preview-bar-title{font-family:'DM Mono',monospace;font-size:10px;color:#5a5a50;letter-spacing:.08em;text-transform:uppercase;}
+.blast-preview-bar-close{background:none;border:1px solid #2c2b28;color:#5a5a50;width:26px;height:26px;border-radius:4px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.blast-preview-bar-close:hover{border-color:#e25555;color:#e25555;}
+.blast-preview-iframe{flex:1;border:none;width:100%;min-height:0;}
 </style>
 </head>
 <body>
@@ -351,15 +389,26 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="topbar-right">
       <div class="live-badge"><div class="live-dot"></div>LIVE</div>
       <span class="topbar-time" id="clock">--:--:--</span>
+      <!-- Period picker — hidden on mobile via compact styles -->
+      <div class="period-picker" id="period-picker">
+        <button class="period-btn" data-period="1d"  onclick="setPeriod('1d')">1D</button>
+        <button class="period-btn" data-period="7d"  onclick="setPeriod('7d')">7D</button>
+        <button class="period-btn active" data-period="30d" onclick="setPeriod('30d')">30D</button>
+        <button class="period-btn" data-period="3m"  onclick="setPeriod('3m')">3M</button>
+        <button class="period-btn" data-period="6m"  onclick="setPeriod('6m')">6M</button>
+        <button class="period-btn" data-period="12m" onclick="setPeriod('12m')">12M</button>
+        <button class="period-btn" data-period="all" onclick="setPeriod('all')">ALL</button>
+      </div>
       <span class="topbar-user" id="admin-email"></span>
-      <button class="layout-btn" onclick="savePreferredLayout()" title="Save layout to localStorage + copy JSON to clipboard (paste as PREFERRED_LAYOUT to persist across cookie clears)">💾 Save layout</button>
-      <button class="layout-btn" onclick="resetLayout()" title="Reset windows to your saved layout (or default if none saved)">⊞ Reset layout</button>
+      <button class="layout-btn" onclick="savePreferredLayout()" title="Save layout to localStorage + copy JSON to clipboard">💾 Save layout</button>
+      <button class="layout-btn" onclick="resetLayout()" title="Reset windows to your saved layout">⊞ Reset layout</button>
       <div class="theme-toggle" id="theme-toggle">
         <button class="theme-toggle-opt active" data-theme="dark" onclick="setAdminTheme('dark')">☾</button>
         <button class="theme-toggle-opt" data-theme="light" onclick="setAdminTheme('light')">☀</button>
       </div>
+      <!-- Email blast button — always visible, even on mobile -->
+      <button class="blast-topbar-btn" onclick="openBlast()" title="Send email blast to users">✉ Blast</button>
       <button class="logout-btn" onclick="doSignOut()">Sign out</button>
-      <button class="layout-btn" onclick="openBlast()" style="border-color:var(--green-lt);color:#9aba6a;" title="Send email blast to users">✉ Email blast</button>
     </div>
   </div>
 
@@ -369,31 +418,33 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   <!-- Dock -->
   <div class="dock" id="dock"></div>
 
+  <!-- ═══ MOBILE SHELL ═══ -->
+  <div class="mobile-shell" id="mobile-shell" style="display:none;">
+    <div class="mob-tabs" id="mob-tabs"></div>
+    <div class="mob-panels" id="mob-panels"></div>
+  </div>
+
   <!-- ═══ EMAIL BLAST MODAL ═══ -->
   <div class="blast-overlay" id="blast-overlay" onclick="if(event.target===this)closeBlast()">
     <div class="blast-modal">
-
       <div class="blast-header">
         <div class="blast-header-left">
           <div class="blast-title">✉ Email Blast</div>
-          <div class="blast-subtitle">Compose and send to all users · double-confirm required</div>
+          <div class="blast-subtitle">Compose · preview · double-confirm before sending</div>
         </div>
         <button class="blast-close" onclick="closeBlast()">✕</button>
       </div>
-
       <div class="blast-body">
-
         <!-- Templates -->
         <div>
           <div class="blast-label">Start from template</div>
           <div class="blast-templates">
-            <button class="blast-tpl-btn" onclick="loadTemplate('update')">📦 Product update</button>
-            <button class="blast-tpl-btn" onclick="loadTemplate('promo')">🏷 Pricing / promo</button>
-            <button class="blast-tpl-btn" onclick="loadTemplate('maintenance')">🔧 Maintenance</button>
-            <button class="blast-tpl-btn" onclick="loadTemplate('blank')">✏ Blank</button>
+            <button class="blast-tpl-btn active" onclick="loadBlastTemplate('update')">📦 Product update</button>
+            <button class="blast-tpl-btn" onclick="loadBlastTemplate('promo')">🏷 Pricing / promo</button>
+            <button class="blast-tpl-btn" onclick="loadBlastTemplate('maintenance')">🔧 Maintenance</button>
+            <button class="blast-tpl-btn" onclick="loadBlastTemplate('blank')">✏ Blank</button>
           </div>
         </div>
-
         <!-- Audience -->
         <div>
           <div class="blast-label">Audience</div>
@@ -403,52 +454,51 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
             <button class="blast-aud-btn"        data-aud="free" onclick="setBlastAud('free')">Free only</button>
           </div>
         </div>
-
         <!-- Subject -->
         <div>
           <div class="blast-label">Subject line</div>
           <input class="blast-input" id="blast-subject" type="text" placeholder="e.g. New LiDAR data for France is live →">
         </div>
-
         <!-- Body -->
         <div>
-          <div class="blast-label">Email body — plain text, Aki's voice. HTML tags work too.</div>
+          <div class="blast-label">Email body — plain text. Aki's voice. Paragraphs separated by blank lines.</div>
           <textarea class="blast-textarea" id="blast-body" placeholder="Hey —&#10;&#10;Write your message here…"></textarea>
         </div>
-
-        <!-- Dry-run preview -->
-        <div class="blast-preview-box" id="blast-preview-box" style="display:none;"></div>
-
-        <!-- Double-confirm step -->
+        <!-- Dry-run recipient preview -->
+        <div class="blast-preview-box" id="blast-dry-box" style="display:none;"></div>
+        <!-- Double-confirm -->
         <div class="blast-confirm" id="blast-confirm">
-          <div class="blast-confirm-warn" id="blast-confirm-warn">⚠ You are about to send this email to <strong id="blast-confirm-n">—</strong> users. This cannot be undone. Are you sure?</div>
+          <div class="blast-confirm-warn">⚠ You are about to send this email to <strong id="blast-confirm-n">—</strong> users. This cannot be undone.</div>
           <div class="blast-confirm-actions">
             <button class="blast-btn blast-btn-abort" onclick="abortBlast()">← Cancel</button>
-            <button class="blast-btn blast-btn-confirm" onclick="executeSend()">⚑ Yes, send it now</button>
+            <button class="blast-btn blast-btn-confirm" onclick="executeSend()">⚑ Yes, send now</button>
           </div>
         </div>
-
         <!-- Status -->
         <div class="blast-status" id="blast-status"></div>
-
       </div>
-
       <div class="blast-footer">
         <div class="blast-recipient-count" id="blast-recipient-count">Recipients: <span>—</span></div>
-        <div style="display:flex;gap:8px;">
-          <button class="blast-btn blast-btn-preview" onclick="dryRunBlast()">👁 Preview recipients</button>
-          <button class="blast-btn blast-btn-send" id="blast-send-btn" onclick="confirmBlast()">✉ Send blast →</button>
+        <div class="blast-footer-btns">
+          <button class="blast-btn blast-btn-secondary" onclick="dryRunBlast()">👁 Check recipients</button>
+          <button class="blast-btn blast-btn-secondary" onclick="previewBlastEmail()">📧 Preview email</button>
+          <button class="blast-btn blast-btn-send" id="blast-send-btn" onclick="confirmBlast()">✉ Send →</button>
         </div>
       </div>
-
     </div>
   </div>
 
-  <!-- ═══ MOBILE SHELL ═══ -->
-  <div class="mobile-shell" id="mobile-shell" style="display:none;">
-    <div class="mob-tabs" id="mob-tabs"></div>
-    <div class="mob-panels" id="mob-panels"></div>
+  <!-- ═══ EMAIL PREVIEW OVERLAY ═══ -->
+  <div class="blast-preview-overlay" id="blast-preview-overlay" onclick="if(event.target===this)closeBlastPreview()">
+    <div class="blast-preview-frame-wrap">
+      <div class="blast-preview-bar">
+        <span class="blast-preview-bar-title">Email preview — rendered as recipients will see it</span>
+        <button class="blast-preview-bar-close" onclick="closeBlastPreview()">✕</button>
+      </div>
+      <iframe class="blast-preview-iframe" id="blast-preview-iframe" sandbox="allow-same-origin"></iframe>
+    </div>
   </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1289,6 +1339,7 @@ const MOB_TABS = [
   { id:'gaps',      title:'Priority',   icon:'⊿' },
   { id:'formats',   title:'Formats',    icon:'⤓' },
   { id:'dlrate',    title:'DL Rate',    icon:'↓' },
+  { id:'blast',     title:'Email Blast',icon:'✉' },
 ];
 
 let _mobActiveTab = MOB_TABS[0].id;
@@ -1336,39 +1387,73 @@ function switchMobTab(id) {
     if (!_hmapInited && _hmapData) setTimeout(() => _initLeafletMap(), 50);
     else if (_hmap) setTimeout(() => _hmap.invalidateSize(), 80);
   }
+  // Blast panel: render compose form on first view
+  if (id === 'blast') {
+    setTimeout(() => renderMobileBlastPanel(), 50);
+  }
   // Scroll active tab into view
   const activeBtn = document.querySelector(`.mob-tab[data-tab="${id}"]`);
   if (activeBtn) activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
 
 // ══════════════════════════════════════════════════════════════
+// PERIOD FILTER
+// ══════════════════════════════════════════════════════════════
+let _period = '30d';
+
+function periodStart(p) {
+  p = p || _period;
+  if (p === 'all') return null;
+  const ms = {'1d':1,'7d':7,'30d':30,'3m':91,'6m':182,'12m':365}[p];
+  return ms ? new Date(Date.now() - ms*864e5).toISOString() : null;
+}
+function periodLabel(p) {
+  return {'1d':'Last 24h','7d':'Last 7 days','30d':'Last 30 days','3m':'Last 3 months','6m':'Last 6 months','12m':'Last 12 months','all':'All time'}[p||_period] || p;
+}
+function periodBuckets(p) {
+  return {
+    '1d': {n:24,unit:'hour', fmt:d=>d.slice(11,13)+':00'},
+    '7d': {n:7, unit:'day',  fmt:d=>d.slice(5)},
+    '30d':{n:30,unit:'day',  fmt:d=>d.slice(5)},
+    '3m': {n:13,unit:'week', fmt:d=>d.slice(5)},
+    '6m': {n:26,unit:'week', fmt:d=>d.slice(5)},
+    '12m':{n:12,unit:'month',fmt:d=>d.slice(0,7)},
+    'all':{n:12,unit:'month',fmt:d=>d.slice(0,7)},
+  }[p||_period] || {n:30,unit:'day',fmt:d=>d.slice(5)};
+}
+function setPeriod(p) {
+  _period = p;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b.dataset.period===p));
+  Promise.all([loadKPIs(),loadTrends(),loadFunnel(),loadCountryBars(),loadGapTable(),loadDownloadRate(),loadFeed()]);
+}
+
+// ══════════════════════════════════════════════════════════════
 // EMAIL BLAST
 // ══════════════════════════════════════════════════════════════
-
 const NOTIFY_WORKER = 'https://topo-notify.svanur300.workers.dev';
 
 const BLAST_TEMPLATES = {
   update: {
-    subject: 'New in Topo-grapher — [feature/country]',
+    subject: 'New in Topo-grapher — [feature / country]',
     body: `Hey —
 
 I just shipped something I think you'll find useful.
 
-[Describe the new feature or new data country in 2–3 sentences. Be specific — e.g. "France LiDAR is now live at 1m resolution via IGN RGE ALTI. Covers the whole country and it's already available on your account."]
+[Describe the new feature or country in 2–3 sentences. Be specific — e.g. "France LiDAR is now live at 1m resolution via IGN RGE ALTI. Covers the whole country and it's already on your account."]
 
-To try it, just go to topo-grapher.com, search for a site in [country/area], and generate as usual.
+To try it, go to topo-grapher.com, search for a site in [country/area], and generate as usual.
 
-As always, if you run into anything or have a request for a specific dataset, just reply here — I read everything.`
+As always, if you need a specific dataset you can't find, just reply here — I read everything.`
   },
   promo: {
     subject: 'A note on Topo-grapher pricing',
     body: `Hey —
 
-I want to give you a heads up about [describe change — e.g. "a limited early-adopter offer" or "a price update"].
+I want to give you a heads up about [describe the change — e.g. "a limited early-adopter offer" or "a pricing update"].
 
-[2–3 sentences explaining the change and what it means for the user.]
+[2–3 sentences explaining what's changing and what it means for you.]
 
-If you're on the free tier and have been thinking about upgrading, now's a good time — [specific reason or offer].
+If you've been thinking about upgrading, now is a good time — [specific reason or offer].
 
 Any questions, just reply here.`
   },
@@ -1376,11 +1461,11 @@ Any questions, just reply here.`
     subject: 'Topo-grapher — brief maintenance window',
     body: `Hey —
 
-Quick heads up: topo-grapher.com will be down for a short maintenance window on [date] between approximately [time] and [time] UTC.
+Quick heads up: topo-grapher.com will be briefly offline for maintenance on [date] between approximately [time] and [time] UTC.
 
-[Describe what's happening — e.g. "I'm migrating the elevation workers to a new infrastructure setup that will improve speed and reliability."]
+[Describe what's happening — e.g. "I'm migrating the elevation workers to a faster infrastructure setup."]
 
-All existing generations and account data will be unaffected. If you need terrain data urgently during that window, email me at aki@topo-grapher.com and I'll sort something out.
+All existing data and account details will be completely unaffected. If you need terrain data urgently during that window, email aki@topo-grapher.com and I'll sort something out.
 
 Apologies for any inconvenience.`
   },
@@ -1395,16 +1480,76 @@ Apologies for any inconvenience.`
 let _blastAud = 'all';
 let _blastRecipientCount = null;
 
+// Build the full email HTML exactly as the worker does
+function buildBlastPreviewHtml(subject, bodyText) {
+  const bodyHtml = bodyText
+    .split(/\n\n+/)
+    .map(p => `<p style="margin:0 0 18px 0;font-size:14px;line-height:1.85;color:#bdb6ac;">${
+      p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
+    }</p>`)
+    .join('');
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#111110;font-family:'Courier New',Courier,monospace;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#111110;padding:48px 16px;">
+  <tr><td align="center">
+    <table width="540" cellpadding="0" cellspacing="0" border="0"
+      style="max-width:540px;width:100%;background-color:#1c1b19;border:1px solid #2c2b28;border-radius:4px;overflow:hidden;">
+      <tr><td style="height:3px;background:linear-gradient(90deg,#9aba6a 0%,#5E6631 70%,#1c1b19 100%);"></td></tr>
+      <tr><td style="padding:32px 40px 24px 40px;background-color:#1c1b19;">
+        <table cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="vertical-align:middle;padding-right:12px;">
+              <img src="https://topo-grapher.com/Dark_logo.png" width="40" height="40" alt="" style="display:block;border-radius:3px;">
+            </td>
+            <td style="vertical-align:middle;">
+              <span style="font-family:'Courier New',monospace;font-size:15px;font-weight:700;letter-spacing:0.1em;color:#f0ede8;text-transform:uppercase;">TOPO-</span><span style="font-family:'Courier New',monospace;font-size:15px;font-weight:700;letter-spacing:0.1em;color:#9aba6a;text-transform:uppercase;">GRAPHER</span>
+            </td>
+          </tr>
+        </table>
+        <div style="height:1px;background:#2c2b28;margin-top:24px;"></div>
+      </td></tr>
+      <tr><td style="padding:8px 40px 36px 40px;background-color:#1c1b19;">
+        ${bodyHtml}
+        <p style="margin:28px 0 4px 0;font-size:14px;line-height:1.85;color:#bdb6ac;">Have a great day!</p>
+        <p style="margin:0;font-size:14px;color:#9aba6a;font-weight:700;letter-spacing:0.04em;">— Aki</p>
+      </td></tr>
+      <tr><td style="padding:0 40px 28px 40px;background-color:#1c1b19;">
+        <div style="height:1px;background:#222220;margin-bottom:16px;"></div>
+        <p style="margin:0;font-size:11px;line-height:1.7;color:#524f4a;">
+          You received this because you have an account at <a href="https://topo-grapher.com" style="color:#524f4a;text-decoration:underline;">topo-grapher.com</a>.
+          Questions? Reply here or write to <a href="mailto:aki@topo-grapher.com" style="color:#5a5a50;">aki@topo-grapher.com</a>
+        </p>
+      </td></tr>
+    </table>
+    <div style="margin-top:16px;font-family:'Courier New',monospace;font-size:11px;color:#3a3a30;text-align:center;">Subject: ${subject || '(no subject)'}</div>
+  </td></tr>
+</table>
+</body>
+</html>`;
+}
+
 function openBlast() {
+  // On mobile, if blast tab exists in mobile shell, switch to it instead
+  if (IS_MOBILE()) {
+    const blastTab = document.querySelector('.mob-tab[data-tab="blast"]');
+    if (blastTab) { switchMobTab('blast'); return; }
+  }
+  _showBlastModal();
+}
+
+function _showBlastModal() {
   document.getElementById('blast-overlay').classList.add('show');
   document.getElementById('blast-confirm').classList.remove('show');
-  document.getElementById('blast-preview-box').style.display = 'none';
+  document.getElementById('blast-dry-box').style.display = 'none';
   document.getElementById('blast-status').textContent = '';
   document.getElementById('blast-status').style.color = '';
   document.getElementById('blast-send-btn').disabled = false;
   setBlastAud('all');
-  loadTemplate('update');
-  updateRecipientCount();
+  loadBlastTemplate('update');
+  _updateBlastRecipientCount();
 }
 
 function closeBlast() {
@@ -1412,43 +1557,41 @@ function closeBlast() {
   document.getElementById('blast-confirm').classList.remove('show');
 }
 
-function loadTemplate(key) {
+function loadBlastTemplate(key) {
   const tpl = BLAST_TEMPLATES[key];
   if (!tpl) return;
   document.getElementById('blast-subject').value = tpl.subject;
   document.getElementById('blast-body').value = tpl.body;
-  document.querySelectorAll('.blast-tpl-btn').forEach(b =>
-    b.classList.toggle('active', b.textContent.toLowerCase().includes(key) ||
-      (key==='update'&&b.textContent.includes('update')) ||
-      (key==='promo'&&b.textContent.includes('romo')) ||
-      (key==='maintenance'&&b.textContent.includes('aint')) ||
+  document.querySelectorAll('.blast-tpl-btn').forEach(b => {
+    b.classList.toggle('active',
+      (key==='update'&&b.textContent.includes('update'))||
+      (key==='promo'&&b.textContent.includes('romo'))||
+      (key==='maintenance'&&b.textContent.includes('aint'))||
       (key==='blank'&&b.textContent.includes('lank'))
-    )
-  );
+    );
+  });
   document.getElementById('blast-confirm').classList.remove('show');
   document.getElementById('blast-status').textContent = '';
 }
 
 function setBlastAud(aud) {
   _blastAud = aud;
-  document.querySelectorAll('.blast-aud-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.aud === aud)
-  );
-  updateRecipientCount();
+  document.querySelectorAll('.blast-aud-btn').forEach(b => b.classList.toggle('active', b.dataset.aud===aud));
+  _updateBlastRecipientCount();
 }
 
-async function updateRecipientCount() {
+async function _updateBlastRecipientCount() {
   const el = document.getElementById('blast-recipient-count');
+  if (!el) return;
   el.innerHTML = 'Recipients: <span>counting…</span>';
   _blastRecipientCount = null;
   try {
-    // Dry run to get count
     const {data:{session}} = await _sb.auth.getSession();
     if (!session) return;
-    const res = await fetch(NOTIFY_WORKER + '/send-blast', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+session.access_token },
-      body: JSON.stringify({ subject:'_', bodyHtml:'_', audience: _blastAud, dryRun: true })
+    const res = await fetch(NOTIFY_WORKER+'/send-blast', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body: JSON.stringify({subject:'_',bodyHtml:'_',audience:_blastAud,dryRun:true})
     });
     const d = await res.json();
     if (d.count != null) {
@@ -1463,48 +1606,59 @@ async function updateRecipientCount() {
 async function dryRunBlast() {
   const subject = document.getElementById('blast-subject').value.trim();
   const body    = document.getElementById('blast-body').value.trim();
-  const previewBox = document.getElementById('blast-preview-box');
-  const statusEl   = document.getElementById('blast-status');
-  if (!subject || !body) {
-    statusEl.textContent = '⚠ Fill in subject and body first.';
-    statusEl.style.color = 'var(--amber)';
-    return;
-  }
-  statusEl.textContent = 'Fetching recipient list…';
-  statusEl.style.color = 'var(--muted)';
+  const dryBox  = document.getElementById('blast-dry-box');
+  const statusEl = document.getElementById('blast-status');
+  if (!subject||!body) { statusEl.textContent='⚠ Fill in subject and body first.'; statusEl.style.color='var(--amber)'; return; }
+  statusEl.textContent='Fetching…'; statusEl.style.color='var(--muted)';
   try {
     const {data:{session}} = await _sb.auth.getSession();
-    const res = await fetch(NOTIFY_WORKER + '/send-blast', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+session.access_token },
-      body: JSON.stringify({ subject, bodyHtml: body, audience: _blastAud, dryRun: true })
+    const res = await fetch(NOTIFY_WORKER+'/send-blast', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body: JSON.stringify({subject,bodyHtml:body,audience:_blastAud,dryRun:true})
     });
     const d = await res.json();
     if (d.error) throw new Error(d.error);
-    previewBox.style.display = 'block';
-    previewBox.innerHTML =
-      `<strong style="color:var(--text);">${d.count} recipients</strong> · audience: ${_blastAud}<br><br>` +
-      `First 5: ${(d.preview||[]).join(', ')}${d.count>5?' …and '+(d.count-5)+' more':''}`;
+    dryBox.style.display='block';
+    dryBox.innerHTML=`<strong style="color:var(--text);">${d.count} recipients</strong> · ${_blastAud}<br><br>First 5: ${(d.preview||[]).join(', ')}${d.count>5?' …and '+(d.count-5)+' more':''}`;
     _blastRecipientCount = d.count;
-    document.getElementById('blast-recipient-count').innerHTML =
-      `Recipients: <span>${d.count.toLocaleString()} users</span>`;
-    statusEl.textContent = '';
+    document.getElementById('blast-recipient-count').innerHTML=`Recipients: <span>${d.count.toLocaleString()} users</span>`;
+    statusEl.textContent='';
   } catch(e) {
-    statusEl.textContent = '⚠ ' + e.message;
-    statusEl.style.color = 'var(--red)';
+    statusEl.textContent='⚠ '+e.message; statusEl.style.color='var(--red)';
   }
 }
 
-function confirmBlast() {
-  const subject = document.getElementById('blast-subject').value.trim();
+function previewBlastEmail() {
+  const subject = document.getElementById('blast-subject').value.trim() || '(no subject)';
   const body    = document.getElementById('blast-body').value.trim();
+  if (!body) {
+    const s = document.getElementById('blast-status');
+    s.textContent='⚠ Write a body first.'; s.style.color='var(--amber)';
+    return;
+  }
+  const html = buildBlastPreviewHtml(subject, body);
+  const iframe = document.getElementById('blast-preview-iframe');
+  // Write HTML into iframe srcdoc — no new window, works on mobile
+  iframe.srcdoc = html;
+  iframe.style.height = '520px';
+  document.getElementById('blast-preview-overlay').classList.add('show');
+}
+
+function closeBlastPreview() {
+  document.getElementById('blast-preview-overlay').classList.remove('show');
+}
+
+function confirmBlast() {
+  const subject  = document.getElementById('blast-subject').value.trim();
+  const body     = document.getElementById('blast-body').value.trim();
   const statusEl = document.getElementById('blast-status');
   if (!subject) { statusEl.textContent='⚠ Subject is empty.'; statusEl.style.color='var(--amber)'; return; }
   if (!body)    { statusEl.textContent='⚠ Body is empty.';    statusEl.style.color='var(--amber)'; return; }
   const n = _blastRecipientCount != null ? _blastRecipientCount : '?';
-  document.getElementById('blast-confirm-n').textContent = n + ' (' + _blastAud + ')';
+  document.getElementById('blast-confirm-n').textContent = n+' ('+_blastAud+')';
   document.getElementById('blast-confirm').classList.add('show');
-  statusEl.textContent = '';
+  statusEl.textContent='';
 }
 
 function abortBlast() {
@@ -1516,39 +1670,91 @@ async function executeSend() {
   const bodyText = document.getElementById('blast-body').value.trim();
   const statusEl = document.getElementById('blast-status');
   const sendBtn  = document.getElementById('blast-send-btn');
-
   document.getElementById('blast-confirm').classList.remove('show');
   sendBtn.disabled = true;
   statusEl.style.color = 'var(--muted)';
   statusEl.textContent = 'Sending…';
-
-  // Convert plain text to simple HTML paragraphs
   const bodyHtml = bodyText
     .split(/\n\n+/)
-    .map(p => `<p style="margin:0 0 18px 0;font-size:14px;line-height:1.85;color:#bdb6ac;">${
-      p.replace(/\n/g,'<br>').replace(/</g,'&lt;').replace(/&lt;br>/g,'<br>')
-    }</p>`)
-    .join('');
-
+    .map(p=>`<p style="margin:0 0 18px 0;font-size:14px;line-height:1.85;color:#bdb6ac;">${
+      p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
+    }</p>`).join('');
   try {
     const {data:{session}} = await _sb.auth.getSession();
-    const res = await fetch(NOTIFY_WORKER + '/send-blast', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+session.access_token },
-      body: JSON.stringify({ subject, bodyHtml, bodyText, audience: _blastAud, dryRun: false })
+    const res = await fetch(NOTIFY_WORKER+'/send-blast', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body: JSON.stringify({subject,bodyHtml,bodyText,audience:_blastAud,dryRun:false})
     });
     const d = await res.json();
     if (d.error) throw new Error(d.error);
-    statusEl.style.color = 'var(--accent)';
-    statusEl.textContent =
-      `✓ Sent to ${d.sent} users${d.failed ? ` · ${d.failed} failed` : ''}.`;
-    // Auto-close after 3s on full success
+    statusEl.style.color='var(--accent)';
+    statusEl.textContent=`✓ Sent to ${d.sent} users${d.failed?' · '+d.failed+' failed':''}`;
     if (!d.failed) setTimeout(closeBlast, 3000);
   } catch(e) {
-    statusEl.style.color = 'var(--red)';
-    statusEl.textContent = '⚠ Send failed: ' + e.message;
-    sendBtn.disabled = false;
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='⚠ '+e.message;
+    sendBtn.disabled=false;
   }
+}
+
+// ── Mobile blast panel — renders the compose form inside the mob-panel ────
+function renderMobileBlastPanel() {
+  const el = document.getElementById('body-blast');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <!-- Templates -->
+      <div>
+        <div class="blast-label">Template</div>
+        <div class="blast-templates" style="margin-top:5px;">
+          <button class="blast-tpl-btn active" onclick="loadBlastTemplate('update');renderMobileBlastPanel()">📦 Update</button>
+          <button class="blast-tpl-btn" onclick="loadBlastTemplate('promo');renderMobileBlastPanel()">🏷 Promo</button>
+          <button class="blast-tpl-btn" onclick="loadBlastTemplate('maintenance');renderMobileBlastPanel()">🔧 Maint.</button>
+          <button class="blast-tpl-btn" onclick="loadBlastTemplate('blank');renderMobileBlastPanel()">✏ Blank</button>
+        </div>
+      </div>
+      <!-- Audience -->
+      <div>
+        <div class="blast-label">Audience</div>
+        <div class="blast-audience" style="margin-top:5px;">
+          <button class="blast-aud-btn ${_blastAud==='all'?'active':''}" data-aud="all"  onclick="setBlastAud('all');renderMobileBlastPanel()">All</button>
+          <button class="blast-aud-btn ${_blastAud==='pro'?'active':''}" data-aud="pro"  onclick="setBlastAud('pro');renderMobileBlastPanel()">Paid</button>
+          <button class="blast-aud-btn ${_blastAud==='free'?'active':''}" data-aud="free" onclick="setBlastAud('free');renderMobileBlastPanel()">Free</button>
+        </div>
+      </div>
+      <!-- Subject -->
+      <div>
+        <div class="blast-label">Subject</div>
+        <input class="blast-input" id="blast-subject" type="text" style="margin-top:5px;" placeholder="Subject line…" value="${(document.getElementById('blast-subject')||{value:''}).value.replace(/"/g,'&quot;')}">
+      </div>
+      <!-- Body -->
+      <div>
+        <div class="blast-label">Body</div>
+        <textarea class="blast-textarea" id="blast-body" style="margin-top:5px;min-height:180px;" placeholder="Hey —&#10;&#10;Write your message here…">${(document.getElementById('blast-body')||{value:''}).value.replace(/</g,'&lt;')}</textarea>
+      </div>
+      <!-- Recipient count -->
+      <div class="blast-recipient-count" id="blast-recipient-count" style="padding:8px 0;">Recipients: <span>—</span></div>
+      <!-- Actions -->
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="blast-btn blast-btn-secondary" style="width:100%;border:1px solid var(--border2);" onclick="dryRunBlast()">👁 Check recipients</button>
+        <button class="blast-btn blast-btn-secondary" style="width:100%;border:1px solid var(--border2);" onclick="previewBlastEmail()">📧 Preview email</button>
+        <button class="blast-btn blast-btn-send" style="width:100%;" id="blast-send-btn" onclick="confirmBlast()">✉ Send blast →</button>
+      </div>
+      <!-- Dry-run result -->
+      <div class="blast-preview-box" id="blast-dry-box" style="display:none;"></div>
+      <!-- Confirm -->
+      <div class="blast-confirm" id="blast-confirm">
+        <div class="blast-confirm-warn">⚠ Send to <strong id="blast-confirm-n">—</strong> users. Cannot be undone.</div>
+        <div class="blast-confirm-actions">
+          <button class="blast-btn blast-btn-abort" style="border:1px solid var(--border2);" onclick="abortBlast()">← Cancel</button>
+          <button class="blast-btn blast-btn-confirm" style="border:1px solid var(--amber);" onclick="executeSend()">⚑ Yes, send</button>
+        </div>
+      </div>
+      <!-- Status -->
+      <div class="blast-status" id="blast-status"></div>
+    </div>`;
+  _updateBlastRecipientCount();
 }
 
 checkSession();
