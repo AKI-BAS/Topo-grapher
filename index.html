@@ -5252,8 +5252,6 @@ async function _initTerrain3D(points, minZ, maxZ, contourInterval, wrapId, canva
   const buildingsBtn = document.getElementById(bp + '-btn-buildings');
   if (buildingsBtn) {
     buildingsBtn.onclick = async () => {
-      // Non-Pro users see the upgrade modal instead
-      if (!isPro()) { openUpgrade(); return; }
       if (!buildingsOn && !buildingsLoaded) {
         // First click: fetch + render, then show
         buildingsBtn.textContent = 'Loading…';
@@ -5840,7 +5838,7 @@ async function _initTerrain3D(points, minZ, maxZ, contourInterval, wrapId, canva
     const mat = new THREE.MeshStandardMaterial({
       color: _buildingColor(b.type), roughness: 0.6, metalness: 0.05,
       transparent: true, opacity: 0.85,
-      depthWrite: false,   // transparent mesh must not write depth — prevents black patches on terrain below
+      depthWrite: true,   // transparent mesh must not write depth — prevents black patches on terrain below
     });
     const mesh = new THREE.Mesh(bldGeo, mat);
     buildingGroup.add(mesh);
