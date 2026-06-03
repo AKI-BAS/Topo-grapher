@@ -3567,8 +3567,51 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
   if (!_currentUser) return;
   try {
     const safe = (pName || 'site').replace(/[^a-zA-Z0-9_\-]/g, '_');
-    await _sb.from('generations').insert({ user_id: _currentUser.id, project_name: pName, point_count: pointCount, spacing, area_m2: areaM2, elevation_source: elevSource, csv_data: isPro() ? (csvRaw || null) : null, file_name: safe + '_toposolid.csv', polygon_geojson: polygonJson || null, resolution_m: parseResolution(elevSource), area_km2: areaM2 ? parseFloat((areaM2 / 1000000).toFixed(4)) : null, addon_charged_pence: window._lastAddonChargePence || 0, user_plan: _currentProfile?.plan || 'free' });
+    // Compute centroid and country from the active polygon
+    const poly = polygonLatLngs || [];
+    const lats  = poly.map(p => p.lat !== undefined ? p.lat : p[0]);
+    const lons   = poly.map(p => p.lng !== undefined ? p.lng : p[1]);
+    const cLat   = lats.length ? (Math.min(...lats) + Math.max(...lats)) / 2 : null;
+    const cLon   = lons.length ? (Math.min(...lons) + Math.max(...lons)) / 2 : null;
+    const countryCode = getCountryCode(poly);
+    await _sb.from('generations').insert({
+      user_id:           _currentUser.id,
+      project_name:      pName,
+      point_count:       pointCount,
+      spacing,
+      area_m2:           areaM2,
+      elevation_source:  elevSource,
+      csv_data:          isPro() ? (csvRaw || null) : null,
+      file_name:         safe + '_toposolid.csv',
+      polygon_geojson:   polygonJson || null,
+      resolution_m:      parseResolution(elevSource),
+      area_km2:          areaM2 ? parseFloat((areaM2 / 1000000).toFixed(4)) : null,
+      addon_charged_pence: window._lastAddonChargePence || 0,
+      user_plan:         _currentProfile?.plan || 'free',
+      centroid_lat:      cLat ? parseFloat(cLat.toFixed(6)) : null,
+      centroid_lon:      cLon ? parseFloat(cLon.toFixed(6)) : null,
+      country_code:      countryCode,
+    });
   } catch(e) { console.warn('logGeneration error:', e); }
+}
+function getCountryCode(poly) {
+  if (!poly || !poly.length) return null;
+  const lats = poly.map(p => p.lat !== undefined ? p.lat : p[0]);
+  const lons  = poly.map(p => p.lng !== undefined ? p.lng : p[1]);
+  const cLat  = (Math.min(...lats) + Math.max(...lats)) / 2;
+  const cLon  = (Math.min(...lons) + Math.max(...lons)) / 2;
+  const MAP = [
+    [54.5,7.9,57.8,15.3,'DK'],[57.8,4.5,71.2,31.5,'NO'],[55.0,10.9,69.1,24.2,'SE'],
+    [59.6,19.0,70.1,31.6,'FI'],[49.8,-8.7,61.0,2.0,'GB'],[45.7,5.9,47.9,10.5,'CH'],
+    [50.7,3.3,53.6,7.2,'NL'],[46.3,9.5,49.0,17.2,'AT'],[41.3,-5.2,51.1,9.6,'FR'],
+    [45.8,6.0,55.1,15.0,'DE'],[35.9,-9.3,43.8,4.3,'ES'],[36.4,6.7,47.1,18.5,'IT'],
+    [63.1,-24.6,66.7,-13.1,'IS'],[24.4,-125.0,49.4,-66.8,'US'],[41.7,-141.0,83.1,-52.6,'CA'],
+    [49.5,2.5,51.5,6.4,'BE'],[49.0,14.1,54.9,24.2,'PL'],
+  ];
+  for (const [minLat,minLon,maxLat,maxLon,code] of MAP) {
+    if (cLat>=minLat && cLat<=maxLat && cLon>=minLon && cLon<=maxLon) return code;
+  }
+  return null;
 }
 
 // ── Daily limits ──────────────────────────────────────────────────────────
