@@ -3922,7 +3922,6 @@ async function fetchElevations(pts, onP) {
       onP(0,'Fetching elevation data…',pts.length+' points · '+totalBatches+' batches · ~'+Math.max(2,Math.ceil(totalBatches/7)*2)+'s');
       const result=await tryWorkerProxy(pts,(frac,label)=>onP(frac*0.95,'Fetching elevation data…',label));
       return {elevations:result.elevations,source:result.source};
-    }
 }catch(e){
     throw new Error('Elevation fetch failed — '+e.message.slice(0,120));
   }
