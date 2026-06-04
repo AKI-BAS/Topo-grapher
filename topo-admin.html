@@ -479,7 +479,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   </div>
 
   <!-- ═══ EMAIL BLAST MODAL ═══ -->
-  <div class="blast-overlay" id="blast-overlay" onclick="if(event.target===this)closeBlast()">
+  <div class="blast-overlay" id="blast-overlay" onclick="if(event.target===this)safeCloseBlast()">
     <div class="blast-modal resizable-modal" id="blast-modal">
       <div class="blast-header">
         <div class="blast-header-left">
@@ -1638,6 +1638,14 @@ function _showBlastModal() {
 function closeBlast() {
   document.getElementById('blast-overlay').classList.remove('show');
   document.getElementById('blast-confirm').classList.remove('show');
+}
+function safeCloseBlast() {
+  const subject = (document.getElementById('blast-subject')?.value || '').trim();
+  const body    = (document.getElementById('blast-body')?.value    || '').trim();
+  if (subject || body) {
+    if (!confirm('Discard this draft and close?')) return;
+  }
+  closeBlast();
 }
 
 function loadBlastTemplate(key) {
