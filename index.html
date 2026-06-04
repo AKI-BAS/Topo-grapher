@@ -2881,8 +2881,8 @@ function swapView(target) {
   if (target === '3d') {
     mainView.setAttribute('data-view', '3d');
     btnBack.style.display = 'block';
-    previewSmall.querySelector('.preview-3d-label').textContent = 'Map';
-    previewSmall.querySelector('.preview-3d-placeholder').textContent = 'Click to swap back to map';
+    var labelEl = previewSmall.querySelector('#preview-3d-label-text');
+    if (labelEl) labelEl.textContent = 'Map';
     btnEnlarge.onclick = function() { swapView('map'); };
     // Free users: init terrain in the enlarged container if data is waiting
     if (window._freeTerrain3DData) {
@@ -2892,14 +2892,79 @@ function swapView(target) {
         _initTerrain3D(d.points, d.minZ, d.maxZ, d.interval, 'terrain3d-container', 'free-terrain-canvas', 'free');
       }); });
     }
+    // Show minimap of the drawn polygon in the small slot
+    _initSmallMinimap();
   } else {
     mainView.setAttribute('data-view', 'map');
     btnBack.style.display = 'none';
-    previewSmall.querySelector('.preview-3d-label').textContent = '3D preview';
-    previewSmall.querySelector('.preview-3d-placeholder').textContent = 'Generate terrain to see 3D preview';
+    var labelEl2 = previewSmall.querySelector('#preview-3d-label-text');
+    if (labelEl2) labelEl2.textContent = '3D preview';
     btnEnlarge.onclick = function() { swapView('3d'); };
+    // Destroy minimap, restore demo terrain canvas
+    _destroySmallMinimap();
     setTimeout(function() { map.invalidateSize(); }, 50);
   }
+}
+
+// ── Small-slot minimap (shown when main view is in 3D mode) ───────────────
+window._smallMinimapInstance = null;
+function _initSmallMinimap() {
+  var card = document.getElementById('preview-3d-small');
+  if (!card) return;
+  // Hide demo canvas and placeholder
+  var demoCanvas = document.getElementById('preview-3d-canvas');
+  var ph = document.getElementById('preview-3d-ph');
+  if (demoCanvas) demoCanvas.style.opacity = '0';
+  if (ph) ph.style.display = 'none';
+  // Create or reuse minimap container
+  var mmWrap = document.getElementById('preview-minimap-wrap');
+  if (!mmWrap) {
+    mmWrap = document.createElement('div');
+    mmWrap.id = 'preview-minimap-wrap';
+    mmWrap.style.cssText = 'position:absolute;inset:0;z-index:1;border-radius:inherit;overflow:hidden;';
+    card.appendChild(mmWrap);
+  }
+  mmWrap.style.display = 'block';
+  // Destroy previous Leaflet instance if any
+  if (window._smallMinimapInstance) {
+    try { window._smallMinimapInstance.remove(); } catch(e) {}
+    window._smallMinimapInstance = null;
+  }
+  // Init a new frozen minimap
+  var mm = L.map(mmWrap, {
+    zoomControl: false, attributionControl: false,
+    dragging: false, scrollWheelZoom: false,
+    doubleClickZoom: false, boxZoom: false,
+    keyboard: false, touchZoom: false,
+    tap: false
+  });
+  // Same satellite basemap as the main map
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19, noWrap: true
+  }).addTo(mm);
+  // Draw the polygon if one exists
+  if (polygonLatLngs && polygonLatLngs.length > 2) {
+    var poly = L.polygon(polygonLatLngs, {
+      color: '#9aba6a', fillColor: '#9aba6a', fillOpacity: 0.18, weight: 2
+    }).addTo(mm);
+    mm.fitBounds(poly.getBounds(), { padding: [12, 12] });
+  } else {
+    mm.setView([54.5, -2], 5);
+  }
+  window._smallMinimapInstance = mm;
+}
+function _destroySmallMinimap() {
+  var mmWrap = document.getElementById('preview-minimap-wrap');
+  if (mmWrap) mmWrap.style.display = 'none';
+  if (window._smallMinimapInstance) {
+    try { window._smallMinimapInstance.remove(); } catch(e) {}
+    window._smallMinimapInstance = null;
+  }
+  // Restore demo canvas
+  var demoCanvas = document.getElementById('preview-3d-canvas');
+  if (demoCanvas) demoCanvas.style.opacity = '0.75';
+  var ph = document.getElementById('preview-3d-ph');
+  if (ph && !window._cleanOutMetric) ph.style.display = '';
 }
 
 // Sticky nav
@@ -6582,8 +6647,11 @@ async function sendFeedback() {
 document.addEventListener('DOMContentLoaded', function() {
   updateLimitBadge();
   setTimeout(function() { initAuth(); }, 0);
-  // Demo terrain starts as soon as Three.js is ready
-  setTimeout(function() { initDemoTerrain3D(); }, 120);
+// Demo terrain starts as soon as Three.js is ready — retry until it loads
+  (function _tryDemo() {
+    if (window.THREE) { initDemoTerrain3D(); return; }
+    setTimeout(_tryDemo, 150);
+  })();
   var pnEl = document.getElementById('project-name');
   if (pnEl) pnEl.addEventListener('input', function() { this.classList.remove('error'); updateConvertBtn(); });
   var cbEl = document.getElementById('convert-btn');
