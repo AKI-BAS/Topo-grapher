@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
@@ -3923,14 +3923,9 @@ async function fetchElevations(pts, onP) {
       const result=await tryWorkerProxy(pts,(frac,label)=>onP(frac*0.95,'Fetching elevation data…',label));
       return {elevations:result.elevations,source:result.source};
     }
-  }catch(e){err0=e.message; onP(0.2,'Trying direct API…',e.message.slice(0,60));}
-  // Fallback: Open-Meteo
-  try { onP(0.25,'Fetching elevation data…','open-meteo.com · '+pts.length+' pts'); const e=await tryOpenMeteo(pts); return {elevations:e,source:'open-meteo.com (90m DEM)'}; }
-  catch(e){err1=e.message; onP(0.45,'Trying secondary source…',e.message.slice(0,60));}
-  let err2='';
-  try { onP(0.55,'Fetching elevation data…','opentopodata.org · '+pts.length+' pts'); const e=await tryOpenTopoData(pts); return {elevations:e,source:'opentopodata.org (SRTM 30m)'}; }
-  catch(e){err2=e.message;}
-  throw new Error('All elevation sources failed — [Proxy] '+err0+' | [OpenMeteo] '+err1+' | [OpenTopo] '+err2);
+  }catch(e){
+    throw new Error('Elevation fetch failed — '+e.message.slice(0,120));
+  }
 }
 
 // ── Convert ───────────────────────────────────────────────────────────────
