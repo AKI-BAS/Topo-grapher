@@ -929,11 +929,16 @@ function buildSVG(id,labels,values,color='#9ABA6A',fill='rgba(154,186,106,.1)'){
 // ── KPIs ──────────────────────────────────────────────────────
 async function loadKPIs(){
   const{count:totalGens}=await _sb.from('generations').select('*',{count:'exact',head:true});
-  const weekAgo=new Date(Date.now()-7*864e5).toISOString();
-  const prevWeekAgo=new Date(Date.now()-14*864e5).toISOString();
-  const{count:weekGens}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',weekAgo);
-  const{count:prevWeekGens}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',prevWeekAgo).lt('created_at',weekAgo);
-  const{data:uids}=await _sb.from('generations').select('user_id').limit(10000);
+  const ps=periodStart();
+  const halfMs={'1d':864e5/2,'7d':3.5*864e5,'30d':15*864e5,'3m':45*864e5,'6m':91*864e5,'12m':182*864e5,'all':null}[_period];
+  const prevStart=halfMs?new Date(Date.now()-halfMs*2).toISOString():null;
+  const prevEnd=ps;
+  const qGens=_sb.from('generations').select('*',{count:'exact',head:true});
+  const{count:weekGens}=await (ps?qGens.gte('created_at',ps):qGens);
+  const qPrev=_sb.from('generations').select('*',{count:'exact',head:true});
+  const{count:prevWeekGens}=await (prevStart&&prevEnd?qPrev.gte('created_at',prevStart).lt('created_at',prevEnd):qPrev.gte('created_at',new Date(Date.now()-14*864e5).toISOString()).lt('created_at',ps||new Date().toISOString()));
+  const qUids=_sb.from('generations').select('user_id').limit(10000);
+  const{data:uids}=await (ps?qUids.gte('created_at',ps):qUids);
   const activeUsers=new Set((uids||[]).map(r=>r.user_id)).size;
   const{count:proCount}=await _sb.from('profiles').select('*',{count:'exact',head:true}).in('plan',['pro','company']).eq('is_admin',false);
   const{count:totalUsers}=await _sb.from('profiles').select('*',{count:'exact',head:true});
@@ -1034,19 +1039,35 @@ async function loadRevenue(){
 // ── Trends ────────────────────────────────────────────────────
 let _trendData = null;
 async function loadTrends(){
-  const ago30=new Date(Date.now()-30*864e5).toISOString();
-  const{data}=await _sb.from('generations').select('created_at,user_plan').gte('created_at',ago30).order('created_at',{ascending:true}).limit(10000);
+  const ps=periodStart();
+  const q=_sb.from('generations').select('created_at,user_plan').order('created_at',{ascending:true}).limit(10000);
+  const{data}=await (ps?q.gte('created_at',ps):q);
   _trendData = data;
-  if(!data||!data.length) return;
+  if(!data||!data.length){document.getElementById('body-trends').innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">No data for this period</div>';return;}
 
-  document.getElementById('badge-trends').textContent='30 days';
+  document.getElementById('badge-trends').textContent=periodLabel();
   const today=new Date().toISOString().slice(0,10);
   const todayC=data.filter(r=>r.created_at.slice(0,10)===today).length;
   const wk=new Date(Date.now()-7*864e5).toISOString();
   const weekC=data.filter(r=>r.created_at>=wk).length;
 
-  const dc={};data.forEach(r=>{const d=r.created_at.slice(0,10);dc[d]=(dc[d]||0)+1;});
-  const days=[];for(let i=29;i>=0;i--){days.push(new Date(Date.now()-i*864e5).toISOString().slice(0,10));}
+  const buckets=periodBuckets();
+  const dc={};
+  data.forEach(r=>{
+    let key;
+    if(buckets.unit==='hour') key=new Date(r.created_at).toISOString().slice(0,13);
+    else if(buckets.unit==='month') key=r.created_at.slice(0,7);
+    else key=r.created_at.slice(0,10);
+    dc[key]=(dc[key]||0)+1;
+  });
+  const days=[];
+  for(let i=buckets.n-1;i>=0;i--){
+    const d=new Date();
+    if(buckets.unit==='hour'){d.setHours(d.getHours()-i);days.push(d.toISOString().slice(0,13));}
+    else if(buckets.unit==='month'){d.setMonth(d.getMonth()-i);days.push(d.toISOString().slice(0,7));}
+    else if(buckets.unit==='week'){d.setDate(d.getDate()-i*7);days.push(d.toISOString().slice(0,10));}
+    else{d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+  }
 
   const hc=new Array(24).fill(0);data.forEach(r=>{hc[new Date(r.created_at).getUTCHours()]++;});
   const mh=Math.max(...hc,1);
@@ -1061,7 +1082,7 @@ async function loadTrends(){
     <div style="margin-top:12px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">By hour (UTC)</div>
     <div class="bar-chart-h">${[0,3,6,9,12,15,18,21].map(h=>barRow(String(h).padStart(2,'0')+':00',hc[h],mh,'bar-fill-accent')).join('')}</div>
   `;
-  requestAnimationFrame(()=>buildSVG('trend-chart',days.map(d=>d.slice(5)),days.map(d=>dc[d]||0)));
+  requestAnimationFrame(()=>buildSVG('trend-chart',days.map(d=>buckets.fmt(d)),days.map(d=>dc[d]||0)));
 }
 
 function loadTrendsChart() {
@@ -1153,7 +1174,9 @@ async function loadDonut(){
 
 // ── Country bars ──────────────────────────────────────────────
 async function loadCountryBars(){
-  const{data}=await _sb.from('generations').select('country_code').not('country_code','is',null).limit(10000);
+  const ps=periodStart();
+  const q=_sb.from('generations').select('country_code').not('country_code','is',null).limit(10000);
+  const{data}=await (ps?q.gte('created_at',ps):q);
   const cc={};(data||[]).forEach(r=>{cc[r.country_code]=(cc[r.country_code]||0)+1;});
   const sorted=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const mx=sorted[0]?.[1]||1;
@@ -1163,7 +1186,9 @@ async function loadCountryBars(){
 
 // ── Live feed ─────────────────────────────────────────────────
 async function loadFeed(){
-  const{data:gens}=await _sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,created_at').order('created_at',{ascending:false}).limit(30);
+  const ps=periodStart();
+  const qf=_sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,created_at').order('created_at',{ascending:false}).limit(30);
+  const{data:gens}=await (ps?qf.gte('created_at',ps):qf);
   const{data:signups}=await _sb.from('profiles').select('email,plan,created_at').order('created_at',{ascending:false}).limit(10);
   const items=[];
   (gens||[]).forEach(r=>items.push({type:r.user_plan==='pro'||r.user_plan==='company'?'pro':'gen',time:r.created_at,dl:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${esc(r.project_name||'—')}`,meta:`${r.user_plan||'free'} · ${r.point_count?r.point_count.toLocaleString()+'pts':''} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}`}));
@@ -1247,20 +1272,24 @@ async function loadExportFormats(){
 
 // ── Download rate (gen → export conversion) ──────────────────
 async function loadDownloadRate(){
-  const{count:totalGens}=await _sb.from('generations').select('*',{count:'exact',head:true});
-  const{count:withFile}=await _sb.from('generations').select('*',{count:'exact',head:true}).not('file_name','is',null);
+  const ps=periodStart();
+  const qBase=()=>{const q=_sb.from('generations').select('*',{count:'exact',head:true});return ps?q.gte('created_at',ps):q;};
+  const{count:totalGens}=await qBase();
+  const{count:withFile}=await qBase().not('file_name','is',null);
   const total=totalGens||0,dl=withFile||0;
   const rate=total>0?Math.round(dl/total*100):0;
   const noFile=total-dl;
 
   // Weekly breakdown
-  const weekAgo=new Date(Date.now()-7*864e5).toISOString();
-  const{count:weekGens}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',weekAgo);
-  const{count:weekDl}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',weekAgo).not('file_name','is',null);
+const weekAgo=new Date(Date.now()-7*864e5).toISOString();
+  const effectiveStart=ps&&ps>weekAgo?ps:weekAgo;
+  const{count:weekGens}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',effectiveStart);
+  const{count:weekDl}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',effectiveStart).not('file_name','is',null);
   const weekRate=(weekGens||0)>0?Math.round((weekDl||0)/(weekGens||1)*100):0;
 
   // By plan
-  const{data:planData}=await _sb.from('generations').select('user_plan,file_name').limit(10000);
+const qPlan=_sb.from('generations').select('user_plan,file_name').limit(10000);
+  const{data:planData}=await (ps?qPlan.gte('created_at',ps):qPlan);
   const plans={free:{gen:0,dl:0},pro:{gen:0,dl:0},company:{gen:0,dl:0}};
   (planData||[]).forEach(r=>{const p=r.user_plan||'free';if(!plans[p])plans[p]={gen:0,dl:0};plans[p].gen++;if(r.file_name)plans[p].dl++;});
 
