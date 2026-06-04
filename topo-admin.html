@@ -1564,47 +1564,50 @@ let _blastRecipientCount = null;
 function buildBlastPreviewHtml(subject, bodyText) {
   const bodyHtml = bodyText
     .split(/\n\n+/)
-    .map(p => `<p style="margin:0 0 18px 0;font-size:14px;line-height:1.85;color:#bdb6ac;">${
+    .map(p => `<p style="margin:0 0 18px 0;font-size:14px;line-height:1.85;color:#2a2a28;">${
       p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
     }</p>`)
     .join('');
 
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#111110;font-family:'Courier New',Courier,monospace;">
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#111110;padding:48px 16px;">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+</head>
+<body style="margin:0;padding:0;background:#f4f1ec;font-family:'Courier New',Courier,monospace;" bgcolor="#f4f1ec">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f1ec;padding:48px 16px;" bgcolor="#f4f1ec">
   <tr><td align="center">
     <table width="540" cellpadding="0" cellspacing="0" border="0"
-      style="max-width:540px;width:100%;background-color:#1c1b19;border:1px solid #2c2b28;border-radius:4px;overflow:hidden;">
-      <tr><td style="height:3px;background:linear-gradient(90deg,#9aba6a 0%,#5E6631 70%,#1c1b19 100%);"></td></tr>
-      <tr><td style="padding:32px 40px 24px 40px;background-color:#1c1b19;">
+      style="max-width:540px;width:100%;background-color:#ffffff;border:1px solid #b8d48a;border-radius:4px;overflow:hidden;" bgcolor="#ffffff">
+      <tr><td style="height:3px;background:linear-gradient(90deg,#5a8e3a 0%,#9aba6a 60%,#e8f0de 100%);background-color:#5a8e3a;"></td></tr>
+      <tr><td style="padding:32px 40px 24px 40px;background-color:#ffffff;" bgcolor="#ffffff">
         <table cellpadding="0" cellspacing="0" border="0">
           <tr>
             <td style="vertical-align:middle;padding-right:12px;">
               <img src="https://topo-grapher.com/Dark_logo.png" width="40" height="40" alt="" style="display:block;border-radius:3px;">
             </td>
             <td style="vertical-align:middle;">
-              <span style="font-family:'Courier New',monospace;font-size:15px;font-weight:700;letter-spacing:0.1em;color:#f0ede8;text-transform:uppercase;">TOPO-</span><span style="font-family:'Courier New',monospace;font-size:15px;font-weight:700;letter-spacing:0.1em;color:#9aba6a;text-transform:uppercase;">GRAPHER</span>
+              <span style="font-family:'Courier New',monospace;font-size:15px;font-weight:700;letter-spacing:0.1em;color:#1a2410;text-transform:uppercase;">TOPO-</span><span style="font-family:'Courier New',monospace;font-size:15px;font-weight:700;letter-spacing:0.1em;color:#4a7a2a;text-transform:uppercase;">GRAPHER</span>
             </td>
           </tr>
         </table>
-        <div style="height:1px;background:#2c2b28;margin-top:24px;"></div>
+        <div style="height:1px;background:#b8d48a;margin-top:24px;"></div>
       </td></tr>
-      <tr><td style="padding:8px 40px 36px 40px;background-color:#1c1b19;">
+      <tr><td style="padding:8px 40px 36px 40px;background-color:#ffffff;" bgcolor="#ffffff">
         ${bodyHtml}
-        <p style="margin:28px 0 4px 0;font-size:14px;line-height:1.85;color:#bdb6ac;">Have a great day!</p>
-        <p style="margin:0;font-size:14px;color:#9aba6a;font-weight:700;letter-spacing:0.04em;">— Aki</p>
+        <p style="margin:28px 0 4px 0;font-size:14px;line-height:1.85;color:#2a2a28;">Have a great day!</p>
+        <p style="margin:0;font-size:14px;color:#4a7a2a;font-weight:700;letter-spacing:0.04em;">— Aki</p>
       </td></tr>
-      <tr><td style="padding:0 40px 28px 40px;background-color:#1c1b19;">
-        <div style="height:1px;background:#222220;margin-bottom:16px;"></div>
-        <p style="margin:0;font-size:11px;line-height:1.7;color:#524f4a;">
-          You received this because you have an account at <a href="https://topo-grapher.com" style="color:#524f4a;text-decoration:underline;">topo-grapher.com</a>.
-          Questions? Reply here or write to <a href="mailto:aki@topo-grapher.com" style="color:#5a5a50;">aki@topo-grapher.com</a>
+      <tr><td style="padding:0 40px 28px 40px;background-color:#f8f6f2;border-top:1px solid #b8d48a;" bgcolor="#f8f6f2">
+        <div style="height:1px;background:#ddd8cc;margin-bottom:16px;margin-top:16px;"></div>
+        <p style="margin:0;font-size:11px;line-height:1.7;color:#7a7a70;">
+          You received this because you have an account at <a href="https://topo-grapher.com" style="color:#7a7a70;text-decoration:underline;">topo-grapher.com</a>.
+          Questions? Reply here or write to <a href="mailto:aki@topo-grapher.com" style="color:#4a7a2a;">aki@topo-grapher.com</a>
         </p>
       </td></tr>
     </table>
-    <div style="margin-top:16px;font-family:'Courier New',monospace;font-size:11px;color:#3a3a30;text-align:center;">Subject: ${subject || '(no subject)'}</div>
+    <div style="margin-top:16px;font-family:'Courier New',monospace;font-size:11px;color:#8a8a80;text-align:center;">Subject: ${subject || '(no subject)'}</div>
   </td></tr>
 </table>
 </body>
@@ -1756,7 +1759,7 @@ async function executeSend() {
   statusEl.textContent = 'Sending…';
   const bodyHtml = bodyText
     .split(/\n\n+/)
-    .map(p=>`<p style="margin:0 0 18px 0;font-size:14px;line-height:1.85;color:#bdb6ac;">${
+    .map(p=>`<p style="margin:0 0 18px 0;font-size:14px;line-height:1.85;color:#2a2a28;">${
       p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
     }</p>`).join('');
   try {
