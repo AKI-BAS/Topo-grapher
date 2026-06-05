@@ -4878,14 +4878,14 @@ async function _initTerrain3D(points, minZ, maxZ, contourInterval, wrapId, canva
   const camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 5000);
 
   // Hemisphere light — sky/ground split gives natural outdoor look
-  const hemiLight = new THREE.HemisphereLight(
-    isDark() ? 0x3a5560 : 0xc0d8e8,   // sky
-    isDark() ? 0x1a2510 : 0x6a7040,   // ground
-    isDark() ? 0.80 : 0.90
+ const hemiLight = new THREE.HemisphereLight(
+    isDark() ? 0x6090a0 : 0xc0d8e8,   // sky — brighter so dark faces get more fill
+    isDark() ? 0x304820 : 0x7a9050,   // ground
+    isDark() ? 1.1 : 1.0
   );
   scene.add(hemiLight);
-  // Ambient floor — prevents steep taper-zone faces and building sides going fully black
-  const ambLight = new THREE.AmbientLight(0xffffff, isDark() ? 0.30 : 0.38);
+  // Strong ambient floor — prevents ANY face going fully black regardless of normal errors
+  const ambLight = new THREE.AmbientLight(0xffffff, isDark() ? 0.55 : 0.50);
   scene.add(ambLight);
   // Warm primary sun — high diagonal
   const sunLight = new THREE.DirectionalLight(isDark() ? 0xfff4d0 : 0xfff8f0, isDark() ? 1.05 : 0.95);
@@ -4964,40 +4964,41 @@ async function _initTerrain3D(points, minZ, maxZ, contourInterval, wrapId, canva
     const t = Math.max(0, Math.min(1, (normPts[i].elev - minZ) / (rangeZ || 1)));
     let r, g, b;
     if (isDark()) {
-      // Dark — deep forest green → olive → pale grey-stone
+      // Dark: muted teal-green valley → olive mid → warm stone ridge
+      // Floor raised to 0x38/0x48/0x28 so nothing goes near-black
       if (t < 0.38) {
         const s = t / 0.38;
-        r = (0x18 + s*(0x3c-0x18)) / 255;
-        g = (0x28 + s*(0x4a-0x28)) / 255;
-        b = (0x10 + s*(0x20-0x10)) / 255;
+        r = (0x38 + s*(0x52-0x38)) / 255;
+        g = (0x48 + s*(0x62-0x48)) / 255;
+        b = (0x28 + s*(0x38-0x28)) / 255;
       } else if (t < 0.72) {
         const s = (t - 0.38) / 0.34;
-        r = (0x3c + s*(0x62-0x3c)) / 255;
-        g = (0x4a + s*(0x64-0x4a)) / 255;
-        b = (0x20 + s*(0x4c-0x20)) / 255;
+        r = (0x52 + s*(0x78-0x52)) / 255;
+        g = (0x62 + s*(0x7a-0x62)) / 255;
+        b = (0x38 + s*(0x52-0x38)) / 255;
       } else {
         const s = (t - 0.72) / 0.28;
-        r = (0x62 + s*(0x96-0x62)) / 255;
-        g = (0x64 + s*(0x96-0x64)) / 255;
-        b = (0x4c + s*(0x88-0x4c)) / 255;
+        r = (0x78 + s*(0xa8-0x78)) / 255;
+        g = (0x7a + s*(0xa4-0x7a)) / 255;
+        b = (0x52 + s*(0x90-0x52)) / 255;
       }
     } else {
-      // Light — earthy green → warm tan → pale stone
+      // Light: earthy green valley → warm tan mid → pale limestone ridge
       if (t < 0.35) {
         const s = t / 0.35;
-        r = (0x52 + s*(0x76-0x52)) / 255;
-        g = (0x64 + s*(0x84-0x64)) / 255;
-        b = (0x3a + s*(0x52-0x3a)) / 255;
+        r = (0x5a + s*(0x7e-0x5a)) / 255;
+        g = (0x70 + s*(0x90-0x70)) / 255;
+        b = (0x42 + s*(0x5c-0x42)) / 255;
       } else if (t < 0.70) {
         const s = (t - 0.35) / 0.35;
-        r = (0x76 + s*(0x9e-0x76)) / 255;
-        g = (0x84 + s*(0x98-0x84)) / 255;
-        b = (0x52 + s*(0x76-0x52)) / 255;
+        r = (0x7e + s*(0xaa-0x7e)) / 255;
+        g = (0x90 + s*(0xa4-0x90)) / 255;
+        b = (0x5c + s*(0x7e-0x5c)) / 255;
       } else {
         const s = (t - 0.70) / 0.30;
-        r = (0x9e + s*(0xcc-0x9e)) / 255;
-        g = (0x98 + s*(0xc6-0x98)) / 255;
-        b = (0x76 + s*(0xb4-0x76)) / 255;
+        r = (0xaa + s*(0xd4-0xaa)) / 255;
+        g = (0xa4 + s*(0xcc-0xa4)) / 255;
+        b = (0x7e + s*(0xbe-0x7e)) / 255;
       }
     }
     vCol[i*3]=r; vCol[i*3+1]=g; vCol[i*3+2]=b;
@@ -5078,13 +5079,13 @@ async function _initTerrain3D(points, minZ, maxZ, contourInterval, wrapId, canva
       const t = Math.max(0, Math.min(1, (aug[i].elev - minZ) / (rangeZ || 1)));
       let r, g, bv;
       if (dark) {
-        if (t<0.38){const s=t/0.38;          r=(0x18+s*(0x3c-0x18))/255;g=(0x28+s*(0x4a-0x28))/255;bv=(0x10+s*(0x20-0x10))/255;}
-        else if(t<0.72){const s=(t-0.38)/0.34;r=(0x3c+s*(0x62-0x3c))/255;g=(0x4a+s*(0x64-0x4a))/255;bv=(0x20+s*(0x4c-0x20))/255;}
-        else{const s=(t-0.72)/0.28;           r=(0x62+s*(0x96-0x62))/255;g=(0x64+s*(0x96-0x64))/255;bv=(0x4c+s*(0x88-0x4c))/255;}
+        if (t<0.38){const s=t/0.38;          r=(0x38+s*(0x52-0x38))/255;g=(0x48+s*(0x62-0x48))/255;bv=(0x28+s*(0x38-0x28))/255;}
+        else if(t<0.72){const s=(t-0.38)/0.34;r=(0x52+s*(0x78-0x52))/255;g=(0x62+s*(0x7a-0x62))/255;bv=(0x38+s*(0x52-0x38))/255;}
+        else{const s=(t-0.72)/0.28;           r=(0x78+s*(0xa8-0x78))/255;g=(0x7a+s*(0xa4-0x7a))/255;bv=(0x52+s*(0x90-0x52))/255;}
       } else {
-        if (t<0.35){const s=t/0.35;          r=(0x52+s*(0x76-0x52))/255;g=(0x64+s*(0x84-0x64))/255;bv=(0x3a+s*(0x52-0x3a))/255;}
-        else if(t<0.70){const s=(t-0.35)/0.35;r=(0x76+s*(0x9e-0x76))/255;g=(0x84+s*(0x98-0x84))/255;bv=(0x52+s*(0x76-0x52))/255;}
-        else{const s=(t-0.70)/0.30;           r=(0x9e+s*(0xcc-0x9e))/255;g=(0x98+s*(0xc6-0x98))/255;bv=(0x76+s*(0xb4-0x76))/255;}
+        if (t<0.35){const s=t/0.35;          r=(0x5a+s*(0x7e-0x5a))/255;g=(0x70+s*(0x90-0x70))/255;bv=(0x42+s*(0x5c-0x42))/255;}
+        else if(t<0.70){const s=(t-0.35)/0.35;r=(0x7e+s*(0xaa-0x7e))/255;g=(0x90+s*(0xa4-0x90))/255;bv=(0x5c+s*(0x7e-0x5c))/255;}
+        else{const s=(t-0.70)/0.30;           r=(0xaa+s*(0xd4-0xaa))/255;g=(0xa4+s*(0xcc-0xa4))/255;bv=(0x7e+s*(0xbe-0x7e))/255;}
       }
       v2[i*3]=r; v2[i*3+1]=g; v2[i*3+2]=bv;
     }
@@ -5095,10 +5096,10 @@ async function _initTerrain3D(points, minZ, maxZ, contourInterval, wrapId, canva
     geo.computeBoundingSphere();
   }
 
-  const meshMat = new THREE.MeshStandardMaterial({
+const meshMat = new THREE.MeshPhongMaterial({
     vertexColors: true,
-    roughness:    0.88,
-    metalness:    0.02,
+    shininess: 6,
+    specular: isDark() ? 0x1a2010 : 0x8a9070,
     side: THREE.DoubleSide, polygonOffset:true, polygonOffsetFactor:4, polygonOffsetUnits:4
   });
   const terrainMesh = new THREE.Mesh(geo, meshMat);
@@ -5950,13 +5951,13 @@ async function _initTerrain3D(points, minZ, maxZ, contourInterval, wrapId, canva
       const t = Math.max(0, Math.min(1, (groundElevExport - minZ) / (rangeZ || 1)));
       let cr, cg, cb;
       if (dark) {
-        if (t<0.38) { const s=t/0.38;       cr=(0x18+s*(0x3c-0x18))/255; cg=(0x28+s*(0x4a-0x28))/255; cb=(0x10+s*(0x20-0x10))/255; }
-        else if(t<0.72){const s=(t-0.38)/0.34; cr=(0x3c+s*(0x62-0x3c))/255; cg=(0x4a+s*(0x64-0x4a))/255; cb=(0x20+s*(0x4c-0x20))/255; }
-        else { const s=(t-0.72)/0.28;         cr=(0x62+s*(0x96-0x62))/255; cg=(0x64+s*(0x96-0x64))/255; cb=(0x4c+s*(0x88-0x4c))/255; }
+        if (t<0.38) { const s=t/0.38;       cr=(0x38+s*(0x52-0x38))/255; cg=(0x48+s*(0x62-0x48))/255; cb=(0x28+s*(0x38-0x28))/255; }
+        else if(t<0.72){const s=(t-0.38)/0.34; cr=(0x52+s*(0x78-0x52))/255; cg=(0x62+s*(0x7a-0x62))/255; cb=(0x38+s*(0x52-0x38))/255; }
+        else { const s=(t-0.72)/0.28;         cr=(0x78+s*(0xa8-0x78))/255; cg=(0x7a+s*(0xa4-0x7a))/255; cb=(0x52+s*(0x90-0x52))/255; }
       } else {
-        if (t<0.35) { const s=t/0.35;       cr=(0x52+s*(0x76-0x52))/255; cg=(0x64+s*(0x84-0x64))/255; cb=(0x3a+s*(0x52-0x3a))/255; }
-        else if(t<0.70){const s=(t-0.35)/0.35; cr=(0x76+s*(0x9e-0x76))/255; cg=(0x84+s*(0x98-0x84))/255; cb=(0x52+s*(0x76-0x52))/255; }
-        else { const s=(t-0.70)/0.30;         cr=(0x9e+s*(0xcc-0x9e))/255; cg=(0x98+s*(0xc6-0x98))/255; cb=(0x76+s*(0xb4-0x76))/255; }
+        if (t<0.35) { const s=t/0.35;       cr=(0x5a+s*(0x7e-0x5a))/255; cg=(0x70+s*(0x90-0x70))/255; cb=(0x42+s*(0x5c-0x42))/255; }
+        else if(t<0.70){const s=(t-0.35)/0.35; cr=(0x7e+s*(0xaa-0x7e))/255; cg=(0x90+s*(0xa4-0x90))/255; cb=(0x5c+s*(0x7e-0x5c))/255; }
+        else { const s=(t-0.70)/0.30;         cr=(0xaa+s*(0xd4-0xaa))/255; cg=(0xa4+s*(0xcc-0xa4))/255; cb=(0x7e+s*(0xbe-0x7e))/255; }
       }
 
       const sp = (window._effectiveSpacing || 12);
@@ -6029,13 +6030,14 @@ async function _initTerrain3D(points, minZ, maxZ, contourInterval, wrapId, canva
     const dk=isDark();
     renderer.setClearColor(getBgCol()); scene.fog.color.set(getBgCol());
     // Hemisphere light
-    hemiLight.color.set(dk?0x3a5560:0xc0d8e8);
-    hemiLight.groundColor.set(dk?0x1a2510:0x6a7040);
-    hemiLight.intensity=dk?0.80:0.90;
+    hemiLight.color.set(dk?0x6090a0:0xc0d8e8);
+    hemiLight.groundColor.set(dk?0x304820:0x7a9050);
+    hemiLight.intensity=dk?1.1:1.0;
     // Directional lights
     sunLight.color.set(dk?0xfff4d0:0xfff8f0); sunLight.intensity=dk?1.05:0.95;
     fillLight.color.set(dk?0x4060a0:0x90a8c8);
     // Wireframe
+    meshMat.specular.set(dk?0x1a2010:0x8a9070);
     wireMat.color.set(dk?0x4a6a3a:0x6a8a5a);
     // Shadow plane
     sPlaneMat.color.set(dk?0x0c1008:0x8a9678); sPlaneMat.opacity=dk?0.55:0.22;
