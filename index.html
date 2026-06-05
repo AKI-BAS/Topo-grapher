@@ -4878,20 +4878,14 @@ async function _initTerrain3D(points, minZ, maxZ, contourInterval, wrapId, canva
   const camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 5000);
 
   // Hemisphere light — sky/ground split gives natural outdoor look
- const hemiLight = new THREE.HemisphereLight(
-    isDark() ? 0x6090a0 : 0xc0d8e8,   // sky — brighter so dark faces get more fill
-    isDark() ? 0x304820 : 0x7a9050,   // ground
-    isDark() ? 1.1 : 1.0
-  );
+ // MeshBasicMaterial ignores lights — keep one ambient for buildings layer only
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0);
   scene.add(hemiLight);
-  // Strong ambient floor — prevents ANY face going fully black regardless of normal errors
-  const ambLight = new THREE.AmbientLight(0xffffff, isDark() ? 0.55 : 0.50);
+  const ambLight = new THREE.AmbientLight(0xffffff, 0.85);
   scene.add(ambLight);
-  // Warm primary sun — high diagonal
-  const sunLight = new THREE.DirectionalLight(isDark() ? 0xfff4d0 : 0xfff8f0, isDark() ? 1.05 : 0.95);
+  const sunLight = new THREE.DirectionalLight(isDark() ? 0xfff4d0 : 0xfff8f0, isDark() ? 0.55 : 0.45);
   sunLight.position.set(80, 150, 60); scene.add(sunLight);
-  // Cool blue fill from opposite side
-  const fillLight = new THREE.DirectionalLight(isDark() ? 0x4060a0 : 0x90a8c8, 0.22);
+  const fillLight = new THREE.DirectionalLight(isDark() ? 0x4060a0 : 0x90a8c8, 0.15);
   fillLight.position.set(-60, 50, -90); scene.add(fillLight);
 
   // ── Normalise to scene space ─────────────────────────────────────
@@ -5096,10 +5090,8 @@ async function _initTerrain3D(points, minZ, maxZ, contourInterval, wrapId, canva
     geo.computeBoundingSphere();
   }
 
-const meshMat = new THREE.MeshPhongMaterial({
+const meshMat = new THREE.MeshBasicMaterial({
     vertexColors: true,
-    shininess: 6,
-    specular: isDark() ? 0x1a2010 : 0x8a9070,
     side: THREE.DoubleSide, polygonOffset:true, polygonOffsetFactor:4, polygonOffsetUnits:4
   });
   const terrainMesh = new THREE.Mesh(geo, meshMat);
@@ -6030,14 +6022,9 @@ const meshMat = new THREE.MeshPhongMaterial({
     const dk=isDark();
     renderer.setClearColor(getBgCol()); scene.fog.color.set(getBgCol());
     // Hemisphere light
-    hemiLight.color.set(dk?0x6090a0:0xc0d8e8);
-    hemiLight.groundColor.set(dk?0x304820:0x7a9050);
-    hemiLight.intensity=dk?1.1:1.0;
-    // Directional lights
-    sunLight.color.set(dk?0xfff4d0:0xfff8f0); sunLight.intensity=dk?1.05:0.95;
+    sunLight.color.set(dk?0xfff4d0:0xfff8f0); sunLight.intensity=dk?0.55:0.45;
     fillLight.color.set(dk?0x4060a0:0x90a8c8);
     // Wireframe
-    meshMat.specular.set(dk?0x1a2010:0x8a9070);
     wireMat.color.set(dk?0x4a6a3a:0x6a8a5a);
     // Shadow plane
     sPlaneMat.color.set(dk?0x0c1008:0x8a9678); sPlaneMat.opacity=dk?0.55:0.22;
