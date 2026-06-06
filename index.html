@@ -1893,6 +1893,12 @@ function declineCookies() {
             <td style="padding:9px 14px;color:var(--text-soft);">±0.15m</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇪🇪 Estonia</td>
+            <td style="padding:9px 14px;color:var(--text-mid);">Maaamet DTM</td>
+            <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">1m</span></td>
+            <td style="padding:9px 14px;color:var(--text-soft);">±0.1m</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇨🇭 Switzerland</td>
             <td style="padding:9px 14px;color:var(--text-mid);">swissALTI3D</td>
             <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">0.5m</span></td>
@@ -1915,6 +1921,12 @@ function declineCookies() {
             <td style="padding:9px 14px;color:var(--text-mid);">NLS KM2</td>
             <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">2m</span></td>
             <td style="padding:9px 14px;color:var(--text-soft);">±0.3m</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇨🇿 Czech Republic</td>
+            <td style="padding:9px 14px;color:var(--text-mid);">ČÚZK DMR4G</td>
+            <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">5m</span></td>
+            <td style="padding:9px 14px;color:var(--text-soft);">±0.18m RMSE</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇪🇸 Spain</td>
@@ -4732,7 +4744,9 @@ function updateElevationSourceBanner(source, _pro) {
   let tier,resText,upgradeMsg='';
   if (s.includes('dhm')||s.includes('denmark'))         {tier='lidar';resText='0.4m · Danish DHM LiDAR';}
   else if (s.includes('gpxz'))                          {tier='lidar';resText='1m · GPXZ LiDAR';}
-  else if (s.includes('kartverket'))                    {tier='lidar';resText='1m · Kartverket DTM1 Norway';}
+else if (s.includes('kartverket'))                    {tier='lidar';resText='1m · Kartverket DTM1 Norway';}
+else if (s.includes('estonia')||s.includes('maaamet')){tier='lidar';resText='1m · Maaamet DTM Estonia';};}
+else if (s.includes('czech')||s.includes('cuzk')||s.includes('dmr4g')){tier='lidar';resText='5m · ČÚZK DMR4G Czech Republic';}
   else if (s.includes('usgs')||s.includes('3dep'))      {tier='lidar';resText='USGS 3DEP (up to 1m)';}
   else if (s.includes('ign')||s.includes('rge'))        {tier='lidar';resText='1m · IGN RGE ALTI France';}
   else if (s.includes('swissalti'))                     {tier='lidar';resText='0.5m · swissALTI3D';}
