@@ -1031,11 +1031,16 @@ function declineCookies() {
             <button class="coord-close" onclick="toggleCoordDrawer()">&#x2715;</button>
           </div>
           <label style="font-size:10px;color:var(--text-soft);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">Coordinate system</label>
-          <select id="coord-crs-select" class="coord-crs-select" onchange="onCRSChange()">
+         <select id="coord-crs-select" class="coord-crs-select" onchange="onCRSChange()">
             <option value="WGS84">WGS84 (Lat / Lon)</option>
             <option value="ISN93">ISN93 (E / N)</option>
             <option value="HRV">Reykjav&iacute;k HRV (X / Y)</option>
           </select>
+          <div style="display:flex;gap:6px;margin:8px 0 4px;align-items:center;">
+            <button id="btn-site-col-info" onclick="openSiteColumnsInfo()" style="background:none;border:1px solid var(--border-md);color:var(--text-soft);font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;border-radius:4px;cursor:pointer;letter-spacing:.04em;transition:all .15s;flex-shrink:0;" onmouseover="this.style.borderColor='#FF8C00';this.style.color='#FF8C00'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-soft)'">? Info</button>
+            <button id="btn-site-col-place" onclick="addSiteColumn()" style="flex:1;background:rgba(255,140,0,0.08);border:1px solid rgba(255,140,0,0.4);color:#FF8C00;font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;border-radius:4px;cursor:pointer;letter-spacing:.04em;transition:all .15s;" onmouseover="this.style.background='rgba(255,140,0,0.18)'" onmouseout="this.style.background='rgba(255,140,0,0.08)'">&#x2295; Add Site Column</button>
+          </div>
+          <div id="site-col-list" style="display:flex;flex-direction:column;gap:3px;"></div>
           <div style="display:flex;gap:4px;margin-bottom:4px;margin-top:6px;">
             <span style="width:18px;"></span>
             <span id="coord-header-1" style="flex:1;font-size:9px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;">Lat</span>
@@ -2705,6 +2710,7 @@ function toggleCoordDrawer() {
 function openCoordDrawer() {
   const drawer = document.getElementById('coord-drawer');
   drawer.classList.add('open');
+  if (window._activeBasemap === 'satellite') switchBasemap('streets');
   document.getElementById('btn-coords')?.classList.add('coord-active');
   const crs = document.getElementById('coord-crs-select').value;
   window._activeCoordCRS = crs;
@@ -4131,8 +4137,11 @@ function downloadCSV() {
   const rows=pts.map(p=>(p.x*mult).toFixed(decimals)+','+(p.y*mult).toFixed(decimals)+','+(p.z*mult).toFixed(decimals));
   const safe=projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([header+'\n'+rows.join('\n')],{type:'text/csv'}));
+a.href=URL.createObjectURL(new Blob([header+'\n'+rows.join('\n')],{type:'text/csv'}));
   a.download=safe+'_toposolid'+suffix+'.csv'; a.click();
+  if (window._siteColumns && window._siteColumns.length > 0) {
+    _downloadSiteColumnsIFC(safe);
+  }
 }
 function handleDownload() {
   const fmt = document.getElementById('format-select')?.value || 'csv';
@@ -4152,7 +4161,10 @@ function handleDownload() {
   } else {
     downloadCSV(); return;
   }
-  a.click(); URL.revokeObjectURL(a.href);
+a.click(); URL.revokeObjectURL(a.href);
+  if (window._siteColumns && window._siteColumns.length > 0) {
+    _downloadSiteColumnsIFC(projectName);
+  }
 }
 
 function _syncDlBtn() {
@@ -6908,6 +6920,246 @@ function initDemoTerrain3D() {
   };
 }
 
+// ── Site Columns ──────────────────────────────────────────────────────────
+window._siteColumns = [];
+window._siteColMarkers = [];
+window._siteColFrame = null;
+var _siteColIdCounter = 0;
+
+function openSiteColumnsInfo() {
+  var el = document.getElementById('site-columns-info-overlay');
+  if (!el) return;
+  el.style.display = 'flex';
+}
+function closeSiteColumnsInfo() {
+  var el = document.getElementById('site-columns-info-overlay');
+  if (el) el.style.display = 'none';
+}
+
+async function addSiteColumn() {
+  var crs = (window._activeCoordCRS) || 'WGS84';
+  var rows = document.querySelectorAll('#coord-rows .coord-row');
+
+  // Collect ALL fully-filled rows — one column per valid pair
+  var parsed = [];
+  rows.forEach(function(row) {
+    var v1 = parseFloat(row.querySelector('.coord-input-1').value);
+    var v2 = parseFloat(row.querySelector('.coord-input-2').value);
+    if (isFinite(v1) && isFinite(v2)) parsed.push({ v1: v1, v2: v2 });
+  });
+
+  if (!parsed.length) {
+    var hint = document.getElementById('map-hint');
+    if (hint) { hint.textContent = '⚠ Enter at least one valid coordinate pair first.'; hint.style.color = 'var(--danger)'; setTimeout(function(){ hint.style.color = ''; updateHint(); }, 2500); }
+    return;
+  }
+
+  var btn = document.getElementById('btn-site-col-place');
+  if (btn) { btn.textContent = 'Placing…'; btn.style.pointerEvents = 'none'; }
+
+  var wgsPoints = [];
+
+  if (crs === 'HRV') {
+    // Use the Kriging worker — same path as the coord polygon, gives accurate results
+    var pointsParam = parsed.map(function(p) { return p.v1 + ',' + p.v2; }).join(';');
+    try {
+      var res = await fetch(HRV_WORKER + '/hrv-to-wgs84?points=' + encodeURIComponent(pointsParam));
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var data = await res.json();
+      if (data.error) throw new Error(data.error);
+      data.results.forEach(function(r) {
+        if (r.lat != null && r.lon != null && r.status !== 'ERRBound') {
+          wgsPoints.push({ lat: r.lat, lon: r.lon });
+        }
+      });
+    } catch(e) {
+      // Fall back to proj4js if worker fails
+      console.warn('HRV worker failed for site columns, using proj4js fallback:', e.message);
+      parsed.forEach(function(p) {
+        var wgs = crsToWGS84(p.v1, p.v2, 'HRV');
+        if (wgs) wgsPoints.push(wgs);
+      });
+    }
+  } else {
+    // WGS84 / ISN93 — proj4js is accurate for these
+    parsed.forEach(function(p) {
+      var wgs = crsToWGS84(p.v1, p.v2, crs);
+      if (wgs) wgsPoints.push(wgs);
+    });
+  }
+
+  if (!wgsPoints.length) {
+    if (btn) { btn.textContent = '⊕ Add Site Column'; btn.style.pointerEvents = ''; }
+    return;
+  }
+
+  // Add one column per valid point
+  wgsPoints.forEach(function(wgs) {
+    _siteColIdCounter++;
+    window._siteColumns.push({ id: _siteColIdCounter, lat: wgs.lat, lon: wgs.lon });
+  });
+
+  _renderSiteColumnMarkers();
+
+  if (btn) { btn.textContent = '⊕ Add Site Column'; btn.style.pointerEvents = ''; }
+}
+
+function removeSiteColumn(id) {
+  window._siteColumns = window._siteColumns.filter(function(c) { return c.id !== id; });
+  _renderSiteColumnMarkers();
+}
+
+function _renderSiteColumnMarkers() {
+  // Remove existing markers + frame from map
+  window._siteColMarkers.forEach(function(m) { map.removeLayer(m); });
+  window._siteColMarkers = [];
+  if (window._siteColFrame) { map.removeLayer(window._siteColFrame); window._siteColFrame = null; }
+
+  var cols = window._siteColumns;
+
+  // Place orange circle markers
+  cols.forEach(function(c) {
+    var m = L.circleMarker([c.lat, c.lon], {
+      radius: 7, color: '#FF8C00', fillColor: '#FF8C00',
+      fillOpacity: 0.85, weight: 2
+    }).addTo(map);
+    m.bindTooltip('Site column ' + c.id, { permanent: false, direction: 'top' });
+    window._siteColMarkers.push(m);
+  });
+
+  // Draw convex-hull frame when 2+ columns
+  if (cols.length >= 2) {
+    var lls = cols.map(function(c) { return [c.lat, c.lon]; });
+    window._siteColFrame = L.polygon(lls, {
+      color: '#FF8C00', weight: 2.5, dashArray: '6 4',
+      fillColor: '#FF8C00', fillOpacity: 0.06
+    }).addTo(map);
+  }
+
+  // Update the list panel inside the drawer
+  var listEl = document.getElementById('site-col-list');
+  if (!listEl) return;
+  if (!cols.length) { listEl.innerHTML = ''; return; }
+  listEl.innerHTML = cols.map(function(c) {
+    return '<div style="display:flex;align-items:center;gap:5px;padding:4px 6px;background:rgba(255,140,0,0.07);border:1px solid rgba(255,140,0,0.25);border-radius:4px;">'
+      + '<span style="width:8px;height:8px;border-radius:50%;background:#FF8C00;flex-shrink:0;display:inline-block;"></span>'
+      + '<span style="flex:1;font-size:10px;color:var(--text-mid);font-family:\'DM Mono\',monospace;font-variant-numeric:tabular-nums;">'
+      + c.lat.toFixed(5) + ', ' + c.lon.toFixed(5) + '</span>'
+      + '<button onclick="removeSiteColumn(' + c.id + ')" style="background:none;border:none;color:var(--text-soft);font-size:11px;cursor:pointer;padding:0 2px;opacity:.5;transition:opacity .15s;" onmouseover="this.style.opacity=\'1\';this.style.color=\'var(--danger)\'" onmouseout="this.style.opacity=\'.5\';this.style.color=\'var(--text-soft)\'">✕</button>'
+      + '</div>';
+  }).join('');
+}
+
+function _buildSiteColumnsIFC(cols, name) {
+  if (!cols || !cols.length) return null;
+  var tc = window._lastTerrainContext;
+  var oE = tc ? tc.utmOrigin.easting : 0;
+  var oN = tc ? tc.utmOrigin.northing : 0;
+  var safe = (name || 'site').replace(/['\$]/g, '');
+  var now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  var id = 0;
+  var L = [];
+  var e = function(def) { id++; L.push('#' + id + '=' + def + ';'); return id; };
+  var g = function() { var c='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$'; var s=''; for(var i=0;i<22;i++) s+=c[Math.random()*64|0]; return "'"+s+"'"; };
+  var N = function(n) { var s = parseFloat(n.toFixed(4)).toString(); return s.includes('.') ? s : s + '.'; };
+
+  var iPers = e("IFCPERSON($,'Topo-grapher',$,$,$,$,$,$)");
+  var iOrg  = e("IFCORGANIZATION($,'Topo-grapher',$,$,$)");
+  var iPAO  = e('IFCPERSONANDORGANIZATION(#'+iPers+',#'+iOrg+',$)');
+  var iApp  = e('IFCAPPLICATION(#'+iOrg+",'1.0','Topo-grapher','TOPOGRAPHER')");
+  var iOwn  = e('IFCOWNERHISTORY(#'+iPAO+',#'+iApp+',$,.NOTDEFINED.,$,$,$,0)');
+  var iLu   = e('IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.)');
+  var iAu   = e('IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.)');
+  var iVu   = e('IFCSIUNIT(*,.VOLUMEUNIT.,$,.CUBIC_METRE.)');
+  var iUA   = e('IFCUNITASSIGNMENT((#'+iLu+',#'+iAu+',#'+iVu+'))');
+  var iO    = e('IFCCARTESIANPOINT((0.,0.,0.))');
+  var iZd   = e('IFCDIRECTION((0.,0.,1.))');
+  var iXd   = e('IFCDIRECTION((1.,0.,0.))');
+  var iAP   = e('IFCAXIS2PLACEMENT3D(#'+iO+',#'+iZd+',#'+iXd+')');
+  var iTN   = e('IFCDIRECTION((0.,1.,0.))');
+  var iCtx  = e('IFCGEOMETRICREPRESENTATIONCONTEXT($,\'Model\',3,1.E-5,#'+iAP+',#'+iTN+')');
+  var iPrj  = e('IFCPROJECT('+g()+',#'+iOwn+",'"+safe+" Site Columns',$,$,$,$,(#"+iCtx+'),#'+iUA+')');
+  var iSAP  = e('IFCAXIS2PLACEMENT3D(#'+iO+',#'+iZd+',#'+iXd+')');
+  var iSLP  = e('IFCLOCALPLACEMENT($,#'+iSAP+')');
+  var iSite = e('IFCSITE('+g()+',#'+iOwn+",'Site',$,$,#"+iSLP+',$,$,.ELEMENT.,$,$,$,$,$)');
+  e('IFCRELAGGREGATES('+g()+',#'+iOwn+',$,$,#'+iPrj+',(#'+iSite+'))');
+
+  // Shared column profile: 0.3 × 0.3m square
+  var iO2d  = e('IFCCARTESIANPOINT((0.,0.))');
+  var iP1   = e('IFCCARTESIANPOINT((-0.15,-0.15))');
+  var iP2   = e('IFCCARTESIANPOINT((0.15,-0.15))');
+  var iP3   = e('IFCCARTESIANPOINT((0.15,0.15))');
+  var iP4   = e('IFCCARTESIANPOINT((-0.15,0.15))');
+  var iP5   = e('IFCCARTESIANPOINT((-0.15,-0.15))');
+  var iLoop = e('IFCPOLYLINE((#'+iP1+',#'+iP2+',#'+iP3+',#'+iP4+',#'+iP5+'))');
+  var iProf = e('IFCARBITRARYCLOSEDPROFILEDEF(.AREA.,$,#'+iLoop+')');
+  // Orange colour
+  var iColR = e('IFCCOLOURRGB($,1.,0.55,0.)');
+  var iSS   = e('IFCSURFACESTYLERENDERING(#'+iColR+',0.,$,$,$,$,$,.FLAT.)');
+  var iSSty = e('IFCSURFACESTYLE($,.BOTH.,(#'+iSS+'))');
+  var iPSS  = e('IFCPRESENTATIONSTYLEASSIGNMENT((#'+iSSty+'))');
+
+  // Shared extrusion direction and placement
+  var iZd2  = e('IFCDIRECTION((0.,0.,1.))');
+  var iXd2  = e('IFCDIRECTION((1.,0.,0.))');
+
+  // Property set with instruction note
+  var iPropVal = e("IFCPROPERTYSINGLEVALUE('Description',$,IFCTEXT('TOPO-GRAPHER SITE COLUMN — Delete or hide after placing site perimeter in your BIM software'),$)");
+  var iPset    = e('IFCPROPERTYSET('+g()+',#'+iOwn+",'Pset_SiteColumnNote',$,(#"+iPropVal+'))');
+
+  var colIds = [];
+  cols.forEach(function(col) {
+    var utm = latLonToUTM(col.lat, col.lon);
+    var lx = utm.easting - oE;
+    var ly = utm.northing - oN;
+    // Get ground Z from terrain data if available, else 0
+    var gz = 0;
+    if (window._cleanOutMetric && window._cleanOutMetric.length) {
+      var best = Infinity, bz = 0;
+      window._cleanOutMetric.forEach(function(p) {
+        var d = (p.x-lx)*(p.x-lx)+(p.y-ly)*(p.y-ly);
+        if (d < best) { best = d; bz = p.z; }
+      });
+      gz = bz;
+    }
+    var iEPt  = e('IFCCARTESIANPOINT(('+N(lx)+','+N(ly)+','+N(gz)+'))');
+    var iEAP  = e('IFCAXIS2PLACEMENT3D(#'+iEPt+',#'+iZd2+',#'+iXd2+')');
+    var iELP  = e('IFCLOCALPLACEMENT(#'+iSLP+',#'+iEAP+')');
+    var iSolAP= e('IFCAXIS2PLACEMENT3D(#'+iO+',#'+iZd2+',#'+iXd2+')');
+    var iSolid= e('IFCEXTRUDEDAREASOLID(#'+iProf+',#'+iSolAP+',#'+iZd2+',4.)');
+    var iSR   = e('IFCSHAPEREPRESENTATION(#'+iCtx+",'Body','SweptSolid',(#"+iSolid+'))');
+    var iStyl = e('IFCSTYLEDITEM(#'+iSolid+',(#'+iPSS+'),$)');
+    var iPDS  = e('IFCPRODUCTDEFINITIONSHAPE($,$,(#'+iSR+'))');
+    var iCol  = e('IFCCOLUMN('+g()+',#'+iOwn+",'SiteCol"+col.id+"',$,'Site column'"+',#'+iELP+',#'+iPDS+",'SC"+col.id+"')");
+    e('IFCRELDEFINESBYPROPERTIES('+g()+',#'+iOwn+',$,$,(#'+iCol+'),#'+iPset+')');
+    colIds.push(iCol);
+  });
+
+  if (colIds.length) {
+    e('IFCRELCONTAINEDINSPATIALSTRUCTURE('+g()+',#'+iOwn+',$,$,('+colIds.map(function(f){return'#'+f;}).join(',')+')'+ ',#'+iSite+')');
+  }
+
+  return "ISO-10303-21;\nHEADER;\n"
+    + "FILE_DESCRIPTION(('Topo-grapher site columns export'),'2;1');\n"
+    + "FILE_NAME('"+safe+"_site_columns.ifc','"+now+"',(''),(''),'',' ','');\n"
+    + "FILE_SCHEMA(('IFC2X3'));\nENDSEC;\nDATA;\n"
+    + L.join('\n')
+    + '\nENDSEC;\nEND-ISO-10303-21;';
+}
+
+function _downloadSiteColumnsIFC(name) {
+  var cols = window._siteColumns;
+  if (!cols || !cols.length) return;
+  var content = _buildSiteColumnsIFC(cols, name);
+  if (!content) return;
+  var safe = (name || 'site').replace(/[^a-zA-Z0-9_\-]/g, '_');
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type: 'application/x-step' }));
+  a.download = safe + '_site_columns.ifc';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 // Close auth/settings/upgrade overlays on backdrop click
 document.getElementById('auth-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeAuth();
@@ -6931,7 +7183,8 @@ document.addEventListener('keydown', function(e) {
   closeSettings();
   closeUpgrade();
   closeLargeSiteAddon();
-  closeCoordDrawer();
+closeCoordDrawer();
+  closeSiteColumnsInfo();
 });
 
 // ── Mobile tier-card dot indicators ───────────────────────────────────────
@@ -6960,6 +7213,54 @@ document.addEventListener('keydown', function(e) {
   });
 })();
 </script>
+
+<!-- ═══ SITE COLUMNS INFO MODAL ═══ -->
+<div id="site-columns-info-overlay" onclick="if(event.target===this)closeSiteColumnsInfo()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9500;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+  <div style="background:var(--bg-card);border:1px solid var(--border-md);border-radius:10px;width:min(420px,94vw);position:relative;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5);">
+    <!-- Orange header band -->
+    <div style="background:linear-gradient(135deg,#3a1800 0%,#5a2800 60%,#3a1800 100%);padding:20px 22px 16px;border-bottom:1px solid rgba(255,140,0,0.3);position:relative;overflow:hidden;">
+      <div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(108deg,transparent 20%,rgba(255,140,0,0.08) 50%,transparent 80%);animation:upgrade-sweep 7s ease-in-out infinite;"></div>
+      <div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,140,0,0.65);margin-bottom:6px;font-family:'DM Mono',monospace;">Site Columns Tool</div>
+      <div style="font-size:18px;font-weight:500;color:#ffd0a0;font-family:'Syne',sans-serif;margin-bottom:3px;">Construction site pinpoints</div>
+      <div style="font-size:12px;color:rgba(255,180,80,0.55);">Orange IFC columns to mark your exact site position</div>
+    </div>
+    <!-- Body -->
+    <div style="padding:20px 22px;">
+      <!-- Steps -->
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px;">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="width:22px;height:22px;border-radius:3px;background:rgba(255,140,0,0.12);border:1px solid rgba(255,140,0,0.4);color:#FF8C00;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'DM Mono',monospace;">1</div>
+          <div style="font-size:12px;color:var(--text-mid);line-height:1.6;">Enter the GPS coordinates of your construction site corners or entry points using the coordinate rows below.</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="width:22px;height:22px;border-radius:3px;background:rgba(255,140,0,0.12);border:1px solid rgba(255,140,0,0.4);color:#FF8C00;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'DM Mono',monospace;">2</div>
+          <div style="font-size:12px;color:var(--text-mid);line-height:1.6;">Click <strong style="color:var(--text);">⊕ Add Site Column</strong> for each point. An orange marker appears on the map and an orange frame connects all your columns.</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="width:22px;height:22px;border-radius:3px;background:rgba(255,140,0,0.12);border:1px solid rgba(255,140,0,0.4);color:#FF8C00;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'DM Mono',monospace;">3</div>
+          <div style="font-size:12px;color:var(--text-mid);line-height:1.6;">Generate and download your terrain as normal. A separate <strong style="color:var(--text);">_site_columns.ifc</strong> file downloads automatically alongside it.</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="width:22px;height:22px;border-radius:3px;background:rgba(255,140,0,0.12);border:1px solid rgba(255,140,0,0.4);color:#FF8C00;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'DM Mono',monospace;">4</div>
+          <div style="font-size:12px;color:var(--text-mid);line-height:1.6;">Import the IFC into Revit, ArchiCAD, or Rhino. Place your site perimeter using the orange columns as reference points, then <strong style="color:var(--text);">delete or hide the columns</strong>.</div>
+        </div>
+      </div>
+      <!-- Map reminder -->
+      <div style="background:rgba(255,140,0,0.08);border:1px solid rgba(255,140,0,0.35);border-radius:6px;padding:11px 14px;margin-bottom:18px;display:flex;gap:10px;align-items:flex-start;">
+        <span style="font-size:16px;flex-shrink:0;margin-top:1px;">🗺️</span>
+        <div style="font-size:12px;color:#FF8C00;line-height:1.6;"><strong>Use the Streets map, not satellite.</strong> The Streets basemap shows accurate road geometry which makes it far easier to verify your GPS coordinates are landing in the right place. The Coordinates button switches to Streets automatically.</div>
+      </div>
+      <!-- IFC note -->
+      <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:11px;color:var(--text-soft);line-height:1.6;">
+        Each IFC column is 0.3 × 0.3 × 4m, orange, and carries a parameter note: <em style="color:var(--text-mid);">"Delete or hide after placing site perimeter"</em>.
+      </div>
+    </div>
+    <!-- Footer -->
+    <div style="padding:12px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
+      <button onclick="closeSiteColumnsInfo()" style="background:#FF8C00;color:#1a0800;border:none;padding:10px 24px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;font-weight:600;transition:opacity .15s;" onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'">Got it, start placing &#x2192;</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ LARGE-SITE ADD-ON MODAL ═══ -->
 <div class="auth-overlay" id="large-site-overlay" style="display:none;" onclick="if(event.target===this)closeLargeSiteAddon();">
