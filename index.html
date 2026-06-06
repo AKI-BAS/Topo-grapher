@@ -1942,9 +1942,9 @@ function declineCookies() {
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇨🇦 Canada</td>
-            <td style="padding:9px 14px;color:var(--text-mid);">NRCan CDEM</td>
-            <td style="padding:9px 14px;"><span style="color:var(--text-mid);background:var(--bg-input);border:1px solid var(--border-md);padding:2px 7px;border-radius:2px;font-size:10px;">~20m</span></td>
-            <td style="padding:9px 14px;color:var(--text-soft);">±2–5m</td>
+            <td style="padding:9px 14px;color:var(--text-mid);">NRCan HRDEM</td>
+            <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">1m</span></td>
+            <td style="padding:9px 14px;color:var(--text-soft);">±0.2m RMSE</td>
           </tr>
           <!-- Continental / global -->
           <tr style="background:var(--bg-input);border-bottom:1px solid var(--border);">
@@ -4747,6 +4747,7 @@ function updateElevationSourceBanner(source, _pro) {
 else if (s.includes('kartverket'))                    {tier='lidar';resText='1m · Kartverket DTM1 Norway';}
 else if (s.includes('estonia')||s.includes('maaamet')){tier='lidar';resText='1m · Maaamet DTM Estonia';}
 else if (s.includes('czech')||s.includes('cuzk')||s.includes('dmr4g')){tier='lidar';resText='5m · ČÚZK DMR4G Czech Republic';}
+else if (s.includes('nrcan')||s.includes('hrdem')||s.includes('canada')){tier='lidar';resText='1m · NRCan HRDEM Canada';}
   else if (s.includes('usgs')||s.includes('3dep'))      {tier='lidar';resText='USGS 3DEP (up to 1m)';}
   else if (s.includes('ign')||s.includes('rge'))        {tier='lidar';resText='1m · IGN RGE ALTI France';}
   else if (s.includes('swissalti'))                     {tier='lidar';resText='0.5m · swissALTI3D';}
