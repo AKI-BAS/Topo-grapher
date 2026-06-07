@@ -1585,12 +1585,13 @@ blank: {
   },
   blog_post: {
     subject: 'New post: [title]',
-    body: `Hey —\n\nI just published a new post on the Topo-grapher blog:\n\n[TITLE]\n[URL]\n\n[1–2 sentences describing what the post covers and why it's useful.]\n\nHope you find it useful.`
+    body: `Hey —\n\nI just published a new post on the Topo-grapher blog:\n\n[Post title here]\nhttps://topo-grapher.com/blog/[post-slug]/\n\n[1–2 sentences on what it covers and why it's useful.]\n\nHope you find it useful.`
   }
 };
 
 let _blastAud = 'all';
 let _blastRecipientCount = null;
+let _blastTemplate = 'update';
 
 // Build the full email HTML exactly as the worker does
 function buildBlastPreviewHtml(subject, bodyText) {
@@ -1694,6 +1695,7 @@ function loadBlastTemplate(key) {
       (key==='blog_post'&&b.textContent.includes('Blog'))
     );
   });
+  _blastTemplate = key;
   document.getElementById('blast-confirm').classList.remove('show');
   document.getElementById('blast-status').textContent = '';
 }
@@ -1808,7 +1810,7 @@ async function executeSend() {
     const res = await fetch(NOTIFY_WORKER+'/send-blast', {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-      body: JSON.stringify({subject,bodyHtml,bodyText,audience:_blastAud,dryRun:false})
+      body: JSON.stringify({subject,bodyHtml,bodyText,audience:_blastAud,dryRun:false,template:_blastTemplate})
     });
     const d = await res.json();
     if (d.error) throw new Error(d.error);
