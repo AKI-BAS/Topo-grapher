@@ -1709,11 +1709,14 @@ function setBlastAud(aud) {
 async function _updateBlastRecipientCount() {
   const el = document.getElementById('blast-recipient-count');
   if (!el) return;
+  const {data:{session}} = await _sb.auth.getSession();
+  if (!session) {
+    el.innerHTML = 'Recipients: <span style="color:var(--muted)">—</span>';
+    return;
+  }
   el.innerHTML = 'Recipients: <span>counting…</span>';
   _blastRecipientCount = null;
   try {
-    const {data:{session}} = await _sb.auth.getSession();
-    if (!session) return;
     const res = await fetch(NOTIFY_WORKER+'/send-blast', {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
