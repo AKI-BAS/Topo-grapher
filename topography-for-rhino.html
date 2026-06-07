@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>How to Import Site Topography into Rhino (XYZ Points to Mesh) | Topo-grapher</title>
+<meta name="description" content="Import accurate site terrain into Rhino in minutes. Generate an XYZ CSV point cloud from real elevation data, then mesh it natively or in Grasshopper — no GIS software required.">
+<link rel="canonical" href="https://topo-grapher.com/topography-for-rhino.html">
+<meta name="author" content="Aki, Topo-grapher">
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="How to Import Site Topography into Rhino (XYZ Points to Mesh)">
+<meta property="og:description" content="Generate a real-survey point cloud and mesh it in Rhino or Grasshopper in minutes — no GIS expertise required.">
+<meta property="og:url" content="https://topo-grapher.com/topography-for-rhino.html">
+<meta property="og:site_name" content="Topo-grapher">
+
+<!-- 1. Organization -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://topo-grapher.com/#organization",
+  "name": "Topo-grapher",
+  "url": "https://topo-grapher.com/",
+  "email": "aki@topo-grapher.com",
+  "description": "Generates accurate 3D site terrain and elevation point clouds for architects, BIM managers, and landscape architects, compatible with Revit, SketchUp, Rhino, and ArchiCAD.",
+  "founder": { "@type": "Person", "name": "Aki" },
+  "knowsAbout": ["site topography", "elevation data", "BIM", "Rhino terrain", "Grasshopper", "point clouds", "digital terrain models"]
+}
+</script>
+
+<!-- 2. SoftwareApplication -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "@id": "https://topo-grapher.com/#software",
+  "name": "Topo-grapher",
+  "url": "https://topo-grapher.com/",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Web browser",
+  "description": "Browser-based tool that converts government elevation data into Revit-, SketchUp-, Rhino-, and ArchiCAD-ready 3D terrain. Outputs XYZ CSV, IFC, and DXF. No GIS expertise required.",
+  "featureList": [
+    "XYZ CSV point cloud export",
+    "IFC terrain export",
+    "DXF terrain export",
+    "0.4m-1m resolution across Europe and the US",
+    "Building footprint extrusion",
+    "No installation, no GIS software"
+  ],
+  "offers": [
+    { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "GBP", "description": "3 generations/day, up to 250m x 250m, 12m spacing, no account needed" },
+    { "@type": "Offer", "name": "Pro", "price": "39", "priceCurrency": "GBP", "description": "Larger sites, finer spacing, building footprints, all formats (per month)" },
+    { "@type": "Offer", "name": "Company", "price": "29", "priceCurrency": "GBP", "description": "Per seat per month, 2+ seats" }
+  ]
+}
+</script>
+
+<!-- 3. HowTo -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How to import site topography into Rhino",
+  "description": "Generate an XYZ point cloud from real survey data and mesh it into a terrain surface in Rhino.",
+  "totalTime": "PT10M",
+  "tool": [
+    { "@type": "HowToTool", "name": "Topo-grapher" },
+    { "@type": "HowToTool", "name": "Rhino 7 or later (Grasshopper optional)" }
+  ],
+  "step": [
+    { "@type": "HowToStep", "position": 1, "name": "Define your site", "text": "Open Topo-grapher and draw a polygon around your site on the map, or paste coordinates. The free tier covers up to 250m x 250m." },
+    { "@type": "HowToStep", "position": 2, "name": "Generate the point cloud", "text": "Choose XYZ CSV as the output format and generate. Topo-grapher returns a delimited list of X, Y, Z points at the chosen spacing." },
+    { "@type": "HowToStep", "position": 3, "name": "Import the points", "text": "In Rhino, use File then Import to bring in the XYZ CSV as points, or read the file with a Grasshopper File component and construct points parametrically." },
+    { "@type": "HowToStep", "position": 4, "name": "Build the surface", "text": "Mesh the points with MeshPatch or a Delaunay mesh, or use Patch for a NURBS surface. In Grasshopper, feed the points into a Delaunay Mesh component." },
+    { "@type": "HowToStep", "position": 5, "name": "Position the site", "text": "Move the terrain to your project origin so it aligns with the rest of the model." }
+  ]
+}
+</script>
+
+<!-- 4. FAQPage -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How do I turn elevation points into a surface in Rhino?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Import the XYZ points, then create a surface with MeshPatch or a Delaunay mesh for a triangulated terrain, or Patch for a smooth NURBS surface. In Grasshopper, feed the points into a Delaunay Mesh component for a parametric result." }
+    },
+    {
+      "@type": "Question",
+      "name": "Does Rhino read CSV elevation points?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Rhino imports a delimited XYZ text or CSV file as points, and Grasshopper can parse the same file with a File Read component to construct points parametrically. Topo-grapher exports exactly this format, plus DXF and IFC." }
+    },
+    {
+      "@type": "Question",
+      "name": "How accurate is the terrain?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Accuracy depends on the country's open elevation data: 0.4m resolution in Denmark, 1m across the UK, Sweden, Norway, France, and parts of the US, 5-10m across most of Europe, and a 30m global fallback elsewhere." }
+    },
+    {
+      "@type": "Question",
+      "name": "Is there a free way to get site topography for Rhino?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Topo-grapher's free tier allows 3 generations per day for sites up to 250m x 250m at 12m point spacing, with no account required." }
+    }
+  ]
+}
+</script>
+
+<!-- 5. BreadcrumbList -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Topo-grapher", "item": "https://topo-grapher.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Topography for Rhino", "item": "https://topo-grapher.com/topography-for-rhino.html" }
+  ]
+}
+</script>
+
+<style>
+  :root{
+    --bg:#111110; --card:#1c1b19; --text:#bdb6ac; --heading:#f1ede6;
+    --accent:#9aba6a; --line:#2a2926; --mono:'DM Mono',ui-monospace,monospace;
+    --display:'Nacelle',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--display);
+       line-height:1.65;font-size:17px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:0 22px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  header.site{border-bottom:1px solid var(--line);padding:18px 0}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+  .brand{font-weight:600;color:var(--heading);letter-spacing:.2px}
+  nav.crumbs{font-family:var(--mono);font-size:13px;color:#7d776d;padding:18px 0}
+  h1{font-size:34px;line-height:1.2;color:var(--heading);margin:8px 0 16px;font-weight:600}
+  h2{font-size:23px;color:var(--heading);margin:42px 0 14px;font-weight:600}
+  .lead{font-size:19px;color:#d8d2c8;border-left:3px solid var(--accent);
+        padding:4px 0 4px 18px;margin:18px 0 28px}
+  .byline{font-family:var(--mono);font-size:13px;color:#7d776d;margin-bottom:30px}
+  ol.steps{padding-left:0;counter-reset:s;list-style:none}
+  ol.steps li{position:relative;padding:14px 0 14px 46px;border-bottom:1px solid var(--line)}
+  ol.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:14px;
+        width:30px;height:30px;border-radius:50%;background:var(--card);color:var(--accent);
+        border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;
+        font-family:var(--mono);font-size:14px}
+  ol.steps li b{color:var(--heading)}
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:15px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+  th{color:var(--heading);font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+  td:last-child{font-family:var(--mono);color:var(--accent)}
+  .faq{margin-top:14px}
+  .faq h3{font-size:18px;color:var(--heading);margin:24px 0 6px}
+  .cta{display:inline-block;margin:32px 0;background:var(--accent);color:#0e0e0c;
+       padding:13px 26px;border-radius:8px;font-weight:600}
+  .cta:hover{text-decoration:none;opacity:.9}
+  footer{border-top:1px solid var(--line);margin-top:60px;padding:30px 0;
+         font-family:var(--mono);font-size:13px;color:#7d776d}
+</style>
+</head>
+
+<body>
+<header class="site"><div class="wrap">
+  <span class="brand">Topo-grapher</span>
+  <span><a href="https://topo-grapher.com/">Open the app -></a></span>
+</div></header>
+
+<main class="wrap">
+  <nav class="crumbs"><a href="https://topo-grapher.com/">Home</a> / Topography for Rhino</nav>
+
+  <h1>How to import site topography into Rhino (XYZ points &rarr; terrain mesh)</h1>
+
+  <p class="lead">To bring terrain into Rhino, generate an <b>XYZ CSV point cloud</b> from real elevation data, import it as points, then mesh it with <b>MeshPatch</b> or a <b>Delaunay mesh</b> (natively or in Grasshopper). Rhino also imports DXF and IFC directly. No GIS software required.</p>
+
+  <p class="byline">By Aki, founder of Topo-grapher &middot; Updated June 2026</p>
+
+  <p>Rhino handles point data well, so the cleanest path is to feed it a clean XYZ point cloud and triangulate. If you work parametrically, the same file drops straight into Grasshopper. Here is the full workflow.</p>
+
+  <h2>Step-by-step</h2>
+  <ol class="steps">
+    <li><b>Define your site.</b> Draw a polygon around the site on the map in Topo-grapher, or paste coordinates. The free tier covers up to 250m &times; 250m.</li>
+    <li><b>Generate as XYZ CSV.</b> Pick XYZ CSV and generate. You get a delimited list of X, Y, Z points at your chosen spacing.</li>
+    <li><b>Import the points.</b> In Rhino use <b>File &rarr; Import</b> for the CSV, or read it with a Grasshopper <b>File</b> component and construct points.</li>
+    <li><b>Build the surface.</b> Run <b>MeshPatch</b> or a Delaunay mesh for a triangulated terrain, or <b>Patch</b> for a NURBS surface. In Grasshopper, feed points into a <b>Delaunay Mesh</b> component.</li>
+    <li><b>Position the model.</b> Move the terrain to your project origin so it aligns with the rest of the model.</li>
+  </ol>
+
+  <h2>Which format should you use?</h2>
+  <p>XYZ CSV gives you the most control in Rhino, but DXF and IFC import directly if you'd rather skip meshing.</p>
+  <table>
+    <thead><tr><th>Format</th><th>Best for in Rhino</th><th>Resolution</th></tr></thead>
+    <tbody>
+      <tr><td>XYZ CSV</td><td>Points &rarr; MeshPatch / Delaunay / Grasshopper</td><td>native</td></tr>
+      <tr><td>DXF</td><td>Direct mesh import</td><td>native</td></tr>
+      <tr><td>IFC</td><td>BIM model exchange</td><td>native</td></tr>
+    </tbody>
+  </table>
+
+  <h2>How accurate is the data?</h2>
+  <p>Accuracy tracks the open elevation data each country publishes:</p>
+  <table>
+    <thead><tr><th>Region</th><th>Source resolution</th></tr></thead>
+    <tbody>
+      <tr><td>Denmark</td><td>0.4m</td></tr>
+      <tr><td>UK, Sweden, Norway, France</td><td>1m</td></tr>
+      <tr><td>USA (3DEP coverage)</td><td>1m</td></tr>
+      <tr><td>Most of Europe</td><td>5-10m</td></tr>
+      <tr><td>Global fallback</td><td>30m</td></tr>
+    </tbody>
+  </table>
+
+  <a class="cta" href="https://topo-grapher.com/">Generate your site terrain free -></a>
+
+  <h2>Frequently asked questions</h2>
+  <div class="faq">
+    <h3>How do I turn elevation points into a surface in Rhino?</h3>
+    <p>Import the XYZ points, then create a surface with MeshPatch or a Delaunay mesh for a triangulated terrain, or Patch for a smooth NURBS surface. In Grasshopper, feed the points into a Delaunay Mesh component for a parametric result.</p>
+
+    <h3>Does Rhino read CSV elevation points?</h3>
+    <p>Yes. Rhino imports a delimited XYZ text or CSV file as points, and Grasshopper can parse the same file with a File Read component to construct points parametrically. Topo-grapher exports exactly this, plus DXF and IFC.</p>
+
+    <h3>How accurate is the terrain?</h3>
+    <p>It depends on the country's open data: 0.4m in Denmark, 1m across the UK, Sweden, Norway, France and parts of the US, 5-10m across most of Europe, and a 30m global fallback elsewhere.</p>
+
+    <h3>Is there a free way to get site topography for Rhino?</h3>
+    <p>Yes. The free tier allows 3 generations per day for sites up to 250m &times; 250m at 12m spacing, with no account required.</p>
+  </div>
+</main>
+
+<footer><div class="wrap">
+  Topo-grapher &middot; 3D site terrain for Revit, SketchUp, Rhino &amp; ArchiCAD &middot; <a href="https://topo-grapher.com/">topo-grapher.com</a>
+</div></footer>
+</body>
+</html>

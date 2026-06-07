@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- ============================================================
+     PER-PAGE METADATA  (edit these 4 lines for each cloned page)
+     ============================================================ -->
+<title>How to Add Site Topography to SketchUp (Import Terrain Mesh) | Topo-grapher</title>
+<meta name="description" content="Import accurate site terrain into SketchUp in minutes. Generate a DXF terrain mesh or XYZ CSV from real elevation data and import it straight into SketchUp — no GIS software required.">
+<link rel="canonical" href="https://topo-grapher.com/topography-for-sketchup.html">
+<meta name="author" content="Aki, Topo-grapher">
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="How to Add Site Topography to SketchUp (Import Terrain Mesh)">
+<meta property="og:description" content="Generate a real-survey terrain mesh and import it into SketchUp in minutes — no GIS expertise required.">
+<meta property="og:url" content="https://topo-grapher.com/topography-for-sketchup.html">
+<meta property="og:site_name" content="Topo-grapher">
+
+<!-- ============================================================
+     STRUCTURED DATA  (JSON-LD)
+     ============================================================ -->
+
+<!-- 1. Organization -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://topo-grapher.com/#organization",
+  "name": "Topo-grapher",
+  "url": "https://topo-grapher.com/",
+  "email": "aki@topo-grapher.com",
+  "description": "Generates accurate 3D site terrain and elevation point clouds for architects, BIM managers, and landscape architects, compatible with Revit, SketchUp, Rhino, and ArchiCAD.",
+  "founder": { "@type": "Person", "name": "Aki" },
+  "knowsAbout": ["site topography", "elevation data", "BIM", "SketchUp terrain", "point clouds", "digital terrain models"]
+}
+</script>
+
+<!-- 2. SoftwareApplication -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "@id": "https://topo-grapher.com/#software",
+  "name": "Topo-grapher",
+  "url": "https://topo-grapher.com/",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Web browser",
+  "description": "Browser-based tool that converts government elevation data into Revit-, SketchUp-, Rhino-, and ArchiCAD-ready 3D terrain. Outputs XYZ CSV, IFC, and DXF. No GIS expertise required.",
+  "featureList": [
+    "XYZ CSV point cloud export",
+    "IFC terrain export",
+    "DXF terrain export",
+    "0.4m-1m resolution across Europe and the US",
+    "Building footprint extrusion",
+    "No installation, no GIS software"
+  ],
+  "offers": [
+    { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "GBP", "description": "3 generations/day, up to 250m x 250m, 12m spacing, no account needed" },
+    { "@type": "Offer", "name": "Pro", "price": "39", "priceCurrency": "GBP", "description": "Larger sites, finer spacing, building footprints, all formats (per month)" },
+    { "@type": "Offer", "name": "Company", "price": "29", "priceCurrency": "GBP", "description": "Per seat per month, 2+ seats" }
+  ]
+}
+</script>
+
+<!-- 3. HowTo -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How to add site topography to SketchUp",
+  "description": "Generate a terrain mesh from real survey data and import it into SketchUp.",
+  "totalTime": "PT10M",
+  "tool": [
+    { "@type": "HowToTool", "name": "Topo-grapher" },
+    { "@type": "HowToTool", "name": "SketchUp Pro (for DXF import)" }
+  ],
+  "step": [
+    { "@type": "HowToStep", "position": 1, "name": "Define your site", "text": "Open Topo-grapher and draw a polygon around your site on the map, or paste coordinates. The free tier covers up to 250m x 250m." },
+    { "@type": "HowToStep", "position": 2, "name": "Generate the terrain", "text": "Choose DXF for a ready-to-use 3D terrain mesh, or XYZ CSV if you prefer to triangulate points with an extension." },
+    { "@type": "HowToStep", "position": 3, "name": "Import into SketchUp", "text": "In SketchUp Pro, go to File then Import, select the DXF, and set units to metres. The terrain comes in as editable 3D faces." },
+    { "@type": "HowToStep", "position": 4, "name": "Clean up the mesh", "text": "Group or component the imported terrain. Use the Sandbox tools to smooth, drape, or section the surface as needed." },
+    { "@type": "HowToStep", "position": 5, "name": "Position the site", "text": "Align the terrain to your model origin so it sits correctly under your design." }
+  ]
+}
+</script>
+
+<!-- 4. FAQPage -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Does SketchUp import elevation data directly?",
+      "acceptedAnswer": { "@type": "Answer", "text": "SketchUp Pro imports a DXF terrain mesh directly via File then Import, where it arrives as editable 3D faces. The free web version does not support DXF import, so you would triangulate an XYZ CSV with a point-cloud extension or build contours with the Sandbox tools instead." }
+    },
+    {
+      "@type": "Question",
+      "name": "What format is best for SketchUp terrain?",
+      "acceptedAnswer": { "@type": "Answer", "text": "A DXF mesh is best for SketchUp Pro because it imports as a finished 3D surface. Topo-grapher also exports XYZ CSV for extension-based workflows and IFC for model exchange." }
+    },
+    {
+      "@type": "Question",
+      "name": "How accurate is the terrain?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Accuracy depends on the country's open elevation data: 0.4m resolution in Denmark, 1m across the UK, Sweden, Norway, France, and parts of the US, 5-10m across most of Europe, and a 30m global fallback elsewhere." }
+    },
+    {
+      "@type": "Question",
+      "name": "Is there a free way to get site topography for SketchUp?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Topo-grapher's free tier allows 3 generations per day for sites up to 250m x 250m at 12m point spacing, with no account required." }
+    }
+  ]
+}
+</script>
+
+<!-- 5. BreadcrumbList -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Topo-grapher", "item": "https://topo-grapher.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Topography for SketchUp", "item": "https://topo-grapher.com/topography-for-sketchup.html" }
+  ]
+}
+</script>
+
+<style>
+  :root{
+    --bg:#111110; --card:#1c1b19; --text:#bdb6ac; --heading:#f1ede6;
+    --accent:#9aba6a; --line:#2a2926; --mono:'DM Mono',ui-monospace,monospace;
+    --display:'Nacelle',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--display);
+       line-height:1.65;font-size:17px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:0 22px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  header.site{border-bottom:1px solid var(--line);padding:18px 0}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+  .brand{font-weight:600;color:var(--heading);letter-spacing:.2px}
+  nav.crumbs{font-family:var(--mono);font-size:13px;color:#7d776d;padding:18px 0}
+  h1{font-size:34px;line-height:1.2;color:var(--heading);margin:8px 0 16px;font-weight:600}
+  h2{font-size:23px;color:var(--heading);margin:42px 0 14px;font-weight:600}
+  .lead{font-size:19px;color:#d8d2c8;border-left:3px solid var(--accent);
+        padding:4px 0 4px 18px;margin:18px 0 28px}
+  .byline{font-family:var(--mono);font-size:13px;color:#7d776d;margin-bottom:30px}
+  ol.steps{padding-left:0;counter-reset:s;list-style:none}
+  ol.steps li{position:relative;padding:14px 0 14px 46px;border-bottom:1px solid var(--line)}
+  ol.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:14px;
+        width:30px;height:30px;border-radius:50%;background:var(--card);color:var(--accent);
+        border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;
+        font-family:var(--mono);font-size:14px}
+  ol.steps li b{color:var(--heading)}
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:15px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+  th{color:var(--heading);font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+  td:last-child{font-family:var(--mono);color:var(--accent)}
+  .faq{margin-top:14px}
+  .faq h3{font-size:18px;color:var(--heading);margin:24px 0 6px}
+  .cta{display:inline-block;margin:32px 0;background:var(--accent);color:#0e0e0c;
+       padding:13px 26px;border-radius:8px;font-weight:600}
+  .cta:hover{text-decoration:none;opacity:.9}
+  footer{border-top:1px solid var(--line);margin-top:60px;padding:30px 0;
+         font-family:var(--mono);font-size:13px;color:#7d776d}
+</style>
+</head>
+
+<body>
+<header class="site"><div class="wrap">
+  <span class="brand">Topo-grapher</span>
+  <span><a href="https://topo-grapher.com/">Open the app -></a></span>
+</div></header>
+
+<main class="wrap">
+  <nav class="crumbs"><a href="https://topo-grapher.com/">Home</a> / Topography for SketchUp</nav>
+
+  <h1>How to add site topography to SketchUp (import a terrain mesh)</h1>
+
+  <p class="lead">To get terrain into SketchUp, generate a <b>DXF terrain mesh</b> from real elevation data and import it via <b>File &rarr; Import</b> in SketchUp Pro. It arrives as editable 3D faces you can drape, section, and model against. No GIS software and no manual contour tracing required.</p>
+
+  <p class="byline">By Aki, founder of Topo-grapher &middot; Updated June 2026</p>
+
+  <p>SketchUp has no built-in way to pull real elevation data, so most people either trace contours by hand or wrestle with GIS exports. The faster route is to hand SketchUp a finished terrain mesh and start modelling immediately. Here is the full workflow.</p>
+
+  <h2>Step-by-step</h2>
+  <ol class="steps">
+    <li><b>Define your site.</b> Draw a polygon around the site on the map in Topo-grapher, or paste coordinates. The free tier covers up to 250m &times; 250m.</li>
+    <li><b>Generate as DXF.</b> Pick DXF for a ready-to-use 3D mesh. Choose XYZ CSV instead if you plan to triangulate points with a SketchUp extension.</li>
+    <li><b>Import into SketchUp.</b> In SketchUp Pro go to <b>File &rarr; Import</b>, select the DXF, and set units to metres. The terrain comes in as 3D faces.</li>
+    <li><b>Clean it up.</b> Group the imported terrain, then use the Sandbox tools to smooth, drape, or section the surface as needed.</li>
+    <li><b>Position the model.</b> Align the terrain to your model origin so it sits correctly under your design.</li>
+  </ol>
+
+  <h2>Which format should you use?</h2>
+  <p>DXF is the natural fit for SketchUp Pro, but you have options depending on your setup.</p>
+  <table>
+    <thead><tr><th>Format</th><th>Best for in SketchUp</th><th>Resolution</th></tr></thead>
+    <tbody>
+      <tr><td>DXF</td><td>Direct mesh import (SketchUp Pro)</td><td>native</td></tr>
+      <tr><td>XYZ CSV</td><td>Triangulation via extension</td><td>native</td></tr>
+      <tr><td>IFC</td><td>Model exchange / linked terrain</td><td>native</td></tr>
+    </tbody>
+  </table>
+
+  <h2>How accurate is the data?</h2>
+  <p>Accuracy tracks the open elevation data each country publishes:</p>
+  <table>
+    <thead><tr><th>Region</th><th>Source resolution</th></tr></thead>
+    <tbody>
+      <tr><td>Denmark</td><td>0.4m</td></tr>
+      <tr><td>UK, Sweden, Norway, France</td><td>1m</td></tr>
+      <tr><td>USA (3DEP coverage)</td><td>1m</td></tr>
+      <tr><td>Most of Europe</td><td>5-10m</td></tr>
+      <tr><td>Global fallback</td><td>30m</td></tr>
+    </tbody>
+  </table>
+
+  <a class="cta" href="https://topo-grapher.com/">Generate your site terrain free -></a>
+
+  <h2>Frequently asked questions</h2>
+  <div class="faq">
+    <h3>Does SketchUp import elevation data directly?</h3>
+    <p>SketchUp Pro imports a DXF terrain mesh directly via File &rarr; Import, where it arrives as editable 3D faces. The free web version doesn't support DXF import, so you'd triangulate an XYZ CSV with a point-cloud extension or build contours with the Sandbox tools instead.</p>
+
+    <h3>What format is best for SketchUp terrain?</h3>
+    <p>A DXF mesh is best for SketchUp Pro because it imports as a finished 3D surface. Topo-grapher also exports XYZ CSV for extension-based workflows and IFC for model exchange.</p>
+
+    <h3>How accurate is the terrain?</h3>
+    <p>It depends on the country's open data: 0.4m in Denmark, 1m across the UK, Sweden, Norway, France and parts of the US, 5-10m across most of Europe, and a 30m global fallback elsewhere.</p>
+
+    <h3>Is there a free way to get site topography for SketchUp?</h3>
+    <p>Yes. The free tier allows 3 generations per day for sites up to 250m &times; 250m at 12m spacing, with no account required.</p>
+  </div>
+</main>
+
+<footer><div class="wrap">
+  Topo-grapher &middot; 3D site terrain for Revit, SketchUp, Rhino &amp; ArchiCAD &middot; <a href="https://topo-grapher.com/">topo-grapher.com</a>
+</div></footer>
+</body>
+</html>
