@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>What Is an Elevation Point Cloud? (XYZ Data for Architects) | Topo-grapher</title>
+<meta name="description" content="An elevation point cloud is a set of 3D X, Y, Z points describing ground height across a site. Here's what it is, how XYZ CSV data is structured, and how architects use it in BIM.">
+<link rel="canonical" href="https://topo-grapher.com/learn/elevation-point-cloud.html">
+<meta name="author" content="Aki, Topo-grapher">
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="What Is an Elevation Point Cloud? (XYZ Data for Architects)">
+<meta property="og:description" content="What an elevation point cloud is, how XYZ data is structured, and how architects turn it into terrain.">
+<meta property="og:url" content="https://topo-grapher.com/learn/elevation-point-cloud.html">
+<meta property="og:site_name" content="Topo-grapher">
+
+<!-- 1. Organization -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://topo-grapher.com/#organization",
+  "name": "Topo-grapher",
+  "url": "https://topo-grapher.com/",
+  "email": "aki@topo-grapher.com",
+  "description": "Generates accurate 3D site terrain and elevation point clouds for architects, BIM managers, and landscape architects, compatible with Revit, SketchUp, Rhino, and ArchiCAD.",
+  "founder": { "@type": "Person", "name": "Aki" },
+  "knowsAbout": ["elevation point cloud", "XYZ data", "point cloud", "site topography", "BIM"]
+}
+</script>
+
+<!-- 2. SoftwareApplication -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "@id": "https://topo-grapher.com/#software",
+  "name": "Topo-grapher",
+  "url": "https://topo-grapher.com/",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Web browser",
+  "description": "Browser-based tool that converts government elevation data into Revit-, SketchUp-, Rhino-, and ArchiCAD-ready 3D terrain. Outputs XYZ CSV, IFC, and DXF. No GIS expertise required.",
+  "offers": [
+    { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "GBP", "description": "3 generations/day, up to 250m x 250m, 12m spacing, no account needed" },
+    { "@type": "Offer", "name": "Pro", "price": "39", "priceCurrency": "GBP", "description": "Larger sites, finer spacing, building footprints, all formats (per month)" }
+  ]
+}
+</script>
+
+<!-- 3. Article -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "What is an elevation point cloud?",
+  "description": "A plain-language explanation of elevation point clouds, XYZ data structure, and how architects use them.",
+  "author": { "@type": "Person", "name": "Aki" },
+  "publisher": { "@id": "https://topo-grapher.com/#organization" },
+  "dateModified": "2026-06-07",
+  "about": { "@type": "DefinedTerm", "name": "Elevation point cloud", "description": "A set of 3D points, each with an X, Y and Z coordinate, describing the height of the ground across an area." }
+}
+</script>
+
+<!-- 4. FAQPage -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is an elevation point cloud?",
+      "acceptedAnswer": { "@type": "Answer", "text": "An elevation point cloud is a set of 3D points, each with an X (easting), Y (northing) and Z (height) value, that together describe the shape of the ground across an area. Connecting the points produces a terrain surface." }
+    },
+    {
+      "@type": "Question",
+      "name": "What is XYZ CSV format?",
+      "acceptedAnswer": { "@type": "Answer", "text": "XYZ CSV is a plain text file where each line holds one point's X, Y and Z coordinate separated by commas. It is the simplest interchange format for elevation data and is read by Revit, Rhino, ArchiCAD and most CAD tools." }
+    },
+    {
+      "@type": "Question",
+      "name": "How do architects use an elevation point cloud?",
+      "acceptedAnswer": { "@type": "Answer", "text": "They import the points into BIM or CAD software and triangulate them into a terrain surface or mesh, which becomes the site context for grading, cut-and-fill, and placing the building." }
+    }
+  ]
+}
+</script>
+
+<!-- 5. BreadcrumbList -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Topo-grapher", "item": "https://topo-grapher.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Learn", "item": "https://topo-grapher.com/learn/" },
+    { "@type": "ListItem", "position": 3, "name": "Elevation point cloud", "item": "https://topo-grapher.com/learn/elevation-point-cloud.html" }
+  ]
+}
+</script>
+
+<style>
+  :root{
+    --bg:#111110; --card:#1c1b19; --text:#bdb6ac; --heading:#f1ede6;
+    --accent:#9aba6a; --line:#2a2926; --mono:'DM Mono',ui-monospace,monospace;
+    --display:'Nacelle',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--display);
+       line-height:1.65;font-size:17px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:0 22px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  header.site{border-bottom:1px solid var(--line);padding:18px 0}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+  .brand{font-weight:600;color:var(--heading);letter-spacing:.2px}
+  nav.crumbs{font-family:var(--mono);font-size:13px;color:#7d776d;padding:18px 0}
+  h1{font-size:34px;line-height:1.2;color:var(--heading);margin:8px 0 16px;font-weight:600}
+  h2{font-size:23px;color:var(--heading);margin:42px 0 14px;font-weight:600}
+  .lead{font-size:19px;color:#d8d2c8;border-left:3px solid var(--accent);
+        padding:4px 0 4px 18px;margin:18px 0 28px}
+  .byline{font-family:var(--mono);font-size:13px;color:#7d776d;margin-bottom:30px}
+  pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;
+      overflow:auto;font-family:var(--mono);font-size:14px;color:var(--accent)}
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:15px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+  th{color:var(--heading);font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+  .faq{margin-top:14px}
+  .faq h3{font-size:18px;color:var(--heading);margin:24px 0 6px}
+  .cta{display:inline-block;margin:32px 0;background:var(--accent);color:#0e0e0c;
+       padding:13px 26px;border-radius:8px;font-weight:600}
+  .cta:hover{text-decoration:none;opacity:.9}
+  footer{border-top:1px solid var(--line);margin-top:60px;padding:30px 0;
+         font-family:var(--mono);font-size:13px;color:#7d776d}
+</style>
+</head>
+
+<body>
+<header class="site"><div class="wrap">
+  <span class="brand">Topo-grapher</span>
+  <span><a href="https://topo-grapher.com/">Open the app -></a></span>
+</div></header>
+
+<main class="wrap">
+  <nav class="crumbs"><a href="https://topo-grapher.com/">Home</a> / Learn / Elevation point cloud</nav>
+
+  <h1>What is an elevation point cloud?</h1>
+
+  <p class="lead">An <b>elevation point cloud</b> is a set of 3D points &mdash; each with an <b>X (easting)</b>, <b>Y (northing)</b> and <b>Z (height)</b> value &mdash; that together describe the shape of the ground across an area. Connect the points and you get a terrain surface you can build on in BIM or CAD.</p>
+
+  <p class="byline">By Aki, founder of Topo-grapher &middot; Updated June 2026</p>
+
+  <p>Think of it as the ground sampled on a grid: at regular spacing, you record how high the land is. The denser the sampling, the more faithfully the cloud captures slopes, banks, and detail. It's the rawest, most portable way to describe terrain.</p>
+
+  <h2>What XYZ CSV looks like</h2>
+  <p>The simplest form is a comma-separated text file, one point per line:</p>
+  <pre>X,Y,Z
+523450.0,6175320.0,42.18
+523462.0,6175320.0,42.05
+523474.0,6175320.0,41.91
+...</pre>
+  <p>X and Y are the horizontal position in a projected coordinate system (metres), and Z is the height above the datum. That's all most software needs to rebuild the surface.</p>
+
+  <h2>Point cloud vs mesh vs contours</h2>
+  <table>
+    <thead><tr><th>Form</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td>Point cloud</td><td>Raw 3D points, no connections</td></tr>
+      <tr><td>Mesh / TIN</td><td>Points joined into triangles to form a surface</td></tr>
+      <tr><td>Contours</td><td>Lines joining points of equal height</td></tr>
+    </tbody>
+  </table>
+  <p>A point cloud is the most flexible because every tool can triangulate it into a mesh in its own way.</p>
+
+  <h2>How architects use it</h2>
+  <p>Import the points, triangulate them into a terrain surface, and use that as the site context: grading, cut-and-fill volumes, drainage, and placing the building at the right level. Topo-grapher generates the point cloud from real government elevation data, so you skip surveying and GIS entirely.</p>
+
+  <a class="cta" href="https://topo-grapher.com/">Generate a point cloud free -></a>
+
+  <h2>Frequently asked questions</h2>
+  <div class="faq">
+    <h3>What is an elevation point cloud?</h3>
+    <p>A set of 3D points, each with an X (easting), Y (northing) and Z (height) value, that together describe the shape of the ground across an area. Connecting the points produces a terrain surface.</p>
+
+    <h3>What is XYZ CSV format?</h3>
+    <p>A plain text file where each line holds one point's X, Y and Z coordinate separated by commas. It's the simplest interchange format for elevation data and is read by Revit, Rhino, ArchiCAD and most CAD tools.</p>
+
+    <h3>How do architects use an elevation point cloud?</h3>
+    <p>They import the points into BIM or CAD software and triangulate them into a terrain surface or mesh, which becomes the site context for grading, cut-and-fill, and placing the building.</p>
+  </div>
+</main>
+
+<footer><div class="wrap">
+  Topo-grapher &middot; 3D site terrain for Revit, SketchUp, Rhino &amp; ArchiCAD &middot; <a href="https://topo-grapher.com/">topo-grapher.com</a>
+</div></footer>
+</body>
+</html>

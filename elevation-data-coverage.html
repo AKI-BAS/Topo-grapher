@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Elevation Data Coverage &amp; Resolution by Country | Topo-grapher</title>
+<meta name="description" content="Full list of elevation data sources and resolution by country, from 0.4m in Denmark to a 30m global fallback. See exactly what terrain detail you can get for any site.">
+<link rel="canonical" href="https://topo-grapher.com/elevation-data-coverage.html">
+<meta name="author" content="Aki, Topo-grapher">
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="Elevation Data Coverage & Resolution by Country">
+<meta property="og:description" content="Elevation data sources and resolution by country — 0.4m in Denmark to a 30m global fallback.">
+<meta property="og:url" content="https://topo-grapher.com/elevation-data-coverage.html">
+<meta property="og:site_name" content="Topo-grapher">
+
+<!-- 1. Organization -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://topo-grapher.com/#organization",
+  "name": "Topo-grapher",
+  "url": "https://topo-grapher.com/",
+  "email": "aki@topo-grapher.com",
+  "description": "Generates accurate 3D site terrain and elevation point clouds for architects, BIM managers, and landscape architects, compatible with Revit, SketchUp, Rhino, and ArchiCAD.",
+  "founder": { "@type": "Person", "name": "Aki" },
+  "knowsAbout": ["elevation data", "digital terrain models", "LiDAR", "site topography", "BIM"]
+}
+</script>
+
+<!-- 2. SoftwareApplication -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "@id": "https://topo-grapher.com/#software",
+  "name": "Topo-grapher",
+  "url": "https://topo-grapher.com/",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Web browser",
+  "description": "Browser-based tool that converts government elevation data into Revit-, SketchUp-, Rhino-, and ArchiCAD-ready 3D terrain. Outputs XYZ CSV, IFC, and DXF. No GIS expertise required.",
+  "featureList": [
+    "XYZ CSV point cloud export",
+    "IFC terrain export",
+    "DXF terrain export",
+    "0.4m-1m resolution across Europe and the US",
+    "Building footprint extrusion",
+    "No installation, no GIS software"
+  ],
+  "offers": [
+    { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "GBP", "description": "3 generations/day, up to 250m x 250m, 12m spacing, no account needed" },
+    { "@type": "Offer", "name": "Pro", "price": "39", "priceCurrency": "GBP", "description": "Larger sites, finer spacing, building footprints, all formats (per month)" },
+    { "@type": "Offer", "name": "Company", "price": "29", "priceCurrency": "GBP", "description": "Per seat per month, 2+ seats" }
+  ]
+}
+</script>
+
+<!-- 3. Article -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Elevation data coverage and resolution by country",
+  "description": "The data sources and resolution Topo-grapher uses for each country, from 0.4m LiDAR to a 30m global fallback.",
+  "author": { "@type": "Person", "name": "Aki" },
+  "publisher": { "@id": "https://topo-grapher.com/#organization" },
+  "dateModified": "2026-06-07"
+}
+</script>
+
+<!-- 4. FAQPage -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What resolution elevation data can I get for my country?",
+      "acceptedAnswer": { "@type": "Answer", "text": "It depends on the open data each country publishes. Denmark offers 0.4m; the UK, France, Norway, Sweden, Germany, the US and Canada offer 1m; Finland 2m; Spain and Czechia 5m; Italy and Iceland 10m; and everywhere else falls back to 30m global coverage." }
+    },
+    {
+      "@type": "Question",
+      "name": "Where does the elevation data come from?",
+      "acceptedAnswer": { "@type": "Answer", "text": "From national open elevation programmes such as USGS 3DEP in the US, IGN in France, Kartverket in Norway, Lantmateriet in Sweden, and the Datafordeler service in Denmark, plus Copernicus and ArcticDEM for global and Arctic coverage." }
+    },
+    {
+      "@type": "Question",
+      "name": "What if my country is not listed?",
+      "acceptedAnswer": { "@type": "Answer", "text": "A 30m global Copernicus dataset covers anywhere on land, so you can always generate terrain even where high-resolution national data is not available." }
+    }
+  ]
+}
+</script>
+
+<!-- 5. BreadcrumbList -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Topo-grapher", "item": "https://topo-grapher.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Elevation data coverage", "item": "https://topo-grapher.com/elevation-data-coverage.html" }
+  ]
+}
+</script>
+
+<style>
+  :root{
+    --bg:#111110; --card:#1c1b19; --text:#bdb6ac; --heading:#f1ede6;
+    --accent:#9aba6a; --line:#2a2926; --mono:'DM Mono',ui-monospace,monospace;
+    --display:'Nacelle',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--display);
+       line-height:1.65;font-size:17px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:0 22px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  header.site{border-bottom:1px solid var(--line);padding:18px 0}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+  .brand{font-weight:600;color:var(--heading);letter-spacing:.2px}
+  nav.crumbs{font-family:var(--mono);font-size:13px;color:#7d776d;padding:18px 0}
+  h1{font-size:34px;line-height:1.2;color:var(--heading);margin:8px 0 16px;font-weight:600}
+  h2{font-size:23px;color:var(--heading);margin:42px 0 14px;font-weight:600}
+  .lead{font-size:19px;color:#d8d2c8;border-left:3px solid var(--accent);
+        padding:4px 0 4px 18px;margin:18px 0 28px}
+  .byline{font-family:var(--mono);font-size:13px;color:#7d776d;margin-bottom:30px}
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:15px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+  th{color:var(--heading);font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+  td:last-child{font-family:var(--mono);color:var(--accent)}
+  .note{font-size:14px;color:#7d776d;font-style:italic;margin-top:6px}
+  .faq{margin-top:14px}
+  .faq h3{font-size:18px;color:var(--heading);margin:24px 0 6px}
+  .cta{display:inline-block;margin:32px 0;background:var(--accent);color:#0e0e0c;
+       padding:13px 26px;border-radius:8px;font-weight:600}
+  .cta:hover{text-decoration:none;opacity:.9}
+  footer{border-top:1px solid var(--line);margin-top:60px;padding:30px 0;
+         font-family:var(--mono);font-size:13px;color:#7d776d}
+</style>
+</head>
+
+<body>
+<header class="site"><div class="wrap">
+  <span class="brand">Topo-grapher</span>
+  <span><a href="https://topo-grapher.com/">Open the app -></a></span>
+</div></header>
+
+<main class="wrap">
+  <nav class="crumbs"><a href="https://topo-grapher.com/">Home</a> / Elevation data coverage</nav>
+
+  <h1>Elevation data coverage and resolution by country</h1>
+
+  <p class="lead">Topo-grapher sources the highest-resolution open government elevation data available for each location &mdash; from <b>0.4m LiDAR in Denmark</b> down to a <b>30m global fallback</b> that covers anywhere on land. Below is the full breakdown by country and data source.</p>
+
+  <p class="byline">By Aki, founder of Topo-grapher &middot; Updated June 2026</p>
+
+  <p>Terrain accuracy is only as good as the underlying data. Rather than use one global dataset, Topo-grapher routes each request to the best national source for that location, then falls back gracefully where high-resolution data isn't published.</p>
+
+  <h2>Resolution by country</h2>
+  <table>
+    <thead><tr><th>Country / region</th><th>Data source</th><th>Resolution</th></tr></thead>
+    <tbody>
+      <tr><td>Denmark</td><td>DHM (Datafordeler)</td><td>0.4m</td></tr>
+      <tr><td>United Kingdom</td><td>EA LiDAR (via GPXZ)</td><td>1m</td></tr>
+      <tr><td>France</td><td>IGN RGE ALTI</td><td>1m</td></tr>
+      <tr><td>Norway</td><td>Kartverket DTM</td><td>1m</td></tr>
+      <tr><td>Sweden</td><td>Lantmateriet</td><td>1m</td></tr>
+      <tr><td>Germany (NRW, BW, Hessen)</td><td>State DGM1</td><td>1m</td></tr>
+      <tr><td>United States</td><td>USGS 3DEP</td><td>1m*</td></tr>
+      <tr><td>Canada</td><td>NRCan HRDEM</td><td>1m</td></tr>
+      <tr><td>Switzerland</td><td>swissALTI3D</td><td>0.5-2m</td></tr>
+      <tr><td>Finland</td><td>NLS KM2</td><td>2m</td></tr>
+      <tr><td>Spain</td><td>IGN MDT</td><td>5m</td></tr>
+      <tr><td>Italy</td><td>TINITALY</td><td>10m</td></tr>
+      <tr><td>Iceland</td><td>ArcticDEM</td><td>10m</td></tr>
+      <tr><td>Australia, New Zealand, Japan</td><td>Copernicus</td><td>30m</td></tr>
+      <tr><td>Rest of Europe</td><td>EU-DTM</td><td>30m</td></tr>
+      <tr><td>Anywhere else (global)</td><td>Copernicus GLO-30</td><td>30m</td></tr>
+    </tbody>
+  </table>
+  <p class="note">*US 1m where 3DEP coverage exists; otherwise the national fallback applies. Resolution shown is the best available source for that region; delivered detail depends on local coverage.</p>
+
+  <a class="cta" href="https://topo-grapher.com/">Check coverage for your site -></a>
+
+  <h2>Frequently asked questions</h2>
+  <div class="faq">
+    <h3>What resolution elevation data can I get for my country?</h3>
+    <p>It depends on the open data each country publishes. Denmark offers 0.4m; the UK, France, Norway, Sweden, Germany, the US and Canada offer 1m; Finland 2m; Spain and Czechia 5m; Italy and Iceland 10m; and everywhere else falls back to 30m global coverage.</p>
+
+    <h3>Where does the elevation data come from?</h3>
+    <p>From national open elevation programmes such as USGS 3DEP in the US, IGN in France, Kartverket in Norway, Lantmateriet in Sweden, and the Datafordeler service in Denmark, plus Copernicus and ArcticDEM for global and Arctic coverage.</p>
+
+    <h3>What if my country isn't listed?</h3>
+    <p>A 30m global Copernicus dataset covers anywhere on land, so you can always generate terrain even where high-resolution national data isn't available.</p>
+  </div>
+</main>
+
+<footer><div class="wrap">
+  Topo-grapher &middot; 3D site terrain for Revit, SketchUp, Rhino &amp; ArchiCAD &middot; <a href="https://topo-grapher.com/">topo-grapher.com</a>
+</div></footer>
+</body>
+</html>
