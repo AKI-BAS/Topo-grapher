@@ -1,3 +1,63 @@
+# robots.txt for topo-grapher.com
+# Goal: maximum AI citation eligibility (ChatGPT, Claude, Gemini, Perplexity, Copilot)
+# Place at repo root so GitHub Pages serves it at https://topo-grapher.com/robots.txt
+
+# ---- Traditional search (feeds Gemini / AI Overviews via Google, ChatGPT via Bing) ----
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# ---- OpenAI (ChatGPT) ----
+User-agent: GPTBot
+Allow: /
+User-agent: OAI-SearchBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+
+# ---- Anthropic (Claude) ----
+# NOTE: Claude-Web and anthropic-ai are deprecated. Claude-SearchBot is the live search crawler.
+User-agent: ClaudeBot
+Allow: /
+User-agent: Claude-SearchBot
+Allow: /
+User-agent: Claude-User
+Allow: /
+
+# ---- Perplexity ----
+User-agent: PerplexityBot
+Allow: /
+User-agent: Perplexity-User
+Allow: /
+
+# ---- Google generative (training) ----
+User-agent: Google-Extended
+Allow: /
+
+# ---- Microsoft Copilot / others ----
+User-agent: Amazonbot
+Allow: /
+User-agent: Applebot
+Allow: /
+User-agent: Applebot-Extended
+Allow: /
+User-agent: meta-externalagent
+Allow: /
+User-agent: DuckAssistBot
+Allow: /
+User-agent: MistralAI-User
+Allow: /
+User-agent: CCBot
+Allow: /
+
+# ---- Block the known bad actor (ignores rules, no citation upside) ----
+User-agent: Bytespider
+Disallow: /
+
+# ---- Default ----
 User-agent: *
 Allow: /
+
 Sitemap: https://topo-grapher.com/sitemap.xml

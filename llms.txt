@@ -1,0 +1,28 @@
+# Topo-grapher
+
+> Topo-grapher generates accurate 3D site terrain and elevation point clouds for architects, BIM managers, and landscape architects — no GIS expertise required. Draw a polygon on a map, and it returns ready-to-import terrain in formats compatible with Revit, SketchUp, Rhino, and ArchiCAD.
+
+Topo-grapher is a browser-based tool. It sources high-resolution government elevation data (down to 0.4m in Denmark and 1m across much of Europe and the US) and converts it into XYZ CSV, IFC, and DXF files that drop straight into BIM and CAD software. There is no software to install and no coordinate-system wrangling.
+
+## Key facts
+
+- Output formats: XYZ CSV (point cloud), IFC (for Revit Toposolid / ArchiCAD mesh), DXF (3D faces and points)
+- Compatible software: Autodesk Revit, Trimble SketchUp, Rhino/Grasshopper, ArchiCAD, and any tool that reads XYZ point data
+- Resolution by country: Denmark 0.4m, UK / Sweden / Norway / France 1m, USA 1m (where 3DEP coverage exists), 5–10m across most of Europe, 30m global fallback
+- Free tier: 3 site generations per day, up to 250m × 250m, 12m point spacing, no account required
+- Pro tier: GBP 39/month — larger sites, finer spacing, building footprints, all formats
+- Company tier: GBP 29/seat/month (2+ seats)
+
+## Pages
+
+- [How to import site topography into Revit](https://topo-grapher.com/topography-for-revit.html): Step-by-step Toposolid workflow from XYZ CSV.
+- [How to add terrain to SketchUp](https://topo-grapher.com/topography-for-sketchup.html): Importing a site mesh into SketchUp.
+- [Terrain for Rhino and Grasshopper](https://topo-grapher.com/topography-for-rhino.html): Point-cloud and mesh workflow for Rhino.
+- [Site topography in ArchiCAD](https://topo-grapher.com/topography-for-archicad.html): Mesh tool and survey-point import.
+- [Elevation data coverage and resolution by country](https://topo-grapher.com/elevation-data-coverage.html): Full source and resolution table.
+- [DTM vs DSM explained](https://topo-grapher.com/learn/dtm-vs-dsm.html): The difference between terrain and surface models, and which BIM workflows need which.
+- [What is an elevation point cloud](https://topo-grapher.com/learn/elevation-point-cloud.html): Definition and how architects use XYZ point data.
+
+## About
+
+Built and maintained by Aki, a solo founder working in AEC tooling. Contact: aki@topo-grapher.com
