@@ -643,6 +643,12 @@ body { transition: background .2s, color .2s; }
 .ig-tip { background:var(--accent-dk); border:1px solid var(--accent-md); border-radius:6px; padding:13px 15px; font-size:12.5px; color:var(--accent); line-height:1.65; margin-top:10px; }
 .ig-tab { transition:color .15s, border-color .15s; }
 .ig-tab:hover { color:var(--text) !important; }
+.guide-cta { display:inline-flex;align-items:center;gap:7px;margin-top:18px;padding:10px 16px;background:var(--accent-dk);border:1px solid var(--accent-md);border-radius:6px;color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.04em;text-decoration:none;transition:all .15s; }
+.guide-cta:hover { background:var(--accent-md);color:#EFE3D8; }
+.guide-cta::after { content:"\2192"; }
+.footer-guides { display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:center;margin-top:14px; }
+.footer-guides a { font-size:11px;color:var(--text-soft);text-decoration:none;letter-spacing:.04em;transition:color .15s; }
+.footer-guides a:hover { color:var(--accent); }
 
 /* Data Quality Panel */
 .dq-reason { display:flex; gap:16px; margin-bottom:24px; align-items:flex-start; }
@@ -1453,6 +1459,7 @@ function declineCookies() {
       <div class="ig-step"><div class="ig-step-n">04</div><div class="ig-step-body"><div class="ig-step-title">Set units to Metres</div><div class="ig-step-desc">When prompted for units, select <strong>Meter</strong>. All coordinates in the CSV are in metres relative to the UTM origin shown in the download filename.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">05</div><div class="ig-step-body"><div class="ig-step-title">Terrain created ✓</div><div class="ig-step-desc">Revit builds the Toposolid surface from your point cloud. Accuracy depends on your plan — up to <strong>0.4m vertical resolution</strong> on Pro with LiDAR data.</div></div></div>
       <div class="ig-tip">💡 Keep point count under 20,000 for best Revit performance. Use 6m or 12m spacing for sites over 1km².</div>
+<a class="guide-cta" href="topography-for-revit.html">Read the full Revit guide</a>
     </div>
     <!-- SketchUp -->
     <div id="ig-sketchup" class="ig-content" style="display:none;">
@@ -1463,6 +1470,7 @@ function declineCookies() {
       <div class="ig-step"><div class="ig-step-n">04</div><div class="ig-step-body"><div class="ig-step-title">Generate terrain surface</div><div class="ig-step-desc">Select all imported points, then use <strong>Sandbox → From Contours</strong> to generate a triangulated mesh surface.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">05</div><div class="ig-step-body"><div class="ig-step-title">Terrain mesh ready ✓</div><div class="ig-step-desc">Your site topography is now a SketchUp group in metres. Use the Tape Measure tool to verify a known dimension if needed.</div></div></div>
       <div class="ig-tip">💡 The Undet plugin handles large Pro CSV point clouds significantly better than the native SketchUp importer.</div>
+<a class="guide-cta" href="topography-for-sketchup.html">Read the full SketchUp guide</a>
     </div>
     <!-- ArchiCAD -->
     <div id="ig-archicad" class="ig-content" style="display:none;">
@@ -1473,6 +1481,7 @@ function declineCookies() {
       <div class="ig-step"><div class="ig-step-n">04</div><div class="ig-step-body"><div class="ig-step-title">Build the mesh surface</div><div class="ig-step-desc">Select the imported points and use the <strong>Mesh tool</strong> to generate the terrain surface. Adjust ridge and valley lines for drainage accuracy.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">05</div><div class="ig-step-body"><div class="ig-step-title">Mesh terrain created ✓</div><div class="ig-step-desc">Topography placed at real-world elevation. LiDAR data gives you accurate drainage gradients even on very shallow slopes.</div></div></div>
       <div class="ig-tip">💡 Use the Site Map image (↓ download above) as an underlay in ArchiCAD to visually verify the terrain aligns with your boundary.</div>
+<a class="guide-cta" href="topography-for-archicad.html">Read the full ArchiCAD guide</a>
     </div>
     <!-- Rhino -->
     <div id="ig-rhino" class="ig-content" style="display:none;">
@@ -1483,6 +1492,7 @@ function declineCookies() {
       <div class="ig-step"><div class="ig-step-n">04</div><div class="ig-step-body"><div class="ig-step-title">Grasshopper workflow</div><div class="ig-step-desc"><strong>Read File → Text Split → Construct Point → Delaunay Mesh</strong>. Gives you a parametric terrain mesh you can edit live and connect to your BIM model.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">05</div><div class="ig-step-body"><div class="ig-step-title">Terrain surface ready ✓</div><div class="ig-step-desc">Export to Revit via <strong>Rhino.Inside</strong> or save as DWG/DXF. LiDAR accuracy is preserved through the entire pipeline.</div></div></div>
       <div class="ig-tip">💡 Rhino handles very large point clouds well — no need to thin your CSV before importing. Use the full-resolution file.</div>
+      <a class="guide-cta" href="topography-for-rhino.html">Read the full Rhino guide</a>
     </div>
   </div>
   <!-- Footer -->
@@ -1526,6 +1536,7 @@ function declineCookies() {
       <div style="font-size:11px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;font-weight:500;margin-bottom:8px;">The short version</div>
       <div style="font-size:13px;color:var(--text);line-height:1.7;">Other platforms give you a picture of the terrain. We give you the terrain itself, as data, at the resolution your consultants actually need, ready to drop into Revit, Rhino, ArchiCAD, or SketchUp and carry through the whole project.</div>
     </div>
+    <a class="guide-cta" href="learn/dtm-vs-dsm.html">DTM vs DSM explained</a>
   </div>
   <!-- Footer -->
   <div style="padding:14px 30px;border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
@@ -1993,6 +2004,7 @@ function declineCookies() {
       </table>
     </div>
     <p style="font-size:11px;color:var(--text-soft);line-height:1.6;">Data sourced from open public datasets under their respective licences. The best available source is selected automatically based on your drawn boundary.</p>
+    <a class="guide-cta" href="elevation-data-coverage.html">Full coverage &amp; resolution by country</a>
   </div>
   <div style="padding:14px 30px;border-top:1px solid var(--border);flex-shrink:0;display:flex;justify-content:flex-end;">
     <button onclick="closeAccuracy()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:10px 22px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;transition:all .15s;" onmouseover="this.style.background='var(--green-lt)'" onmouseout="this.style.background='var(--green)'">← Close</button>
@@ -2017,6 +2029,7 @@ function declineCookies() {
       <div style="border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:20px;">
         <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;">What format is the download?</div>
         <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">A plain CSV with X, Y, Z columns in metres (or feet if you selected that). No header row — just numbers, ready to import. The UTM origin coordinates are included in the filename so you can georeference your model.</div>
+        <a class="guide-cta" href="learn/elevation-point-cloud.html" style="margin-top:10px;">What is a point cloud?</a>
       </div>
 
       <div style="border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:20px;">
@@ -2126,6 +2139,16 @@ function declineCookies() {
 <footer>
   <div class="footer-logo">Topo<em>-grapher</em></div>
   <div class="footer-sub" id="footer-sub">Terrain Intelligence for BIM &nbsp;·&nbsp; Free Beta</div>
+  <div class="footer-guides">
+    <a href="topography-for-revit.html">Revit guide</a>
+    <a href="topography-for-sketchup.html">SketchUp guide</a>
+    <a href="topography-for-rhino.html">Rhino guide</a>
+    <a href="topography-for-archicad.html">ArchiCAD guide</a>
+    <a href="elevation-data-coverage.html">Data coverage</a>
+    <a href="learn/dtm-vs-dsm.html">DTM vs DSM</a>
+    <a href="learn/elevation-point-cloud.html">Point clouds</a>
+    <a href="about.html">About</a>
+  </div>
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
