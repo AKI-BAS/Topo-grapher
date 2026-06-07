@@ -496,7 +496,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
             <button class="blast-tpl-btn active" onclick="loadBlastTemplate('update')">📦 Product update</button>
             <button class="blast-tpl-btn" onclick="loadBlastTemplate('promo')">🏷 Pricing / promo</button>
             <button class="blast-tpl-btn" onclick="loadBlastTemplate('maintenance')">🔧 Maintenance</button>
-            <button class="blast-tpl-btn" onclick="loadBlastTemplate('blank')">✏ Blank</button>
+           <button class="blast-tpl-btn" onclick="loadBlastTemplate('blank')">✏ Blank</button>
+            <button class="blast-tpl-btn" onclick="loadBlastTemplate('blog_post')">📝 Blog post</button>
           </div>
         </div>
         <!-- Audience -->
@@ -1578,11 +1579,13 @@ All existing data and account details will be completely unaffected. If you need
 
 Apologies for any inconvenience.`
   },
-  blank: {
+blank: {
     subject: '',
-    body: `Hey —
-
-`
+    body: `Hey —\n\n`
+  },
+  blog_post: {
+    subject: 'New post: [title]',
+    body: `Hey —\n\nI just published a new post on the Topo-grapher blog:\n\n[TITLE]\n[URL]\n\n[1–2 sentences describing what the post covers and why it's useful.]\n\nHope you find it useful.`
   }
 };
 
@@ -1687,7 +1690,8 @@ function loadBlastTemplate(key) {
       (key==='update'&&b.textContent.includes('update'))||
       (key==='promo'&&b.textContent.includes('romo'))||
       (key==='maintenance'&&b.textContent.includes('aint'))||
-      (key==='blank'&&b.textContent.includes('lank'))
+      (key==='blank'&&b.textContent.includes('lank'))||
+      (key==='blog_post'&&b.textContent.includes('Blog'))
     );
   });
   document.getElementById('blast-confirm').classList.remove('show');
@@ -1832,6 +1836,7 @@ function renderMobileBlastPanel() {
           <button class="blast-tpl-btn" onclick="loadBlastTemplate('promo');renderMobileBlastPanel()">🏷 Promo</button>
           <button class="blast-tpl-btn" onclick="loadBlastTemplate('maintenance');renderMobileBlastPanel()">🔧 Maint.</button>
           <button class="blast-tpl-btn" onclick="loadBlastTemplate('blank');renderMobileBlastPanel()">✏ Blank</button>
+          <button class="blast-tpl-btn" onclick="loadBlastTemplate('blog_post');renderMobileBlastPanel()">📝 Blog</button>
         </div>
       </div>
       <!-- Audience -->
