@@ -4778,7 +4778,6 @@ function updateElevationSourceBanner(source, _pro) {
   const s=source.toLowerCase(), isDark=document.documentElement.getAttribute('data-theme')==='dark';
   let tier,resText,upgradeMsg='';
   if (s.includes('dhm')||s.includes('denmark'))         {tier='lidar';resText='0.4m · Danish DHM LiDAR';}
-  else if (s.includes('gpxz'))                          {tier='lidar';resText='1m · GPXZ LiDAR';}
 else if (s.includes('kartverket'))                    {tier='lidar';resText='1m · Kartverket DTM1 Norway';}
 else if (s.includes('estonia')||s.includes('maaamet')){tier='lidar';resText='1m · Maaamet DTM Estonia';}
 else if (s.includes('czech')||s.includes('cuzk')||s.includes('dmr4g')){tier='lidar';resText='5m · ČÚZK DMR4G Czech Republic';}
@@ -4786,7 +4785,7 @@ else if (s.includes('nrcan')||s.includes('hrdem')||s.includes('canada')){tier='l
   else if (s.includes('usgs')||s.includes('3dep'))      {tier='lidar';resText='USGS 3DEP (up to 1m)';}
   else if (s.includes('ign')||s.includes('rge'))        {tier='lidar';resText='1m · IGN RGE ALTI France';}
   else if (s.includes('swissalti'))                     {tier='lidar';resText='0.5m · swissALTI3D';}
-  else if (s.includes('ea-dtm')||s.includes('england')) {tier='lidar';resText='1m · EA DTM England';}
+else if (s.includes('ea-lidar'))                      {tier='lidar';resText='1m · EA LiDAR England';}
   else if (s.includes('arcticdem'))                     {tier='high'; resText='10m · ArcticDEM Iceland';}
   else if (s.includes('eu_dtm')||s.includes('cop30')||s.includes('srtm')||s.includes('30m')) {tier='mid';resText='30m · satellite DEM';upgradeMsg=!_pro?'Pro users get national LiDAR (0.4–1m) where available.':'';}
   else {tier='low';resText='90m · Open-Meteo DEM';upgradeMsg=!_pro?'This is coarse satellite data. Pro unlocks LiDAR (0.4–1m) for 20+ countries.':'';}
