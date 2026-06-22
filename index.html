@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
@@ -323,10 +323,9 @@ nav.scrolled { background: color-mix(in srgb, var(--bg-card) 88%, transparent); 
   border-radius: 4px; user-select: none; overflow: hidden;
 }
 .tg__thumb {
-  position: absolute; top: 3px; bottom: 3px; left: 3px;
-  background: var(--accent-md); border-radius: 2px;
-  transform: translateX(0) scaleX(1); transform-origin: left center;
-  transition: transform var(--dur-standard) var(--ease-out);
+  position: absolute; top: 4px; bottom: 4px; left: 0; width: 0;
+  background: var(--accent-md); border-radius: 999px;
+  transition: transform var(--dur-standard) var(--ease-out), width var(--dur-standard) var(--ease-out);
   will-change: transform; pointer-events: none; z-index: 0;
 }
 .tg__option {
@@ -2614,9 +2613,9 @@ function layoutToggle(tg) {
   if (!active || !thumb) return;
   var tgRect = tg.getBoundingClientRect();
   var actRect = active.getBoundingClientRect();
-  var offsetX = actRect.left - tgRect.left - 3;
-  thumb.style.width = '1px';
-  thumb.style.transform = 'translateX(' + offsetX + 'px) scaleX(' + actRect.width + ')';
+  var offsetX = actRect.left - tgRect.left - 4;
+  thumb.style.width = (actRect.width + 8) + 'px';
+  thumb.style.transform = 'translateX(' + offsetX + 'px)';
 }
 document.querySelectorAll('.tg').forEach(function(tg) {
   tg.addEventListener('click', function(e) {
