@@ -325,7 +325,7 @@ nav.scrolled { background: color-mix(in srgb, var(--bg-card) 88%, transparent); 
 .tg__thumb {
   position: absolute; top: 4px; bottom: 4px; left: 0; width: 0;
   background: var(--accent-md); border-radius: 999px;
-  transition: transform var(--dur-standard) var(--ease-out), width var(--dur-standard) var(--ease-out);
+  transition: transform 380ms cubic-bezier(.34,1.28,.5,1), width 380ms cubic-bezier(.34,1.28,.5,1);
   will-change: transform; pointer-events: none; z-index: 0;
 }
 .tg__option {
