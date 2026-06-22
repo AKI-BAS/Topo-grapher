@@ -455,7 +455,7 @@ nav.scrolled { background: color-mix(in srgb, var(--bg-card) 88%, transparent); 
   border: 1px solid var(--border-md); border-radius: 24px;
   display: flex; align-items: center; gap: 0; padding: 7px 8px;
   z-index: 900; font-family: 'DM Mono', monospace;
-  transition: bottom 0.25s cubic-bezier(0.22,1,0.36,1);
+  transition: transform 0.25s cubic-bezier(0.22,1,0.36,1);
 }
 .ribbon-item {
   font-size: 13px; color: var(--text-mid); padding: 6px 17px;
@@ -3013,8 +3013,15 @@ function _destroySmallMinimap() {
 
 // Sticky nav
 var navEl = document.getElementById('main-nav');
+var _navScrolled = false, _navRAF = null;
 window.addEventListener('scroll', function() {
-  navEl.classList.toggle('scrolled', window.scrollY > 8);
+  if (_navRAF) return;
+  _navRAF = requestAnimationFrame(function() {
+    _navRAF = null;
+    var y = window.scrollY;
+    if (!_navScrolled && y > 24)      { _navScrolled = true;  navEl.classList.add('scrolled'); }
+    else if (_navScrolled && y < 8)   { _navScrolled = false; navEl.classList.remove('scrolled'); }
+  });
 }, { passive: true });
 
 // ── Import Guide Panel ────────────────────────────────────────────────────
@@ -6132,6 +6139,7 @@ const meshMat = new THREE.MeshBasicMaterial({
   function animate(){
     if(state.disposed) return;
     state.animFrame=requestAnimationFrame(animate);
+    if (document.hidden) return;   // keep loop alive, skip render work in background tabs
     const idle=(Date.now()-lastInteract)/1000;
     if(autoRot){rotY+=0.001;}
     else if(idle>60&&!idleDrift){idleDrift=true;}
@@ -6707,15 +6715,17 @@ document.addEventListener('DOMContentLoaded', function() {
     var ribbon = document.querySelector('.floating-ribbon');
     var footer = document.querySelector('footer');
     if (!ribbon || !footer) return;
+    var _ribbonRAF = null;
     function updateRibbonPos() {
-      var fTop = footer.getBoundingClientRect().top;
-      var vH   = window.innerHeight;
-      if (fTop < vH) {
-        // Footer is visible — push ribbon up above it
-        ribbon.style.bottom = Math.round(vH - fTop + 14) + 'px';
-      } else {
-        ribbon.style.bottom = '32px';
-      }
+      if (_ribbonRAF) return;                 // at most one layout read per frame
+      _ribbonRAF = requestAnimationFrame(function() {
+        _ribbonRAF = null;
+        var fTop = footer.getBoundingClientRect().top;
+        var vH   = window.innerHeight;
+        var shift = (fTop < vH) ? Math.max(0, (vH - fTop + 14) - 32) : 0;
+        // translateY is composited, no reflow; keep the -50% horizontal centring
+        ribbon.style.transform = 'translate(-50%, ' + (-shift) + 'px)';
+      });
     }
     window.addEventListener('scroll', updateRibbonPos, { passive: true });
     window.addEventListener('resize', updateRibbonPos, { passive: true });
@@ -6789,8 +6799,9 @@ function initProViewerDemo() {
   canvas.style.opacity = '0.82';
 
   var rotY = 0, tick = 0, disposed = false, afId = null;
+  var _running = false;
   function animate() {
-    if (disposed) return;
+    if (disposed || !_running) { afId = null; return; }
     afId = requestAnimationFrame(animate);
     tick++;
     rotY += 0.0008;
@@ -6798,7 +6809,15 @@ function initProViewerDemo() {
     camera.position.y = 62 + Math.sin(tick * 0.003) * 1.5;
     renderer.render(scene, camera);
   }
-  animate();
+  function _startDemo() { if (!_running && !disposed) { _running = true; afId = requestAnimationFrame(animate); } }
+  function _stopDemo()  { _running = false; if (afId) { cancelAnimationFrame(afId); afId = null; } }
+  var _proDemoIO = new IntersectionObserver(function(es) {
+    (es[0].isIntersecting && !document.hidden) ? _startDemo() : _stopDemo();
+  }, { threshold: 0.01 });
+  _proDemoIO.observe(canvas);
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) _stopDemo(); else { _proDemoIO.takeRecords(); _startDemo(); }
+  });
 
   var ro = new ResizeObserver(function() {
     if (disposed) return;
@@ -6915,18 +6934,25 @@ function initDemoTerrain3D() {
   });
   scene.add(pivot);
 
+  var _running = false;
   function animate() {
-    if (disposed) return;
+    if (disposed || !_running) { afId = null; return; }
     afId = requestAnimationFrame(animate);
     tick++;
-    // 0.0008 rad/frame ≈ 1 full rotation every ~13 min at 60fps
     rotY += 0.0008;
     pivot.rotation.y = rotY;
-    // Subtle camera bob — feels like surveying the terrain, not a toy
     camera.position.y = 62 + Math.sin(tick * 0.003) * 1.5;
     renderer.render(scene, camera);
   }
-  animate();
+  function _startDemo() { if (!_running && !disposed) { _running = true; afId = requestAnimationFrame(animate); } }
+  function _stopDemo()  { _running = false; if (afId) { cancelAnimationFrame(afId); afId = null; } }
+  var _demoIO = new IntersectionObserver(function(es) {
+    (es[0].isIntersecting && !document.hidden) ? _startDemo() : _stopDemo();
+  }, { threshold: 0.01 });
+  _demoIO.observe(canvas);
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) _stopDemo(); else { _demoIO.takeRecords(); _startDemo(); }
+  });
 
   var ro = new ResizeObserver(function() {
     if (disposed) return;
