@@ -617,6 +617,7 @@ footer { background: var(--bg-card); border-top: 1px solid var(--border); paddin
 
 /* Body transition */
 body { transition: background .2s, color .2s; }
+html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 
 /* nav-link as button (no border/bg) */
 .nav-link--btn { background:none; border:none; padding:0; cursor:pointer; }
@@ -2626,8 +2627,11 @@ document.querySelectorAll('.tg').forEach(function(tg) {
     // Theme toggle: persist selection
     if (tg.getAttribute('data-toggle') === 'theme') {
       var theme = btn.dataset.value;
-      document.documentElement.setAttribute('data-theme', theme);
+      var _r = document.documentElement;
+      _r.classList.add('theme-switching');
+      _r.setAttribute('data-theme', theme);
       localStorage.setItem('topo-theme', theme);
+      requestAnimationFrame(function(){ requestAnimationFrame(function(){ _r.classList.remove('theme-switching'); }); });
     }
     // Scatter toggle: update description
     if (tg.id === 'scatter-toggle') updateScatterDesc();
