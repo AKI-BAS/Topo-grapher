@@ -619,6 +619,7 @@ const WIN_DEFS = [
   { id: 'signups',   title: 'Signups',        icon: '★', w: 400, h: 380 },
   { id: 'formats',   title: 'Export Formats',  icon: '⤓', w: 360, h: 300 },
   { id: 'dlrate',    title: 'Download Rate',   icon: '↓', w: 360, h: 300 },
+  { id: 'blogstats', title: 'Blog Stats',      icon: '✎', w: 400, h: 420 },
 ];
 
 let _zIndex = 10;
@@ -645,8 +646,8 @@ function getDefaultLayout() {
     [{ id:'kpis', hFrac: 0.30 }, { id:'trends', hFrac: 0.70 }],
     // col 1: Heatmap (tall) + Funnel
     [{ id:'heatmap', hFrac: 0.55 }, { id:'funnel', hFrac: 0.45 }],
-    // col 2: Revenue + LiDAR gaps + Users + Countries + Feed + Signups + Formats + DL Rate
-    [{ id:'revenue', hFrac: 0.18 }, { id:'gaps', hFrac: 0.14 }, { id:'users', hFrac: 0.12 }, { id:'countries', hFrac: 0.10 }, { id:'feed', hFrac: 0.13 }, { id:'signups', hFrac: 0.12 }, { id:'formats', hFrac: 0.11 }, { id:'dlrate', hFrac: 0.10 }],
+    // col 2: Revenue + LiDAR gaps + Users + Countries + Feed + Signups + Formats + DL Rate + Blog
+    [{ id:'revenue', hFrac: 0.16 }, { id:'gaps', hFrac: 0.12 }, { id:'users', hFrac: 0.11 }, { id:'countries', hFrac: 0.09 }, { id:'feed', hFrac: 0.12 }, { id:'signups', hFrac: 0.11 }, { id:'formats', hFrac: 0.10 }, { id:'dlrate', hFrac: 0.09 }, { id:'blogstats', hFrac: 0.10 }],
   ];
 
   colMap.forEach((entries, col) => {
@@ -1315,6 +1316,55 @@ const qPlan=_sb.from('generations').select('user_plan,file_name').limit(10000);
     </div>`;
 }
 
+// ── Blog stats (reads + CTA clicks per post) ─────────────────
+async function loadBlogStats(){
+  const ps=periodStart();
+  const q=_sb.from('blog_events').select('slug,event_type,created_at').order('created_at',{ascending:true}).limit(10000);
+  const{data,error}=await (ps?q.gte('created_at',ps):q);
+  const body=document.getElementById('body-blogstats');
+  if(!body)return;
+  if(error){body.innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">'+(/blog_events/.test(error.message)?'blog_events table not found yet — run the SQL first':esc(error.message))+'</div>';return;}
+  if(!data||!data.length){const b=document.getElementById('badge-blogstats');if(b)b.textContent='0 events';body.innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">No reads logged for this period yet</div>';return;}
+
+  const views=data.filter(r=>r.event_type==='view').length;
+  const clicks=data.filter(r=>r.event_type==='click').length;
+  const ctr=views>0?Math.round(clicks/views*100):0;
+  const badge=document.getElementById('badge-blogstats');if(badge)badge.textContent=periodLabel();
+
+  const pp={};
+  data.forEach(r=>{const s=r.slug||'(unknown)';if(!pp[s])pp[s]={v:0,c:0};if(r.event_type==='click')pp[s].c++;else pp[s].v++;});
+  const posts=Object.entries(pp).map(([slug,d])=>({slug,v:d.v,c:d.c,ctr:d.v>0?Math.round(d.c/d.v*100):0})).sort((a,b)=>b.v-a.v).slice(0,12);
+
+  const buckets=periodBuckets();
+  const dc={};
+  data.filter(r=>r.event_type==='view').forEach(r=>{
+    let key;
+    if(buckets.unit==='hour') key=new Date(r.created_at).toISOString().slice(0,13);
+    else if(buckets.unit==='month') key=r.created_at.slice(0,7);
+    else key=r.created_at.slice(0,10);
+    dc[key]=(dc[key]||0)+1;
+  });
+  const days=[];
+  for(let i=buckets.n-1;i>=0;i--){
+    const d=new Date();
+    if(buckets.unit==='hour'){d.setHours(d.getHours()-i);days.push(d.toISOString().slice(0,13));}
+    else if(buckets.unit==='month'){d.setMonth(d.getMonth()-i);days.push(d.toISOString().slice(0,7));}
+    else if(buckets.unit==='week'){d.setDate(d.getDate()-i*7);days.push(d.toISOString().slice(0,10));}
+    else{d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+  }
+
+  body.innerHTML=`
+    <div style="display:flex;gap:16px;margin-bottom:12px;">
+      <div style="text-align:center;flex:1;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">READS</div><div style="font-size:18px;font-weight:500;color:var(--accent);">${views.toLocaleString()}</div></div>
+      <div style="text-align:center;flex:1;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">CTA CLICKS</div><div style="font-size:18px;font-weight:500;color:var(--blue);">${clicks.toLocaleString()}</div></div>
+      <div style="text-align:center;flex:1;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">CLICK RATE</div><div style="font-size:18px;font-weight:500;color:var(--purple);">${ctr}%</div></div>
+    </div>
+    <div class="chart-area" id="blogstats-chart"></div>
+    <div style="margin-top:12px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">Top posts by reads</div>
+    <table class="gap-table"><thead><tr><th>Post</th><th style="text-align:right;">Reads</th><th style="text-align:right;">Clicks</th><th style="text-align:right;">CTR</th></tr></thead><tbody>${posts.map(p=>`<tr><td class="gap-country" style="font-family:'DM Mono',monospace;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">${esc(p.slug)}</td><td style="text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);">${p.v}</td><td style="text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--blue);">${p.c}</td><td style="text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">${p.ctr}%</td></tr>`).join('')}</tbody></table>`;
+  requestAnimationFrame(()=>buildSVG('blogstats-chart',days.map(d=>buckets.fmt(d)),days.map(d=>dc[d]||0),'#9ABA6A','rgba(154,186,106,.1)'));
+}
+
 // ══════════════════════════════════════════════════════════════
 // AUTH & INIT
 // ══════════════════════════════════════════════════════════════
@@ -1354,7 +1404,7 @@ async function doSignOut(){await _sb.auth.signOut();location.reload();}
 function updateClock(){document.getElementById('clock').textContent=new Date().toUTCString().slice(17,25)+' UTC';}
 setInterval(updateClock,1000);
 
-const LAYOUT_VERSION = 5; // Bump to invalidate old localStorage layouts (added dlrate window)
+const LAYOUT_VERSION = 6; // Bump to invalidate old localStorage layouts (added blogstats window)
 
 // Hardcoded preferred layout — survives cookie/localStorage clearing.
 // Paste your layout JSON here (from "Save layout" clipboard copy) to persist it in the file.
@@ -1394,7 +1444,7 @@ window.addEventListener('resize', () => {
 
 async function loadAll(){
   updateClock();
-  await Promise.all([loadKPIs(),loadHeatmap(),loadRevenue(),loadTrends(),loadFunnel(),loadGapTable(),loadDonut(),loadCountryBars(),loadFeed(),loadSignups(),loadExportFormats(),loadDownloadRate()]);
+  await Promise.all([loadKPIs(),loadHeatmap(),loadRevenue(),loadTrends(),loadFunnel(),loadGapTable(),loadDonut(),loadCountryBars(),loadFeed(),loadSignups(),loadExportFormats(),loadDownloadRate(),loadBlogStats()]);
   // Auto-refresh live panels every 30s
   setInterval(()=>Promise.all([loadFeed(),loadSignups(),loadKPIs()]),30000);
 }
@@ -1423,6 +1473,7 @@ const MOB_TABS = [
   { id:'gaps',      title:'Priority',   icon:'⊿' },
   { id:'formats',   title:'Formats',    icon:'⤓' },
   { id:'dlrate',    title:'DL Rate',    icon:'↓' },
+  { id:'blogstats', title:'Blog',       icon:'✎' },
   { id:'blast',     title:'Email Blast',icon:'✉' },
 ];
 
@@ -1514,7 +1565,7 @@ function setPeriod(p) {
   // Update FAB label
   const fab = document.getElementById('mob-period-fab-lbl');
   if (fab) fab.textContent = p.toUpperCase();
-  Promise.all([loadKPIs(),loadTrends(),loadFunnel(),loadCountryBars(),loadGapTable(),loadDownloadRate(),loadFeed()]);
+  Promise.all([loadKPIs(),loadTrends(),loadFunnel(),loadCountryBars(),loadGapTable(),loadDownloadRate(),loadFeed(),loadBlogStats()]);
 }
 
 function togglePeriodPopover() {
