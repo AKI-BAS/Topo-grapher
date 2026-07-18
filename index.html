@@ -1072,7 +1072,7 @@ function declineCookies() {
     <!-- Site name -->
     <div class="ctrl-card">
       <div class="ctrl-label">Site name</div>
-      <input type="text" class="name-input" id="project-name" name="topo_sitename_nofill_a7x" placeholder="e.g. Harbour_Site_Oslo" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" oninput="updateConvertBtn()" onblur="ensureProjectNameFilled();updateConvertBtn();">
+      <input type="text" class="name-input" id="project-name" name="topo_sitename_nofill_a7x" placeholder="e.g. Harbour_Site_Oslo" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" oninput="window.__topoNameIsAuto=false;updateConvertBtn()" onblur="ensureProjectNameFilled();updateConvertBtn();">
       <div id="memory-notice" style="display:none;font-size:11px;color:var(--accent);margin-top:6px;letter-spacing:.06em;"></div>
     </div>
 
@@ -2233,6 +2233,7 @@ var PREVIEW_PARTIAL_KM2 = 25;
   map.on(L.Draw.Event.CREATED, function(ev) {
     drawnItems.clearLayers();
     drawnItems.addLayer(ev.layer);
+    if (typeof regenerateAutoName === 'function') regenerateAutoName();
     var raw = ev.layer.getLatLngs();
     var ll = Array.isArray(raw[0]) ? raw[0] : raw;
     polygonLatLngs = ll;
@@ -2541,14 +2542,26 @@ const TOPO_PUNS = [
 function randomTopoPun() {
   return TOPO_PUNS[Math.floor(Math.random() * TOPO_PUNS.length)];
 }
+window.__topoNameIsAuto = true;
 function ensureProjectNameFilled() {
   var el = document.getElementById('project-name');
   if (!el) return;
   if (!(el.value || '').trim()) {
     el.removeAttribute('readonly');
     el.value = randomTopoPun();
+    window.__topoNameIsAuto = true;
     el.classList.remove('error');
   }
+}
+function regenerateAutoName() {
+  if (!window.__topoNameIsAuto) return;
+  var el = document.getElementById('project-name');
+  if (!el) return;
+  el.removeAttribute('readonly');
+  el.value = randomTopoPun();
+  window.__topoNameIsAuto = true;
+  el.classList.remove('error');
+  if (typeof updateConvertBtn === 'function') updateConvertBtn();
 }
 // Prefill on load so users are never blocked by an empty required field
 if (!window.__topoNamePrefillWired) {
@@ -2950,6 +2963,7 @@ function updateCoordPolygon(points) {
   }).addTo(drawnItems);
   map.fitBounds(_coordPolygonLayer.getBounds(), { padding: [40, 40], maxZoom: 17 });
   polygonLatLngs = latlngs;
+  if (typeof regenerateAutoName === 'function') regenerateAutoName();
   updatePtCounts(); updateHint(); updateConvertBtn();
   checkDrawnAreaWarning();
 }
