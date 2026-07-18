@@ -1072,7 +1072,7 @@ function declineCookies() {
     <!-- Site name -->
     <div class="ctrl-card">
       <div class="ctrl-label">Site name</div>
-      <input type="text" class="name-input" id="project-name" name="topo_sitename_nofill_a7x" placeholder="e.g. Harbour_Site_Oslo" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" oninput="updateConvertBtn()">
+      <input type="text" class="name-input" id="project-name" name="topo_sitename_nofill_a7x" placeholder="e.g. Harbour_Site_Oslo" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" oninput="updateConvertBtn()" onblur="ensureProjectNameFilled();updateConvertBtn();">
       <div id="memory-notice" style="display:none;font-size:11px;color:var(--accent);margin-top:6px;letter-spacing:.06em;"></div>
     </div>
 
@@ -2521,6 +2521,50 @@ function updatePtCounts() {
     el.textContent = '~' + c.toLocaleString() + ' pts';
     el.style.color = c > 2000 ? 'var(--danger)' : '';
   });
+}
+
+// Auto-generated site name defaults (topography puns)
+const TOPO_PUNS = [
+  'Peak Performance', 'Contour Yourself', 'Elevation Nation',
+  'Slope Opera', 'Gradient Descent', 'Ridge Regression',
+  'Mount Improbable', 'Peak-a-Boo', 'Summit Different',
+  'Valley of the Dots', 'Slippery Slope', 'Off the Gridline',
+  'Fault Lines', 'Cliff Notes', 'Hill-arious',
+  'Con-tour de Force', 'Alp-solutely', 'Steep Learning Curve',
+  'Peaks and Valleys', 'Mountain Do', 'Ridge Runner',
+  'Delta Force', 'Mesa Culpa', 'Peaked My Interest',
+  'Rise and Grind', 'Bench Mark', 'Great Heights',
+  'Terrain of Thought', 'Rocky Horizon', 'Crest Effort',
+  'High Ground', 'Vertex Vortex', 'All Downhill',
+  'Zenith of Chill', 'Bump in the Node', 'Get Elevated'
+];
+function randomTopoPun() {
+  return TOPO_PUNS[Math.floor(Math.random() * TOPO_PUNS.length)];
+}
+function ensureProjectNameFilled() {
+  var el = document.getElementById('project-name');
+  if (!el) return;
+  if (!(el.value || '').trim()) {
+    el.removeAttribute('readonly');
+    el.value = randomTopoPun();
+    el.classList.remove('error');
+  }
+}
+// Prefill on load so users are never blocked by an empty required field
+if (!window.__topoNamePrefillWired) {
+  window.__topoNamePrefillWired = true;
+  var _topoPrefillName = function() {
+    var el = document.getElementById('project-name');
+    if (el && !(el.value || '').trim()) {
+      el.removeAttribute('readonly');
+      el.value = randomTopoPun();
+    }
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _topoPrefillName);
+  } else {
+    _topoPrefillName();
+  }
 }
 
 function updateConvertBtn() {
@@ -4051,7 +4095,12 @@ async function convert() {
   window._isGenerating = true; window._cancelled = false; window._lastAddonChargePence = 0;
   const nEl = document.getElementById('project-name');
   projectName = nEl.value.trim();
-  if (!projectName) { nEl.classList.add('error'); nEl.focus(); showError('Enter a project name first.'); return; }
+  if (!projectName) {
+    nEl.removeAttribute('readonly');
+    nEl.value = randomTopoPun();
+    projectName = nEl.value.trim();
+    updateConvertBtn();
+  }
   nEl.classList.remove('error');
   if (!polygonLatLngs) { showError('Draw a site area on the map first.'); return; }
   document.getElementById('convert-btn').disabled = true;
