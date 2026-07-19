@@ -155,6 +155,18 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 #body-heatmap{display:flex;flex-direction:column;}
 .heatmap-legend{display:flex;gap:12px;margin-top:10px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);flex-wrap:wrap;flex-shrink:0;}
 .heatmap-legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:4px;}
+/* Coverage map modal */
+.coverage-modal{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:stretch;justify-content:stretch;padding:0;}
+.coverage-modal-inner{width:100%;max-width:none;height:100%;max-height:none;background:var(--bg);border:none;border-radius:0;display:flex;flex-direction:column;overflow:hidden;box-shadow:none;}
+.coverage-modal-header{display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.coverage-modal-title{font-family:'DM Mono',monospace;font-size:13px;color:var(--accent);letter-spacing:.06em;}
+.coverage-modal-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.04em;flex:1;}
+.coverage-modal-close{background:none;border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:4px;cursor:pointer;font-size:18px;line-height:1;padding:0;transition:all .15s;}
+.coverage-modal-close:hover{color:var(--text);border-color:var(--accent2);background:var(--surface2);}
+.coverage-modal-body{flex:1;min-height:0;position:relative;}
+.coverage-modal-body .leaflet-container{background:var(--bg)!important;width:100%;height:100%;}
+.coverage-modal-legend{display:flex;gap:16px;padding:10px 16px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);flex-wrap:wrap;flex-shrink:0;}
+@media(max-width:768px){.coverage-modal{padding:8px;}.coverage-modal-inner{max-height:100%;}.coverage-modal-sub{display:none;}}
 
 /* ── Funnel ────────────────────────────────────────────────── */
 .funnel{display:flex;flex-direction:column;gap:6px;}
@@ -447,6 +459,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       </div>
       <!-- Email blast button — always visible, even on mobile -->
       <button class="blast-topbar-btn" onclick="openBlast()" title="Send email blast to users">✉ Blast</button>
+      <button class="blast-topbar-btn" onclick="openCoverageMap()" title="Data coverage map by country" style="border-color:#4EA0D9;color:#4EA0D9;">◈ Coverage</button>
       <button class="logout-btn" onclick="doSignOut()">Sign out</button>
     </div>
   </div>
@@ -456,6 +469,26 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
   <!-- Dock -->
   <div class="dock" id="dock"></div>
+
+  <!-- Coverage map modal — opened via topbar ◈ Coverage button -->
+  <div id="coverage-modal" class="coverage-modal" style="display:none;">
+    <div class="coverage-modal-inner">
+      <div class="coverage-modal-header">
+        <span class="coverage-modal-title">◈ Data Coverage Map</span>
+        <span class="coverage-modal-sub" id="coverage-modal-sub">Countries with dedicated elevation sources</span>
+        <button class="coverage-modal-close" onclick="closeCoverageMap()" title="Close (ESC)">×</button>
+      </div>
+      <div class="coverage-modal-body" id="coverage-map"></div>
+      <div class="coverage-modal-legend">
+        <span><span class="heatmap-legend-dot" style="background:#4EA0D9"></span>LiDAR ≤2m (dedicated)</span>
+        <span><span class="heatmap-legend-dot" style="background:#9ABA6A"></span>5–10m (dedicated)</span>
+        <span><span class="heatmap-legend-dot" style="background:#E0A050"></span>Regional 30m (EU_DTM)</span>
+        <span><span class="heatmap-legend-dot" style="background:#555"></span>COP30 global only (no dedicated source)</span>
+        <span><span class="heatmap-legend-dot" style="background:#7BC8F6"></span>Scotland — SRSP (self-hosted, distinct from GPXZ)</span>
+        <span style="opacity:.7;">◨ striped = partial coverage</span>
+      </div>
+    </div>
+  </div>
 
   <!-- ═══ MOBILE SHELL ═══ -->
   <div class="mobile-shell" id="mobile-shell" style="display:none;">
@@ -1010,6 +1043,248 @@ async function loadHeatmap(){
   // On desktop, container is visible → init immediately
   // On mobile, container is display:none → defer to tab switch
   _initLeafletMap();
+}
+
+// ── Coverage Map (data availability by country) ───────────────
+// Blue: dedicated LiDAR ≤2m. Green: dedicated 5–10m. Orange: regional 30m (EU_DTM).
+// Gray: only COP30 global fallback. Update tier arrays as new fetchers ship.
+const COVERAGE_TIERS = {
+  lidar: {
+    color: '#4EA0D9',
+    countries: {
+      DK: { res: '0.4m', source: 'DHM LiDAR' },
+      GB: { res: '1m',   source: 'GPXZ 1m + SRSP (Scotland)' },
+      US: { res: '1m',   source: 'USGS 3DEP' },
+      CH: { res: '0.5m', source: 'swissALTI3D' },
+      SE: { res: '1m',   source: 'Lantmäteriet 1m' },
+      CA: { res: '1m',   source: 'NRCan HRDEM 1m' },
+      EE: { res: '1m',   source: 'Maaamet 1m' },
+      NO: { res: '1m',   source: 'Kartverket DTM1' },
+      FR: { res: '1m',   source: 'IGN RGE ALTI 1m' },
+      FI: { res: '2m',   source: 'MML Finland' },
+      DE: { res: '1m',   source: 'NRW/BW/Hessen DGM1', partial: 'Only 3 of 16 states' },
+    },
+  },
+  mid: {
+    color: '#9ABA6A',
+    countries: {
+      IS: { res: '10m', source: 'ArcticDEM + geoid (IslandsDEM 2m deferred)' },
+      IT: { res: '10m', source: 'TINITALY WCS' },
+      CZ: { res: '5m',  source: 'CUZK DMR4G' },
+      ES: { res: '5m',  source: 'IGN Spain WCS' },
+    },
+  },
+  regional30: {
+    color: '#E0A050',
+    countries: {
+      IE: { res: '30m', source: 'EU_DTM fallback' },
+      PT: { res: '30m', source: 'EU_DTM fallback' },
+      AT: { res: '30m', source: 'EU_DTM fallback' },
+      NL: { res: '30m', source: 'EU_DTM fallback' },
+      BE: { res: '30m', source: 'EU_DTM fallback' },
+      PL: { res: '30m', source: 'EU_DTM fallback' },
+      GR: { res: '30m', source: 'EU_DTM fallback' },
+      HR: { res: '30m', source: 'EU_DTM fallback' },
+      HU: { res: '30m', source: 'EU_DTM fallback' },
+      RO: { res: '30m', source: 'EU_DTM fallback' },
+      SK: { res: '30m', source: 'EU_DTM fallback' },
+      LT: { res: '30m', source: 'EU_DTM fallback' },
+      LV: { res: '30m', source: 'EU_DTM fallback' },
+      BG: { res: '30m', source: 'EU_DTM fallback' },
+      LU: { res: '30m', source: 'EU_DTM fallback' },
+      FO: { res: '30m', source: 'EU_DTM fallback' },
+    },
+  },
+};
+
+// ISO2 -> ISO3 for the countries we care about (world.geo.json keys on ISO3)
+const ISO2_TO_ISO3 = {
+  DK:'DNK',IS:'ISL',NO:'NOR',SE:'SWE',FI:'FIN',GB:'GBR',IE:'IRL',NL:'NLD',BE:'BEL',
+  FR:'FRA',CH:'CHE',AT:'AUT',DE:'DEU',ES:'ESP',PT:'PRT',IT:'ITA',GR:'GRC',PL:'POL',
+  CZ:'CZE',US:'USA',CA:'CAN',HR:'HRV',HU:'HUN',RO:'ROU',SK:'SVK',LT:'LTU',LV:'LVA',
+  EE:'EST',BG:'BGR',LU:'LUX',FO:'FRO',
+};
+
+// Build reverse map: ISO3 -> { tier, meta }
+function _buildCoverageIndex(){
+  const idx = {};
+  ['lidar','mid','regional30'].forEach(tier => {
+    const t = COVERAGE_TIERS[tier];
+    Object.entries(t.countries).forEach(([iso2, meta]) => {
+      const iso3 = ISO2_TO_ISO3[iso2];
+      if (iso3) idx[iso3] = { tier, iso2, color: t.color, ...meta };
+    });
+  });
+  return idx;
+}
+
+let _cmap = null;
+let _cmapInited = false;
+let _coverageGeoJson = null;
+
+function openCoverageMap(){
+  document.getElementById('coverage-modal').style.display = 'flex';
+  document.addEventListener('keydown', _coverageEsc);
+  setTimeout(() => _initCoverageMap(), 50);
+}
+function closeCoverageMap(){
+  document.getElementById('coverage-modal').style.display = 'none';
+  document.removeEventListener('keydown', _coverageEsc);
+}
+function _coverageEsc(e){ if (e.key === 'Escape') closeCoverageMap(); }
+
+async function _initCoverageMap(){
+  const container = document.getElementById('coverage-map');
+  if (!container) return;
+  const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+  const tileUrl = theme === 'light'
+    ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+  if (!_cmap){
+    _cmap = L.map('coverage-map', {
+      center:[30,10], zoom:2, zoomControl:true, attributionControl:false,
+      maxBounds:[[-85,-180],[85,180]], maxBoundsViscosity:1.0, minZoom:2,
+    });
+    L.tileLayer(tileUrl, { maxZoom:10, noWrap:true }).addTo(_cmap);
+  } else {
+    // Theme may have changed since last open — swap tile layer
+    _cmap.eachLayer(l => { if (l._url && l._url.includes('carto')) _cmap.removeLayer(l); });
+    L.tileLayer(tileUrl, { maxZoom:10, noWrap:true }).addTo(_cmap);
+  }
+  setTimeout(() => _cmap.invalidateSize(), 100);
+
+  if (_cmapInited) return;
+  _cmapInited = true;
+
+  // Lazy-load world country borders (small CDN-hosted GeoJSON, ISO3-keyed)
+  try {
+    if (!_coverageGeoJson){
+      const r = await fetch('https://cdn.jsdelivr.net/gh/johan/world.geo.json@master/countries.geo.json');
+      _coverageGeoJson = await r.json();
+    }
+    _renderCoverageLayer();
+  } catch(e){
+    console.error('Coverage map: failed to load country borders', e);
+    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:DM Mono,monospace;font-size:12px;color:var(--muted);">Failed to load country borders</div>';
+  }
+}
+
+function _renderCoverageLayer(){
+  const idx = _buildCoverageIndex();
+  const counts = { lidar:0, mid:0, regional30:0, none:0 };
+
+  const layer = L.geoJson(_coverageGeoJson, {
+    style: (feat) => {
+      const iso3 = feat.id;
+      const hit = idx[iso3];
+      if (hit){
+        counts[hit.tier]++;
+        return {
+          color: hit.color, weight: 1, opacity: 0.9,
+          fillColor: hit.color,
+          fillOpacity: hit.partial ? 0.25 : 0.45,
+          dashArray: hit.partial ? '4,3' : null,
+        };
+      }
+      counts.none++;
+      return { color:'#333', weight:0.5, opacity:0.4, fillColor:'#555', fillOpacity:0.08 };
+    },
+    onEachFeature: (feat, lyr) => {
+      const iso3 = feat.id;
+      const hit = idx[iso3];
+      const name = (feat.properties && feat.properties.name) || iso3;
+      const iso2 = hit ? hit.iso2 : '';
+      const flagImg = iso2 ? `<img src="https://flagcdn.com/16x12/${iso2.toLowerCase()}.png" width="16" height="12" style="vertical-align:middle;margin-right:6px;border-radius:1px;">` : '';
+      let html = `<div style="font-family:DM Mono,monospace;font-size:11px;line-height:1.7;min-width:180px;">
+        <div style="font-weight:600;margin-bottom:4px;">${flagImg}${name}</div>`;
+      if (hit){
+        html += `<div><span style="color:${hit.color};">■</span> ${hit.res} — ${hit.source}</div>`;
+        if (hit.partial) html += `<div style="color:#E0A050;font-size:10px;margin-top:3px;">⚠ ${hit.partial}</div>`;
+      } else {
+        html += `<div style="opacity:.7;">COP30 30m global fallback only</div>
+                 <div style="opacity:.5;font-size:10px;margin-top:3px;">Candidate for dedicated source</div>`;
+      }
+      html += `</div>`;
+      lyr.bindPopup(html);
+      lyr.on('mouseover', () => lyr.setStyle({ weight: 2, fillOpacity: Math.min((lyr.options.fillOpacity||0.45)+0.2, 0.75) }));
+      lyr.on('mouseout',  () => layer.resetStyle(lyr));
+    },
+  });
+
+  if (_cmap._coverage) _cmap.removeLayer(_cmap._coverage);
+  layer.addTo(_cmap);
+  _cmap._coverage = layer;
+
+  // Scotland overlay — SRSP LiDAR is a distinct dedicated source from GB GPXZ.
+  // Drawn on top of GB so the visual layering shows the double-coverage story.
+  _renderScotlandOverlay();
+
+  // Update subtitle with counts (Scotland tracked separately, not in the counts)
+  const sub = document.getElementById('coverage-modal-sub');
+  if (sub) sub.textContent = `${counts.lidar} LiDAR · ${counts.mid} mid-res · ${counts.regional30} EU_DTM · ${counts.none} COP30-only · +Scotland SRSP`;
+}
+
+// Simplified Scotland outline (mainland + Outer Hebrides + Orkney + Shetland).
+// Not admin-accurate — sized for a data-coverage overview at zoom 3-6.
+// If you ever want it precise, swap with an admin-1 GeoJSON fetch.
+function _scotlandFeature(){
+  return {
+    type:'FeatureCollection',
+    features:[{
+      type:'Feature',
+      id:'SCT',
+      properties:{ name:'Scotland' },
+      geometry:{
+        type:'MultiPolygon',
+        coordinates:[
+          // Mainland (SW border → west coast → north coast → east coast → border)
+          [[
+            [-3.60,54.87],[-4.85,54.65],[-5.72,55.30],[-5.30,56.00],
+            [-6.45,56.65],[-6.30,57.55],[-5.30,58.55],[-3.05,58.65],
+            [-2.60,57.68],[-2.06,57.15],[-2.55,56.35],[-2.80,56.05],
+            [-2.03,55.77],[-2.65,55.35],[-3.60,54.87]
+          ]],
+          // Outer Hebrides (Lewis / Harris / Uists / Barra as one blob)
+          [[
+            [-7.10,58.55],[-6.20,58.50],[-6.60,57.85],[-7.30,57.30],
+            [-7.55,56.85],[-7.50,57.20],[-7.20,57.60],[-7.10,58.55]
+          ]],
+          // Orkney (bounding box, ~59N)
+          [[
+            [-3.50,59.15],[-2.50,59.15],[-2.50,58.75],[-3.50,58.75],[-3.50,59.15]
+          ]],
+          // Shetland (bounding box, ~60N)
+          [[
+            [-1.80,60.85],[-0.70,60.85],[-0.70,59.85],[-1.80,59.85],[-1.80,60.85]
+          ]]
+        ]
+      }
+    }]
+  };
+}
+
+function _renderScotlandOverlay(){
+  if (_cmap._scotland) _cmap.removeLayer(_cmap._scotland);
+  _cmap._scotland = L.geoJson(_scotlandFeature(), {
+    style: () => ({
+      color:'#7BC8F6', weight:1.5, opacity:1.0,
+      fillColor:'#7BC8F6', fillOpacity:0.55,
+    }),
+    onEachFeature: (f, lyr) => {
+      lyr.bindPopup(`<div style="font-family:DM Mono,monospace;font-size:11px;line-height:1.7;min-width:200px;">
+        <div style="font-weight:600;margin-bottom:4px;">
+          <img src="https://flagcdn.com/16x12/gb.png" width="16" height="12" style="vertical-align:middle;margin-right:6px;border-radius:1px;">Scotland
+        </div>
+        <div><span style="color:#7BC8F6;">■</span> 0.5–1m — SRSP LiDAR</div>
+        <div style="opacity:.7;font-size:10px;margin-top:3px;">Self-hosted, no API key, no rate limit</div>
+        <div style="opacity:.5;font-size:10px;margin-top:2px;">Phase 3–6 (50cm) + Phase 1–2 (1m) + SNLP fallback</div>
+        <div style="opacity:.4;font-size:10px;margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">Wraps GB GPXZ 1m (paid, 80/day)</div>
+      </div>`);
+      lyr.on('mouseover', () => lyr.setStyle({ weight:2.5, fillOpacity:0.7 }));
+      lyr.on('mouseout',  () => lyr.setStyle({ weight:1.5, fillOpacity:0.55 }));
+    },
+  }).addTo(_cmap);
 }
 
 // ── Revenue ───────────────────────────────────────────────────
