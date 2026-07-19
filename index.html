@@ -1903,6 +1903,12 @@ function declineCookies() {
             <td style="padding:9px 14px;color:var(--text-soft);">±0.15m RMSE</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:9px 14px;color:var(--text);font-weight:500;">🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland</td>
+            <td style="padding:9px 14px;color:var(--text-mid);">SRSP LiDAR (Phases 1-6)</td>
+            <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">50cm</span></td>
+            <td style="padding:9px 14px;color:var(--text-soft);">±0.15m</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇳🇴 Norway</td>
             <td style="padding:9px 14px;color:var(--text-mid);">Kartverket DTM1</td>
             <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">1m</span></td>
@@ -4859,6 +4865,7 @@ else if (s.includes('nrcan')||s.includes('hrdem')||s.includes('canada')){tier='l
   else if (s.includes('ign')||s.includes('rge'))        {tier='lidar';resText='1m · IGN RGE ALTI France';}
   else if (s.includes('swissalti'))                     {tier='lidar';resText='0.5m · swissALTI3D';}
 else if (s.includes('ea-lidar'))                      {tier='lidar';resText='1m · EA LiDAR England';}
+  else if (s.includes('srsp-scotland'))                 {tier='lidar';resText=(s.includes('-50cm')?'50cm':'1m')+' · SRSP LiDAR Scotland';}
   else if (s.includes('arcticdem'))                     {tier='high'; resText='10m · ArcticDEM Iceland';}
   else if (s.includes('eu_dtm')||s.includes('cop30')||s.includes('srtm')||s.includes('30m')) {tier='mid';resText='30m · satellite DEM';upgradeMsg=!_pro?'Pro users get national LiDAR (0.4–1m) where available.':'';}
   else {tier='low';resText='90m · Open-Meteo DEM';upgradeMsg=!_pro?'This is coarse satellite data. Pro unlocks LiDAR (0.4–1m) for 20+ countries.':'';}
@@ -4963,6 +4970,7 @@ function buildingSourceType(src) {
   if (s.includes('dhm') || s.includes('eu_dtm') || s.includes('nrw') || s.includes('bw') ||
       s.includes('hessen') || s.includes('norway') || s.includes('kartverket') ||
       s.includes('swissalti') || s.includes('england') || s.includes('ea lidar') ||
+      s.includes('srsp') || s.includes('scotland') ||
       s.includes('nrcan') || s.includes('cdem')) return 'dtm';
   return 'unknown'; // USGS 3DEP, opentopodata, etc.
 }
