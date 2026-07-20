@@ -3774,6 +3774,98 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
     });
   } catch(e) { console.warn('logGeneration error:', e); }
 }
+
+let _currentGenerationId = null;
+
+async function startGeneration() {
+  _currentGenerationId = null;
+  try {
+    const poly = polygonLatLngs || [];
+    const lats = poly.map(p => p.lat !== undefined ? p.lat : p[0]);
+    const lons = poly.map(p => p.lng !== undefined ? p.lng : p[1]);
+    const cLat = lats.length ? (Math.min(...lats) + Math.max(...lats)) / 2 : null;
+    const cLon = lons.length ? (Math.min(...lons) + Math.max(...lons)) / 2 : null;
+    const countryCode = poly.length ? getCountryCode(poly) : null;
+    const { data, error } = await _sb.from('generations').insert({
+      user_id:      _currentUser ? _currentUser.id : null,
+      user_plan:    _currentUser ? (_currentProfile?.plan || 'free') : 'anon',
+      centroid_lat: cLat !== null ? parseFloat(cLat.toFixed(6)) : null,
+      centroid_lon: cLon !== null ? parseFloat(cLon.toFixed(6)) : null,
+      country_code: countryCode,
+      status:       'started'
+    }).select('id').single();
+    if (error) { console.warn('startGeneration failed', error); return; }
+    _currentGenerationId = data.id;
+  } catch(e) { console.warn('startGeneration exception', e); }
+}
+
+async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csvRaw, polygonJson) {
+  const safe = (pName || 'site').replace(/[^a-zA-Z0-9_\-]/g, '_');
+  // If startGeneration never ran (or failed), fall back to legacy insert so we don't lose the record
+  if (!_currentGenerationId) {
+    if (!_currentUser) return;
+    try {
+      const poly = polygonLatLngs || [];
+      const lats = poly.map(p => p.lat !== undefined ? p.lat : p[0]);
+      const lons = poly.map(p => p.lng !== undefined ? p.lng : p[1]);
+      const cLat = lats.length ? (Math.min(...lats) + Math.max(...lats)) / 2 : null;
+      const cLon = lons.length ? (Math.min(...lons) + Math.max(...lons)) / 2 : null;
+      const countryCode = getCountryCode(poly);
+      await _sb.from('generations').insert({
+        user_id:           _currentUser.id,
+        project_name:      pName,
+        point_count:       pointCount,
+        spacing,
+        area_m2:           areaM2,
+        elevation_source:  elevSource,
+        csv_data:          isPro() ? (csvRaw || null) : null,
+        file_name:         safe + '_toposolid.csv',
+        polygon_geojson:   polygonJson || null,
+        resolution_m:      parseResolution(elevSource),
+        area_km2:          areaM2 ? parseFloat((areaM2 / 1000000).toFixed(4)) : null,
+        addon_charged_pence: window._lastAddonChargePence || 0,
+        user_plan:         _currentProfile?.plan || 'free',
+        centroid_lat:      cLat ? parseFloat(cLat.toFixed(6)) : null,
+        centroid_lon:      cLon ? parseFloat(cLon.toFixed(6)) : null,
+        country_code:      countryCode,
+        status:            'completed',
+        completed_at:      new Date().toISOString()
+      });
+    } catch(e) { console.warn('logGeneration legacy insert error:', e); }
+    return;
+  }
+  try {
+    await _sb.from('generations').update({
+      project_name:      pName,
+      point_count:       pointCount,
+      spacing,
+      area_m2:           areaM2,
+      elevation_source:  elevSource,
+      csv_data:          isPro() ? (csvRaw || null) : null,
+      file_name:         safe + '_toposolid.csv',
+      polygon_geojson:   polygonJson || null,
+      resolution_m:      parseResolution(elevSource),
+      area_km2:          areaM2 ? parseFloat((areaM2 / 1000000).toFixed(4)) : null,
+      addon_charged_pence: window._lastAddonChargePence || 0,
+      status:            'completed',
+      completed_at:      new Date().toISOString()
+    }).eq('id', _currentGenerationId);
+  } catch(e) { console.warn('logGeneration update error:', e); }
+  _currentGenerationId = null;
+}
+
+async function failGeneration(stage, detail) {
+  if (!_currentGenerationId) return;
+  try {
+    await _sb.from('generations').update({
+      status:       'failed',
+      error_stage:  stage,
+      error_detail: (detail || '').toString().slice(0, 500),
+      completed_at: new Date().toISOString()
+    }).eq('id', _currentGenerationId);
+  } catch(e) { console.warn('failGeneration update failed', e); }
+  _currentGenerationId = null;
+}
 function getCountryCode(poly) {
   if (!poly || !poly.length) return null;
   const lats = poly.map(p => p.lat !== undefined ? p.lat : p[0]);
