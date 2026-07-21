@@ -453,6 +453,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <span class="topbar-user" id="admin-email"></span>
       <button class="layout-btn" onclick="savePreferredLayout()" title="Save layout to localStorage + copy JSON to clipboard">💾 Save layout</button>
       <button class="layout-btn" onclick="resetLayout()" title="Reset windows to your saved layout">⊞ Reset layout</button>
+<button id="export-xlsx-btn" onclick="exportAllToExcel()" style="margin-right:12px;padding:6px 12px;font-family:'DM Mono',monospace;font-size:11px;border-radius:6px;border:1px solid var(--muted);background:transparent;color:var(--text);cursor:pointer;">Export to Excel</button>
       <div class="theme-toggle" id="theme-toggle">
         <button class="theme-toggle-opt active" data-theme="dark" onclick="setAdminTheme('dark')">☾</button>
         <button class="theme-toggle-opt" data-theme="light" onclick="setAdminTheme('light')">☀</button>
@@ -591,6 +592,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 // Fix for browser extensions hijacking fetch
 const _originalFetch = window.fetch;
@@ -608,6 +610,52 @@ function flag(code){return code?`<img src="https://flagcdn.com/16x12/${code.toLo
 // Populate CF with img tags for all known codes
 Object.keys(CN).forEach(c=>{CF[c]=flag(c);});
 const BEST_RES={DK:0.4,IS:10,NO:1,GB:1,US:1,CH:0.5,NL:0.5,FR:1};
+
+async function exportAllToExcel(){
+  const btn = document.getElementById('export-xlsx-btn');
+  if(btn){btn.disabled=true;btn.textContent='Exporting…';}
+  try{
+    async function fetchAll(table, columns, orderCol){
+      let all=[], from=0; const pageSize=1000;
+      while(true){
+        let q=_sb.from(table).select(columns).range(from, from+pageSize-1);
+        if(orderCol) q=q.order(orderCol,{ascending:true});
+        const {data,error}=await q;
+        if(error) throw error;
+        if(!data||!data.length) break;
+        all=all.concat(data);
+        if(data.length<pageSize) break;
+        from+=pageSize;
+      }
+      return all;
+    }
+
+    const [profiles, generations, blogEvents] = await Promise.all([
+      fetchAll('profiles','email,plan,is_company_admin,is_admin,seat_count,created_at','created_at'),
+      fetchAll('generations','created_at,project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,addon_charged_pence,centroid_lat,centroid_lon,user_id','created_at'),
+      fetchAll('blog_events','slug,event_type,created_at','created_at')
+    ]);
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(profiles), 'Profiles');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(generations), 'Generations');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(blogEvents), 'BlogEvents');
+
+    const timeline = [];
+    profiles.forEach(p=>timeline.push({date:p.created_at, type:'signup', plan:p.plan, detail:p.email}));
+    generations.forEach(g=>timeline.push({date:g.created_at, type:'generation', plan:g.user_plan, detail:`${g.project_name||''} · ${g.country_code||''}`}));
+    blogEvents.forEach(b=>timeline.push({date:b.created_at, type:'blog_'+b.event_type, plan:'', detail:b.slug}));
+    timeline.sort((a,b)=> new Date(a.date) - new Date(b.date));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(timeline), 'Timeline');
+
+    XLSX.writeFile(wb, `topo-grapher-export-${new Date().toISOString().slice(0,10)}.xlsx`);
+  }catch(err){
+    alert('Export failed: '+err.message);
+    console.error(err);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Export to Excel';}
+  }
+}
 
 // ── Theme ─────────────────────────────────────────────────────
 function setAdminTheme(theme) {
