@@ -3157,6 +3157,38 @@ function track(event, props) {
   try { if (typeof window.gtag === 'function') window.gtag('event', event, props || {}); } catch(e) {}
 }
 
+// ── Live presence heartbeat ───────────────────────────────────────────────
+// Broadcasts this tab's presence (anonymous vs signed-in) to the admin
+// dashboard over Supabase Realtime. Ephemeral: no database writes. The admin
+// observes this channel to show who is live on the site right now, and listens
+// for the gen_fail broadcast to flag failures in real time.
+let _presence = null;
+function _presenceMeta() {
+  return { role: _currentUser ? 'auth' : 'anon', ts: Date.now() };
+}
+function initPresence() {
+  if (_presence) return;
+  try {
+    _presence = _sb.channel('site-presence');
+    _presence.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        try { await _presence.track(_presenceMeta()); } catch(e) {}
+      }
+    });
+  } catch(e) { _presence = null; }
+}
+function updatePresenceRole() {
+  if (_presence) { try { _presence.track(_presenceMeta()); } catch(e) {} }
+}
+// Tell the admin dashboard a generation just failed, in real time.
+function broadcastFailure(stage, detail) {
+  if (!_presence) return;
+  try {
+    _presence.send({ type: 'broadcast', event: 'gen_fail',
+      payload: { stage: stage || 'generation', detail: (detail || '').toString().slice(0, 120), role: _currentUser ? 'auth' : 'anon' } });
+  } catch(e) {}
+}
+
 // ── Auth init ─────────────────────────────────────────────────────────────
 async function initAuth() {
   // Register listener FIRST — outside try/catch — so it always survives even
@@ -3186,6 +3218,7 @@ async function initAuth() {
 
 async function handleSession(session) {
   _currentUser = session.user;
+  updatePresenceRole();
   // Wrap profile fetch — a missing table or RLS block shouldn't break auth.
   try {
     const { data, error } = await _sb.from('profiles').select('*').eq('id', _currentUser.id).single();
@@ -3203,6 +3236,7 @@ async function handleSession(session) {
 
 function handleSignOut() {
   _currentUser = null; _currentProfile = null;
+  updatePresenceRole();
   updateNavUI();
   const footerSub = document.getElementById('footer-sub');
   if (footerSub) footerSub.innerHTML = 'Terrain Intelligence for BIM &nbsp;·&nbsp; Free Beta';
@@ -4316,6 +4350,7 @@ async function convert() {
     showProgress(false); showError(err.message);
     track('generation_failed',{error:err.message.slice(0,100),spacing:selectedSpacing});
     failGeneration('convert', err.message);
+    broadcastFailure('convert', err.message);
   }finally{
     document.getElementById('convert-btn').disabled=false;
   }
@@ -6858,6 +6893,7 @@ async function sendFeedback() {
 document.addEventListener('DOMContentLoaded', function() {
   updateLimitBadge();
   setTimeout(function() { initAuth(); }, 0);
+  setTimeout(function() { initPresence(); }, 0);
 // Demo terrain starts as soon as Three.js is ready — retry until it loads
   (function _tryDemo() {
     if (window.THREE) { initDemoTerrain3D(); return; }
