@@ -3744,38 +3744,6 @@ function parseResolution(source) {
   if (s.includes('open-meteo')) return 90;
   return null;
 }
-async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csvRaw, polygonJson) {
-  if (!_currentUser) return;
-  try {
-    const safe = (pName || 'site').replace(/[^a-zA-Z0-9_\-]/g, '_');
-    // Compute centroid and country from the active polygon
-    const poly = polygonLatLngs || [];
-    const lats  = poly.map(p => p.lat !== undefined ? p.lat : p[0]);
-    const lons   = poly.map(p => p.lng !== undefined ? p.lng : p[1]);
-    const cLat   = lats.length ? (Math.min(...lats) + Math.max(...lats)) / 2 : null;
-    const cLon   = lons.length ? (Math.min(...lons) + Math.max(...lons)) / 2 : null;
-    const countryCode = getCountryCode(poly);
-    await _sb.from('generations').insert({
-      user_id:           _currentUser.id,
-      project_name:      pName,
-      point_count:       pointCount,
-      spacing,
-      area_m2:           areaM2,
-      elevation_source:  elevSource,
-      csv_data:          isPro() ? (csvRaw || null) : null,
-      file_name:         safe + '_toposolid.csv',
-      polygon_geojson:   polygonJson || null,
-      resolution_m:      parseResolution(elevSource),
-      area_km2:          areaM2 ? parseFloat((areaM2 / 1000000).toFixed(4)) : null,
-      addon_charged_pence: window._lastAddonChargePence || 0,
-      user_plan:         _currentProfile?.plan || 'free',
-      centroid_lat:      cLat ? parseFloat(cLat.toFixed(6)) : null,
-      centroid_lon:      cLon ? parseFloat(cLon.toFixed(6)) : null,
-      country_code:      countryCode,
-    });
-  } catch(e) { console.warn('logGeneration error:', e); }
-}
-
 let _currentGenerationId = null;
 
 async function startGeneration() {
@@ -4234,6 +4202,7 @@ async function convert() {
   }
   nEl.classList.remove('error');
   if (!polygonLatLngs) { showError('Draw a site area on the map first.'); return; }
+  await startGeneration();
   document.getElementById('convert-btn').disabled = true;
   showProgress(true); setProgress(0.02,'Preparing…','Setting up coordinate grid');
   try {
@@ -4336,6 +4305,7 @@ async function convert() {
   }catch(err){
     showProgress(false); showError(err.message);
     track('generation_failed',{error:err.message.slice(0,100),spacing:selectedSpacing});
+    failGeneration('convert', err.message);
   }finally{
     document.getElementById('convert-btn').disabled=false;
   }
