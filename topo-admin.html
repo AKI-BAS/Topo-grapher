@@ -273,6 +273,33 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .mon-fail-detail{color:var(--text-mid);flex:1;min-width:0;word-break:break-word;}
 .mon-fail-time{color:var(--muted);flex-shrink:0;}
 
+/* Site speed test (PageSpeed Insights) */
+.speed-top{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.speed-strat{display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.speed-strat button{font-family:'DM Mono',monospace;font-size:10px;padding:5px 12px;background:none;border:none;color:var(--muted);cursor:pointer;letter-spacing:.05em;transition:color .15s, background-color .15s;}
+.speed-strat button.active{color:var(--accent);background:var(--accent-dk);}
+.speed-run-btn{font-family:'DM Mono',monospace;font-size:11px;padding:6px 16px;border:1px solid var(--accent2);border-radius:7px;background:var(--accent-dk);color:var(--accent);cursor:pointer;letter-spacing:.04em;transition:opacity .15s;}
+.speed-run-btn:hover{opacity:.85;}
+.speed-run-btn:disabled{opacity:.5;cursor:default;}
+.speed-stamp{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-left:auto;}
+.speed-body{display:grid;grid-template-columns:auto 1fr;gap:clamp(16px,2.4vw,40px);align-items:center;}
+.speed-gauge{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.speed-gauge svg{transform:rotate(-90deg);}
+.speed-gauge-num{font-size:34px;font-weight:500;line-height:1;}
+.speed-gauge-cap{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;}
+.speed-metrics{display:flex;flex-direction:column;gap:0;min-width:0;}
+.speed-metric{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid rgba(30,36,24,.5);}
+.speed-metric:last-child{border-bottom:none;}
+.speed-m-main{flex:1;min-width:0;}
+.speed-m-label{font-size:12px;color:var(--text);}
+.speed-m-desc{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:1px;}
+.speed-m-val{font-size:16px;font-weight:500;flex-shrink:0;text-align:right;}
+.speed-chip{font-family:'DM Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;flex-shrink:0;min-width:46px;text-align:center;}
+.speed-chip.good{background:var(--accent-dk);color:var(--accent);}
+.speed-chip.okay{background:var(--amber-dk);color:var(--amber);}
+.speed-chip.slow{background:rgba(226,85,85,.12);color:var(--red);}
+@media(max-width:720px){.speed-body{grid-template-columns:1fr;justify-items:center;}}
+
 /* Funnel reliability strip */
 .funnel-reliability{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
 .fr-stat{text-align:center;}
@@ -1592,6 +1619,9 @@ async function loadMonitor(){
     : '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">No admin accounts found</div>';
 
   body.innerHTML=`
+    <div class="mon-block-title" style="border:none;margin-bottom:10px;">Site speed <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· Google PageSpeed, on demand</span></div>
+    <div id="speed-test"></div>
+    <div class="mon-block-title" style="margin-top:22px;">System status</div>
     <div class="mon-banner">${bannerHtml}</div>
     <div class="mon-grid">
       <div class="mon-block">
@@ -1622,6 +1652,113 @@ async function loadMonitor(){
     </div>
     <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:16px;letter-spacing:.04em;">Reachability is a network-level liveness check, not app-logic health. Re-open this tab to refresh.</div>
   `;
+  _renderSpeedTest();
+}
+
+// ── Site speed test (Google PageSpeed Insights / Lighthouse) ───
+// Runs the same lab engine third-party speed tools use, against the live site.
+// Keyless works for occasional use; paste a PageSpeed API key for higher limits.
+const SPEED_TEST_URL = 'https://topo-grapher.com/';
+const PSI_API_KEY = '';
+// Plain-language metric mapping, mirroring how non-technical speed reports read.
+const SPEED_METRICS = [
+  { id:'largest-contentful-paint', label:'How fast your site loads',   desc:'Google ranks slow sites lower in search' },
+  { id:'first-contentful-paint',   label:'When content first appears', desc:'Slow sites get fewer clicks from Google' },
+  { id:'cumulative-layout-shift',  label:'Does the page jump around?', desc:'Google penalizes pages that shift', cls:true },
+  { id:'total-blocking-time',      label:'How fast buttons respond',   desc:'Unresponsive sites rank lower' },
+  { id:'speed-index',              label:'Overall load feel',          desc:'How quickly the page looks complete' },
+];
+let _speedResult = null;      // last PSI parse, kept so it survives Monitor re-renders
+let _speedStrategy = 'mobile';
+let _speedRunning = false;
+try { const s = localStorage.getItem('topo-admin-speed'); if (s) _speedResult = JSON.parse(s); } catch(e) {}
+
+function _scoreBand(score){ return score>=0.9?'good':score>=0.5?'okay':'slow'; }
+function _scoreColor(band){ return band==='good'?'var(--accent)':band==='okay'?'var(--amber)':'var(--red)'; }
+
+async function runSpeedTest(strategy){
+  if(_speedRunning) return;
+  if(strategy) _speedStrategy = strategy;
+  _speedRunning = true;
+  _renderSpeedTest(); // paints the running state
+  try{
+    let url = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url='+encodeURIComponent(SPEED_TEST_URL)+'&strategy='+_speedStrategy+'&category=performance';
+    if(PSI_API_KEY) url += '&key='+PSI_API_KEY;
+    const r = await fetch(url,{cache:'no-store'});
+    if(!r.ok){ throw new Error(r.status===429?'Rate limited by Google. Wait a minute, or add a free PageSpeed API key in PSI_API_KEY for higher limits.':'PageSpeed API returned '+r.status); }
+    const j = await r.json();
+    const lh = j.lighthouseResult;
+    if(!lh||!lh.categories||!lh.categories.performance) throw new Error('No performance data returned');
+    const audits = lh.audits||{};
+    _speedResult = {
+      strategy: _speedStrategy,
+      ts: Date.now(),
+      score: Math.round((lh.categories.performance.score||0)*100),
+      metrics: SPEED_METRICS.map(m=>{
+        const a = audits[m.id]||{};
+        return { id:m.id, label:m.label, desc:m.desc, cls:!!m.cls,
+                 display: a.displayValue||'—', score: (a.score==null?0.5:a.score) };
+      }),
+    };
+    try { localStorage.setItem('topo-admin-speed', JSON.stringify(_speedResult)); } catch(e) {}
+    _speedResult.error = null;
+  }catch(e){
+    _speedResult = Object.assign({}, _speedResult, { error: e.message });
+  }finally{
+    _speedRunning = false;
+    _renderSpeedTest();
+  }
+}
+
+function _renderSpeedTest(){
+  const host = document.getElementById('speed-test');
+  if(!host) return;
+  const stratBtns = `<div class="speed-strat">
+      <button class="${_speedStrategy==='mobile'?'active':''}" onclick="runSpeedTest('mobile')">Mobile</button>
+      <button class="${_speedStrategy==='desktop'?'active':''}" onclick="runSpeedTest('desktop')">Desktop</button>
+    </div>
+    <button class="speed-run-btn" onclick="runSpeedTest()" ${_speedRunning?'disabled':''}>${_speedRunning?'Testing…':'Run speed test'}</button>`;
+
+  if(_speedRunning && !_speedResult){
+    host.innerHTML = `<div class="speed-top">${stratBtns}</div><div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:16px 0;">Running Lighthouse against ${SPEED_TEST_URL}… this takes 15 to 30 seconds.</div>`;
+    return;
+  }
+  if(!_speedResult){
+    host.innerHTML = `<div class="speed-top">${stratBtns}</div><div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:16px 0;">No test run yet. Press "Run speed test" to check ${SPEED_TEST_URL} with Google PageSpeed.</div>`;
+    return;
+  }
+  const res = _speedResult;
+  const stamp = res.ts ? `${res.strategy} · ${ago(res.ts)}` : '';
+  const errHtml = res.error ? `<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--red);margin-bottom:10px;">⚠ ${esc(res.error)}</div>` : '';
+
+  // Score gauge
+  const band = _scoreBand((res.score||0)/100), col = _scoreColor(band);
+  const R=42, C=2*Math.PI*R, off=C*(1-(res.score||0)/100);
+  const gauge = `<div class="speed-gauge">
+    <svg width="120" height="120" viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--surface2)" stroke-width="9"/>
+      <circle cx="60" cy="60" r="${R}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round"
+        stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
+      <text x="60" y="60" text-anchor="middle" dominant-baseline="central" transform="rotate(90 60 60)"
+        font-size="30" font-weight="500" fill="${col}" font-family="Nacelle,sans-serif">${res.score}</text>
+    </svg>
+    <div class="speed-gauge-cap">SCORE / 100</div>
+  </div>`;
+
+  const rows = res.metrics.map(m=>{
+    const b = _scoreBand(m.score);
+    let val = m.display;
+    if(m.cls) val = m.score>=0.9?'No':m.score>=0.5?'A little':'Yes';
+    return `<div class="speed-metric">
+      <div class="speed-m-main"><div class="speed-m-label">${m.label}</div><div class="speed-m-desc">${m.desc}</div></div>
+      <div class="speed-m-val" style="color:${_scoreColor(b)}">${esc(val)}</div>
+      <span class="speed-chip ${b}">${b==='good'?'Good':b==='okay'?'Okay':'Slow'}</span>
+    </div>`;
+  }).join('');
+
+  host.innerHTML = `<div class="speed-top">${stratBtns}<span class="speed-stamp">${stamp}</span></div>
+    ${errHtml}
+    <div class="speed-body">${gauge}<div class="speed-metrics">${rows}</div></div>`;
 }
 
 // ── Gap table ─────────────────────────────────────────────────
