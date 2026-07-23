@@ -3316,6 +3316,7 @@ async function submitAuth(type) {
     const email    = document.getElementById('signup-email').value.trim();
     const password = document.getElementById('signup-password').value;
     if (!email || !password) { showErr('Please fill in all fields.'); return; }
+    track('signup_started', { method: 'email' });
     if (password.length < 8) { showErr('Password must be at least 8 characters.'); return; }
     try {
       const { error } = await _withTimeout(
@@ -3850,6 +3851,13 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
       status:            'completed',
       completed_at:      new Date().toISOString()
     }).eq('id', _currentGenerationId);
+    track('generation_completed', {
+      point_count: pointCount,
+      spacing,
+      area_m2: areaM2 ? Math.round(areaM2) : null,
+      source: elevSource || 'unknown',
+      plan: _currentProfile?.plan || 'anon'
+    });
   } catch(e) { console.warn('logGeneration update error:', e); }
   _currentGenerationId = null;
 }
@@ -3960,6 +3968,17 @@ function showResult(v) { const rc = document.getElementById('result-card'); if (
 function cancelGeneration() {
   window._cancelled = true; window._isGenerating = false; showProgress(false);
   const cb = document.getElementById('convert-btn'); if (cb) cb.disabled = false;
+  if (_currentGenerationId) {
+    _sb.from('generations').update({
+      status: 'cancelled',
+      completed_at: new Date().toISOString()
+    }).eq('id', _currentGenerationId).then(
+      () => {},
+      e => console.warn('cancelGeneration update failed', e)
+    );
+    _currentGenerationId = null;
+  }
+  track('generation_cancelled', { plan: _currentProfile?.plan || 'anon' });
   showError('Generation cancelled.');
 }
 
