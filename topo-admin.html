@@ -1011,16 +1011,16 @@ function buildSVG(id,labels,values,color='#9ABA6A',fill='rgba(154,186,106,.1)'){
 
 // ── KPIs ──────────────────────────────────────────────────────
 async function loadKPIs(){
-  const{count:totalGens}=await _sb.from('generations').select('*',{count:'exact',head:true});
+  const{count:totalGens}=await _sb.from('generations').select('*',{count:'exact',head:true}).or('status.eq.completed,status.is.null');
   const ps=periodStart();
   const halfMs={'1d':864e5/2,'7d':3.5*864e5,'30d':15*864e5,'3m':45*864e5,'6m':91*864e5,'12m':182*864e5,'all':null}[_period];
   const prevStart=halfMs?new Date(Date.now()-halfMs*2).toISOString():null;
   const prevEnd=ps;
-  const qGens=_sb.from('generations').select('*',{count:'exact',head:true});
+  const qGens=_sb.from('generations').select('*',{count:'exact',head:true}).or('status.eq.completed,status.is.null');
   const{count:weekGens}=await (ps?qGens.gte('created_at',ps):qGens);
-  const qPrev=_sb.from('generations').select('*',{count:'exact',head:true});
+  const qPrev=_sb.from('generations').select('*',{count:'exact',head:true}).or('status.eq.completed,status.is.null');
   const{count:prevWeekGens}=await (prevStart&&prevEnd?qPrev.gte('created_at',prevStart).lt('created_at',prevEnd):qPrev.gte('created_at',new Date(Date.now()-14*864e5).toISOString()).lt('created_at',ps||new Date().toISOString()));
-  const qUids=_sb.from('generations').select('user_id').limit(10000);
+  const qUids=_sb.from('generations').select('user_id').or('status.eq.completed,status.is.null').not('user_id','is',null).limit(10000);
   const{data:uids}=await (ps?qUids.gte('created_at',ps):qUids);
   const activeUsers=new Set((uids||[]).map(r=>r.user_id)).size;
   const{count:proCount}=await _sb.from('profiles').select('*',{count:'exact',head:true}).in('plan',['pro','company']).eq('is_admin',false);
@@ -1083,7 +1083,7 @@ async function loadHeatmap(){
       <span><span class="heatmap-legend-dot" style="background:#666"></span>Unknown</span>
     </div>`;
 
-  const{data}=await _sb.from('generations').select('centroid_lat,centroid_lon,resolution_m,country_code,project_name,created_at').not('centroid_lat','is',null).not('centroid_lon','is',null).order('created_at',{ascending:false}).limit(5000);
+  const{data}=await _sb.from('generations').select('centroid_lat,centroid_lon,resolution_m,country_code,project_name,created_at').or('status.eq.completed,status.is.null').not('centroid_lat','is',null).not('centroid_lon','is',null).order('created_at',{ascending:false}).limit(5000);
   if(!data||!data.length){document.getElementById('heatmap-container').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:DM Mono,monospace;font-size:12px;color:var(--muted);">No location data yet</div>';return;}
   document.getElementById('badge-heatmap').textContent=data.length+' sites';
   _hmapData=data;
@@ -1365,7 +1365,7 @@ async function loadRevenue(){
 let _trendData = null;
 async function loadTrends(){
   const ps=periodStart();
-  const q=_sb.from('generations').select('created_at,user_plan').order('created_at',{ascending:true}).limit(10000);
+  const q=_sb.from('generations').select('created_at,user_plan').or('status.eq.completed,status.is.null').order('created_at',{ascending:true}).limit(10000);
   const{data}=await (ps?q.gte('created_at',ps):q);
   _trendData = data;
   if(!data||!data.length){document.getElementById('body-trends').innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">No data for this period</div>';return;}
@@ -1418,23 +1418,24 @@ function loadTrendsChart() {
 }
 
 // ── Funnel ────────────────────────────────────────────────────
+// "Completed" = status='completed' OR status IS NULL (legacy rows pre-status-column)
 async function loadFunnel(){
-  const{count:totalSignups}=await _sb.from('profiles').select('*',{count:'exact',head:true});
-  const{data:genUsers}=await _sb.from('generations').select('user_id').limit(10000);
+  const{count:totalSignups}=await _sb.from('profiles').select('*',{count:'exact',head:true}).eq('is_admin',false);
+  const{data:genUsers}=await _sb.from('generations').select('user_id,status').or('status.eq.completed,status.is.null').not('user_id','is',null).limit(10000);
   const uniqueGenUsers=new Set((genUsers||[]).map(r=>r.user_id)).size;
   const userGenCount={};(genUsers||[]).forEach(r=>{userGenCount[r.user_id]=(userGenCount[r.user_id]||0)+1;});
   const returnUsers=Object.values(userGenCount).filter(c=>c>=2).length;
   const{count:proUsers}=await _sb.from('profiles').select('*',{count:'exact',head:true}).in('plan',['pro','company']).eq('is_admin',false);
-  const{data:proGenUsers}=await _sb.from('generations').select('user_id,user_plan').in('user_plan',['pro','company']).limit(10000);
+  const{data:proGenUsers}=await _sb.from('generations').select('user_id,user_plan,status').in('user_plan',['pro','company']).or('status.eq.completed,status.is.null').not('user_id','is',null).limit(10000);
   const proGenCount={};(proGenUsers||[]).forEach(r=>{proGenCount[r.user_id]=(proGenCount[r.user_id]||0)+1;});
   const repeatPro=Object.values(proGenCount).filter(c=>c>=2).length;
 
   const steps=[
     {name:'Signups',count:totalSignups||0,color:'var(--accent)'},
-    {name:'First generation',count:uniqueGenUsers,color:'var(--blue)'},
-    {name:'Return visit (2+ gens)',count:returnUsers,color:'#6A8AD9'},
+    {name:'First completed generation',count:uniqueGenUsers,color:'var(--blue)'},
+    {name:'Return visit (2+ completed)',count:returnUsers,color:'#6A8AD9'},
     {name:'Pro/Company upgrade',count:proUsers||0,color:'var(--purple)'},
-    {name:'Repeat Pro usage',count:repeatPro,color:'var(--amber)'},
+    {name:'Repeat Pro usage (2+ completed)',count:repeatPro,color:'var(--amber)'},
   ];
   const maxC=steps[0].count||1;
   document.getElementById('badge-funnel').textContent='All time';
@@ -1500,7 +1501,7 @@ async function loadDonut(){
 // ── Country bars ──────────────────────────────────────────────
 async function loadCountryBars(){
   const ps=periodStart();
-  const q=_sb.from('generations').select('country_code').not('country_code','is',null).limit(10000);
+  const q=_sb.from('generations').select('country_code').or('status.eq.completed,status.is.null').not('country_code','is',null).limit(10000);
   const{data}=await (ps?q.gte('created_at',ps):q);
   const cc={};(data||[]).forEach(r=>{cc[r.country_code]=(cc[r.country_code]||0)+1;});
   const sorted=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,8);
