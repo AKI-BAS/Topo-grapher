@@ -3748,6 +3748,10 @@ let _currentGenerationId = null;
 
 async function startGeneration() {
   _currentGenerationId = null;
+  // Anonymous rows (user_id null) can't be read back after insert or updated later
+  // under the current RLS policies, so anonymous generations skip this started/completed
+  // pipeline entirely and log in one shot from logGeneration's fallback branch instead.
+  if (!_currentUser) return;
   try {
     const poly = polygonLatLngs || [];
     const lats = poly.map(p => p.lat !== undefined ? p.lat : p[0]);
@@ -3772,7 +3776,6 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
   const safe = (pName || 'site').replace(/[^a-zA-Z0-9_\-]/g, '_');
   // If startGeneration never ran (or failed), fall back to legacy insert so we don't lose the record
   if (!_currentGenerationId) {
-    if (!_currentUser) return;
     try {
       const poly = polygonLatLngs || [];
       const lats = poly.map(p => p.lat !== undefined ? p.lat : p[0]);
@@ -3781,7 +3784,7 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
       const cLon = lons.length ? (Math.min(...lons) + Math.max(...lons)) / 2 : null;
       const countryCode = getCountryCode(poly);
       await _sb.from('generations').insert({
-        user_id:           _currentUser.id,
+        user_id:           _currentUser ? _currentUser.id : null,
         project_name:      pName,
         point_count:       pointCount,
         spacing,
@@ -3793,12 +3796,19 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
         resolution_m:      parseResolution(elevSource),
         area_km2:          areaM2 ? parseFloat((areaM2 / 1000000).toFixed(4)) : null,
         addon_charged_pence: window._lastAddonChargePence || 0,
-        user_plan:         _currentProfile?.plan || 'free',
+        user_plan:         _currentUser ? (_currentProfile?.plan || 'free') : 'anon',
         centroid_lat:      cLat ? parseFloat(cLat.toFixed(6)) : null,
         centroid_lon:      cLon ? parseFloat(cLon.toFixed(6)) : null,
         country_code:      countryCode,
         status:            'completed',
         completed_at:      new Date().toISOString()
+      });
+      track('generation_completed', {
+        point_count: pointCount,
+        spacing,
+        area_m2: areaM2 ? Math.round(areaM2) : null,
+        source: elevSource || 'unknown',
+        plan: _currentUser ? (_currentProfile?.plan || 'free') : 'anon'
       });
     } catch(e) { console.warn('logGeneration legacy insert error:', e); }
     return;
