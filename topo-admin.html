@@ -298,7 +298,15 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .speed-chip.good{background:var(--accent-dk);color:var(--accent);}
 .speed-chip.okay{background:var(--amber-dk);color:var(--amber);}
 .speed-chip.slow{background:rgba(226,85,85,.12);color:var(--red);}
-@media(max-width:720px){.speed-body{grid-template-columns:1fr;justify-items:center;}}
+.speed-circles{display:flex;flex-wrap:wrap;gap:clamp(12px,1.8vw,26px);align-items:flex-start;}
+.speed-circ{display:flex;flex-direction:column;align-items:center;gap:5px;width:104px;}
+.speed-circ.big{width:132px;}
+.speed-circ svg{transform:rotate(-90deg);}
+.speed-circ-lbl{font-size:11px;color:var(--text);text-align:center;line-height:1.25;min-height:28px;display:flex;align-items:center;}
+.speed-circ-val{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);}
+.speed-delta{font-family:'DM Mono',monospace;font-size:10px;}
+.speed-note{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:14px 0;line-height:1.5;}
+@media(max-width:720px){.speed-body{grid-template-columns:1fr;justify-items:center;}.speed-circles{justify-content:center;}}
 
 /* Funnel reliability strip */
 .funnel-reliability{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
@@ -1668,97 +1676,124 @@ const SPEED_METRICS = [
   { id:'total-blocking-time',      label:'How fast buttons respond',   desc:'Unresponsive sites rank lower' },
   { id:'speed-index',              label:'Overall load feel',          desc:'How quickly the page looks complete' },
 ];
-let _speedResult = null;      // last PSI parse, kept so it survives Monitor re-renders
+// Remembered results, keyed by strategy, so each view shows its own last check
+// and survives Monitor re-renders. Never runs on its own; only the button runs it.
+let _speedStore = {};
 let _speedStrategy = 'mobile';
 let _speedRunning = false;
-try { const s = localStorage.getItem('topo-admin-speed'); if (s) _speedResult = JSON.parse(s); } catch(e) {}
+try {
+  const s = localStorage.getItem('topo-admin-speed');
+  if (s) {
+    const p = JSON.parse(s);
+    if (p && (p.mobile || p.desktop)) _speedStore = p;         // new per-strategy format
+    else if (p && p.metrics) _speedStore[p.strategy||'mobile'] = p; // migrate old single-result format
+  }
+} catch(e) {}
 
 function _scoreBand(score){ return score>=0.9?'good':score>=0.5?'okay':'slow'; }
 function _scoreColor(band){ return band==='good'?'var(--accent)':band==='okay'?'var(--amber)':'var(--red)'; }
 
-async function runSpeedTest(strategy){
+// One 0-100 ring gauge (matches the circle-score report format).
+function _speedGauge(score, size){
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  const sw = size>=120?9:7, cx=size/2, R=cx-sw-2, C=2*Math.PI*R, off=C*(1-score/100);
+  const col = _scoreColor(_scoreBand(score/100));
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cx}" r="${R}" fill="none" stroke="var(--surface2)" stroke-width="${sw}"/>
+    <circle cx="${cx}" cy="${cx}" r="${R}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round"
+      stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
+    <text x="${cx}" y="${cx}" text-anchor="middle" dominant-baseline="central" transform="rotate(90 ${cx} ${cx})"
+      font-size="${size>=120?28:20}" font-weight="500" fill="${col}" font-family="Nacelle,sans-serif">${score}</text>
+  </svg>`;
+}
+
+// Switches which strategy's remembered result is shown. Does NOT run a test.
+function setSpeedStrategy(s){ if(_speedRunning) return; _speedStrategy = s; _renderSpeedTest(); }
+
+async function runSpeedTest(){
   if(_speedRunning) return;
-  if(strategy) _speedStrategy = strategy;
   _speedRunning = true;
   _renderSpeedTest(); // paints the running state
+  const strategy = _speedStrategy;
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), 100000); // never hang forever
   try{
-    let url = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url='+encodeURIComponent(SPEED_TEST_URL)+'&strategy='+_speedStrategy+'&category=performance';
+    let url = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url='+encodeURIComponent(SPEED_TEST_URL)+'&strategy='+strategy+'&category=performance';
     if(PSI_API_KEY) url += '&key='+PSI_API_KEY;
-    const r = await fetch(url,{cache:'no-store'});
+    const r = await fetch(url,{cache:'no-store',signal:ctrl.signal});
     if(!r.ok){ throw new Error(r.status===429?'Rate limited by Google. Wait a minute, or add a free PageSpeed API key in PSI_API_KEY for higher limits.':'PageSpeed API returned '+r.status); }
     const j = await r.json();
     const lh = j.lighthouseResult;
     if(!lh||!lh.categories||!lh.categories.performance) throw new Error('No performance data returned');
     const audits = lh.audits||{};
-    _speedResult = {
-      strategy: _speedStrategy,
+    const prev = _speedStore[strategy];
+    _speedStore[strategy] = {
+      strategy: strategy,
       ts: Date.now(),
       score: Math.round((lh.categories.performance.score||0)*100),
+      prevScore: (prev && !prev.error && prev.score!=null) ? prev.score : null,
       metrics: SPEED_METRICS.map(m=>{
         const a = audits[m.id]||{};
         return { id:m.id, label:m.label, desc:m.desc, cls:!!m.cls,
                  display: a.displayValue||'—', score: (a.score==null?0.5:a.score) };
       }),
+      error: null,
     };
-    try { localStorage.setItem('topo-admin-speed', JSON.stringify(_speedResult)); } catch(e) {}
-    _speedResult.error = null;
+    try { localStorage.setItem('topo-admin-speed', JSON.stringify(_speedStore)); } catch(e) {}
   }catch(e){
-    _speedResult = Object.assign({}, _speedResult, { error: e.message });
+    const msg = e.name==='AbortError' ? 'Test timed out after 100s. Google took too long to respond. Press Run again.' : e.message;
+    const prev = _speedStore[strategy];
+    _speedStore[strategy] = Object.assign({}, prev||{strategy:strategy}, { error: msg });
   }finally{
+    clearTimeout(timer);
     _speedRunning = false;
     _renderSpeedTest();
   }
 }
 
+function _speedCirclesHtml(res){
+  let deltaHtml = '/ 100';
+  if(res.prevScore!=null){
+    const d = res.score - res.prevScore;
+    const c = d>0?'var(--accent)':d<0?'var(--red)':'var(--muted)';
+    const s = d>0?('▲ +'+d):d<0?('▼ '+d):'no change';
+    deltaHtml = `<span class="speed-delta" style="color:${c}">${s} vs last</span>`;
+  }
+  const overall = `<div class="speed-circ big">${_speedGauge(res.score,132)}
+    <div class="speed-circ-lbl">Overall score</div><div class="speed-circ-val">${deltaHtml}</div></div>`;
+  const metrics = res.metrics.map(m=>{
+    let val = m.display;
+    if(m.cls) val = m.score>=0.9?'No jump':m.score>=0.5?'A little':'Jumps';
+    return `<div class="speed-circ">${_speedGauge(m.score*100,96)}
+      <div class="speed-circ-lbl">${m.label}</div><div class="speed-circ-val">${esc(val)}</div></div>`;
+  }).join('');
+  return `<div class="speed-circles">${overall}${metrics}</div>`;
+}
+
 function _renderSpeedTest(){
   const host = document.getElementById('speed-test');
   if(!host) return;
+  const res = _speedStore[_speedStrategy];
   const stratBtns = `<div class="speed-strat">
-      <button class="${_speedStrategy==='mobile'?'active':''}" onclick="runSpeedTest('mobile')">Mobile</button>
-      <button class="${_speedStrategy==='desktop'?'active':''}" onclick="runSpeedTest('desktop')">Desktop</button>
+      <button class="${_speedStrategy==='mobile'?'active':''}" onclick="setSpeedStrategy('mobile')">Mobile</button>
+      <button class="${_speedStrategy==='desktop'?'active':''}" onclick="setSpeedStrategy('desktop')">Desktop</button>
     </div>
-    <button class="speed-run-btn" onclick="runSpeedTest()" ${_speedRunning?'disabled':''}>${_speedRunning?'Testing…':'Run speed test'}</button>`;
+    <button class="speed-run-btn" onclick="runSpeedTest()" ${_speedRunning?'disabled':''}>${_speedRunning?'Testing…':(res&&!res.error?'Run again':'Run speed test')}</button>`;
+  const stamp = res && res.ts ? `${res.strategy} · ${ago(res.ts)}` : '';
+  const top = `<div class="speed-top">${stratBtns}<span class="speed-stamp">${stamp}</span></div>`;
 
-  if(_speedRunning && !_speedResult){
-    host.innerHTML = `<div class="speed-top">${stratBtns}</div><div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:16px 0;">Running Lighthouse against ${SPEED_TEST_URL}… this takes 15 to 30 seconds.</div>`;
+  if(_speedRunning){
+    const keep = (res && res.metrics && !res.error) ? _speedCirclesHtml(res) : '';
+    host.innerHTML = top + `<div class="speed-note">Running Lighthouse against ${SPEED_TEST_URL}. This takes 15 to 30 seconds.${keep?' Showing your last '+esc(_speedStrategy)+' result until it finishes.':''}</div>` + keep;
     return;
   }
-  if(!_speedResult){
-    host.innerHTML = `<div class="speed-top">${stratBtns}</div><div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:16px 0;">No test run yet. Press "Run speed test" to check ${SPEED_TEST_URL} with Google PageSpeed.</div>`;
+  if(!res || !res.metrics){
+    const errHtml = res && res.error ? `<div class="speed-note" style="color:var(--red)">⚠ ${esc(res.error)}</div>` : '';
+    host.innerHTML = top + errHtml + `<div class="speed-note">No test run yet. Press "Run speed test" to check ${SPEED_TEST_URL} with Google PageSpeed. The result is remembered so you can compare next time.</div>`;
     return;
   }
-  const res = _speedResult;
-  const stamp = res.ts ? `${res.strategy} · ${ago(res.ts)}` : '';
-  const errHtml = res.error ? `<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--red);margin-bottom:10px;">⚠ ${esc(res.error)}</div>` : '';
-
-  // Score gauge
-  const band = _scoreBand((res.score||0)/100), col = _scoreColor(band);
-  const R=42, C=2*Math.PI*R, off=C*(1-(res.score||0)/100);
-  const gauge = `<div class="speed-gauge">
-    <svg width="120" height="120" viewBox="0 0 120 120">
-      <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--surface2)" stroke-width="9"/>
-      <circle cx="60" cy="60" r="${R}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round"
-        stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
-      <text x="60" y="60" text-anchor="middle" dominant-baseline="central" transform="rotate(90 60 60)"
-        font-size="30" font-weight="500" fill="${col}" font-family="Nacelle,sans-serif">${res.score}</text>
-    </svg>
-    <div class="speed-gauge-cap">SCORE / 100</div>
-  </div>`;
-
-  const rows = res.metrics.map(m=>{
-    const b = _scoreBand(m.score);
-    let val = m.display;
-    if(m.cls) val = m.score>=0.9?'No':m.score>=0.5?'A little':'Yes';
-    return `<div class="speed-metric">
-      <div class="speed-m-main"><div class="speed-m-label">${m.label}</div><div class="speed-m-desc">${m.desc}</div></div>
-      <div class="speed-m-val" style="color:${_scoreColor(b)}">${esc(val)}</div>
-      <span class="speed-chip ${b}">${b==='good'?'Good':b==='okay'?'Okay':'Slow'}</span>
-    </div>`;
-  }).join('');
-
-  host.innerHTML = `<div class="speed-top">${stratBtns}<span class="speed-stamp">${stamp}</span></div>
-    ${errHtml}
-    <div class="speed-body">${gauge}<div class="speed-metrics">${rows}</div></div>`;
+  const errHtml = res.error ? `<div class="speed-note" style="color:var(--red)">⚠ ${esc(res.error)} Showing your last successful result below.</div>` : '';
+  host.innerHTML = top + errHtml + _speedCirclesHtml(res);
 }
 
 // ── Gap table ─────────────────────────────────────────────────
