@@ -1713,7 +1713,14 @@ async function loadMonitor(){
 // ── Site speed test (Google PageSpeed Insights / Lighthouse) ───
 // Runs the same lab engine third-party speed tools use, against the live site.
 // Keyless works for occasional use; paste a PageSpeed API key for higher limits.
-const SPEED_TEST_URL = 'https://topo-grapher.com/';
+// Mobile and desktop score separate URLs, since the site serves a distinct /mobile.html
+// to phone traffic. Testing mobile.html directly matches what real phone users see
+// (avoids relying on Lighthouse to follow the client-side redirect from '/').
+const SPEED_TEST_URLS = {
+  mobile:  'https://topo-grapher.com/mobile.html',
+  desktop: 'https://topo-grapher.com/',
+};
+const speedUrl = s => SPEED_TEST_URLS[s] || SPEED_TEST_URLS.mobile;
 const PSI_API_KEY = (_CFG && _CFG.PSI_API_KEY) || '';
 // Plain-language metric mapping, mirroring how non-technical speed reports read.
 const SPEED_METRICS = [
@@ -1765,7 +1772,7 @@ async function runSpeedTest(){
   const ctrl = new AbortController();
   const timer = setTimeout(()=>ctrl.abort(), 100000); // never hang forever
   try{
-    let url = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url='+encodeURIComponent(SPEED_TEST_URL)+'&strategy='+strategy+'&category=performance';
+    let url = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url='+encodeURIComponent(speedUrl(strategy))+'&strategy='+strategy+'&category=performance';
     if(PSI_API_KEY) url += '&key='+PSI_API_KEY;
     const r = await fetch(url,{cache:'no-store',signal:ctrl.signal});
     if(!r.ok){ throw new Error(r.status===429?'Rate limited by Google. Wait a minute, or add a free PageSpeed API key in PSI_API_KEY for higher limits.':'PageSpeed API returned '+r.status); }
@@ -1831,12 +1838,12 @@ function _renderSpeedTest(){
 
   if(_speedRunning){
     const keep = (res && res.metrics && !res.error) ? _speedCirclesHtml(res) : '';
-    host.innerHTML = top + `<div class="speed-note">Running Lighthouse against ${SPEED_TEST_URL}. This takes 15 to 30 seconds.${keep?' Showing your last '+esc(_speedStrategy)+' result until it finishes.':''}</div>` + keep;
+    host.innerHTML = top + `<div class="speed-note">Running Lighthouse against ${speedUrl(_speedStrategy)}. This takes 15 to 30 seconds.${keep?' Showing your last '+esc(_speedStrategy)+' result until it finishes.':''}</div>` + keep;
     return;
   }
   if(!res || !res.metrics){
     const errHtml = res && res.error ? `<div class="speed-note" style="color:var(--red)">⚠ ${esc(res.error)}</div>` : '';
-    host.innerHTML = top + errHtml + `<div class="speed-note">No test run yet. Press "Run speed test" to check ${SPEED_TEST_URL} with Google PageSpeed. The result is remembered so you can compare next time.</div>`;
+    host.innerHTML = top + errHtml + `<div class="speed-note">No test run yet. Press "Run speed test" to check ${speedUrl(_speedStrategy)} with Google PageSpeed. The result is remembered so you can compare next time.</div>`;
     return;
   }
   const errHtml = res.error ? `<div class="speed-note" style="color:var(--red)">⚠ ${esc(res.error)} Showing your last successful result below.</div>` : '';
