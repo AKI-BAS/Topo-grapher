@@ -4,6 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- Route mobile traffic to /mobile.html. Runs before any external asset request.
+       Honors ?desktop=1 override (sets a 90-day cookie so subsequent visits stay on desktop). -->
+  <script>
+  (function(){
+    var q = location.search;
+    if (/[?&]desktop=1(?:&|$)/.test(q)) {
+      document.cookie = 'tg_prefers=desktop; Max-Age=7776000; Path=/; SameSite=Lax';
+      return;
+    }
+    if (/(?:^|; )tg_prefers=desktop(?:;|$)/.test(document.cookie)) return;
+    // Phone UA sniff — deliberately excludes iPad (reports desktop UA on iPadOS 13+).
+    if (/Mobi|iPhone|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+      location.replace('/mobile.html');
+    }
+  })();
+  </script>
+
+  <!-- Tell Googlebot there's a mobile alternate at /mobile.html -->
+  <link rel="alternate" media="only screen and (max-width: 640px)" href="https://topo-grapher.com/mobile.html">
+
   <!-- ═══════════════════════════════════════════════
        PRIMARY SEO
   ═══════════════════════════════════════════════ -->
@@ -94,12 +114,6 @@
   <link rel="icon" type="image/png" href="data:image/png;base64,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">
   <link rel="apple-touch-icon" href="data:image/png;base64,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">
 
-  <!-- Warm up connections to the CDNs the page pulls from, so their requests start sooner -->
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://unpkg.com"/>
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com"/>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net"/>
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <!-- Leaflet Draw -->
@@ -1580,49 +1594,6 @@ function declineCookies() {
   </div>
 </div>
 
-<!-- ═══ DAILY-CAP UPSELL MODAL ═══ -->
-<div class="auth-overlay" id="capreached-overlay">
-  <div class="upgrade-modal" style="max-width:520px;">
-    <div class="upgrade-hero">
-      <svg style="position:absolute;inset:0;width:100%;height:100%;display:block;" viewBox="0 0 500 156" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M-10,95 C30,72 65,88 105,66 C148,43 178,60 218,38 C258,16 295,44 338,34 C380,24 420,48 510,38 L510,165 L-10,165 Z" fill="rgba(15,42,20,.65)"/>
-        <path d="M-10,118 C35,100 80,112 125,94 C170,76 208,90 250,74 C292,58 336,76 378,62 C420,48 462,68 510,56 L510,165 L-10,165 Z" fill="rgba(9,28,13,.8)"/>
-        <path d="M-10,138 C50,124 100,134 155,120 C210,106 252,120 300,110 C348,100 392,116 440,106 C468,100 488,110 510,104 L510,165 L-10,165 Z" fill="rgba(6,18,9,.92)"/>
-      </svg>
-      <div class="upgrade-hero-sheen"></div>
-      <div class="upgrade-hero-fade"></div>
-      <div class="upgrade-hero-text">
-        <small>You've hit today's free cap</small>
-        <h3>You're clearly into this.</h3>
-        <p>3 sites a day isn't enough for the way you work. Time to go Pro.</p>
-      </div>
-      <button class="upgrade-hero-close" onclick="closeCapReached()">&#x2715;</button>
-    </div>
-    <div style="padding:22px 26px 20px;">
-      <ul style="list-style:none;padding:0;margin:0 0 20px;display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;font-size:12.5px;color:var(--text);line-height:1.5;">
-        <li style="display:flex;gap:8px;"><span style="color:var(--accent);flex-shrink:0;">✓</span>Unlimited generations</li>
-        <li style="display:flex;gap:8px;"><span style="color:var(--accent);flex-shrink:0;">✓</span>Buildings IFC &amp; DXF</li>
-        <li style="display:flex;gap:8px;"><span style="color:var(--accent);flex-shrink:0;">✓</span>Full 3D terrain viewer</li>
-        <li style="display:flex;gap:8px;"><span style="color:var(--accent);flex-shrink:0;">✓</span>All LiDAR data sources</li>
-        <li style="display:flex;gap:8px;"><span style="color:var(--accent);flex-shrink:0;">✓</span>Save &amp; revisit projects</li>
-        <li style="display:flex;gap:8px;"><span style="color:var(--accent);flex-shrink:0;">✓</span>Priority processing</li>
-      </ul>
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);">
-        <div>
-          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:600;color:var(--text);">£39.99<span style="font-size:13px;color:var(--text-mid);font-weight:400;">/month</span></div>
-          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mid);letter-spacing:.05em;margin-top:2px;">Cancel anytime</div>
-        </div>
-        <button id="cap-cta-btn" onclick="closeCapReached(); if(!_currentUser){openAuth('signup');} else {startCheckout('pro');}"
-          style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:12px 22px;border-radius:7px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;cursor:pointer;letter-spacing:.06em;transition:opacity .15s;"
-          onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'">Get Pro &rarr;</button>
-      </div>
-      <div style="text-align:center;">
-        <button onclick="closeCapReached()" style="background:none;border:none;color:var(--text-mid);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:.04em;padding:4px 8px;">Come back tomorrow</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ═══ UPGRADE MODAL ═══ -->
 <div class="auth-overlay" id="upgrade-overlay">
   <div class="upgrade-modal">
@@ -1958,18 +1929,6 @@ function declineCookies() {
             <td style="padding:9px 14px;color:var(--text-soft);">±0.15m</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇳🇱 Netherlands</td>
-            <td style="padding:9px 14px;color:var(--text-mid);">AHN (Actueel Hoogtebestand Nederland)</td>
-            <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">0.5m</span></td>
-            <td style="padding:9px 14px;color:var(--text-soft);">±0.05m</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇵🇱 Poland</td>
-            <td style="padding:9px 14px;color:var(--text-mid);">GUGiK NMT (EVRF2007)</td>
-            <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">1m</span></td>
-            <td style="padding:9px 14px;color:var(--text-soft);">±0.1m</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇳🇴 Norway</td>
             <td style="padding:9px 14px;color:var(--text-mid);">Kartverket DTM1</td>
             <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">1m</span></td>
@@ -2054,6 +2013,12 @@ function declineCookies() {
           <!-- Coming soon -->
           <tr style="background:var(--bg-input);border-bottom:1px solid var(--border);border-top:1px solid var(--border);">
             <td colspan="4" style="padding:6px 14px;font-size:10px;color:var(--text-soft);letter-spacing:.1em;text-transform:uppercase;">Coming soon</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);opacity:.55;">
+            <td style="padding:9px 14px;color:var(--text);">🇳🇱 Netherlands</td>
+            <td style="padding:9px 14px;color:var(--text-mid);">AHN3/AHN4</td>
+            <td style="padding:9px 14px;"><span style="border:1px dashed var(--border-md);padding:2px 7px;border-radius:2px;font-size:10px;color:var(--text-soft);">0.5m</span></td>
+            <td style="padding:9px 14px;color:var(--text-soft);">±0.05m</td>
           </tr>
           <tr style="opacity:.55;">
             <td style="padding:9px 14px;color:var(--text);">🇯🇵 Japan</td>
@@ -2212,15 +2177,12 @@ function declineCookies() {
   </div>
 </footer>
 
-<!-- Leaflet, Supabase and proj4 are used at load, so they stay blocking (top-level code needs them). -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://js.stripe.com/v3/"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js"></script>
-<!-- Stripe.js is not called anywhere on this page (checkout runs through the payment worker), so defer it. -->
-<script defer src="https://js.stripe.com/v3/"></script>
-<!-- Three.js (~600KB) only drives the 3D viewer, which polls for THREE until ready, so defer it out of the critical path. -->
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 // \u2500\u2500 Theme \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function toggleTheme() {
@@ -2445,7 +2407,7 @@ var REGION_DATA = [
   [36.4,  6.7,  47.1, 18.5, 'Italy',          30,  'lo'],
   [49.5,  2.5,  51.5,  6.4, 'Belgium',        30,  'lo'],
   [36.0, 25.0,  42.0, 26.5, 'Greece',         30,  'lo'],
-  [49.0, 14.1,  54.9, 24.2, 'Poland',         1,   'hi'],
+  [49.0, 14.1,  54.9, 24.2, 'Poland',         30,  'lo'],
 ];
 
 function getRegionInfo(poly) {
@@ -3215,38 +3177,6 @@ function track(event, props) {
   try { if (typeof window.gtag === 'function') window.gtag('event', event, props || {}); } catch(e) {}
 }
 
-// ── Live presence heartbeat ───────────────────────────────────────────────
-// Broadcasts this tab's presence (anonymous vs signed-in) to the admin
-// dashboard over Supabase Realtime. Ephemeral: no database writes. The admin
-// observes this channel to show who is live on the site right now, and listens
-// for the gen_fail broadcast to flag failures in real time.
-let _presence = null;
-function _presenceMeta() {
-  return { role: _currentUser ? 'auth' : 'anon', ts: Date.now() };
-}
-function initPresence() {
-  if (_presence) return;
-  try {
-    _presence = _sb.channel('site-presence');
-    _presence.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        try { await _presence.track(_presenceMeta()); } catch(e) {}
-      }
-    });
-  } catch(e) { _presence = null; }
-}
-function updatePresenceRole() {
-  if (_presence) { try { _presence.track(_presenceMeta()); } catch(e) {} }
-}
-// Tell the admin dashboard a generation just failed, in real time.
-function broadcastFailure(stage, detail) {
-  if (!_presence) return;
-  try {
-    _presence.send({ type: 'broadcast', event: 'gen_fail',
-      payload: { stage: stage || 'generation', detail: (detail || '').toString().slice(0, 120), role: _currentUser ? 'auth' : 'anon' } });
-  } catch(e) {}
-}
-
 // ── Auth init ─────────────────────────────────────────────────────────────
 async function initAuth() {
   // Register listener FIRST — outside try/catch — so it always survives even
@@ -3276,7 +3206,6 @@ async function initAuth() {
 
 async function handleSession(session) {
   _currentUser = session.user;
-  updatePresenceRole();
   // Wrap profile fetch — a missing table or RLS block shouldn't break auth.
   try {
     const { data, error } = await _sb.from('profiles').select('*').eq('id', _currentUser.id).single();
@@ -3290,15 +3219,10 @@ async function handleSession(session) {
     applyProUI();
     setTimeout(restoreProMemory, 500);
   }
-  if (_pendingDownload) {
-    _pendingDownload = false;
-    setTimeout(function(){ try { handleDownload(); } catch(e) {} }, 200);
-  }
 }
 
 function handleSignOut() {
   _currentUser = null; _currentProfile = null;
-  updatePresenceRole();
   updateNavUI();
   const footerSub = document.getElementById('footer-sub');
   if (footerSub) footerSub.innerHTML = 'Terrain Intelligence for BIM &nbsp;·&nbsp; Free Beta';
@@ -3349,10 +3273,6 @@ function closeAuth() {
   const se = document.getElementById('signin-error');
   const sue = document.getElementById('signup-error');
   if (se) se.textContent = ''; if (sue) sue.textContent = '';
-  const t = document.getElementById('auth-title'), s = document.getElementById('auth-subtitle');
-  if (t) t.textContent = 'Sign in';
-  if (s) s.textContent = 'Access your projects and Pro features.';
-  _pendingDownload = false;
 }
 function switchTab(tab) {
   document.getElementById('auth-form-signin').style.display = tab === 'signin' ? 'block' : 'none';
@@ -3844,14 +3764,42 @@ function parseResolution(source) {
   if (s.includes('open-meteo')) return 90;
   return null;
 }
+async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csvRaw, polygonJson) {
+  if (!_currentUser) return;
+  try {
+    const safe = (pName || 'site').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    // Compute centroid and country from the active polygon
+    const poly = polygonLatLngs || [];
+    const lats  = poly.map(p => p.lat !== undefined ? p.lat : p[0]);
+    const lons   = poly.map(p => p.lng !== undefined ? p.lng : p[1]);
+    const cLat   = lats.length ? (Math.min(...lats) + Math.max(...lats)) / 2 : null;
+    const cLon   = lons.length ? (Math.min(...lons) + Math.max(...lons)) / 2 : null;
+    const countryCode = getCountryCode(poly);
+    await _sb.from('generations').insert({
+      user_id:           _currentUser.id,
+      project_name:      pName,
+      point_count:       pointCount,
+      spacing,
+      area_m2:           areaM2,
+      elevation_source:  elevSource,
+      csv_data:          isPro() ? (csvRaw || null) : null,
+      file_name:         safe + '_toposolid.csv',
+      polygon_geojson:   polygonJson || null,
+      resolution_m:      parseResolution(elevSource),
+      area_km2:          areaM2 ? parseFloat((areaM2 / 1000000).toFixed(4)) : null,
+      addon_charged_pence: window._lastAddonChargePence || 0,
+      user_plan:         _currentProfile?.plan || 'free',
+      centroid_lat:      cLat ? parseFloat(cLat.toFixed(6)) : null,
+      centroid_lon:      cLon ? parseFloat(cLon.toFixed(6)) : null,
+      country_code:      countryCode,
+    });
+  } catch(e) { console.warn('logGeneration error:', e); }
+}
+
 let _currentGenerationId = null;
 
 async function startGeneration() {
   _currentGenerationId = null;
-  // Anonymous rows (user_id null) can't be read back after insert or updated later
-  // under the current RLS policies, so anonymous generations skip this started/completed
-  // pipeline entirely and log in one shot from logGeneration's fallback branch instead.
-  if (!_currentUser) return;
   try {
     const poly = polygonLatLngs || [];
     const lats = poly.map(p => p.lat !== undefined ? p.lat : p[0]);
@@ -3876,6 +3824,7 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
   const safe = (pName || 'site').replace(/[^a-zA-Z0-9_\-]/g, '_');
   // If startGeneration never ran (or failed), fall back to legacy insert so we don't lose the record
   if (!_currentGenerationId) {
+    if (!_currentUser) return;
     try {
       const poly = polygonLatLngs || [];
       const lats = poly.map(p => p.lat !== undefined ? p.lat : p[0]);
@@ -3884,7 +3833,7 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
       const cLon = lons.length ? (Math.min(...lons) + Math.max(...lons)) / 2 : null;
       const countryCode = getCountryCode(poly);
       await _sb.from('generations').insert({
-        user_id:           _currentUser ? _currentUser.id : null,
+        user_id:           _currentUser.id,
         project_name:      pName,
         point_count:       pointCount,
         spacing,
@@ -3896,19 +3845,12 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
         resolution_m:      parseResolution(elevSource),
         area_km2:          areaM2 ? parseFloat((areaM2 / 1000000).toFixed(4)) : null,
         addon_charged_pence: window._lastAddonChargePence || 0,
-        user_plan:         _currentUser ? (_currentProfile?.plan || 'free') : 'anon',
+        user_plan:         _currentProfile?.plan || 'free',
         centroid_lat:      cLat ? parseFloat(cLat.toFixed(6)) : null,
         centroid_lon:      cLon ? parseFloat(cLon.toFixed(6)) : null,
         country_code:      countryCode,
         status:            'completed',
         completed_at:      new Date().toISOString()
-      });
-      track('generation_completed', {
-        point_count: pointCount,
-        spacing,
-        area_m2: areaM2 ? Math.round(areaM2) : null,
-        source: elevSource || 'unknown',
-        plan: _currentUser ? (_currentProfile?.plan || 'free') : 'anon'
       });
     } catch(e) { console.warn('logGeneration legacy insert error:', e); }
     return;
@@ -4006,30 +3948,11 @@ async function checkDailyLimit() {
   if (_currentUser) {
     const today = new Date().toISOString().slice(0, 10);
     const { count } = await _sb.from('generations').select('*', { count: 'exact', head: true }).eq('user_id', _currentUser.id).gte('created_at', today + 'T00:00:00Z');
-    if (count >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'server' }); openCapReached(); throw new Error('Free tier limit reached — ' + FREE_DAILY_LIMIT + ' generations per day. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.'); }
+    if (count >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'server' }); throw new Error('Free tier limit reached — ' + FREE_DAILY_LIMIT + ' generations per day. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.'); }
   } else {
     const used = getGenerationsToday();
-    if (used >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'local' }); openCapReached(); throw new Error('Free tier limit reached. <a href="#" onclick="openAuth()" style="color:var(--accent)">Sign in</a> or <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.'); }
+    if (used >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'local' }); throw new Error('Free tier limit reached. <a href="#" onclick="openAuth()" style="color:var(--accent)">Sign in</a> or <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.'); }
   }
-  // If the server branch above throws, this line is skipped — hoist the modal open into the throw itself.
-}
-
-// ── Download gate: anonymous users must create a free account first ──────
-let _pendingDownload = false;
-function openCapReached() { document.getElementById('capreached-overlay')?.classList.add('show'); track('cap_upsell_shown', {}); }
-function closeCapReached() { document.getElementById('capreached-overlay')?.classList.remove('show'); }
-function gatedDownload() {
-  if (!window._cleanOutMetric?.length) return;
-  if (!_currentUser) {
-    _pendingDownload = true;
-    track('download_gated', {});
-    const t = document.getElementById('auth-title'), s = document.getElementById('auth-subtitle');
-    if (t) t.textContent = 'Free account required';
-    if (s) s.textContent = 'Create a free account to download your terrain. Takes 20 seconds, no card needed.';
-    openAuth('signup');
-    return;
-  }
-  handleDownload();
 }
 
 // ── UI: progress, result, error ───────────────────────────────────────────
@@ -4331,7 +4254,6 @@ async function convert() {
   }
   nEl.classList.remove('error');
   if (!polygonLatLngs) { showError('Draw a site area on the map first.'); return; }
-  await startGeneration();
   document.getElementById('convert-btn').disabled = true;
   showProgress(true); setProgress(0.02,'Preparing…','Setting up coordinate grid');
   try {
@@ -4434,8 +4356,6 @@ async function convert() {
   }catch(err){
     showProgress(false); showError(err.message);
     track('generation_failed',{error:err.message.slice(0,100),spacing:selectedSpacing});
-    failGeneration('convert', err.message);
-    broadcastFailure('convert', err.message);
   }finally{
     document.getElementById('convert-btn').disabled=false;
   }
@@ -5070,8 +4990,6 @@ function updateElevationSourceBanner(source, _pro) {
   if (s.includes('dhm')||s.includes('denmark'))         {tier='lidar';resText='0.4m · Danish DHM LiDAR';}
 else if (s.includes('kartverket'))                    {tier='lidar';resText='1m · Kartverket DTM1 Norway';}
 else if (s.includes('estonia')||s.includes('maaamet')){tier='lidar';resText='1m · Maaamet DTM Estonia';}
-else if (s.includes('ahn')||s.includes('netherlands')){tier='lidar';resText='0.5m · AHN Netherlands (Rijkswaterstaat)';}
-else if (s.includes('gugik')||s.includes('nmt-poland')||s.includes('poland-1m')){tier='lidar';resText='1m · GUGiK NMT Poland (EVRF2007)';}
 else if (s.includes('czech')||s.includes('cuzk')||s.includes('dmr4g')){tier='lidar';resText='5m · ČÚZK DMR4G Czech Republic';}
 else if (s.includes('nrcan')||s.includes('hrdem')||s.includes('canada')){tier='lidar';resText='1m · NRCan HRDEM Canada';}
   else if (s.includes('usgs')||s.includes('3dep'))      {tier='lidar';resText='USGS 3DEP (up to 1m)';}
@@ -6980,7 +6898,6 @@ async function sendFeedback() {
 document.addEventListener('DOMContentLoaded', function() {
   updateLimitBadge();
   setTimeout(function() { initAuth(); }, 0);
-  setTimeout(function() { initPresence(); }, 0);
 // Demo terrain starts as soon as Three.js is ready — retry until it loads
   (function _tryDemo() {
     if (window.THREE) { initDemoTerrain3D(); return; }
@@ -6991,7 +6908,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var cbEl = document.getElementById('convert-btn');
   if (cbEl) cbEl.addEventListener('click', convert);
   var dlEl = document.getElementById('download-btn');
-  if (dlEl) dlEl.addEventListener('click', gatedDownload);
+  if (dlEl) dlEl.addEventListener('click', handleDownload);
   var fmtSel = document.getElementById('format-select');
   if (fmtSel) fmtSel.addEventListener('change', _syncDlBtn);
 
@@ -7502,9 +7419,6 @@ document.getElementById('auth-overlay').addEventListener('click', function(e) {
 });
 document.getElementById('upgrade-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeUpgrade();
-});
-document.getElementById('capreached-overlay').addEventListener('click', function(e) {
-  if (e.target === this) closeCapReached();
 });
 document.getElementById('settings-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeSettings();

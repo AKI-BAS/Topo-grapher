@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<title>Topo-grapher — Site topography for Revit, SketchUp, Rhino</title>
+<meta name="description" content="Draw a site, get elevation data. Best on desktop — email yourself the link to try it there.">
+
+<!-- Consolidate SEO signals on the desktop URL (Google separate-URLs pattern) -->
+<link rel="canonical" href="https://topo-grapher.com/">
+
+<!-- Syne 800, subsetted to just the wordmark glyphs — ~1-2 KB woff2 -->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&text=Topo-grapher&display=swap" rel="stylesheet">
+
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#111110;
+    --ink:#f0ede8;
+    --dim:rgba(240,237,232,.62);
+    --faint:rgba(240,237,232,.14);
+    --accent:#9aba6a;
+    --accent-dk:#5E6631;
+    --btn:#1C4D33;
+    --btn-lt:#2a6647;
+    --btn-ink:#EFE3D8;
+    --stage:#111110;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{min-height:100dvh;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  button,input{font:inherit;color:inherit}
+
+  /* ── STAGE (background crossfade) ─────────────────────────── */
+  .stage{
+    position:fixed;inset:0;background:var(--stage);z-index:0;overflow:hidden;
+  }
+  .slide{
+    position:absolute;inset:0;opacity:0;
+    animation:cycle 16s infinite linear;
+    will-change:opacity,transform;
+  }
+  .slide img,.slide svg{
+    width:100%;height:100%;display:block;
+    object-fit:cover;object-position:center;
+  }
+  .slide:nth-child(1){animation-delay:0s}
+  .slide:nth-child(2){animation-delay:4s}
+  .slide:nth-child(3){animation-delay:8s}
+  .slide:nth-child(4){animation-delay:12s}
+
+  /* 16s cycle per slide, staggered by 4s so 4 slides make one 16s loop.
+     Linear timing = constant-velocity pan (reads smoother than ease-in-out).
+     Fade in/out overlap ~1s so successive slides crossfade with no black gap.
+     Pan direction: top-left → bottom-right. */
+  @keyframes cycle{
+    0%   {opacity:0; transform:scale(1.12) translate( 3%,  3%)}   /* start, top-left of image visible */
+    6%   {opacity:1; transform:scale(1.12) translate( 2.5%, 2.5%)}
+    25%  {opacity:1; transform:scale(1.12) translate(-2.5%,-2.5%)}
+    31%  {opacity:0; transform:scale(1.12) translate(-3%, -3%)}   /* end, bottom-right of image visible */
+    65%  {opacity:0; transform:scale(1.12) translate( 3%,  3%)}   /* reset invisibly for next loop */
+    100% {opacity:0; transform:scale(1.12) translate( 3%,  3%)}
+  }
+
+  /* Dark gradient scrim so text stays legible over any slide */
+  .veil{
+    position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:
+      linear-gradient(180deg, rgba(10,10,10,.35) 0%, rgba(10,10,10,.65) 55%, rgba(10,10,10,.92) 100%),
+      radial-gradient(120% 60% at 50% 10%, transparent, rgba(10,10,10,.45));
+  }
+
+  /* ── CONTENT ─────────────────────────────────────────────── */
+  .content{
+    position:relative;z-index:2;
+    display:flex;flex-direction:column;
+    min-height:100dvh;
+    padding:20px 22px 28px;
+  }
+
+  header{display:flex;align-items:center;justify-content:space-between}
+  .logo{
+    font-family:'Syne',var(--sans);
+    font-size:17px;font-weight:700;
+    letter-spacing:-.02em;color:var(--ink);
+    display:inline-flex;align-items:baseline;
+  }
+  .logo em{font-style:normal;color:var(--accent)}
+  .badge{
+    font-family:var(--mono);font-size:11px;color:var(--dim);
+    border:1px solid var(--faint);border-radius:999px;padding:5px 10px;
+  }
+
+  main{
+    flex:1;display:flex;flex-direction:column;justify-content:flex-end;
+    padding-top:60px;
+  }
+
+  h1{
+    font-size:clamp(34px, 9.4vw, 46px);
+    line-height:1.02;letter-spacing:-.03em;
+    font-weight:700;
+    text-wrap:balance;
+  }
+  h1 .line2{display:block;color:var(--ink)}
+
+  /* Word swap */
+  .swap{
+    position:relative;display:inline-block;
+    color:var(--accent);
+    min-width:6.5ch;
+    vertical-align:baseline;
+  }
+  .swap span{
+    position:absolute;left:0;top:0;white-space:nowrap;
+    opacity:0;transform:translateY(.35em);
+    animation:swap 12s infinite;
+  }
+  .swap span:nth-child(1){animation-delay:0s}
+  .swap span:nth-child(2){animation-delay:3s}
+  .swap span:nth-child(3){animation-delay:6s}
+  .swap span:nth-child(4){animation-delay:9s}
+  /* Invisible sizer so parent width follows longest word without layout shift */
+  .swap::before{
+    content:"topo surfaces";visibility:hidden;
+  }
+  @keyframes swap{
+    0%   {opacity:0;transform:translateY(.35em)}
+    4%   {opacity:1;transform:translateY(0)}
+    22%  {opacity:1;transform:translateY(0)}
+    26%  {opacity:0;transform:translateY(-.35em)}
+    100% {opacity:0;transform:translateY(-.35em)}
+  }
+
+  .sub{
+    margin-top:18px;
+    font-size:15px;line-height:1.5;color:var(--dim);max-width:36ch;
+  }
+
+  /* ── EMAIL CAPTURE ───────────────────────────────────────── */
+  .capture{
+    margin-top:28px;
+    display:flex;gap:8px;
+    background:rgba(20,20,20,.65);
+    border:1px solid var(--faint);
+    border-radius:14px;padding:6px;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+  }
+  .capture input{
+    flex:1;min-width:0;background:transparent;border:0;outline:0;
+    padding:12px 12px;font-size:15px;
+  }
+  .capture input::placeholder{color:rgba(244,239,230,.4)}
+  .capture button{
+    background:var(--btn);color:var(--btn-ink);
+    border:1px solid var(--btn-lt);border-radius:10px;
+    padding:12px 16px;font-weight:600;font-size:14px;
+    cursor:pointer;letter-spacing:-.005em;
+    display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+    transition:transform .12s ease, background .15s ease;
+  }
+  .capture button:hover{background:var(--btn-lt)}
+  .capture button:active{transform:scale(.97)}
+  .capture button:disabled{opacity:.6;cursor:default}
+  .capture-note.is-error{color:#e5896f}
+  .capture-note.is-success{color:var(--accent)}
+  .capture-note.is-success::before{background:var(--accent);opacity:1}
+
+  .capture-note{
+    margin-top:10px;font-size:12px;color:var(--dim);
+    display:flex;align-items:center;gap:6px;
+  }
+  .capture-note::before{
+    content:"";width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:.7;
+  }
+
+  .skip{
+    display:inline-flex;align-items:center;gap:6px;
+    margin-top:22px;padding:8px 0;
+    font-size:14px;color:var(--dim);
+    border-bottom:1px solid transparent;
+    align-self:flex-start;
+  }
+  .skip:hover{color:var(--ink)}
+  .skip .arrow{transition:transform .2s ease}
+  .skip:hover .arrow{transform:translateX(2px)}
+
+  /* ── FOOTER STRIP ────────────────────────────────────────── */
+  footer{
+    margin-top:36px;padding-top:20px;
+    border-top:1px solid var(--faint);
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .apps{
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--dim);
+    display:flex;flex-wrap:wrap;gap:14px;
+  }
+  .apps span{display:inline-flex;align-items:center;gap:6px}
+  .apps span::before{
+    content:"";width:5px;height:5px;border-radius:50%;background:var(--dim);opacity:.55;
+  }
+  .why{
+    font-size:12px;color:var(--dim);line-height:1.5;
+  }
+
+  /* Respect reduced-motion — no crossfade, no word swap */
+  @media (prefers-reduced-motion:reduce){
+    .slide,.swap span{animation:none}
+    .slide:nth-child(1){opacity:1}
+    .swap span:first-child{opacity:1;transform:none}
+  }
+</style>
+</head>
+<body>
+
+  <!-- Background crossfade: four real hero shots, WebP-encoded, 800x1200 -->
+  <div class="stage" aria-hidden="true">
+    <div class="slide">
+      <img src="scene1-app.webp" alt="" width="800" height="1200" fetchpriority="high" decoding="async">
+    </div>
+    <div class="slide">
+      <img src="scene2-terrain.webp" alt="" width="800" height="1200" loading="lazy" decoding="async">
+    </div>
+    <div class="slide">
+      <img src="scene3-topo.webp" alt="" width="800" height="1200" loading="lazy" decoding="async">
+    </div>
+    <div class="slide">
+      <img src="scene4-city.webp" alt="" width="800" height="1200" loading="lazy" decoding="async">
+    </div>
+  </div>
+
+  <div class="veil" aria-hidden="true"></div>
+
+  <div class="content">
+
+    <header>
+      <div class="logo">Topo<em>-grapher</em></div>
+      <div class="badge">You're on mobile</div>
+    </header>
+
+    <main>
+      <h1>
+        Draw a site.
+        <span class="line2">Get <span class="swap" aria-live="polite">
+          <span>elevation data</span>
+          <span>point clouds</span>
+          <span>topo surfaces</span>
+          <span>site models</span>
+        </span>.</span>
+      </h1>
+
+      <p class="sub">
+        Instant topography for Revit, SketchUp, Rhino & ArchiCAD. No GIS experience, no plugins, no waiting on a surveyor.
+      </p>
+
+      <form class="capture" id="capture-form" novalidate>
+        <input type="email" name="email" placeholder="you@studio.com" autocomplete="email" required
+               aria-label="Your email address">
+        <button type="submit">Email me the link →</button>
+      </form>
+      <div class="capture-note" id="capture-note" aria-live="polite">
+        One email, the link, nothing else. No spam.
+      </div>
+
+      <a class="skip" href="/?desktop=1">
+        Or open it here anyway <span class="arrow">→</span>
+      </a>
+
+      <footer>
+        <div class="apps">
+          <span>Revit</span><span>SketchUp</span><span>Rhino</span><span>ArchiCAD</span>
+        </div>
+        <div class="why">
+          The map editor needs a real screen and a mouse — that's why we suggest desktop. It works on mobile if you insist.
+        </div>
+      </footer>
+    </main>
+
+  </div>
+
+  <script>
+    (() => {
+      const NOTIFY_URL = 'https://topo-notify.svanur300.workers.dev';
+      const form = document.getElementById('capture-form');
+      const note = document.getElementById('capture-note');
+      const btn  = form.querySelector('button');
+      const input = form.querySelector('input[name="email"]');
+
+      const setNote = (text, state) => {
+        note.textContent = text;
+        note.classList.toggle('is-error',   state === 'error');
+        note.classList.toggle('is-success', state === 'success');
+      };
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = (input.value || '').trim();
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          setNote('That email looks off — mind checking it?', 'error');
+          input.focus();
+          return;
+        }
+
+        const originalLabel = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+        setNote('One second…', null);
+
+        try {
+          const res = await fetch(NOTIFY_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'mobile_desktop_link', email }),
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          form.style.display = 'none';
+          setNote('Check your inbox — the link is on its way to ' + email + '.', 'success');
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = originalLabel;
+          setNote("Couldn't send it just now. Try again in a moment, or use the link below.", 'error');
+        }
+      });
+    })();
+  </script>
+
+</body>
+</html>
