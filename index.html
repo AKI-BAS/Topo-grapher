@@ -1616,7 +1616,7 @@ function declineCookies() {
         <h3>Unlock Buildings Export</h3>
         <p>IFC &nbsp;·&nbsp; DXF &nbsp;·&nbsp; Full 3D terrain viewer</p>
       </div>
-      <button class="upgrade-hero-close" onclick="closeUpgrade()">&#x2715;</button>
+      <button class="upgrade-hero-close" onclick="closeUpgrade(); track('upsell_popup_dismissed', {context:'buildings'});">&#x2715;</button>
     </div>
 
     <!-- Plan cards -->
@@ -2681,6 +2681,7 @@ function openLargeSiteAddon(areaKm2) {
   el.style.display = 'flex';
   el.style.background = 'rgba(0,0,0,0)';
   requestAnimationFrame(function() { el.style.background = 'rgba(0,0,0,.55)'; });
+  track('upsell_popup_shown', { context: 'large_site', areaKm2: parseFloat(km.toFixed(2)), addonPrice: cost });
 }
 
 function closeLargeSiteAddon() {
@@ -3172,9 +3173,37 @@ const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let _currentUser = null;
 let _currentProfile = null;
 
+// ── In-house analytics ──────────────────────────────────────────────────
+// Writes to the Supabase `events` table (see Supabase/02-analytics-events.sql).
+// Fire-and-forget: never awaited, never throws into the caller, and silently
+// no-ops if the table doesn't exist yet so nothing breaks before that SQL
+// is pushed.
+const ANALYTICS_ANON_ID_KEY = 'topo_anon_id';
+function getAnonId() {
+  try {
+    let id = localStorage.getItem(ANALYTICS_ANON_ID_KEY);
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : 'anon-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+      localStorage.setItem(ANALYTICS_ANON_ID_KEY, id);
+    }
+    return id;
+  } catch (e) { return null; }
+}
+function logEvent(event, properties) {
+  try {
+    _sb.from('events').insert({
+      user_id: _currentUser ? _currentUser.id : null,
+      anon_id: getAnonId(),
+      event,
+      properties: properties || {}
+    }).then(() => {}, () => {});
+  } catch (e) { /* analytics must never break the app */ }
+}
+
 // Analytics — delegates to window.gtag (injected by loadGA after cookie consent)
 function track(event, props) {
   try { if (typeof window.gtag === 'function') window.gtag('event', event, props || {}); } catch(e) {}
+  try { logEvent(event, props); } catch(e) {}
 }
 
 // ── Auth init ─────────────────────────────────────────────────────────────
@@ -3259,10 +3288,11 @@ function updateNavUI() {
 // ── Auth Modal ────────────────────────────────────────────────────────────
 function openAuth(mode) {
   document.getElementById('auth-overlay').classList.add('show');
-  if (mode === 'signup') switchTab('signup'); else switchTab('signin');
+  if (mode === 'signup') { switchTab('signup'); track('signup_prompt_shown', {}); } else switchTab('signin');
 }
 function openUpgrade() {
   document.getElementById('upgrade-overlay').classList.add('show');
+  track('upsell_popup_shown', { context: 'buildings' });
 }
 function closeUpgrade() {
   document.getElementById('upgrade-overlay').classList.remove('show');
@@ -3404,6 +3434,7 @@ async function saveProMemory(pName, spacing, csv, source) {
   if (!_currentUser) return;
   try {
     localStorage.setItem('topo-last-project', JSON.stringify({ projectName: pName, spacing, source, timestamp: Date.now(), userId: _currentUser.id }));
+    track('project_saved', { pro: isPro(), spacing, source });
     if (!isPro()) return;
     const csvBytes = new Blob([csv || '']).size;
     const existing = JSON.parse(localStorage.getItem(MEMORY_KEY) || '[]');
@@ -4378,6 +4409,7 @@ a.href=URL.createObjectURL(new Blob([header+'\n'+rows.join('\n')],{type:'text/cs
 }
 function handleDownload() {
   const fmt = document.getElementById('format-select')?.value || 'csv';
+  track('download_attempted', { format: fmt });
   if (!window._cleanOutMetric?.length) return;
   const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
   const a = document.createElement('a');
@@ -6897,6 +6929,10 @@ async function sendFeedback() {
 // ── Init ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
   updateLimitBadge();
+  track('page_open', { referrer: document.referrer || null });
+  if (window.location.search.includes('upgraded=true')) {
+    track('subscription_created', { source: 'checkout_success_redirect' });
+  }
   setTimeout(function() { initAuth(); }, 0);
 // Demo terrain starts as soon as Three.js is ready — retry until it loads
   (function _tryDemo() {
@@ -7518,7 +7554,7 @@ closeCoordDrawer();
 <!-- ═══ LARGE-SITE ADD-ON MODAL ═══ -->
 <div class="auth-overlay" id="large-site-overlay" style="display:none;" onclick="if(event.target===this)closeLargeSiteAddon();">
   <div class="large-site-modal">
-    <button class="upgrade-hero-close" onclick="closeLargeSiteAddon()" style="position:absolute;top:14px;right:14px;">&#x2715;</button>
+    <button class="upgrade-hero-close" onclick="closeLargeSiteAddon(); track('upsell_popup_dismissed', {context:'large_site'});" style="position:absolute;top:14px;right:14px;">&#x2715;</button>
     <div class="large-site-badge">Large Site Add-on</div>
     <h3 id="large-site-area-text">— km²</h3>
     <p>This site exceeds 2&times;2km — a per-generation charge applies. Charged at generation time, not monthly.</p>
@@ -7538,8 +7574,8 @@ closeCoordDrawer();
     </div>
     <div style="font-size:11px;color:var(--text-soft);margin:-8px 0 16px;line-height:1.5;" id="lsa-this-gen-cost"></div>
     <div class="large-site-actions">
-      <button onclick="closeLargeSiteAddon()">Cancel</button>
-      <button class="large-site-cta" onclick="closeLargeSiteAddon();">Continue to generate &rarr;</button>
+      <button onclick="closeLargeSiteAddon(); track('upsell_popup_dismissed', {context:'large_site'});">Cancel</button>
+      <button class="large-site-cta" onclick="closeLargeSiteAddon(); track('upsell_upgrade_clicked', {context:'large_site'});">Continue to generate &rarr;</button>
     </div>
   </div>
 </div>

@@ -324,6 +324,12 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .funnel-bar-fill{height:100%;transition:width 1s cubic-bezier(.16,1,.3,1);}
 .funnel-pct{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:1px;text-align:right;}
 
+/* ── Cohort retention table ───────────────────────────────────── */
+.retention-table{width:100%;border-collapse:collapse;font-size:11px;}
+.retention-table th,.retention-table td{font-family:'DM Mono',monospace;padding:5px 8px;text-align:center;border:1px solid var(--border);white-space:nowrap;}
+.retention-table th{color:var(--muted);font-weight:400;font-size:9px;letter-spacing:.06em;text-transform:uppercase;background:var(--surface2);}
+.retention-table td:first-child,.retention-table td:nth-child(2){color:var(--text);background:var(--surface2);}
+
 /* ── Donut ─────────────────────────────────────────────────── */
 .donut-wrap{display:flex;align-items:center;gap:24px;}
 .donut-legend{flex:1;display:flex;flex-direction:column;gap:8px;}
@@ -903,6 +909,15 @@ const PAGES = [
       { id: 'dlrate',    title: 'Download Rate',   icon: '↓' } ] },
   { id: 'blogstats', title: 'Blog Stats',          icon: '✎', secs: [
       { id: 'blogstats', title: 'Blog Stats',      icon: '✎' } ] },
+  { id: 'growth',    title: 'Growth & Retention',  icon: '↗', secs: [
+      { id: 'dauwaumau', title: 'DAU / WAU / MAU', icon: '↗' },
+      { id: 'retention', title: 'Cohort Retention', icon: '◫' } ] },
+  { id: 'funnels',   title: 'Funnels',             icon: '▽', secs: [
+      { id: 'actfunnel',     title: 'Activation Funnel', icon: '▷' },
+      { id: 'paywallfunnel', title: 'Paywall Funnel',    icon: '⛔' } ] },
+  { id: 'monetization', title: 'Conversion & Usage', icon: '⇄', secs: [
+      { id: 'convchurn',  title: 'Conversion & Churn', icon: '⇄' },
+      { id: 'usagestats', title: 'Usage Patterns',     icon: '≡' } ] },
 ];
 
 let _activePage = 'overview';
@@ -936,6 +951,10 @@ function switchPage(id) {
   if (id === 'blogstats') setTimeout(() => { try { loadBlogStats(); } catch(e) {} }, 60);
   // Monitor runs network pings, so load on demand each time the page is opened
   if (id === 'monitor') setTimeout(() => { try { loadMonitor(); } catch(e) {} }, 40);
+  // Analytics pages: heavier queries against `events`, so load on demand too
+  if (id === 'growth') setTimeout(() => { try { loadDauWauMau(); loadRetention(); } catch(e) {} }, 40);
+  if (id === 'funnels') setTimeout(() => { try { loadActivationFunnel(); loadPaywallFunnel(); } catch(e) {} }, 40);
+  if (id === 'monetization') setTimeout(() => { try { loadConvChurn(); loadUsageStats(); } catch(e) {} }, 40);
 }
 
 // ── Build dock: page switcher ─────────────────────────────────
@@ -1578,6 +1597,195 @@ async function loadFunnel(){
     <div class="fr-stat"><div class="fr-stat-label">FAIL RATE</div><div class="fr-stat-val" style="color:${failColor};">${failRate.toFixed(1)}%</div></div>
   </div>`;
   requestAnimationFrame(()=>{document.querySelectorAll('.funnel-bar-fill').forEach(el=>{setTimeout(()=>{el.style.width=el.dataset.w+'%';},100);});});
+}
+
+// ── In-house analytics (events table) ───────────────────────────
+// All of these read from Supabase/02-analytics-events.sql views/functions.
+// Until that SQL is pushed (or before events accumulate), the RPCs/views
+// don't exist or return empty — every loader degrades to a "no data yet"
+// message instead of throwing, so this section is safe to ship ahead of
+// the migration.
+function _analyticsNoData(body, id, msg){
+  const badge=document.getElementById('badge-'+id);
+  if(badge)badge.textContent='no data';
+  body.innerHTML=`<div class="mono" style="color:var(--muted);font-size:11px;padding:20px 0;line-height:1.6;">${msg||'No analytics data yet — push Supabase/02-analytics-events.sql and let events accumulate.'}</div>`;
+}
+
+// ── DAU / WAU / MAU + stickiness ────────────────────────────────
+async function loadDauWauMau(){
+  const body=document.getElementById('body-dauwaumau');
+  if(!body)return;
+  try{
+    const[dauR,wauR,mauR,seriesR]=await Promise.all([
+      _sb.rpc('active_users_count',{p_days:1}),
+      _sb.rpc('active_users_count',{p_days:7}),
+      _sb.rpc('active_users_count',{p_days:30}),
+      _sb.rpc('daily_active_users',{p_days:30}),
+    ]);
+    if(dauR.error)throw dauR.error;
+    const d=dauR.data||0,w=wauR.data||0,m=mauR.data||0;
+    const sticky=m>0?Math.round(d/m*100):0;
+    document.getElementById('badge-dauwaumau').textContent='Live';
+    body.innerHTML=`<div class="kpi-grid">
+      <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">DAU</div><div class="kpi-value" style="color:var(--accent)">${d.toLocaleString()}</div><div class="kpi-delta">last 24h</div></div>
+      <div class="kpi" style="--kpi-color:var(--blue)"><div class="kpi-label">WAU</div><div class="kpi-value" style="color:var(--blue)">${w.toLocaleString()}</div><div class="kpi-delta">last 7d</div></div>
+      <div class="kpi" style="--kpi-color:var(--purple)"><div class="kpi-label">MAU</div><div class="kpi-value" style="color:var(--purple)">${m.toLocaleString()}</div><div class="kpi-delta">last 30d</div></div>
+      <div class="kpi" style="--kpi-color:${sticky>=20?'var(--accent)':'var(--amber)'}"><div class="kpi-label">Stickiness</div><div class="kpi-value">${sticky}%</div><div class="kpi-delta">DAU ÷ MAU</div></div>
+    </div>
+    <div style="margin-top:14px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">Daily active — last 30 days</div>
+    <div class="chart-area" id="dauwaumau-chart"></div>`;
+    const rows=seriesR.data||[];
+    const labels=rows.map(r=>String(r.day).slice(5));
+    const values=rows.map(r=>r.active_users||0);
+    requestAnimationFrame(()=>buildSVG('dauwaumau-chart',labels,values,'#9ABA6A'));
+  }catch(err){
+    _analyticsNoData(body,'dauwaumau');
+  }
+}
+
+// ── Cohort retention curve ──────────────────────────────────────
+async function loadRetention(){
+  const body=document.getElementById('body-retention');
+  if(!body)return;
+  try{
+    const[sizesR,cellsR]=await Promise.all([
+      _sb.from('v_cohort_sizes').select('*').order('cohort_week',{ascending:false}).limit(8),
+      _sb.from('v_cohort_retention').select('*'),
+    ]);
+    if(sizesR.error)throw sizesR.error;
+    const sizes=sizesR.data||[],cells=cellsR.data||[];
+    if(!sizes.length){_analyticsNoData(body,'retention');return;}
+    document.getElementById('badge-retention').textContent=sizes.length+' cohorts';
+    const maxWeek=Math.min(7,Math.max(0,...cells.map(c=>c.week_number)));
+    const sizeByWeek={};sizes.forEach(s=>{sizeByWeek[s.cohort_week]=s.cohort_size;});
+    const cellMap={};cells.forEach(c=>{cellMap[c.cohort_week+'|'+c.week_number]=c.active_users;});
+    let html='<div style="overflow-x:auto;"><table class="retention-table"><thead><tr><th>Cohort (wk of)</th><th>Size</th>'+
+      Array.from({length:maxWeek+1},(_,i)=>`<th>W${i}</th>`).join('')+'</tr></thead><tbody>';
+    sizes.map(s=>s.cohort_week).forEach(cw=>{
+      const size=sizeByWeek[cw]||0;
+      html+=`<tr><td>${cw}</td><td>${size}</td>`;
+      for(let wk=0;wk<=maxWeek;wk++){
+        const active=cellMap[cw+'|'+wk];
+        if(active==null){html+='<td>—</td>';continue;}
+        const pct=size>0?Math.round(active/size*100):0;
+        const alpha=Math.max(.1,pct/100);
+        html+=`<td style="background:rgba(154,186,106,${alpha});color:${pct>50?'#0E120C':'var(--text)'}">${pct}%</td>`;
+      }
+      html+='</tr>';
+    });
+    html+='</tbody></table></div>';
+    body.innerHTML=html;
+  }catch(err){
+    _analyticsNoData(body,'retention');
+  }
+}
+
+// ── Activation funnel: visitor → generation → download/signup ──
+async function loadActivationFunnel(){
+  const body=document.getElementById('body-actfunnel');
+  if(!body)return;
+  try{
+    const pStart=periodStart()||'2000-01-01T00:00:00Z',pEnd=new Date().toISOString();
+    const{data,error}=await _sb.rpc('activation_funnel',{p_start:pStart,p_end:pEnd});
+    if(error)throw error;
+    const row=(Array.isArray(data)?data[0]:data)||{};
+    const steps=[
+      {name:'Visitors (page opened)',count:row.visitors||0,color:'var(--accent)'},
+      {name:'Generated terrain',count:row.generated||0,color:'var(--blue)'},
+      {name:'Downloaded or signed up',count:Math.max(row.downloaded||0,row.signed_up||0),color:'var(--purple)'},
+      {name:'Signed up',count:row.signed_up||0,color:'var(--amber)'},
+    ];
+    document.getElementById('badge-actfunnel').textContent=periodLabel();
+    const maxC=steps[0].count||1;
+    if(!maxC){_analyticsNoData(body,'actfunnel');return;}
+    body.innerHTML=`<div class="funnel">${steps.map(s=>{
+      const pct=maxC>0?Math.round(s.count/maxC*100):0;
+      return`<div class="funnel-step"><div class="funnel-label"><span class="funnel-name">${s.name}</span><span class="funnel-count">${s.count.toLocaleString()}</span></div><div class="funnel-bar-bg"><div class="funnel-bar-fill" style="width:0%;background:${s.color}" data-w="${pct}"></div></div><div class="funnel-pct">${pct}%</div></div>`;
+    }).join('')}</div>`;
+    requestAnimationFrame(()=>{document.querySelectorAll('#body-actfunnel .funnel-bar-fill').forEach(el=>{setTimeout(()=>{el.style.width=el.dataset.w+'%';},100);});});
+  }catch(err){
+    _analyticsNoData(body,'actfunnel');
+  }
+}
+
+// ── Paywall funnel: limit hit → popup → upgrade click → subscribed ──
+async function loadPaywallFunnel(){
+  const body=document.getElementById('body-paywallfunnel');
+  if(!body)return;
+  try{
+    const pStart=periodStart()||'2000-01-01T00:00:00Z',pEnd=new Date().toISOString();
+    const{data,error}=await _sb.rpc('paywall_funnel',{p_start:pStart,p_end:pEnd});
+    if(error)throw error;
+    const row=(Array.isArray(data)?data[0]:data)||{};
+    const steps=[
+      {name:'Hit daily/free limit',count:row.limit_hit||0,color:'var(--red)'},
+      {name:'Upsell popup shown',count:row.popup_shown||0,color:'var(--amber)'},
+      {name:'Upgrade clicked',count:row.upgrade_clicked||0,color:'var(--blue)'},
+      {name:'Subscription created',count:row.subscription_created||0,color:'var(--accent)'},
+    ];
+    document.getElementById('badge-paywallfunnel').textContent=periodLabel();
+    const maxC=steps[0].count||1;
+    if(!maxC){_analyticsNoData(body,'paywallfunnel');return;}
+    body.innerHTML=`<div class="funnel">${steps.map(s=>{
+      const pct=maxC>0?Math.round(s.count/maxC*100):0;
+      return`<div class="funnel-step"><div class="funnel-label"><span class="funnel-name">${s.name}</span><span class="funnel-count">${s.count.toLocaleString()}</span></div><div class="funnel-bar-bg"><div class="funnel-bar-fill" style="width:0%;background:${s.color}" data-w="${pct}"></div></div><div class="funnel-pct">${pct}%</div></div>`;
+    }).join('')}</div>`;
+    requestAnimationFrame(()=>{document.querySelectorAll('#body-paywallfunnel .funnel-bar-fill').forEach(el=>{setTimeout(()=>{el.style.width=el.dataset.w+'%';},100);});});
+  }catch(err){
+    _analyticsNoData(body,'paywallfunnel');
+  }
+}
+
+// ── Free→Pro conversion + churn/cancellation reasons ────────────
+async function loadConvChurn(){
+  const body=document.getElementById('body-convchurn');
+  if(!body)return;
+  try{
+    const[{count:totalUsers},{count:proUsers},reasonsR]=await Promise.all([
+      _sb.from('profiles').select('*',{count:'exact',head:true}).eq('is_admin',false),
+      _sb.from('profiles').select('*',{count:'exact',head:true}).in('plan',['pro','company']).eq('is_admin',false),
+      _sb.from('v_cancellation_reasons').select('*'),
+    ]);
+    if(reasonsR.error)throw reasonsR.error;
+    const conv=totalUsers?Math.round((proUsers||0)/totalUsers*100*10)/10:0;
+    const reasons=reasonsR.data||[];
+    const totalCancellations=reasons.reduce((s,r)=>s+r.cancellations,0);
+    document.getElementById('badge-convchurn').textContent='All time';
+    const maxR=Math.max(1,...reasons.map(r=>r.cancellations));
+    body.innerHTML=`<div class="kpi-grid">
+      <div class="kpi" style="--kpi-color:var(--purple)"><div class="kpi-label">Free → Pro conversion</div><div class="kpi-value" style="color:var(--purple)">${conv}%</div><div class="kpi-delta">${proUsers||0} of ${totalUsers||0} users</div></div>
+      <div class="kpi" style="--kpi-color:var(--red)"><div class="kpi-label">Cancellations logged</div><div class="kpi-value" style="color:var(--red)">${totalCancellations}</div><div class="kpi-delta">from subscription_cancelled events</div></div>
+    </div>
+    <div style="margin-top:14px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">Cancellation reasons</div>
+    ${reasons.length?`<div class="bar-chart-h">${reasons.map(r=>barRow(esc(r.reason),r.cancellations,maxR,'bar-fill-red')).join('')}</div>`:'<div class="mono" style="color:var(--muted);font-size:11px;">No cancellations logged yet</div>'}`;
+  }catch(err){
+    _analyticsNoData(body,'convchurn');
+  }
+}
+
+// ── Usage patterns: generations/user, days between, projects/account ──
+async function loadUsageStats(){
+  const body=document.getElementById('body-usagestats');
+  if(!body)return;
+  try{
+    const summaryR=await _sb.from('v_usage_summary').select('*').single();
+    if(summaryR.error)throw summaryR.error;
+    const s=summaryR.data||{};
+    // Optional: only present if the `projects` table exists — degrades quietly.
+    let avgProjects=null;
+    try{
+      const pR=await _sb.from('v_avg_projects_per_account').select('*').single();
+      if(!pR.error) avgProjects=pR.data?.avg_projects_per_account;
+    }catch(e){}
+    document.getElementById('badge-usagestats').textContent='All time';
+    body.innerHTML=`<div class="kpi-grid">
+      <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">Avg generations / user</div><div class="kpi-value" style="color:var(--accent)">${s.avg_generations_per_user??'—'}</div><div class="kpi-delta">across signed-in users</div></div>
+      <div class="kpi" style="--kpi-color:var(--blue)"><div class="kpi-label">Avg days between gens</div><div class="kpi-value" style="color:var(--blue)">${s.avg_days_between_generations??'—'}</div><div class="kpi-delta">return cadence</div></div>
+      <div class="kpi" style="--kpi-color:var(--purple)"><div class="kpi-label">Avg projects / account</div><div class="kpi-value" style="color:var(--purple)">${avgProjects??'—'}</div><div class="kpi-delta">${avgProjects==null?'requires projects table':'saved/shared library'}</div></div>
+    </div>`;
+  }catch(err){
+    _analyticsNoData(body,'usagestats');
+  }
 }
 
 // ── Monitor / system health ───────────────────────────────────
@@ -2258,6 +2466,12 @@ const MOB_TABS = [
   { id:'formats',   title:'Formats',    icon:'⤓' },
   { id:'dlrate',    title:'DL Rate',    icon:'↓' },
   { id:'blogstats', title:'Blog',       icon:'✎' },
+  { id:'dauwaumau',     title:'DAU/WAU/MAU', icon:'↗' },
+  { id:'retention',     title:'Retention',   icon:'◫' },
+  { id:'actfunnel',     title:'Activation',  icon:'▷' },
+  { id:'paywallfunnel', title:'Paywall',     icon:'⛔' },
+  { id:'convchurn',     title:'Conv/Churn',  icon:'⇄' },
+  { id:'usagestats',    title:'Usage',       icon:'≡' },
   { id:'blast',     title:'Email Blast',icon:'✉' },
 ];
 
@@ -2318,6 +2532,15 @@ function switchMobTab(id) {
   // Monitor: reachability pings + speed test render, on demand each open
   if (id === 'monitor') {
     setTimeout(() => { try { loadMonitor(); } catch(e) {} }, 40);
+  }
+  // Analytics tabs: on demand each open, same as monitor/trends
+  const analyticsLoaders = {
+    dauwaumau: loadDauWauMau, retention: loadRetention,
+    actfunnel: loadActivationFunnel, paywallfunnel: loadPaywallFunnel,
+    convchurn: loadConvChurn, usagestats: loadUsageStats,
+  };
+  if (analyticsLoaders[id]) {
+    setTimeout(() => { try { analyticsLoaders[id](); } catch(e) {} }, 40);
   }
   // Sync popover selection + FAB label
   document.querySelectorAll('.pages-pop-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
