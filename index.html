@@ -1958,6 +1958,12 @@ function declineCookies() {
             <td style="padding:9px 14px;color:var(--text-soft);">±0.15m</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇳🇱 Netherlands</td>
+            <td style="padding:9px 14px;color:var(--text-mid);">AHN (Actueel Hoogtebestand Nederland)</td>
+            <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">0.5m</span></td>
+            <td style="padding:9px 14px;color:var(--text-soft);">±0.05m</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇳🇴 Norway</td>
             <td style="padding:9px 14px;color:var(--text-mid);">Kartverket DTM1</td>
             <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">1m</span></td>
@@ -2042,12 +2048,6 @@ function declineCookies() {
           <!-- Coming soon -->
           <tr style="background:var(--bg-input);border-bottom:1px solid var(--border);border-top:1px solid var(--border);">
             <td colspan="4" style="padding:6px 14px;font-size:10px;color:var(--text-soft);letter-spacing:.1em;text-transform:uppercase;">Coming soon</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);opacity:.55;">
-            <td style="padding:9px 14px;color:var(--text);">🇳🇱 Netherlands</td>
-            <td style="padding:9px 14px;color:var(--text-mid);">AHN3/AHN4</td>
-            <td style="padding:9px 14px;"><span style="border:1px dashed var(--border-md);padding:2px 7px;border-radius:2px;font-size:10px;color:var(--text-soft);">0.5m</span></td>
-            <td style="padding:9px 14px;color:var(--text-soft);">±0.05m</td>
           </tr>
           <tr style="opacity:.55;">
             <td style="padding:9px 14px;color:var(--text);">🇯🇵 Japan</td>
@@ -5064,6 +5064,7 @@ function updateElevationSourceBanner(source, _pro) {
   if (s.includes('dhm')||s.includes('denmark'))         {tier='lidar';resText='0.4m · Danish DHM LiDAR';}
 else if (s.includes('kartverket'))                    {tier='lidar';resText='1m · Kartverket DTM1 Norway';}
 else if (s.includes('estonia')||s.includes('maaamet')){tier='lidar';resText='1m · Maaamet DTM Estonia';}
+else if (s.includes('ahn')||s.includes('netherlands')){tier='lidar';resText='0.5m · AHN Netherlands (Rijkswaterstaat)';}
 else if (s.includes('czech')||s.includes('cuzk')||s.includes('dmr4g')){tier='lidar';resText='5m · ČÚZK DMR4G Czech Republic';}
 else if (s.includes('nrcan')||s.includes('hrdem')||s.includes('canada')){tier='lidar';resText='1m · NRCan HRDEM Canada';}
   else if (s.includes('usgs')||s.includes('3dep'))      {tier='lidar';resText='USGS 3DEP (up to 1m)';}
