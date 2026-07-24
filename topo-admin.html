@@ -440,6 +440,10 @@ body::before{content:'';position:fixed;inset:0;background-image:
                              border-radius:0!important;resize:none!important;}
   /* ── Period FAB: visible on mobile ── */
   .mob-period-fab{display:flex!important;}
+  /* ── Pages FAB: visible on mobile, bottom-LEFT ── */
+  .mob-page-fab{display:flex!important;}
+  /* Hide the horizontal tab strip on mobile — the pages popover replaces it */
+  .mob-tabs{display:none!important;}
   /* ── Period popover ── */
   .period-popover{display:none;position:fixed;bottom:70px;right:14px;z-index:8000;
     background:var(--surface);border:1px solid var(--border2);border-radius:10px;
@@ -451,13 +455,28 @@ body::before{content:'';position:fixed;inset:0;background-image:
     cursor:pointer;letter-spacing:.04em;text-align:left;transition:all .12s;}
   .period-pop-btn:hover{background:var(--surface2);color:var(--text);}
   .period-pop-btn.active{background:var(--accent-dk);border-color:var(--accent2);color:var(--accent);}
+  /* ── Pages popover ── */
+  .pages-popover{display:none;position:fixed;bottom:70px;left:14px;z-index:8000;
+    background:var(--surface);border:1px solid var(--border2);border-radius:10px;
+    padding:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);
+    flex-direction:column;gap:2px;min-width:200px;max-height:70vh;overflow-y:auto;}
+  .pages-popover.show{display:flex;}
+  .pages-pop-btn{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);
+    background:none;border:1px solid transparent;padding:9px 12px;border-radius:6px;
+    cursor:pointer;letter-spacing:.04em;text-align:left;transition:all .12s;
+    display:flex;align-items:center;gap:10px;}
+  .pages-pop-btn:hover{background:var(--surface2);color:var(--text);}
+  .pages-pop-btn.active{background:var(--accent-dk);border-color:var(--accent2);color:var(--accent);}
+  .pages-pop-ico{font-size:13px;width:16px;text-align:center;flex-shrink:0;}
 }
 
 /* ── Mobile shell + FAB hidden on desktop ── */
 @media(min-width:769px){
   .mobile-shell{display:none!important;}
   .mob-period-fab{display:none!important;}
+  .mob-page-fab{display:none!important;}
   .period-popover{display:none!important;}
+  .pages-popover{display:none!important;}
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -490,6 +509,19 @@ body::before{content:'';position:fixed;inset:0;background-image:
 }
 .mob-period-fab:hover{background:var(--surface2);}
 .mob-period-fab-lbl{font-size:9px;color:var(--accent);letter-spacing:.04em;line-height:1;}
+
+/* ── Mobile page-switcher FAB (bottom-LEFT, same visual as period FAB) ── */
+.mob-page-fab{
+  display:none; /* default hidden; shown on mobile via @media */
+  position:fixed;bottom:16px;left:16px;z-index:1500;
+  width:46px;height:46px;border-radius:50%;
+  background:var(--surface);border:1px solid var(--border2);
+  box-shadow:0 4px 16px rgba(0,0,0,.45);cursor:pointer;
+  align-items:center;justify-content:center;
+  font-family:'DM Mono',monospace;transition:background .15s;
+}
+.mob-page-fab:hover{background:var(--surface2);}
+.mob-page-fab-lbl{font-size:16px;color:var(--accent);line-height:1;}
 
 /* ── Blast topbar button — always visible ── */
 .blast-topbar-btn{font-family:'DM Mono',monospace;font-size:10px;color:#9aba6a;background:none;border:1px solid var(--green-lt,#5A8E3A);padding:4px 10px;cursor:pointer;letter-spacing:.04em;transition:all .15s;border-radius:6px;white-space:nowrap;}
@@ -654,6 +686,15 @@ body::before{content:'';position:fixed;inset:0;background-image:
     <button class="period-pop-btn" data-period="6m"  onclick="setPeriod('6m');togglePeriodPopover()">Last 6 months</button>
     <button class="period-pop-btn" data-period="12m" onclick="setPeriod('12m');togglePeriodPopover()">Last 12 months</button>
     <button class="period-pop-btn" data-period="all" onclick="setPeriod('all');togglePeriodPopover()">All time</button>
+  </div>
+
+  <!-- ═══ MOBILE PAGES FAB + POPOVER (phone only) — replaces the horizontal tab strip ═══ -->
+  <button class="mob-page-fab" id="mob-page-fab" onclick="togglePagesPopover()" aria-label="Choose page">
+    <span class="mob-page-fab-lbl" id="mob-page-fab-lbl">◈</span>
+  </button>
+  <div class="pages-popover" id="pages-popover">
+    <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;padding:2px 4px 8px;border-bottom:1px solid var(--border);margin-bottom:4px;">Choose page</div>
+    <!-- Buttons injected by buildPagesPopover() -->
   </div>
 
   <!-- ═══ EMAIL BLAST MODAL ═══ -->
@@ -2197,6 +2238,7 @@ const MOB_TABS = [
   { id:'revenue',   title:'Revenue',    icon:'£' },
   { id:'funnel',    title:'Funnel',     icon:'▽' },
   { id:'heatmap',   title:'Map',        icon:'◎' },
+  { id:'monitor',   title:'Monitor',    icon:'◐' },
   { id:'users',     title:'Users',      icon:'◉' },
   { id:'countries', title:'Countries',  icon:'⚑' },
   { id:'gaps',      title:'Priority',   icon:'⊿' },
@@ -2240,6 +2282,11 @@ function initMobileShell() {
     `;
     panels.appendChild(panel);
   });
+  buildPagesPopover();
+  // Live presence box: splits #body-kpis into the metric grid host + the persistent
+  // Live-on-site counter. Must run BEFORE loadKPIs so loadKPIs writes into the new
+  // #kpi-grid-host rather than overwriting the live box.
+  initLiveBox();
 }
 
 function switchMobTab(id) {
@@ -2255,9 +2302,35 @@ function switchMobTab(id) {
   if (id === 'blast') {
     setTimeout(() => renderMobileBlastPanel(), 50);
   }
-  // Scroll active tab into view
+  // Monitor: reachability pings + speed test render, on demand each open
+  if (id === 'monitor') {
+    setTimeout(() => { try { loadMonitor(); } catch(e) {} }, 40);
+  }
+  // Sync popover selection + FAB label
+  document.querySelectorAll('.pages-pop-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+  const fabLbl = document.getElementById('mob-page-fab-lbl');
+  const t = MOB_TABS.find(x => x.id === id);
+  if (fabLbl && t) fabLbl.textContent = t.icon;
+  // Scroll active tab into view (kept for the desktop-visible strip; harmless on mobile since strip is hidden)
   const activeBtn = document.querySelector(`.mob-tab[data-tab="${id}"]`);
   if (activeBtn) activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+
+// Pages popover: mirrors the period FAB pattern, bottom-LEFT corner.
+function togglePagesPopover() {
+  const pop = document.getElementById('pages-popover');
+  if (!pop) return;
+  const opening = !pop.classList.contains('show');
+  // Close the period popover if it's open, so only one is up at a time
+  document.getElementById('period-popover')?.classList.remove('show');
+  pop.classList.toggle('show', opening);
+}
+function buildPagesPopover() {
+  const pop = document.getElementById('pages-popover');
+  if (!pop) return;
+  pop.innerHTML = MOB_TABS.map(t =>
+    `<button class="pages-pop-btn${t.id===_mobActiveTab?' active':''}" data-tab="${t.id}" onclick="switchMobTab('${t.id}');togglePagesPopover();"><span class="pages-pop-ico">${t.icon}</span>${t.title}</button>`
+  ).join('');
 }
 
 // ══════════════════════════════════════════════════════════════
