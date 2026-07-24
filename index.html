@@ -1964,6 +1964,12 @@ function declineCookies() {
             <td style="padding:9px 14px;color:var(--text-soft);">±0.05m</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇵🇱 Poland</td>
+            <td style="padding:9px 14px;color:var(--text-mid);">GUGiK NMT (EVRF2007)</td>
+            <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">1m</span></td>
+            <td style="padding:9px 14px;color:var(--text-soft);">±0.1m</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇳🇴 Norway</td>
             <td style="padding:9px 14px;color:var(--text-mid);">Kartverket DTM1</td>
             <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">1m</span></td>
@@ -2439,7 +2445,7 @@ var REGION_DATA = [
   [36.4,  6.7,  47.1, 18.5, 'Italy',          30,  'lo'],
   [49.5,  2.5,  51.5,  6.4, 'Belgium',        30,  'lo'],
   [36.0, 25.0,  42.0, 26.5, 'Greece',         30,  'lo'],
-  [49.0, 14.1,  54.9, 24.2, 'Poland',         30,  'lo'],
+  [49.0, 14.1,  54.9, 24.2, 'Poland',         1,   'hi'],
 ];
 
 function getRegionInfo(poly) {
@@ -5065,6 +5071,7 @@ function updateElevationSourceBanner(source, _pro) {
 else if (s.includes('kartverket'))                    {tier='lidar';resText='1m · Kartverket DTM1 Norway';}
 else if (s.includes('estonia')||s.includes('maaamet')){tier='lidar';resText='1m · Maaamet DTM Estonia';}
 else if (s.includes('ahn')||s.includes('netherlands')){tier='lidar';resText='0.5m · AHN Netherlands (Rijkswaterstaat)';}
+else if (s.includes('gugik')||s.includes('nmt-poland')||s.includes('poland-1m')){tier='lidar';resText='1m · GUGiK NMT Poland (EVRF2007)';}
 else if (s.includes('czech')||s.includes('cuzk')||s.includes('dmr4g')){tier='lidar';resText='5m · ČÚZK DMR4G Czech Republic';}
 else if (s.includes('nrcan')||s.includes('hrdem')||s.includes('canada')){tier='lidar';resText='1m · NRCan HRDEM Canada';}
   else if (s.includes('usgs')||s.includes('3dep'))      {tier='lidar';resText='USGS 3DEP (up to 1m)';}
