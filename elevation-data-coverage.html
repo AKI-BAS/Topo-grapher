@@ -67,7 +67,7 @@
   "author": { "@type": "Person", "name": "Aki", "@id": "https://topo-grapher.com/about.html#aki", "url": "https://topo-grapher.com/about.html" },
   "publisher": { "@id": "https://topo-grapher.com/#organization" },
   "datePublished": "2026-06-07",
-  "dateModified": "2026-06-07"
+  "dateModified": "2026-07-25"
 }
 </script>
 
@@ -80,12 +80,12 @@
     {
       "@type": "Question",
       "name": "What resolution elevation data can I get for my country?",
-      "acceptedAnswer": { "@type": "Answer", "text": "It depends on the open data each country publishes. Denmark offers 0.4m; the UK, France, Norway, Sweden, Germany, the US and Canada offer 1m; Finland 2m; Spain and Czechia 5m; Italy and Iceland 10m; and everywhere else falls back to 30m global coverage." }
+      "acceptedAnswer": { "@type": "Answer", "text": "It depends on the open data each country publishes. Denmark offers 0.4m; the UK, France, Norway, Germany, the US and Canada offer 1m; Finland 2m; Spain and Czechia 5m; Italy and Iceland 10m; and everywhere else falls back to 30m global coverage." }
     },
     {
       "@type": "Question",
       "name": "Where does the elevation data come from?",
-      "acceptedAnswer": { "@type": "Answer", "text": "From national open elevation programmes such as USGS 3DEP in the US, IGN in France, Kartverket in Norway, Lantmateriet in Sweden, and the Datafordeler service in Denmark, plus Copernicus and ArcticDEM for global and Arctic coverage." }
+      "acceptedAnswer": { "@type": "Answer", "text": "From national open elevation programmes such as USGS 3DEP in the US, IGN in France, Kartverket in Norway, and the Datafordeler service in Denmark, plus Copernicus and ArcticDEM for global and Arctic coverage." }
     },
     {
       "@type": "Question",
@@ -157,7 +157,7 @@
 
   <p class="lead">Topo-grapher sources the highest-resolution open government elevation data available for each location &mdash; from <b>0.4m LiDAR in Denmark</b> down to a <b>30m global fallback</b> that covers anywhere on land. Below is the full breakdown by country and data source.</p>
 
-  <p class="byline">By Aki, founder of Topo-grapher &middot; Updated June 2026</p>
+  <p class="byline">By Aki, founder of Topo-grapher &middot; Updated July 2026</p>
 
   <p>Terrain accuracy is only as good as the underlying data. Rather than use one global dataset, Topo-grapher routes each request to the best national source for that location, then falls back gracefully where high-resolution data isn't published.</p>
 
@@ -169,7 +169,6 @@
       <tr><td>United Kingdom</td><td>EA LiDAR (via GPXZ)</td><td>1m</td></tr>
       <tr><td>France</td><td>IGN RGE ALTI</td><td>1m</td></tr>
       <tr><td>Norway</td><td>Kartverket DTM</td><td>1m</td></tr>
-      <tr><td>Sweden</td><td>Lantmateriet</td><td>1m</td></tr>
       <tr><td>Germany (NRW, BW, Hessen)</td><td>State DGM1</td><td>1m</td></tr>
       <tr><td>United States</td><td>USGS 3DEP</td><td>1m*</td></tr>
       <tr><td>Canada</td><td>NRCan HRDEM</td><td>1m</td></tr>
@@ -190,10 +189,10 @@
   <h2>Frequently asked questions</h2>
   <div class="faq">
     <h3>What resolution elevation data can I get for my country?</h3>
-    <p>It depends on the open data each country publishes. Denmark offers 0.4m; the UK, France, Norway, Sweden, Germany, the US and Canada offer 1m; Finland 2m; Spain and Czechia 5m; Italy and Iceland 10m; and everywhere else falls back to 30m global coverage.</p>
+    <p>It depends on the open data each country publishes. Denmark offers 0.4m; the UK, France, Norway, Germany, the US and Canada offer 1m; Finland 2m; Spain and Czechia 5m; Italy and Iceland 10m; and everywhere else falls back to 30m global coverage.</p>
 
     <h3>Where does the elevation data come from?</h3>
-    <p>From national open elevation programmes such as USGS 3DEP in the US, IGN in France, Kartverket in Norway, Lantmateriet in Sweden, and the Datafordeler service in Denmark, plus Copernicus and ArcticDEM for global and Arctic coverage.</p>
+    <p>From national open elevation programmes such as USGS 3DEP in the US, IGN in France, Kartverket in Norway, and the Datafordeler service in Denmark, plus Copernicus and ArcticDEM for global and Arctic coverage.</p>
 
     <h3>What if my country isn't listed?</h3>
     <p>A 30m global Copernicus dataset covers anywhere on land, so you can always generate terrain even where high-resolution national data isn't available.</p>
