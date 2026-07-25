@@ -63,7 +63,7 @@
     "@type": "SoftwareApplication",
     "name": "Topo-grapher",
     "url": "https://topo-grapher.com",
-    "logo": "https://topo-grapher.com/favicon.png",
+    "image": "https://topo-grapher.com/og-image.png",
     "description": "Generate accurate site topography and elevation point clouds for Revit, SketchUp, Rhino and ArchiCAD. Draw your site boundary on a map and download XYZ elevation data instantly.",
     "applicationCategory": "DesignApplication",
     "operatingSystem": "Web",
@@ -960,7 +960,7 @@ function declineCookies() {
 
 <nav id="main-nav">
   <a class="nav-brand site-logo" href="#" onclick="location.reload();return false;" aria-label="Topo-grapher home">
-    <img id="nav-logo-img" src="Dark_logo.png" alt="Topo-grapher logo" style="height:40px;width:auto;display:block;transition:opacity .2s;">
+    <img id="nav-logo-img" src="Dark_logo.webp" alt="Topo-grapher logo" style="height:40px;width:auto;display:block;transition:opacity .2s;">
     <span class="nav-logo">Topo<em>-grapher</em></span>
   </a>
   <div class="nav-right">
@@ -2203,7 +2203,7 @@ function toggleTheme() {
   html.setAttribute('data-theme', next);
   localStorage.setItem('topo-theme', next);
   var logoImg = document.getElementById('nav-logo-img');
-  if (logoImg) logoImg.src = next === 'dark' ? 'Dark_logo.png' : 'Light_logo.png';
+  if (logoImg) logoImg.src = next === 'dark' ? 'Dark_logo.webp' : 'Light_logo.webp';
   document.querySelectorAll('.tg--theme .tg__option').forEach(function(o) {
     o.setAttribute('aria-pressed', o.dataset.value === next ? 'true' : 'false');
   });
