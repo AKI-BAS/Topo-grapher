@@ -94,12 +94,12 @@
 {
   "@context": "https://schema.org",
   "@type": "Article",
-  "headline": "How to import site topography into Revit using an XYZ CSV",
+  "headline": "Site Topography Import for Revit: XYZ CSV to Toposolid",
   "description": "Import accurate site terrain into Revit in minutes. Generate an XYZ CSV elevation point cloud from real survey data and create a Toposolid — no GIS software or Civil 3D required.",
   "author": { "@type": "Person", "name": "Aki", "@id": "https://topo-grapher.com/about.html#aki", "url": "https://topo-grapher.com/about.html" },
   "publisher": { "@id": "https://topo-grapher.com/#organization" },
   "datePublished": "2026-06-07",
-  "dateModified": "2026-06-07"
+  "dateModified": "2026-07-25"
 }
 </script>
 
@@ -122,7 +122,7 @@
     {
       "@type": "Question",
       "name": "How accurate is the terrain?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Accuracy depends on the country's open elevation data: 0.4m resolution in Denmark, 1m across the UK, Sweden, Norway, France, and parts of the US, 5–10m across most of Europe, and a 30m global fallback elsewhere." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Accuracy depends on the country's open elevation data: 0.4m resolution in Denmark, 0.5m in the Netherlands, 1m across the UK, Norway, and France, and parts of the US, 5–10m across most of Europe, and a 30m global fallback elsewhere (including Sweden, pending a dedicated source)." }
     },
     {
       "@type": "Question",
@@ -197,15 +197,17 @@
 <main class="wrap">
   <nav class="crumbs"><a href="https://topo-grapher.com/">Home</a> / Topography for Revit</nav>
 
-  <!-- H1 phrased as the actual question people ask an AI -->
-  <h1>How to import site topography into Revit (XYZ CSV → Toposolid)</h1>
+  <!-- H1: noun phrase, not a question -->
+  <h1>Site Topography Import for Revit: XYZ CSV to Toposolid</h1>
 
-  <!-- TL;DR answer in the first 50 words — this is the passage AI engines extract -->
-  <p class="lead">To get site topography into Revit, generate an XYZ CSV elevation point cloud, then use Revit's <b>Toposolid → Create from Import → Create from Points File</b> tool to build the surface. You don't need Civil 3D or any GIS software — only a points file with X, Y, Z values.</p>
+  <p class="byline">By <a href="https://topo-grapher.com/about.html">Aki</a>, founder of Topo-grapher · Updated July 2026</p>
 
-  <p class="byline">By Aki, founder of Topo-grapher · Updated June 2026</p>
+  <!-- First H2 is a question, with a self-contained answer directly under it —
+       this is the passage AI engines extract. -->
+  <h2>How do you import site topography into Revit?</h2>
+  <p class="lead">To bring site topography into Revit, generate an XYZ CSV elevation point cloud, then use Revit's <b>Toposolid → Create from Import → Create from Points File</b> tool. Revit reads the comma-delimited X, Y, Z points directly, building a terrain surface without Civil 3D, GIS software, or manual coordinate conversion.</p>
 
-  <p>Most architects hit the same wall: Revit needs a terrain surface, but the elevation data lives in GIS formats that need software and expertise they don't have. The shortcut is to skip GIS entirely and feed Revit the one thing it actually wants — a list of survey points. Here is the full workflow.</p>
+  <p>Topo-grapher generates that CSV from real government elevation data — down to 0.4m resolution in Denmark, 1m across much of Europe and the US — and also exports IFC and DXF if you'd rather import a finished surface. The free tier covers sites up to 250m × 250m at 12m point spacing (up to 2,000 points), with no account required.</p>
 
   <h2>Step-by-step</h2>
   <ol class="steps">
@@ -233,12 +235,15 @@
     <thead><tr><th>Region</th><th>Source resolution</th></tr></thead>
     <tbody>
       <tr><td>Denmark</td><td>0.4m</td></tr>
-      <tr><td>UK, Sweden, Norway, France</td><td>1m</td></tr>
+      <tr><td>UK, Norway, France</td><td>1m</td></tr>
+      <tr><td>Netherlands</td><td>0.5m</td></tr>
       <tr><td>USA (3DEP coverage)</td><td>1m</td></tr>
       <tr><td>Most of Europe</td><td>5–10m</td></tr>
-      <tr><td>Global fallback</td><td>30m</td></tr>
+      <tr><td>Global fallback (incl. Sweden, pending a dedicated source)</td><td>30m</td></tr>
     </tbody>
   </table>
+
+  <p class="byline">Related reading: <a href="https://topo-grapher.com/learn/dtm-vs-dsm.html">DTM vs DSM explained</a> &middot; <a href="https://topo-grapher.com/learn/elevation-point-cloud.html">What is an elevation point cloud?</a></p>
 
   <a class="cta" href="https://topo-grapher.com/">Generate your site terrain free →</a>
 
@@ -251,7 +256,7 @@
     <p>Revit's Toposolid and Topography Surface tools accept a comma-delimited points file with X, Y, Z values — an XYZ CSV. Topo-grapher exports exactly this, plus IFC and DXF if you'd rather import a finished mesh.</p>
 
     <h3>How accurate is the terrain?</h3>
-    <p>It depends on the country's open data: 0.4m in Denmark, 1m across the UK, Sweden, Norway, France and parts of the US, 5–10m across most of Europe, and a 30m global fallback elsewhere.</p>
+    <p>It depends on the country's open data: 0.4m in Denmark, 0.5m in the Netherlands, 1m across the UK, Norway, France and parts of the US, 5–10m across most of Europe, and a 30m global fallback elsewhere (including Sweden, pending a dedicated source).</p>
 
     <h3>Is there a free way to get site topography for Revit?</h3>
     <p>Yes. The free tier allows 3 generations per day for sites up to 250m × 250m at 12m spacing, with no account required.</p>
