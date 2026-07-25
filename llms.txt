@@ -8,7 +8,7 @@ Topo-grapher is a browser-based tool. It sources high-resolution government elev
 
 - Output formats: XYZ CSV (point cloud), IFC (for Revit Toposolid / ArchiCAD mesh), DXF (3D faces and points)
 - Compatible software: Autodesk Revit, Trimble SketchUp, Rhino/Grasshopper, ArchiCAD, and any tool that reads XYZ point data
-- Resolution by country: Denmark 0.4m, Netherlands 0.5m, UK / Norway / France 1m, USA 1m (where 3DEP coverage exists), 5–10m across most of Europe, 30m fallback elsewhere (including Sweden, pending a dedicated national source)
+- Resolution by country: Denmark 0.4m, Netherlands / Luxembourg 0.5m, UK / Norway / France 1m, USA 1m (where 3DEP coverage exists), 5–10m across most of Europe, 30m fallback elsewhere (including Sweden, pending a dedicated national source)
 - Free tier: 3 site generations per day, up to 250m × 250m, 12m point spacing, no account required
 - Pro tier: GBP 39.99/month — larger sites, finer spacing, building footprints, all formats
 - Company tier: GBP 29.99/seat/month (2+ seats)
