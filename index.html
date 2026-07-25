@@ -3219,6 +3219,32 @@ function track(event, props) {
   try { logEvent(event, props); } catch(e) {}
 }
 
+// ── Live presence (feeds the "Live on site" box in Topo-admin) ─────────────
+// Runs over Supabase Realtime (WebSocket), not a table insert — independent
+// of the events/generations RLS path, so it degrades separately from it.
+let _presenceChannel = null;
+function initPresence() {
+  try {
+    _presenceChannel = _sb.channel('site-presence', { config: { presence: { key: getAnonId() } } });
+    _presenceChannel.subscribe((status) => { if (status === 'SUBSCRIBED') updatePresence(); });
+  } catch (e) { /* presence must never break the app */ }
+}
+function updatePresence() {
+  if (!_presenceChannel) return;
+  try { _presenceChannel.track({ role: _currentUser ? 'auth' : 'anon' }); } catch (e) {}
+}
+// Live "generation failed" alert shown instantly on the admin's Live on site box.
+function broadcastGenFailure(stage, detail) {
+  if (!_presenceChannel) return;
+  try {
+    _presenceChannel.send({
+      type: 'broadcast',
+      event: 'gen_fail',
+      payload: { stage, detail: (detail || '').toString().slice(0, 200), role: _currentUser ? 'auth' : 'anon' }
+    });
+  } catch (e) {}
+}
+
 // ── Auth init ─────────────────────────────────────────────────────────────
 async function initAuth() {
   // Register listener FIRST — outside try/catch — so it always survives even
@@ -3261,6 +3287,7 @@ async function handleSession(session) {
     applyProUI();
     setTimeout(restoreProMemory, 500);
   }
+  updatePresence();
 }
 
 function handleSignOut() {
@@ -3268,6 +3295,7 @@ function handleSignOut() {
   updateNavUI();
   const footerSub = document.getElementById('footer-sub');
   if (footerSub) footerSub.innerHTML = 'Terrain Intelligence for BIM &nbsp;·&nbsp; Free Beta';
+  updatePresence();
 }
 
 function updateNavUI() {
@@ -3955,6 +3983,7 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
 }
 
 async function failGeneration(stage, detail) {
+  broadcastGenFailure(stage, detail);
   if (!_currentGenerationId) return;
   try {
     await _sb.from('generations').update({
@@ -6972,6 +7001,7 @@ async function sendFeedback() {
 document.addEventListener('DOMContentLoaded', function() {
   updateLimitBadge();
   track('page_open', { referrer: document.referrer || null });
+  initPresence();
   if (window.location.search.includes('upgraded=true')) {
     track('subscription_created', { source: 'checkout_success_redirect' });
   }
