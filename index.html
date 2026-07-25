@@ -2439,8 +2439,16 @@ var REGION_DATA = [
   [59.6, 19.0,  70.1, 31.6, 'Finland',        2,   'hi'],
   [49.8, -8.7,  61.0,  2.0, 'United Kingdom', 1,   'hi'],
   [45.7,  5.9,  47.9, 10.5, 'Switzerland',    0.5, 'hi'],
-  [50.7,  3.3,  53.6,  7.2, 'Netherlands',    0.5, 'hi'],
+  // Luxembourg must be checked before Belgium, and Belgium before
+  // Netherlands — each larger box overlaps the smaller country's real
+  // territory, so the smallest/most specific box has to win first.
+  // Real Belgian coordinates (e.g. Brussels, 4.35E) sit well west of
+  // Luxembourg's box (5.70-6.55E), and Belgium's box tops out at 51.5N
+  // (south of Amsterdam, 52.37N), so neither reorder misclassifies a
+  // genuine NL or Belgian site.
   [49.42, 5.70, 50.20, 6.55, 'Luxembourg',    0.5, 'hi'],
+  [49.5,  2.5,  51.5,  6.4, 'Belgium',        30,  'lo'],
+  [50.7,  3.3,  53.6,  7.2, 'Netherlands',    0.5, 'hi'],
   [46.3,  9.5,  49.0, 17.2, 'Austria',        1,   'hi'],
   [41.3, -5.2,  51.1,  9.6, 'France',         1,   'hi'],
   [41.7,-141.0, 83.1,-52.6, 'Canada',         1,   'hi'],
@@ -2449,7 +2457,6 @@ var REGION_DATA = [
   [45.2,  6.0,  55.1, 15.0, 'Germany',        30,  'lo'],
   [35.9, -9.3,  43.8,  4.3, 'Spain',          30,  'lo'],
   [36.4,  6.7,  47.1, 18.5, 'Italy',          30,  'lo'],
-  [49.5,  2.5,  51.5,  6.4, 'Belgium',        30,  'lo'],
   [36.0, 25.0,  42.0, 26.5, 'Greece',         30,  'lo'],
   [49.0, 14.1,  54.9, 24.2, 'Poland',         30,  'lo'],
 ];
