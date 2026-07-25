@@ -20,8 +20,8 @@ Topo-grapher is a browser-based tool. It sources high-resolution government elev
 - [Terrain for Rhino and Grasshopper](https://topo-grapher.com/topography-for-rhino.html): Point-cloud and mesh workflow for Rhino.
 - [Site topography in ArchiCAD](https://topo-grapher.com/topography-for-archicad.html): Mesh tool and survey-point import.
 - [Elevation data coverage and resolution by country](https://topo-grapher.com/elevation-data-coverage.html): Full source and resolution table.
-- [DTM vs DSM explained](https://topo-grapher.com/dtm-vs-dsm.html): The difference between terrain and surface models, and which BIM workflows need which.
-- [What is an elevation point cloud](https://topo-grapher.com/elevation-point-cloud.html): Definition and how architects use XYZ point data.
+- [DTM vs DSM explained](https://topo-grapher.com/learn/dtm-vs-dsm.html): The difference between terrain and surface models, and which BIM workflows need which.
+- [What is an elevation point cloud](https://topo-grapher.com/learn/elevation-point-cloud.html): Definition and how architects use XYZ point data.
 
 ## About
 
