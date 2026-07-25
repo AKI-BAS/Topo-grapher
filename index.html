@@ -3226,6 +3226,33 @@ function getAnonId() {
     return id;
   } catch (e) { return null; }
 }
+
+// ── First-touch attribution ──────────────────────────────────────────────
+// Captures document.referrer + any utm_* params ONCE per anon_id and
+// persists them, so an AI/search referral can still be credited on
+// signup_completed even if that happens on a later visit — by then
+// document.referrer and the UTM query string are usually gone, especially
+// in a single-page app like this one.
+const FIRST_TOUCH_KEY = 'topo_first_touch';
+function captureFirstTouch() {
+  try {
+    if (localStorage.getItem(FIRST_TOUCH_KEY)) return null; // already captured — not the first touch
+    const params = new URLSearchParams(location.search);
+    const touch = { referrer: document.referrer || null };
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'].forEach(function(k) {
+      const v = params.get(k);
+      if (v) touch[k] = v;
+    });
+    localStorage.setItem(FIRST_TOUCH_KEY, JSON.stringify(touch));
+    return touch;
+  } catch (e) { return null; }
+}
+function getFirstTouch() {
+  try {
+    const raw = localStorage.getItem(FIRST_TOUCH_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
 function logEvent(event, properties) {
   try {
     _sb.from('events').insert({
@@ -3441,7 +3468,7 @@ async function submitAuth(type) {
       if (error) { showErr(_authErrMsg(error.message)); return; }
       errEl.style.color = 'var(--accent)';
       errEl.textContent = 'Check your email to confirm your account.';
-      track('signup_completed', { method: 'email' });
+      track('signup_completed', Object.assign({ method: 'email' }, getFirstTouch()));
       restore();
     } catch(e) { showErr(_authErrMsg(e.message || '')); }
   }
@@ -7025,7 +7052,8 @@ async function sendFeedback() {
 // ── Init ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
   updateLimitBadge();
-  track('page_open', { referrer: document.referrer || null });
+  var _firstTouch = captureFirstTouch();
+  track('page_open', _firstTouch || { referrer: document.referrer || null });
   initPresence();
   if (window.location.search.includes('upgraded=true')) {
     track('subscription_created', { source: 'checkout_success_redirect' });
