@@ -249,6 +249,23 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .coverage-modal-legend{display:flex;gap:16px;padding:10px 16px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);flex-wrap:wrap;flex-shrink:0;}
 @media(max-width:768px){.coverage-modal{padding:8px;}.coverage-modal-inner{max-height:100%;}.coverage-modal-sub{display:none;}}
 
+/* Coverage country edit panel — shared by both coverage views (topbar modal + heatmap overlay) */
+.cov-edit-panel{position:fixed;top:0;right:0;height:100%;width:300px;max-width:90vw;background:var(--surface);border-left:1px solid var(--border);z-index:10001;display:flex;flex-direction:column;padding:18px 16px;gap:8px;box-shadow:-8px 0 24px rgba(0,0,0,.35);transform:translateX(100%);transition:transform .18s ease;}
+.cov-edit-panel.open{transform:translateX(0);}
+.cov-edit-panel label{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:8px;}
+.cov-edit-panel input,.cov-edit-panel select{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:8px 9px;width:100%;box-sizing:border-box;}
+.cov-edit-panel input:focus,.cov-edit-panel select:focus{outline:none;border-color:var(--accent2);}
+.cov-edit-title{font-family:'DM Mono',monospace;font-size:13px;color:var(--accent);letter-spacing:.04em;padding:0 24px 10px 0;border-bottom:1px solid var(--border);}
+.cov-edit-status{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);min-height:14px;margin-top:6px;}
+.cov-edit-actions{display:flex;gap:8px;margin-top:auto;padding-top:14px;border-top:1px solid var(--border);}
+.cov-edit-btn{flex:1;font-family:'DM Mono',monospace;font-size:11px;padding:9px;border-radius:5px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text-mid);transition:all .15s;}
+.cov-edit-btn:hover{background:var(--border);color:var(--text);}
+.cov-edit-btn.primary{background:var(--accent2);border-color:var(--accent2);color:#fff;}
+.cov-edit-btn.primary:hover{background:var(--accent);}
+.cov-edit-btn.danger{color:#E0806A;}
+.cov-edit-close{position:absolute;top:16px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;}
+.cov-edit-close:hover{color:var(--text);}
+
 /* ── Monitor / health page ─────────────────────────────────── */
 .mon-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:clamp(12px,1.4vw,24px);align-items:start;}
 .mon-block{display:flex;flex-direction:column;gap:0;}
@@ -670,6 +687,30 @@ body::before{content:'';position:fixed;inset:0;background-image:
         <span><span class="heatmap-legend-dot" style="background:#7BC8F6"></span>Scotland — SRSP (self-hosted, distinct from GPXZ)</span>
         <span style="opacity:.7;">◨ striped = partial coverage</span>
       </div>
+    </div>
+  </div>
+
+  <!-- Coverage country edit panel — opened by ✎ Edit inside a coverage-map popup -->
+  <div id="cov-edit-panel" class="cov-edit-panel">
+    <button class="cov-edit-close" onclick="_closeCoverageEdit()" title="Close">×</button>
+    <div class="cov-edit-title" id="cov-edit-title">Edit country</div>
+    <label>Tier</label>
+    <select id="cov-edit-tier">
+      <option value="">No dedicated source (remove)</option>
+      <option value="lidar">LiDAR ≤2m</option>
+      <option value="mid">5–10m</option>
+      <option value="regional30">Regional 30m (EU_DTM)</option>
+    </select>
+    <label>Resolution</label>
+    <input id="cov-edit-res" placeholder="e.g. 1m">
+    <label>Source</label>
+    <input id="cov-edit-source" placeholder="e.g. USGS 3DEP">
+    <label>Partial coverage note (optional)</label>
+    <input id="cov-edit-partial" placeholder="e.g. Only 3 of 16 states">
+    <div class="cov-edit-status" id="cov-edit-status"></div>
+    <div class="cov-edit-actions">
+      <button class="cov-edit-btn danger" id="cov-edit-delete" onclick="_deleteCoverageEdit()">Remove</button>
+      <button class="cov-edit-btn primary" onclick="_saveCoverageEdit()">Save</button>
     </div>
   </div>
 
@@ -1114,12 +1155,8 @@ function _populateHeatmap(data){
 async function _ensureCoverageLayer(){
   if(!_hmap)return;
   if(_hmap._cov){ _hmap._cov.addTo(_hmap); if(_hmap._covSct)_hmap._covSct.addTo(_hmap); return; }
-  try{
-    if(!_coverageGeoJson){
-      const r=await fetch('https://cdn.jsdelivr.net/gh/johan/world.geo.json@master/countries.geo.json');
-      _coverageGeoJson=await r.json();
-    }
-  }catch(e){ console.error('Coverage borders failed to load',e); return; }
+  await _ensureCoverageData();
+  if(!_coverageGeoJson)return;
   const idx=_buildCoverageIndex();
   const layer=L.geoJson(_coverageGeoJson,{
     pane:'covPane',
@@ -1127,10 +1164,12 @@ async function _ensureCoverageLayer(){
       if(hit)return{color:hit.color,weight:1,opacity:.8,fillColor:hit.color,fillOpacity:hit.partial?.2:.38,dashArray:hit.partial?'4,3':null};
       return{color:'#333',weight:.5,opacity:.35,fillColor:'#555',fillOpacity:.06};},
     onEachFeature:(feat,lyr)=>{const hit=idx[feat.id];const name=(feat.properties&&feat.properties.name)||feat.id;
+      _countryNames[feat.id]=name;
       const iso2=hit?hit.iso2:'';const flagImg=iso2?`<img src="https://flagcdn.com/16x12/${iso2.toLowerCase()}.png" width="16" height="12" style="vertical-align:middle;margin-right:6px;border-radius:1px;">`:'';
       let html=`<div style="font-family:DM Mono,monospace;font-size:11px;line-height:1.7;min-width:170px;"><div style="font-weight:600;margin-bottom:4px;">${flagImg}${name}</div>`;
       if(hit){html+=`<div><span style="color:${hit.color};">■</span> ${hit.res} · ${hit.source}</div>`;if(hit.partial)html+=`<div style="color:#E0A050;font-size:10px;margin-top:3px;">⚠ ${hit.partial}</div>`;}
       else{html+=`<div style="opacity:.7;">COP30 30m global fallback only</div><div style="opacity:.5;font-size:10px;margin-top:3px;">Candidate for dedicated source</div>`;}
+      html+=`<div style="margin-top:6px;"><button onclick="_openCoverageEdit('${feat.id}')" style="font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--accent);cursor:pointer;">✎ Edit</button></div>`;
       html+=`</div>`;lyr.bindPopup(html);
       lyr.on('mouseover',()=>lyr.setStyle({weight:2,fillOpacity:Math.min((lyr.options.fillOpacity||.4)+.2,.7)}));
       lyr.on('mouseout',()=>layer.resetStyle(lyr));},
@@ -1207,75 +1246,121 @@ async function loadHeatmap(){
 
 // ── Coverage Map (data availability by country) ───────────────
 // Blue: dedicated LiDAR ≤2m. Green: dedicated 5–10m. Orange: regional 30m (EU_DTM).
-// Gray: only COP30 global fallback. Update tier arrays as new fetchers ship.
-const COVERAGE_TIERS = {
-  lidar: {
-    color: '#4EA0D9',
-    countries: {
-      DK: { res: '0.4m', source: 'DHM LiDAR' },
-      GB: { res: '1m',   source: 'GPXZ 1m + SRSP (Scotland)' },
-      US: { res: '1m',   source: 'USGS 3DEP' },
-      CH: { res: '0.5m', source: 'swissALTI3D' },
-      SE: { res: '1m',   source: 'Lantmäteriet 1m' },
-      CA: { res: '1m',   source: 'NRCan HRDEM 1m' },
-      EE: { res: '1m',   source: 'Maaamet 1m' },
-      NO: { res: '1m',   source: 'Kartverket DTM1' },
-      FR: { res: '1m',   source: 'IGN RGE ALTI 1m' },
-      FI: { res: '2m',   source: 'MML Finland' },
-      NL: { res: '0.5m', source: 'AHN (Rijkswaterstaat) via PDOK WCS' },
-      PL: { res: '1m',   source: 'GUGiK NMT (EVRF2007) via WCS' },
-      DE: { res: '1m',   source: 'NRW/BW/Hessen DGM1', partial: 'Only 3 of 16 states' },
-    },
-  },
-  mid: {
-    color: '#9ABA6A',
-    countries: {
-      IS: { res: '10m', source: 'ArcticDEM + geoid (IslandsDEM 2m deferred)' },
-      IT: { res: '10m', source: 'TINITALY WCS' },
-      CZ: { res: '5m',  source: 'CUZK DMR4G' },
-      ES: { res: '5m',  source: 'IGN Spain WCS' },
-    },
-  },
-  regional30: {
-    color: '#E0A050',
-    countries: {
-      IE: { res: '30m', source: 'EU_DTM fallback' },
-      PT: { res: '30m', source: 'EU_DTM fallback' },
-      AT: { res: '30m', source: 'EU_DTM fallback' },
-      BE: { res: '30m', source: 'EU_DTM fallback' },
-      GR: { res: '30m', source: 'EU_DTM fallback' },
-      HR: { res: '30m', source: 'EU_DTM fallback' },
-      HU: { res: '30m', source: 'EU_DTM fallback' },
-      RO: { res: '30m', source: 'EU_DTM fallback' },
-      SK: { res: '30m', source: 'EU_DTM fallback' },
-      LT: { res: '30m', source: 'EU_DTM fallback' },
-      LV: { res: '30m', source: 'EU_DTM fallback' },
-      BG: { res: '30m', source: 'EU_DTM fallback' },
-      LU: { res: '30m', source: 'EU_DTM fallback' },
-      FO: { res: '30m', source: 'EU_DTM fallback' },
-    },
-  },
+// Gray: only COP30 global fallback.
+//
+// Per-country data lives in Supabase `coverage_countries` (admin-editable —
+// click any country on the map, on either coverage view, and hit ✎ Edit).
+// Only the 3 tier colors/labels stay hardcoded here.
+const TIER_META = {
+  lidar:      { color: '#4EA0D9', label: 'LiDAR ≤2m (dedicated)' },
+  mid:        { color: '#9ABA6A', label: '5–10m (dedicated)' },
+  regional30: { color: '#E0A050', label: 'Regional 30m (EU_DTM)' },
 };
 
-// ISO2 -> ISO3 for the countries we care about (world.geo.json keys on ISO3)
+// ISO2 -> ISO3 (world.geo.json keys on ISO3) + reverse, for flag icons only.
+// Not exhaustive — countries outside this list still work, they just show
+// no flag in the popup.
 const ISO2_TO_ISO3 = {
   DK:'DNK',IS:'ISL',NO:'NOR',SE:'SWE',FI:'FIN',GB:'GBR',IE:'IRL',NL:'NLD',BE:'BEL',
   FR:'FRA',CH:'CHE',AT:'AUT',DE:'DEU',ES:'ESP',PT:'PRT',IT:'ITA',GR:'GRC',PL:'POL',
   CZ:'CZE',US:'USA',CA:'CAN',HR:'HRV',HU:'HUN',RO:'ROU',SK:'SVK',LT:'LTU',LV:'LVA',
-  EE:'EST',BG:'BGR',LU:'LUX',FO:'FRO',
+  EE:'EST',BG:'BGR',LU:'LUX',FO:'FRO',AU:'AUS',NZ:'NZL',JP:'JPN',
 };
+const ISO3_TO_ISO2 = Object.fromEntries(Object.entries(ISO2_TO_ISO3).map(([a,b])=>[b,a]));
 
-// Build reverse map: ISO3 -> { tier, meta }
+// Raw rows fetched from Supabase, loaded once and kept in sync locally after edits.
+let _coverageRows = null;
+let _countryNames = {}; // iso3 -> display name, filled in as the borders layer renders
+
 function _buildCoverageIndex(){
   const idx = {};
-  ['lidar','mid','regional30'].forEach(tier => {
-    const t = COVERAGE_TIERS[tier];
-    Object.entries(t.countries).forEach(([iso2, meta]) => {
-      const iso3 = ISO2_TO_ISO3[iso2];
-      if (iso3) idx[iso3] = { tier, iso2, color: t.color, ...meta };
-    });
+  (_coverageRows || []).forEach(row => {
+    const meta = TIER_META[row.tier];
+    if (!meta) return;
+    idx[row.iso3] = {
+      tier: row.tier, color: meta.color,
+      res: row.resolution, source: row.source, partial: row.partial_note,
+      iso2: ISO3_TO_ISO2[row.iso3] || '',
+    };
   });
   return idx;
+}
+
+async function _loadCoverageRows(){
+  const { data, error } = await _sb.from('coverage_countries').select('*');
+  if (error){ console.error('Coverage data failed to load', error); _coverageRows = []; return; }
+  _coverageRows = data || [];
+}
+
+// Shared loader: borders geojson + Supabase rows, each fetched once and
+// reused by both coverage views (the topbar modal and the heatmap overlay).
+async function _ensureCoverageData(){
+  if (!_coverageGeoJson){
+    try{
+      const r = await fetch('https://cdn.jsdelivr.net/gh/johan/world.geo.json@master/countries.geo.json');
+      _coverageGeoJson = await r.json();
+    }catch(e){ console.error('Coverage borders failed to load', e); }
+  }
+  if (!_coverageRows) await _loadCoverageRows();
+}
+
+// Re-render whichever coverage view(s) are currently live after an edit.
+function _refreshCoverageLayers(){
+  if (_cmap) _renderCoverageLayer();
+  if (_hmap && _hmap._cov){
+    _hmap.removeLayer(_hmap._cov); _hmap._cov = null;
+    if (_hmap._covSct){ _hmap.removeLayer(_hmap._covSct); _hmap._covSct = null; }
+    _ensureCoverageLayer();
+  }
+}
+
+// ── Click-to-edit panel (shared by both coverage views) ───────
+let _covEditIso3 = null;
+
+function _openCoverageEdit(iso3){
+  _covEditIso3 = iso3;
+  const hit = _buildCoverageIndex()[iso3];
+  document.getElementById('cov-edit-title').textContent = _countryNames[iso3] || iso3;
+  document.getElementById('cov-edit-tier').value = hit ? hit.tier : '';
+  document.getElementById('cov-edit-res').value = hit ? hit.res : '';
+  document.getElementById('cov-edit-source').value = hit ? hit.source : '';
+  document.getElementById('cov-edit-partial').value = (hit && hit.partial) ? hit.partial : '';
+  document.getElementById('cov-edit-status').textContent = '';
+  document.getElementById('cov-edit-delete').style.display = hit ? '' : 'none';
+  document.getElementById('cov-edit-panel').classList.add('open');
+}
+function _closeCoverageEdit(){
+  document.getElementById('cov-edit-panel').classList.remove('open');
+  _covEditIso3 = null;
+}
+async function _saveCoverageEdit(){
+  if (!_covEditIso3) return;
+  const status = document.getElementById('cov-edit-status');
+  const tier = document.getElementById('cov-edit-tier').value;
+  if (!tier) return _deleteCoverageEdit();
+  const resolution = document.getElementById('cov-edit-res').value.trim();
+  const source = document.getElementById('cov-edit-source').value.trim();
+  const partial_note = document.getElementById('cov-edit-partial').value.trim() || null;
+  if (!resolution || !source){ status.textContent = 'Resolution and source are required.'; return; }
+  status.textContent = 'Saving…';
+  const { error } = await _sb.from('coverage_countries')
+    .upsert({ iso3: _covEditIso3, tier, resolution, source, partial_note, updated_at: new Date().toISOString() });
+  if (error){ status.textContent = 'Save failed: ' + error.message; return; }
+  const row = { iso3: _covEditIso3, tier, resolution, source, partial_note };
+  const i = _coverageRows.findIndex(r => r.iso3 === _covEditIso3);
+  if (i >= 0) _coverageRows[i] = row; else _coverageRows.push(row);
+  _refreshCoverageLayers();
+  _closeCoverageEdit();
+}
+async function _deleteCoverageEdit(){
+  if (!_covEditIso3) return;
+  const status = document.getElementById('cov-edit-status');
+  status.textContent = 'Removing…';
+  const { error } = await _sb.from('coverage_countries').delete().eq('iso3', _covEditIso3);
+  if (error){ status.textContent = 'Remove failed: ' + error.message; return; }
+  _coverageRows = _coverageRows.filter(r => r.iso3 !== _covEditIso3);
+  _refreshCoverageLayers();
+  _closeCoverageEdit();
 }
 
 let _cmap = null;
@@ -1317,17 +1402,13 @@ async function _initCoverageMap(){
   if (_cmapInited) return;
   _cmapInited = true;
 
-  // Lazy-load world country borders (small CDN-hosted GeoJSON, ISO3-keyed)
-  try {
-    if (!_coverageGeoJson){
-      const r = await fetch('https://cdn.jsdelivr.net/gh/johan/world.geo.json@master/countries.geo.json');
-      _coverageGeoJson = await r.json();
-    }
-    _renderCoverageLayer();
-  } catch(e){
-    console.error('Coverage map: failed to load country borders', e);
+  // Lazy-load world country borders + coverage data (each fetched once)
+  await _ensureCoverageData();
+  if (!_coverageGeoJson){
     container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:DM Mono,monospace;font-size:12px;color:var(--muted);">Failed to load country borders</div>';
+    return;
   }
+  _renderCoverageLayer();
 }
 
 function _renderCoverageLayer(){
@@ -1354,6 +1435,7 @@ function _renderCoverageLayer(){
       const iso3 = feat.id;
       const hit = idx[iso3];
       const name = (feat.properties && feat.properties.name) || iso3;
+      _countryNames[iso3] = name;
       const iso2 = hit ? hit.iso2 : '';
       const flagImg = iso2 ? `<img src="https://flagcdn.com/16x12/${iso2.toLowerCase()}.png" width="16" height="12" style="vertical-align:middle;margin-right:6px;border-radius:1px;">` : '';
       let html = `<div style="font-family:DM Mono,monospace;font-size:11px;line-height:1.7;min-width:180px;">
@@ -1365,6 +1447,7 @@ function _renderCoverageLayer(){
         html += `<div style="opacity:.7;">COP30 30m global fallback only</div>
                  <div style="opacity:.5;font-size:10px;margin-top:3px;">Candidate for dedicated source</div>`;
       }
+      html += `<div style="margin-top:6px;"><button onclick="_openCoverageEdit('${iso3}')" style="font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--accent);cursor:pointer;">✎ Edit</button></div>`;
       html += `</div>`;
       lyr.bindPopup(html);
       lyr.on('mouseover', () => lyr.setStyle({ weight: 2, fillOpacity: Math.min((lyr.options.fillOpacity||0.45)+0.2, 0.75) }));
