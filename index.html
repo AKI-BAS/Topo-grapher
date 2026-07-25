@@ -60,7 +60,22 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": "https://topo-grapher.com/#organization",
+    "name": "Topo-grapher",
+    "url": "https://topo-grapher.com/",
+    "email": "aki@topo-grapher.com",
+    "description": "Generates accurate 3D site terrain and elevation point clouds for architects, BIM managers, and landscape architects, compatible with Revit, SketchUp, Rhino, and ArchiCAD.",
+    "founder": { "@type": "Person", "name": "Aki", "@id": "https://topo-grapher.com/about.html#aki" },
+    "knowsAbout": ["site topography", "elevation data", "BIM", "AEC software"]
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
     "@type": "SoftwareApplication",
+    "@id": "https://topo-grapher.com/#software",
     "name": "Topo-grapher",
     "url": "https://topo-grapher.com",
     "image": "https://topo-grapher.com/og-image.png",
@@ -72,16 +87,30 @@
         "@type": "Offer",
         "name": "Free",
         "price": "0",
-        "priceCurrency": "GBP"
+        "priceCurrency": "GBP",
+        "description": "3 generations/day, up to 250m x 250m, 12m spacing, no account needed"
       },
       {
         "@type": "Offer",
         "name": "Pro",
-        "price": "39,99",
+        "price": "39.99",
         "priceCurrency": "GBP",
+        "description": "Larger sites, finer spacing, building footprints, all formats",
         "priceSpecification": {
           "@type": "UnitPriceSpecification",
           "billingDuration": "P1M"
+        }
+      },
+      {
+        "@type": "Offer",
+        "name": "Company",
+        "price": "29.99",
+        "priceCurrency": "GBP",
+        "description": "Per seat per month, 2+ seats",
+        "priceSpecification": {
+          "@type": "UnitPriceSpecification",
+          "billingDuration": "P1M",
+          "unitText": "per seat"
         }
       }
     ],
@@ -97,11 +126,7 @@
       "GIS elevation data for architects",
       "Toposurface generation"
     ],
-    "provider": {
-      "@type": "Organization",
-      "name": "Topo-grapher",
-      "url": "https://topo-grapher.com"
-    }
+    "provider": { "@id": "https://topo-grapher.com/#organization" }
   }
   </script>
 

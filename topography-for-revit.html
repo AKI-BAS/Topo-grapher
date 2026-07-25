@@ -35,7 +35,7 @@
   "url": "https://topo-grapher.com/",
   "email": "aki@topo-grapher.com",
   "description": "Generates accurate 3D site terrain and elevation point clouds for architects, BIM managers, and landscape architects, compatible with Revit, SketchUp, Rhino, and ArchiCAD.",
-  "founder": { "@type": "Person", "name": "Aki" },
+  "founder": { "@type": "Person", "name": "Aki", "@id": "https://topo-grapher.com/about.html#aki" },
   "knowsAbout": ["site topography", "elevation data", "BIM", "Revit Toposolid", "point clouds", "digital terrain models"]
 }
 </script>
@@ -61,8 +61,8 @@
   ],
   "offers": [
     { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "GBP", "description": "3 generations/day, up to 250m x 250m, 12m spacing, no account needed" },
-    { "@type": "Offer", "name": "Pro", "price": "39", "priceCurrency": "GBP", "description": "Larger sites, finer spacing, building footprints, all formats (per month)" },
-    { "@type": "Offer", "name": "Company", "price": "29", "priceCurrency": "GBP", "description": "Per seat per month, 2+ seats" }
+    { "@type": "Offer", "name": "Pro", "price": "39.99", "priceCurrency": "GBP", "description": "Larger sites, finer spacing, building footprints, all formats (per month)" },
+    { "@type": "Offer", "name": "Company", "price": "29.99", "priceCurrency": "GBP", "description": "Per seat per month, 2+ seats" }
   ]
 }
 </script>
@@ -86,6 +86,20 @@
     { "@type": "HowToStep", "position": 4, "name": "Import the CSV", "text": "Select the downloaded XYZ CSV. Set the units to metres and confirm the comma delimiter. Revit builds the Toposolid surface from the points." },
     { "@type": "HowToStep", "position": 5, "name": "Position the site", "text": "Align the terrain to your project base point. Topo-grapher can also output a site reference column for orientation." }
   ]
+}
+</script>
+
+<!-- 3b. Article (authorship + dates for AI citation and Google indexing) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "How to import site topography into Revit using an XYZ CSV",
+  "description": "Import accurate site terrain into Revit in minutes. Generate an XYZ CSV elevation point cloud from real survey data and create a Toposolid — no GIS software or Civil 3D required.",
+  "author": { "@type": "Person", "name": "Aki", "@id": "https://topo-grapher.com/about.html#aki", "url": "https://topo-grapher.com/about.html" },
+  "publisher": { "@id": "https://topo-grapher.com/#organization" },
+  "datePublished": "2026-06-07",
+  "dateModified": "2026-06-07"
 }
 </script>
 

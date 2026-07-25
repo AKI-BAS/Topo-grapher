@@ -25,7 +25,7 @@
   "url": "https://topo-grapher.com/",
   "email": "aki@topo-grapher.com",
   "description": "Generates accurate 3D site terrain and elevation point clouds for architects, BIM managers, and landscape architects, compatible with Revit, SketchUp, Rhino, and ArchiCAD.",
-  "founder": { "@type": "Person", "name": "Aki" },
+  "founder": { "@type": "Person", "name": "Aki", "@id": "https://topo-grapher.com/about.html#aki" },
   "knowsAbout": ["site topography", "elevation data", "BIM", "ArchiCAD Mesh", "survey points", "point clouds", "digital terrain models"]
 }
 </script>
@@ -51,8 +51,8 @@
   ],
   "offers": [
     { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "GBP", "description": "3 generations/day, up to 250m x 250m, 12m spacing, no account needed" },
-    { "@type": "Offer", "name": "Pro", "price": "39", "priceCurrency": "GBP", "description": "Larger sites, finer spacing, building footprints, all formats (per month)" },
-    { "@type": "Offer", "name": "Company", "price": "29", "priceCurrency": "GBP", "description": "Per seat per month, 2+ seats" }
+    { "@type": "Offer", "name": "Pro", "price": "39.99", "priceCurrency": "GBP", "description": "Larger sites, finer spacing, building footprints, all formats (per month)" },
+    { "@type": "Offer", "name": "Company", "price": "29.99", "priceCurrency": "GBP", "description": "Per seat per month, 2+ seats" }
   ]
 }
 </script>
@@ -76,6 +76,20 @@
     { "@type": "HowToStep", "position": 4, "name": "Build the Mesh", "text": "Use the Mesh tool to generate a 3D terrain from the imported survey points. ArchiCAD triangulates the points into a mesh surface." },
     { "@type": "HowToStep", "position": 5, "name": "Set the site reference", "text": "Position the mesh against project zero so levels read correctly across your model." }
   ]
+}
+</script>
+
+<!-- 3b. Article (authorship + dates for AI citation and Google indexing) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "How to create site topography in ArchiCAD",
+  "description": "Build accurate site terrain in ArchiCAD in minutes. Generate an XYZ CSV of survey points from real elevation data and create a Mesh, or import DXF/IFC directly — no GIS software required.",
+  "author": { "@type": "Person", "name": "Aki", "@id": "https://topo-grapher.com/about.html#aki", "url": "https://topo-grapher.com/about.html" },
+  "publisher": { "@id": "https://topo-grapher.com/#organization" },
+  "datePublished": "2026-06-07",
+  "dateModified": "2026-06-07"
 }
 </script>
 
