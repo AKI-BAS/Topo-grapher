@@ -1763,6 +1763,18 @@ function declineCookies() {
           <div id="company-join-msg" style="font-size:12px;min-height:18px;margin-top:8px;"></div>
         </div>
 
+        <!-- ── Test mode (admin only) ──────────────────── -->
+        <div id="settings-test-mode" style="display:none;margin-bottom:22px;padding:16px;background:var(--bg-input);border-radius:6px;border:1px solid var(--border);">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+            <input type="checkbox" id="test-mode-toggle" onchange="toggleTestMode(this.checked)" style="margin-top:3px;">
+            <span>
+              <span style="display:block;font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;">Test mode (admin only)</span>
+              <span style="display:block;font-size:12px;color:var(--text-mid);line-height:1.5;">While on, your own activity (generations, downloads, sign-ins) is tagged as test data and excluded from every KPI and analytics chart in Topo-admin. Turn off to verify tracking end-to-end.</span>
+            </span>
+          </label>
+          <div id="test-mode-msg" style="font-size:11px;color:var(--text-soft);min-height:14px;margin-top:8px;margin-left:26px;"></div>
+        </div>
+
         <!-- ── Sign out ──────────────────────────────────── -->
         <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
           <button onclick="signOut();closeSettings();" style="background:none;border:none;color:var(--danger,#e25555);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;padding:0;letter-spacing:.06em;">Sign out</button>
@@ -3195,7 +3207,8 @@ function logEvent(event, properties) {
       user_id: _currentUser ? _currentUser.id : null,
       anon_id: getAnonId(),
       event,
-      properties: properties || {}
+      properties: properties || {},
+      is_test: !!(_currentProfile && _currentProfile.test_mode)
     }).then(() => {}, () => {});
   } catch (e) { /* analytics must never break the app */ }
 }
@@ -3559,7 +3572,33 @@ function openSettings() {
     if (jm) { jm.textContent = ''; jm.style.color = ''; }
   }
 
+  // Test mode (admin only)
+  show('settings-test-mode', !!_currentProfile?.is_admin);
+  if (_currentProfile?.is_admin) {
+    const tmToggle = document.getElementById('test-mode-toggle');
+    if (tmToggle) tmToggle.checked = !!_currentProfile.test_mode;
+    const tmMsg = document.getElementById('test-mode-msg');
+    if (tmMsg) { tmMsg.textContent = ''; tmMsg.style.color = ''; }
+  }
+
   document.getElementById('settings-overlay').classList.add('show');
+}
+
+async function toggleTestMode(checked) {
+  const msgEl = document.getElementById('test-mode-msg');
+  if (!_currentUser) return;
+  const { error } = await _sb.from('profiles').update({ test_mode: checked }).eq('id', _currentUser.id);
+  if (error) {
+    if (msgEl) { msgEl.textContent = 'Failed to update: ' + error.message; msgEl.style.color = 'var(--danger,#e25555)'; }
+    const tmToggle = document.getElementById('test-mode-toggle');
+    if (tmToggle) tmToggle.checked = !checked;
+    return;
+  }
+  if (_currentProfile) _currentProfile.test_mode = checked;
+  if (msgEl) {
+    msgEl.textContent = checked ? 'On — your activity from now on is excluded from analytics.' : 'Off — your activity now logs normally.';
+    msgEl.style.color = 'var(--text-soft)';
+  }
 }
 
 function closeSettings() {
@@ -3844,7 +3883,8 @@ async function startGeneration() {
       centroid_lat: cLat !== null ? parseFloat(cLat.toFixed(6)) : null,
       centroid_lon: cLon !== null ? parseFloat(cLon.toFixed(6)) : null,
       country_code: countryCode,
-      status:       'started'
+      status:       'started',
+      is_test:      !!(_currentProfile && _currentProfile.test_mode)
     }).select('id').single();
     if (error) { console.warn('startGeneration failed', error); return; }
     _currentGenerationId = data.id;
@@ -3881,7 +3921,8 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
         centroid_lon:      cLon ? parseFloat(cLon.toFixed(6)) : null,
         country_code:      countryCode,
         status:            'completed',
-        completed_at:      new Date().toISOString()
+        completed_at:      new Date().toISOString(),
+        is_test:           !!(_currentProfile && _currentProfile.test_mode)
       });
     } catch(e) { console.warn('logGeneration legacy insert error:', e); }
     return;
@@ -6718,7 +6759,8 @@ async function shareProjectToCompany(lid, name) {
       company_id:      _currentProfile.company_id,
       name:            name || entry.projectName || 'Untitled',
       polygon_geojson: { type:'Polygon', coordinates:[coords] },
-      settings_json:   { spacing: entry.spacing || selectedSpacing }
+      settings_json:   { spacing: entry.spacing || selectedSpacing },
+      is_test:         !!(_currentProfile && _currentProfile.test_mode)
     });
     if (error) throw error;
     track('library_share_from_history', { name: name });

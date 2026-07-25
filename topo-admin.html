@@ -1080,21 +1080,21 @@ function buildSVG(id,labels,values,color='#9ABA6A',fill=null){
 
 // ── KPIs ──────────────────────────────────────────────────────
 async function loadKPIs(){
-  const{count:totalGens}=await _sb.from('generations').select('*',{count:'exact',head:true}).or('status.eq.completed,status.is.null');
+  const{count:totalGens}=await _sb.from('generations').select('*',{count:'exact',head:true}).eq('is_test',false).or('status.eq.completed,status.is.null');
   const ps=periodStart();
   const halfMs={'1d':864e5/2,'7d':3.5*864e5,'30d':15*864e5,'3m':45*864e5,'6m':91*864e5,'12m':182*864e5,'all':null}[_period];
   const prevStart=halfMs?new Date(Date.now()-halfMs*2).toISOString():null;
   const prevEnd=ps;
-  const qGens=_sb.from('generations').select('*',{count:'exact',head:true}).or('status.eq.completed,status.is.null');
+  const qGens=_sb.from('generations').select('*',{count:'exact',head:true}).eq('is_test',false).or('status.eq.completed,status.is.null');
   const{count:weekGens}=await (ps?qGens.gte('created_at',ps):qGens);
-  const qPrev=_sb.from('generations').select('*',{count:'exact',head:true}).or('status.eq.completed,status.is.null');
+  const qPrev=_sb.from('generations').select('*',{count:'exact',head:true}).eq('is_test',false).or('status.eq.completed,status.is.null');
   const{count:prevWeekGens}=await (prevStart&&prevEnd?qPrev.gte('created_at',prevStart).lt('created_at',prevEnd):qPrev.gte('created_at',new Date(Date.now()-14*864e5).toISOString()).lt('created_at',ps||new Date().toISOString()));
-  const qUids=_sb.from('generations').select('user_id').or('status.eq.completed,status.is.null').not('user_id','is',null).limit(10000);
+  const qUids=_sb.from('generations').select('user_id').eq('is_test',false).or('status.eq.completed,status.is.null').not('user_id','is',null).limit(10000);
   const{data:uids}=await (ps?qUids.gte('created_at',ps):qUids);
   const activeUsers=new Set((uids||[]).map(r=>r.user_id)).size;
   const{count:proCount}=await _sb.from('profiles').select('*',{count:'exact',head:true}).in('plan',['pro','company']).eq('is_admin',false);
   const{count:totalUsers}=await _sb.from('profiles').select('*',{count:'exact',head:true});
-  const{data:resAll}=await _sb.from('generations').select('resolution_m').not('resolution_m','is',null).limit(10000);
+  const{data:resAll}=await _sb.from('generations').select('resolution_m').eq('is_test',false).not('resolution_m','is',null).limit(10000);
   const avgRes=resAll&&resAll.length?Math.round(resAll.reduce((s,r)=>s+r.resolution_m,0)/resAll.length*10)/10:null;
   const weekDelta=prevWeekGens>0?Math.round((weekGens-prevWeekGens)/prevWeekGens*100):0;
   const{data:compProf}=await _sb.from('profiles').select('seat_count').eq('plan','company').eq('is_company_admin',true).eq('is_admin',false);
@@ -1234,7 +1234,7 @@ async function loadHeatmap(){
     <div class="heatmap-legend" id="heatmap-legend"></div>`;
   _updateMapLegend();
 
-  const{data}=await _sb.from('generations').select('centroid_lat,centroid_lon,resolution_m,country_code,project_name,created_at').or('status.eq.completed,status.is.null').not('centroid_lat','is',null).not('centroid_lon','is',null).order('created_at',{ascending:false}).limit(5000);
+  const{data}=await _sb.from('generations').select('centroid_lat,centroid_lon,resolution_m,country_code,project_name,created_at').eq('is_test',false).or('status.eq.completed,status.is.null').not('centroid_lat','is',null).not('centroid_lon','is',null).order('created_at',{ascending:false}).limit(5000);
   if(!data||!data.length){document.getElementById('heatmap-container').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:DM Mono,monospace;font-size:12px;color:var(--muted);">No location data yet</div>';return;}
   document.getElementById('badge-heatmap').textContent=data.length+' sites';
   _hmapData=data;
@@ -1536,7 +1536,7 @@ async function loadRevenue(){
   const{data:compProf}=await _sb.from('profiles').select('seat_count').eq('plan','company').eq('is_company_admin',true).eq('is_admin',false);
   const compSeats=(compProf||[]).reduce((s,p)=>s+(p.seat_count||0),0);
   const proMRR=(proCount||0)*39.99,compMRR=compSeats*29.99,totalMRR=proMRR+compMRR;
-  const{data:addons}=await _sb.from('generations').select('addon_charged_pence,project_name,area_km2,created_at').gt('addon_charged_pence',0).order('created_at',{ascending:false}).limit(20);
+  const{data:addons}=await _sb.from('generations').select('addon_charged_pence,project_name,area_km2,created_at').eq('is_test',false).gt('addon_charged_pence',0).order('created_at',{ascending:false}).limit(20);
   const totalAddon=(addons||[]).reduce((s,r)=>s+(r.addon_charged_pence||0),0);
 
   document.getElementById('badge-revenue').textContent='MRR + Add-ons';
@@ -1578,9 +1578,9 @@ async function loadTrends(){
   }else if(met.id==='blogviews'){
     q=_sb.from('blog_events').select('created_at').eq('event_type','view').order('created_at',{ascending:true}).limit(10000);
   }else if(met.id==='downloads'){
-    q=_sb.from('generations').select('created_at').or('status.eq.completed,status.is.null').not('file_name','is',null).order('created_at',{ascending:true}).limit(10000);
+    q=_sb.from('generations').select('created_at').eq('is_test',false).or('status.eq.completed,status.is.null').not('file_name','is',null).order('created_at',{ascending:true}).limit(10000);
   }else{
-    q=_sb.from('generations').select('created_at').or('status.eq.completed,status.is.null').order('created_at',{ascending:true}).limit(10000);
+    q=_sb.from('generations').select('created_at').eq('is_test',false).or('status.eq.completed,status.is.null').order('created_at',{ascending:true}).limit(10000);
   }
   const{data}=await (ps?q.gte('created_at',ps):q);
   const rows=data||[];
@@ -1645,18 +1645,18 @@ function loadTrendsChart() {
 // "Completed" = status='completed' OR status IS NULL (legacy rows pre-status-column)
 async function loadFunnel(){
   const{count:totalSignups}=await _sb.from('profiles').select('*',{count:'exact',head:true}).eq('is_admin',false);
-  const{data:genUsers}=await _sb.from('generations').select('user_id,status').or('status.eq.completed,status.is.null').not('user_id','is',null).limit(10000);
+  const{data:genUsers}=await _sb.from('generations').select('user_id,status').eq('is_test',false).or('status.eq.completed,status.is.null').not('user_id','is',null).limit(10000);
   const uniqueGenUsers=new Set((genUsers||[]).map(r=>r.user_id)).size;
   const userGenCount={};(genUsers||[]).forEach(r=>{userGenCount[r.user_id]=(userGenCount[r.user_id]||0)+1;});
   const returnUsers=Object.values(userGenCount).filter(c=>c>=2).length;
   const{count:proUsers}=await _sb.from('profiles').select('*',{count:'exact',head:true}).in('plan',['pro','company']).eq('is_admin',false);
-  const{data:proGenUsers}=await _sb.from('generations').select('user_id,user_plan,status').in('user_plan',['pro','company']).or('status.eq.completed,status.is.null').not('user_id','is',null).limit(10000);
+  const{data:proGenUsers}=await _sb.from('generations').select('user_id,user_plan,status').eq('is_test',false).in('user_plan',['pro','company']).or('status.eq.completed,status.is.null').not('user_id','is',null).limit(10000);
   const proGenCount={};(proGenUsers||[]).forEach(r=>{proGenCount[r.user_id]=(proGenCount[r.user_id]||0)+1;});
   const repeatPro=Object.values(proGenCount).filter(c=>c>=2).length;
 
   // Reliability: how many generation attempts completed vs failed (status column)
-  const{count:completedCount}=await _sb.from('generations').select('*',{count:'exact',head:true}).or('status.eq.completed,status.is.null');
-  const{count:failedCount}=await _sb.from('generations').select('*',{count:'exact',head:true}).eq('status','failed');
+  const{count:completedCount}=await _sb.from('generations').select('*',{count:'exact',head:true}).eq('is_test',false).or('status.eq.completed,status.is.null');
+  const{count:failedCount}=await _sb.from('generations').select('*',{count:'exact',head:true}).eq('is_test',false).eq('status','failed');
   const attempts=(completedCount||0)+(failedCount||0);
   const failRate=attempts>0?(failedCount/attempts*100):0;
   const failColor=failRate>=15?'var(--red)':failRate>=5?'var(--amber)':'var(--accent)';
@@ -2143,7 +2143,7 @@ function _renderSpeedTest(){
 
 // ── Gap table ─────────────────────────────────────────────────
 async function loadGapTable(){
-  const{data}=await _sb.from('generations').select('country_code,resolution_m,user_id').not('country_code','is',null).limit(10000);
+  const{data}=await _sb.from('generations').select('country_code,resolution_m,user_id').eq('is_test',false).not('country_code','is',null).limit(10000);
   if(!data||!data.length){document.getElementById('body-gaps').innerHTML='<div style="color:var(--muted);font-family:DM Mono,monospace;font-size:11px;">No data</div>';return;}
   const cc={};data.forEach(r=>{const c=r.country_code;if(!cc[c])cc[c]={gens:0,users:new Set(),res:[]};cc[c].gens++;cc[c].users.add(r.user_id);if(r.resolution_m!=null)cc[c].res.push(r.resolution_m);});
   const maxG=Math.max(...Object.values(cc).map(d=>d.gens),1);
@@ -2196,7 +2196,7 @@ async function loadDonut(){
 // ── Country bars ──────────────────────────────────────────────
 async function loadCountryBars(){
   const ps=periodStart();
-  const q=_sb.from('generations').select('country_code').or('status.eq.completed,status.is.null').not('country_code','is',null).limit(10000);
+  const q=_sb.from('generations').select('country_code').eq('is_test',false).or('status.eq.completed,status.is.null').not('country_code','is',null).limit(10000);
   const{data}=await (ps?q.gte('created_at',ps):q);
   const cc={};(data||[]).forEach(r=>{cc[r.country_code]=(cc[r.country_code]||0)+1;});
   const sorted=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,8);
@@ -2265,7 +2265,7 @@ async function loadSignups(){
 
 // ── Export formats breakdown ─────────────────────────────────
 async function loadExportFormats(){
-  const{data}=await _sb.from('generations').select('file_name').not('file_name','is',null).limit(10000);
+  const{data}=await _sb.from('generations').select('file_name').eq('is_test',false).not('file_name','is',null).limit(10000);
   if(!data||!data.length){document.getElementById('body-formats').innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">No export data yet</div>';return;}
   const fc={csv:0,ifc:0,dxf:0,other:0};
   data.forEach(r=>{
@@ -2294,7 +2294,7 @@ async function loadExportFormats(){
 // ── Download rate (gen → export conversion) ──────────────────
 async function loadDownloadRate(){
   const ps=periodStart();
-  const qBase=()=>{const q=_sb.from('generations').select('*',{count:'exact',head:true});return ps?q.gte('created_at',ps):q;};
+  const qBase=()=>{const q=_sb.from('generations').select('*',{count:'exact',head:true}).eq('is_test',false);return ps?q.gte('created_at',ps):q;};
   const{count:totalGens}=await qBase();
   const{count:withFile}=await qBase().not('file_name','is',null);
   const total=totalGens||0,dl=withFile||0;
@@ -2304,12 +2304,12 @@ async function loadDownloadRate(){
   // Weekly breakdown
 const weekAgo=new Date(Date.now()-7*864e5).toISOString();
   const effectiveStart=ps&&ps>weekAgo?ps:weekAgo;
-  const{count:weekGens}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',effectiveStart);
-  const{count:weekDl}=await _sb.from('generations').select('*',{count:'exact',head:true}).gte('created_at',effectiveStart).not('file_name','is',null);
+  const{count:weekGens}=await _sb.from('generations').select('*',{count:'exact',head:true}).eq('is_test',false).gte('created_at',effectiveStart);
+  const{count:weekDl}=await _sb.from('generations').select('*',{count:'exact',head:true}).eq('is_test',false).gte('created_at',effectiveStart).not('file_name','is',null);
   const weekRate=(weekGens||0)>0?Math.round((weekDl||0)/(weekGens||1)*100):0;
 
   // By plan
-const qPlan=_sb.from('generations').select('user_plan,file_name').limit(10000);
+const qPlan=_sb.from('generations').select('user_plan,file_name').eq('is_test',false).limit(10000);
   const{data:planData}=await (ps?qPlan.gte('created_at',ps):qPlan);
   const plans={free:{gen:0,dl:0},pro:{gen:0,dl:0},company:{gen:0,dl:0}};
   (planData||[]).forEach(r=>{const p=r.user_plan||'free';if(!plans[p])plans[p]={gen:0,dl:0};plans[p].gen++;if(r.file_name)plans[p].dl++;});
