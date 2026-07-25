@@ -4243,14 +4243,14 @@ async function fetchElevations(pts, onP) {
       if (r.ok) { const d=await r.json(); if (Array.isArray(d.elevations)&&d.elevations.length===pts.length&&!looksLikeFailure(d.elevations)){onP(0.95,'Fetching elevation data…','IGN RGE ALTI 1m');return {elevations:d.elevations,source:d.source||'IGN RGE ALTI 1m'};} }
     } catch(e){console.warn('France worker failed:',e.message);}
   }
-  // Canada: NRCan CDEM
+  // Canada: NRCan HRDEM 1m
   if (allPointsInCanada(pts)) {
     try {
-      onP(0,'Fetching elevation data…',pts.length+' points · NRCan Canada 20m');
+      onP(0,'Fetching elevation data…',pts.length+' points · NRCan Canada 1m');
       const body={lats:pts.map(p=>parseFloat(p.lat.toFixed(6))),lons:pts.map(p=>parseFloat(p.lon.toFixed(6)))};
       let r=await fetch(CANADA_WORKER+'/elevation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       if (r.status===429||r.status===500){await sleep(2000);r=await fetch(CANADA_WORKER+'/elevation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}
-      if (r.ok) { const d=await r.json(); if (Array.isArray(d.elevations)&&d.elevations.length===pts.length&&!looksLikeFailure(d.elevations)){onP(0.95,'Fetching elevation data…','NRCan CDEM 20m');return {elevations:d.elevations,source:d.source||'NRCan CDEM 20m'};} }
+      if (r.ok) { const d=await r.json(); if (Array.isArray(d.elevations)&&d.elevations.length===pts.length&&!looksLikeFailure(d.elevations)){onP(0.95,'Fetching elevation data…',d.source||'NRCan HRDEM 1m');return {elevations:d.elevations,source:d.source||'NRCan HRDEM 1m'};} }
     } catch(e){console.warn('Canada worker failed:',e.message);}
   }
   // Primary: Cloudflare workers
