@@ -1091,6 +1091,7 @@ function declineCookies() {
             <button id="btn-site-col-info" onclick="openSiteColumnsInfo()" style="background:none;border:1px solid var(--border-md);color:var(--text-soft);font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;border-radius:4px;cursor:pointer;letter-spacing:.04em;transition:all .15s;flex-shrink:0;" onmouseover="this.style.borderColor='#FF8C00';this.style.color='#FF8C00'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-soft)'">? Info</button>
             <button id="btn-site-col-place" onclick="addSiteColumn()" style="flex:1;background:rgba(255,140,0,0.08);border:1px solid rgba(255,140,0,0.4);color:#FF8C00;font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;border-radius:4px;cursor:pointer;letter-spacing:.04em;transition:all .15s;" onmouseover="this.style.background='rgba(255,140,0,0.18)'" onmouseout="this.style.background='rgba(255,140,0,0.08)'">&#x2295; Add Site Column</button>
           </div>
+          <button id="btn-site-col-pin" onclick="toggleSiteColumnPinMode()" style="width:100%;background:rgba(255,140,0,0.08);border:1px dashed rgba(255,140,0,0.4);color:#FF8C00;font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;border-radius:4px;cursor:pointer;letter-spacing:.04em;transition:all .15s;margin-bottom:8px;" onmouseover="this.style.background='rgba(255,140,0,0.18)'" onmouseout="this.style.background=window._pinningSiteColumn?'rgba(255,140,0,0.22)':'rgba(255,140,0,0.08)'">&#x1F4CD; Pin Column on Map (no coordinates needed)</button>
           <div id="site-col-list" style="display:flex;flex-direction:column;gap:3px;"></div>
           <div style="display:flex;gap:4px;margin-bottom:4px;margin-top:6px;">
             <span style="width:18px;"></span>
@@ -2332,6 +2333,13 @@ var PREVIEW_PARTIAL_KM2 = 25;
   map.on('mouseout', function() {
     var el = document.getElementById('cursor-coords');
     if (el) el.style.display = 'none';
+  });
+
+  // Click-to-pin a site column when no coordinates are known
+  map.on('click', function(e) {
+    if (window._pinningSiteColumn && typeof _placeSiteColumnAt === 'function') {
+      _placeSiteColumnAt(e.latlng.lat, e.latlng.lng);
+    }
   });
 
   window._ensureStripePattern = ensureStripePattern;
@@ -7456,6 +7464,30 @@ async function addSiteColumn() {
   _renderSiteColumnMarkers();
 
   if (btn) { btn.textContent = '⊕ Add Site Column'; btn.style.pointerEvents = ''; }
+}
+
+window._pinningSiteColumn = false;
+
+function toggleSiteColumnPinMode() {
+  window._pinningSiteColumn = !window._pinningSiteColumn;
+  var btn = document.getElementById('btn-site-col-pin');
+  var mapEl = document.getElementById('map');
+  var hint = document.getElementById('map-hint');
+  if (window._pinningSiteColumn) {
+    if (btn) { btn.textContent = '✕ Click the map to place — click again to stop'; btn.style.background = 'rgba(255,140,0,0.22)'; }
+    if (mapEl) mapEl.style.cursor = 'crosshair';
+    if (hint) hint.textContent = 'Click anywhere on the map to drop an orange site column.';
+  } else {
+    if (btn) { btn.textContent = '\u{1F4CD} Pin Column on Map (no coordinates needed)'; btn.style.background = 'rgba(255,140,0,0.08)'; }
+    if (mapEl) mapEl.style.cursor = '';
+    updateHint();
+  }
+}
+
+function _placeSiteColumnAt(lat, lon) {
+  _siteColIdCounter++;
+  window._siteColumns.push({ id: _siteColIdCounter, lat: lat, lon: lon });
+  _renderSiteColumnMarkers();
 }
 
 function removeSiteColumn(id) {
