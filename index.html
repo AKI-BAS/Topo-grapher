@@ -2614,10 +2614,36 @@ const TOPO_PUNS = [
   'Rise and Grind', 'Bench Mark', 'Great Heights',
   'Terrain of Thought', 'Rocky Horizon', 'Crest Effort',
   'High Ground', 'Vertex Vortex', 'All Downhill',
-  'Zenith of Chill', 'Bump in the Node', 'Get Elevated'
+  'Zenith of Chill', 'Bump in the Node', 'Get Elevated',
+  'Plot Twist', 'Grid Expectations', 'Node to Self', 'Vector Victory',
+  'Datum Point', 'Raster the Bar', 'Polygon My Mind', 'Slope Intended',
+  'Hill of Beans', 'Gradient of Doubt', 'Peak Condition', 'Summit Up',
+  'Contour Intuitive', 'Base Camp Vibes', 'Northing to See Here',
+  'Easting Eggs', 'Datum Right', 'Spot Height of Fashion', 'TIN Foil Hat',
+  'Mesh Appeal', 'Point Well Taken', 'Point Cloud Nine', 'Breakline Dancing',
+  'Interpolation Nation', 'Extrapolate Expectations', 'Isoline in the Sand',
+  'Watershed Moment', 'Sea Level Up', 'Aspect Ratio Rising', 'Slope Unturned',
+  'Grade Expectations', 'Bench Press Mark', 'Knoll and Roll', 'Escarpment Goals',
+  'Plateau of Contentment', 'Massif Attack', 'Butte Ugly', 'Gorge-ous View',
+  'Canyon-Do Attitude', 'Foothill of the Matter', 'Talus Tale', 'Moraine Event',
+  'Drumlin Roll', 'Fjord Focus', 'Isthmus Be It', 'Promontory Point',
+  'Bluff Call', 'Berm Baby Berm', 'Spillway Cool', 'Aquifer the Money',
+  'Bedrock Solid', 'Stratum Trooper', 'Outcrop Top', 'Scree You Later',
+  'Boulder Dash', 'Crevice Opportunity', 'Overhang Loose', 'Saddle Up Slope',
+  'Esker Point', 'Loess Is More', 'Alluvial Fanfare', 'Floodplain Sight',
+  'Terrace Yourself', 'Swale Story', 'Divide and Conquer', 'Meander Thoughts',
+  'Oxbow Before You Go', 'Confluence of Events'
 ];
+// Avoid repeating any of the last N names within a short session
+var TOPO_PUN_RECENT = [];
+var TOPO_PUN_RECENT_MAX = 10;
 function randomTopoPun() {
-  return TOPO_PUNS[Math.floor(Math.random() * TOPO_PUNS.length)];
+  var pool = TOPO_PUNS.filter(function(p) { return TOPO_PUN_RECENT.indexOf(p) === -1; });
+  if (!pool.length) pool = TOPO_PUNS;
+  var pick = pool[Math.floor(Math.random() * pool.length)];
+  TOPO_PUN_RECENT.push(pick);
+  if (TOPO_PUN_RECENT.length > TOPO_PUN_RECENT_MAX) TOPO_PUN_RECENT.shift();
+  return pick;
 }
 window.__topoNameIsAuto = true;
 function ensureProjectNameFilled() {
