@@ -381,6 +381,9 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .feed-type-pro{color:var(--blue);background:var(--blue-dk);border-color:rgba(78,160,217,.3);}
 .feed-type-signup{color:var(--accent);background:var(--accent-dk);border-color:rgba(154,186,106,.3);}
 .feed-type-upgrade{color:var(--amber);background:var(--amber-dk);border-color:rgba(224,160,80,.3);}
+.feed-type-fail{color:var(--red);background:rgba(226,85,85,.12);border-color:rgba(226,85,85,.35);}
+.feed-type-started{color:var(--muted);background:var(--surface2);border-color:var(--border);opacity:.75;}
+.feed-fail-detail{font-family:'DM Mono',monospace;font-size:10px;color:var(--red);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .feed-content{flex:1;min-width:0;}
 .feed-main{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .feed-meta{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:1px;}
@@ -2208,15 +2211,24 @@ async function loadCountryBars(){
 // ── Live feed ─────────────────────────────────────────────────
 async function loadFeed(){
   const ps=periodStart();
-  const qf=_sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,created_at').order('created_at',{ascending:false}).limit(30);
+  const qf=_sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,created_at,status,error_stage,error_detail,user_id').order('created_at',{ascending:false}).limit(30);
   const{data:gens}=await (ps?qf.gte('created_at',ps):qf);
   const{data:signups}=await _sb.from('profiles').select('email,plan,created_at').order('created_at',{ascending:false}).limit(10);
   const items=[];
-  (gens||[]).forEach(r=>items.push({type:r.user_plan==='pro'||r.user_plan==='company'?'pro':'gen',time:r.created_at,dl:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${esc(r.project_name||'—')}`,meta:`${r.user_plan||'free'} · ${r.point_count?r.point_count.toLocaleString()+'pts':''} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}`}));
+  (gens||[]).forEach(r=>{
+    const who=r.user_id?(r.user_plan||'free'):'anon';
+    let type;
+    if(r.status==='failed') type='fail';
+    else if(r.status==='started') type='started';
+    else type=(r.user_plan==='pro'||r.user_plan==='company')?'pro':'gen';
+    const label=r.project_name?esc(r.project_name):(type==='started'?'<em style="color:var(--muted);font-style:normal;">in progress…</em>':type==='fail'?'<em style="color:var(--red);font-style:normal;">failed attempt</em>':'—');
+    const meta=`${who} · ${r.point_count?r.point_count.toLocaleString()+'pts':'—'} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}`;
+    items.push({type,time:r.created_at,dl:type==='fail'||type==='started'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?' — '+esc(r.error_detail):''}`:null});
+  });
   (signups||[]).forEach(r=>items.push({type:r.plan!=='free'?'upgrade':'signup',time:r.created_at,dl:null,main:`New ${r.plan!=='free'?r.plan+' subscriber':'signup'} · ${esc((r.email||'').split('@')[0])}`,meta:r.plan!=='free'?r.plan+' tier':'free tier'}));
   items.sort((a,b)=>new Date(b.time)-new Date(a.time));
-  const icons={gen:'◇',pro:'⬡',signup:'★',upgrade:'↑'};
-  const typeClasses={gen:'feed-type-gen',pro:'feed-type-pro',signup:'feed-type-signup',upgrade:'feed-type-upgrade'};
+  const icons={gen:'◇',pro:'⬡',signup:'★',upgrade:'↑',fail:'✕',started:'◌'};
+  const typeClasses={gen:'feed-type-gen',pro:'feed-type-pro',signup:'feed-type-signup',upgrade:'feed-type-upgrade',fail:'feed-type-fail',started:'feed-type-started'};
   const dlDot=i=>i.dl===null?'':(i.dl?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:5px;vertical-align:middle;" title="Exported"></span>':'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--border2);margin-left:5px;vertical-align:middle;" title="No export"></span>');
 
   document.getElementById('badge-feed').textContent='Live tail';
@@ -2224,7 +2236,7 @@ async function loadFeed(){
     <input id="feed-delete-name" type="text" placeholder="Project name to purge…" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:'DM Mono',monospace;font-size:11px;outline:none;border-radius:3px;">
     <button onclick="purgeByName()" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red);background:none;border:1px solid var(--red);padding:5px 10px;cursor:pointer;letter-spacing:.04em;border-radius:3px;white-space:nowrap;transition:all .15s;" onmouseover="this.style.background='rgba(226,85,85,.15)'" onmouseout="this.style.background='none'">⌫ Purge</button>
   </div>
-  <div class="feed">${items.slice(0,20).map(i=>`<div class="feed-item"><div class="feed-type ${typeClasses[i.type]}">${icons[i.type]}</div><div class="feed-content"><div class="feed-main">${i.main}${dlDot(i)}</div><div class="feed-meta">${i.meta}</div></div><div class="feed-time">${ago(i.time)}</div></div>`).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No activity yet</div>'}</div>`;
+  <div class="feed">${items.slice(0,20).map(i=>`<div class="feed-item"><div class="feed-type ${typeClasses[i.type]}">${icons[i.type]}</div><div class="feed-content"><div class="feed-main">${i.main}${dlDot(i)}</div><div class="feed-meta">${i.meta}</div>${i.fail_detail?`<div class="feed-fail-detail">${i.fail_detail}</div>`:''}</div><div class="feed-time">${ago(i.time)}</div></div>`).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No activity yet</div>'}</div>`;
 }
 async function purgeByName(){
   const inp=document.getElementById('feed-delete-name');
