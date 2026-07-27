@@ -3388,12 +3388,31 @@ async function handleSession(session) {
     setTimeout(restoreProMemory, 500);
   }
   updatePresence();
-  if (window._pendingDownloadFmt && window._cleanOutMetric?.length) {
-    const fmt = window._pendingDownloadFmt;
+  let resumeFmt = window._pendingDownloadFmt;
+  let restoredFromStorage = false;
+  if (!resumeFmt || !window._cleanOutMetric?.length) {
+    try {
+      const raw = localStorage.getItem('topo_pending_download');
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p && p.pts && p.pts.length && (Date.now() - (p.ts || 0)) < 3600000) {
+          window._cleanOutMetric = p.pts;
+          window._effectiveSpacing = p.spacing;
+          projectName = p.projectName || projectName;
+          const nEl = document.getElementById('project-name');
+          if (nEl && p.projectName) nEl.value = p.projectName;
+          resumeFmt = p.fmt;
+          restoredFromStorage = true;
+        }
+      }
+    } catch(e) { /* corrupted or disabled — skip resume */ }
+  }
+  if (resumeFmt && window._cleanOutMetric?.length) {
     window._pendingDownloadFmt = null;
+    try { localStorage.removeItem('topo_pending_download'); } catch(e) {}
     const sel = document.getElementById('format-select');
-    if (sel) sel.value = fmt;
-    track('download_resumed_after_auth', { format: fmt });
+    if (sel) sel.value = resumeFmt;
+    track('download_resumed_after_auth', { format: resumeFmt, from_storage: restoredFromStorage });
     setTimeout(handleDownload, 400);
   }
 }
@@ -3435,9 +3454,19 @@ function updateNavUI() {
 }
 
 // ── Auth Modal ────────────────────────────────────────────────────────────
-function openAuth(mode) {
+function openAuth(mode, context) {
   document.getElementById('auth-overlay').classList.add('show');
-  if (mode === 'signup') { switchTab('signup'); track('signup_prompt_shown', {}); } else switchTab('signin');
+  const titleEl = document.getElementById('auth-title');
+  const subEl = document.getElementById('auth-subtitle');
+  if (context === 'download') {
+    if (titleEl) titleEl.textContent = 'Sign up to finish your download';
+    if (subEl) subEl.innerHTML = 'Your site is ready — create a free account to save it and download the file. No card, no charge.<br><span style="display:block;margin-top:10px;font-size:12px;color:var(--accent);">✓ Remember to confirm your email so your download can finish.</span>';
+    switchTab('signup'); track('signup_prompt_shown', { context: 'download' });
+  } else {
+    if (titleEl) titleEl.textContent = 'Sign in';
+    if (subEl) subEl.textContent = 'Access your projects and Pro features.';
+    if (mode === 'signup') { switchTab('signup'); track('signup_prompt_shown', {}); } else switchTab('signin');
+  }
 }
 function openUpgrade() {
   document.getElementById('upgrade-overlay').classList.add('show');
@@ -4593,7 +4622,16 @@ function handleDownload() {
   if (!_currentUser) {
     track('download_gated', { format: fmt });
     window._pendingDownloadFmt = fmt;
-    openAuth();
+    try {
+      localStorage.setItem('topo_pending_download', JSON.stringify({
+        fmt,
+        projectName,
+        pts: window._cleanOutMetric,
+        spacing: window._effectiveSpacing || selectedSpacing,
+        ts: Date.now()
+      }));
+    } catch(e) { /* quota or disabled — resume-in-tab still works */ }
+    openAuth('signup', 'download');
     return;
   }
   const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
