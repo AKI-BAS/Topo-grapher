@@ -958,7 +958,8 @@ const PAGES = [
       { id: 'retention', title: 'Cohort Retention', icon: '◫' } ] },
   { id: 'funnels',   title: 'Funnels',             icon: '▽', secs: [
       { id: 'actfunnel',     title: 'Activation Funnel', icon: '▷' },
-      { id: 'paywallfunnel', title: 'Paywall Funnel',    icon: '⛔' } ] },
+      { id: 'paywallfunnel', title: 'Paywall Funnel',    icon: '⛔' },
+      { id: 'gatefunnel',    title: 'Gate Funnel',       icon: '⇢' } ] },
   { id: 'monetization', title: 'Conversion & Usage', icon: '⇄', secs: [
       { id: 'convchurn',  title: 'Conversion & Churn', icon: '⇄' },
       { id: 'usagestats', title: 'Usage Patterns',     icon: '≡' } ] },
@@ -997,7 +998,7 @@ function switchPage(id) {
   if (id === 'monitor') setTimeout(() => { try { loadMonitor(); } catch(e) {} }, 40);
   // Analytics pages: heavier queries against `events`, so load on demand too
   if (id === 'growth') setTimeout(() => { try { loadDauWauMau(); loadRetention(); } catch(e) {} }, 40);
-  if (id === 'funnels') setTimeout(() => { try { loadActivationFunnel(); loadPaywallFunnel(); } catch(e) {} }, 40);
+  if (id === 'funnels') setTimeout(() => { try { loadActivationFunnel(); loadPaywallFunnel(); loadGateFunnel(); } catch(e) {} }, 40);
   if (id === 'monetization') setTimeout(() => { try { loadConvChurn(); loadUsageStats(); } catch(e) {} }, 40);
 }
 
@@ -1822,6 +1823,37 @@ async function loadPaywallFunnel(){
   }
 }
 
+// ── Gate funnel: anon → gated → resumed → converted ─────────────
+async function loadGateFunnel(){
+  const body=document.getElementById('body-gatefunnel');
+  if(!body)return;
+  try{
+    const pStart=periodStart()||'2000-01-01T00:00:00Z';
+    const base=()=>_sb.from('events').select('*',{count:'exact',head:true}).eq('is_test',false).gte('created_at',pStart);
+    const [gate,resumed,subs]=await Promise.all([
+      base().in('event',['download_gated','checkout_gated']),
+      base().in('event',['download_resumed_after_auth','checkout_resumed_after_auth']),
+      base().eq('event','subscription_created'),
+    ]);
+    const gateC=gate.count||0, resumedC=resumed.count||0, subsC=subs.count||0;
+    const steps=[
+      {name:'Anon hit gate (download / checkout)', count:gateC,    color:'var(--red)'},
+      {name:'Signed up and resumed action',        count:resumedC, color:'var(--blue)'},
+      {name:'Subscription created',                count:subsC,    color:'var(--accent)'},
+    ];
+    document.getElementById('badge-gatefunnel').textContent=periodLabel();
+    const maxC=steps[0].count||1;
+    if(!gateC){_analyticsNoData(body,'gatefunnel');return;}
+    body.innerHTML=`<div class="funnel">${steps.map(s=>{
+      const pct=maxC>0?Math.round(s.count/maxC*100):0;
+      return`<div class="funnel-step"><div class="funnel-label"><span class="funnel-name">${s.name}</span><span class="funnel-count">${s.count.toLocaleString()}</span></div><div class="funnel-bar-bg"><div class="funnel-bar-fill" style="width:0%;background:${s.color}" data-w="${pct}"></div></div><div class="funnel-pct">${pct}%</div></div>`;
+    }).join('')}</div>`;
+    requestAnimationFrame(()=>{document.querySelectorAll('#body-gatefunnel .funnel-bar-fill').forEach(el=>{setTimeout(()=>{el.style.width=el.dataset.w+'%';},100);});});
+  }catch(err){
+    _analyticsNoData(body,'gatefunnel');
+  }
+}
+
 // ── Free→Pro conversion + churn/cancellation reasons ────────────
 async function loadConvChurn(){
   const body=document.getElementById('body-convchurn');
@@ -2565,6 +2597,7 @@ const MOB_TABS = [
   { id:'retention',     title:'Retention',   icon:'◫' },
   { id:'actfunnel',     title:'Activation',  icon:'▷' },
   { id:'paywallfunnel', title:'Paywall',     icon:'⛔' },
+  { id:'gatefunnel',    title:'Gate',        icon:'⇢' },
   { id:'convchurn',     title:'Conv/Churn',  icon:'⇄' },
   { id:'usagestats',    title:'Usage',       icon:'≡' },
   { id:'blast',     title:'Email Blast',icon:'✉' },
@@ -2631,7 +2664,7 @@ function switchMobTab(id) {
   // Analytics tabs: on demand each open, same as monitor/trends
   const analyticsLoaders = {
     dauwaumau: loadDauWauMau, retention: loadRetention,
-    actfunnel: loadActivationFunnel, paywallfunnel: loadPaywallFunnel,
+    actfunnel: loadActivationFunnel, paywallfunnel: loadPaywallFunnel, gatefunnel: loadGateFunnel,
     convchurn: loadConvChurn, usagestats: loadUsageStats,
   };
   if (analyticsLoaders[id]) {

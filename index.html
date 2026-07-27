@@ -1724,7 +1724,7 @@ function declineCookies() {
             <div style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">Subscription</div>
             <div id="settings-free-cta" style="display:none;">
               <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;line-height:1.65;">Upgrade to Pro for 3m precision, LiDAR accuracy, and sites up to 4 km².</p>
-              <button class="tier-cta" onclick="closeSettings();document.getElementById('pricing').scrollIntoView({behavior:'smooth'})">Upgrade to Pro →</button>
+              <button class="tier-cta" onclick="closeSettings();track('pro_cta_clicked',{source:'settings'});startCheckout('pro')">Upgrade to Pro →</button>
             </div>
             <div id="settings-pro-info" style="display:none;">
               <p style="font-size:13px;color:var(--text-mid);line-height:1.65;">You have an active Pro subscription.<br>To manage billing contact <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
@@ -2180,7 +2180,7 @@ function declineCookies() {
     <div style="font-size:36px;margin-bottom:20px;opacity:.4;">🔒</div>
     <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:500;color:var(--text);margin-bottom:10px;">Pro feature</div>
     <div style="font-size:13px;color:var(--text-mid);line-height:1.75;max-width:300px;margin-bottom:24px;">Upgrade to Pro to save your generated sites and return to them at any time — re-view on the map, re-open 3D terrain, or re-download the CSV.</div>
-    <button onclick="closeHistory();openAuth();" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:11px 24px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;transition:all .15s;" onmouseover="this.style.background='var(--green-lt)'" onmouseout="this.style.background='var(--green)'">Sign in or upgrade →</button>
+    <button id="history-locked-cta" onclick="_libraryGateCta()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:11px 24px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;transition:all .15s;" onmouseover="this.style.background='var(--green-lt)'" onmouseout="this.style.background='var(--green)'">Sign up to save projects →</button>
   </div>
 
   <!-- Content — My Projects -->
@@ -3415,6 +3415,22 @@ async function handleSession(session) {
     track('download_resumed_after_auth', { format: resumeFmt, from_storage: restoredFromStorage });
     setTimeout(handleDownload, 400);
   }
+  let resumePlan = window._pendingCheckoutPlan;
+  if (!resumePlan) {
+    try {
+      const raw = localStorage.getItem('topo_pending_checkout');
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p && p.plan && (Date.now() - (p.ts || 0)) < 3600000) resumePlan = p.plan;
+      }
+    } catch(e) {}
+  }
+  if (resumePlan) {
+    window._pendingCheckoutPlan = null;
+    try { localStorage.removeItem('topo_pending_checkout'); } catch(e) {}
+    track('checkout_resumed_after_auth', { plan: resumePlan });
+    setTimeout(() => startCheckout(resumePlan), 500);
+  }
 }
 
 function handleSignOut() {
@@ -3927,7 +3943,13 @@ const STRIPE_PRICE_COMPANY = 'price_1TWu6A3tgjRssKt3h8AAYnC5';
 const WEBHOOK_WORKER       = 'https://odd-king-7b02.svanur300.workers.dev';
 
 async function startCheckout(plan) {
-  if (!_currentUser) { openAuth(); return; }
+  if (!_currentUser) {
+    track('checkout_gated', { plan });
+    window._pendingCheckoutPlan = plan;
+    try { localStorage.setItem('topo_pending_checkout', JSON.stringify({ plan, ts: Date.now() })); } catch(e) {}
+    openAuth('signup');
+    return;
+  }
   track('checkout_started', { plan });
   const priceId = plan === 'company' ? STRIPE_PRICE_COMPANY : STRIPE_PRICE_PRO;
   const btn = document.getElementById('checkout-btn-' + plan);
@@ -5193,7 +5215,22 @@ function _showBuildingsUpgradePrompt() {
   uPrompt.style.display = 'block';
 }
 function _buildingsUpgradeCta() {
-  openUpgrade();
+  if (_currentUser) {
+    track('pro_cta_clicked', { source: 'buildings_gate' });
+    startCheckout('pro');
+  } else {
+    openAuth('signup');
+  }
+}
+function _libraryGateCta() {
+  if (_currentUser) {
+    track('pro_cta_clicked', { source: 'library_gate' });
+    closeHistory();
+    startCheckout('pro');
+  } else {
+    closeHistory();
+    openAuth('signup');
+  }
 }
 
 async function downloadBuildings() {
@@ -6694,6 +6731,8 @@ async function openHistory() {
   var isCompany = _currentProfile && _currentProfile.plan === 'company';
 
   if (locked)    locked.style.display   = isPro() ? 'none' : '';
+  var cta = document.getElementById('history-locked-cta');
+  if (cta) cta.textContent = _currentUser ? 'Upgrade to Pro →' : 'Sign up to save projects →';
   if (legend)    legend.style.display   = isPro() ? ''     : 'none';
   // Show scope toggle only for company plan
   if (scopeBar)  scopeBar.style.display = isCompany ? '' : 'none';
