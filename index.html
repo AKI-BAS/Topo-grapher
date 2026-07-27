@@ -3388,6 +3388,14 @@ async function handleSession(session) {
     setTimeout(restoreProMemory, 500);
   }
   updatePresence();
+  if (window._pendingDownloadFmt && window._cleanOutMetric?.length) {
+    const fmt = window._pendingDownloadFmt;
+    window._pendingDownloadFmt = null;
+    const sel = document.getElementById('format-select');
+    if (sel) sel.value = fmt;
+    track('download_resumed_after_auth', { format: fmt });
+    setTimeout(handleDownload, 400);
+  }
 }
 
 function handleSignOut() {
@@ -4582,6 +4590,12 @@ function handleDownload() {
   const fmt = document.getElementById('format-select')?.value || 'csv';
   track('download_attempted', { format: fmt });
   if (!window._cleanOutMetric?.length) return;
+  if (!_currentUser) {
+    track('download_gated', { format: fmt });
+    window._pendingDownloadFmt = fmt;
+    openAuth();
+    return;
+  }
   const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
   const a = document.createElement('a');
   if (fmt === 'ifc') {
