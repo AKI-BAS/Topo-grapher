@@ -3570,10 +3570,10 @@ async function submitAuth(type) {
     if (!email || !password) { showErr('Please fill in all fields.'); return; }
     try {
       const { error } = await _withTimeout(_sb.auth.signInWithPassword({ email, password }), 12000);
-      if (error) { showErr(_authErrMsg(error.message)); return; }
+      if (error) { track('signin_failed', { method: 'email', reason: (error.message||'').slice(0,80) }); showErr(_authErrMsg(error.message)); return; }
       track('signin_completed', { method: 'email' });
       restore(); closeAuth();
-    } catch(e) { showErr(_authErrMsg(e.message || '')); }
+    } catch(e) { track('signin_failed', { method: 'email', reason: (e.message||'timeout').slice(0,80) }); showErr(_authErrMsg(e.message || '')); }
 
   } else {
     const email    = document.getElementById('signup-email').value.trim();
