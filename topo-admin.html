@@ -118,6 +118,12 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .page-single .sec-body{overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;}
 /* Combined pages: two related sections side by side, each with its own header */
 .page-duo{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr);gap:clamp(12px,1.4vw,26px);}
+.page-quad{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:clamp(12px,1.4vw,26px);}
+.page-quad .sec-body{overflow-y:auto;}
+@media(max-width:1000px){.page-quad{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-rows:minmax(320px,auto);}}
+.page-triple{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:clamp(12px,1.4vw,26px);}
+.page-triple .sec-body{overflow-y:auto;}
+@media(max-width:1000px){.page-triple{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-rows:minmax(320px,auto);}}
 .page-duo .sec-body{overflow-y:auto;}
 
 /* Trend metric switcher */
@@ -946,8 +952,10 @@ const PAGES = [
       { id: 'countries', title: 'Countries',       icon: '⚑' },
       { id: 'gaps',      title: 'LiDAR Priority',  icon: '⊿' } ] },
   { id: 'people',    title: 'Users & Signups',     icon: '◉', secs: [
-      { id: 'users',     title: 'Users',           icon: '◉' },
-      { id: 'signups',   title: 'Signups',         icon: '★' } ] },
+      { id: 'users',        title: 'Users',           icon: '◉' },
+      { id: 'signups',      title: 'Signups',         icon: '★' },
+      { id: 'hotleads',     title: 'Hot Leads',       icon: '⚑' },
+      { id: 'emaildomains', title: 'Top Domains',     icon: '@' } ] },
   { id: 'exports',   title: 'Formats & Downloads', icon: '⤓', secs: [
       { id: 'formats',   title: 'Export Formats',  icon: '⤓' },
       { id: 'dlrate',    title: 'Download Rate',   icon: '↓' } ] },
@@ -978,7 +986,7 @@ function createPages() {
   const host = document.getElementById('pages');
   let html = `<div class="page" id="page-overview">${OVERVIEW_SECS.map(secHtml).join('')}</div>`;
   PAGES.filter(p => p.id !== 'overview').forEach(p => {
-    const cls = p.secs.length > 1 ? 'page page-duo' : 'page page-single';
+    const cls = p.secs.length >= 4 ? 'page page-quad' : p.secs.length === 3 ? 'page page-triple' : p.secs.length > 1 ? 'page page-duo' : 'page page-single';
     html += `<div class="${cls}" id="page-${p.id}">${p.secs.map(secHtml).join('')}</div>`;
   });
   host.innerHTML = html;
@@ -1137,6 +1145,7 @@ function _initLeafletMap(){
   if(!_hmap){
     _hmap=L.map('heatmap-container',{center:[52,10],zoom:4,zoomControl:true,attributionControl:false,maxBounds:[[-85,-180],[85,180]],maxBoundsViscosity:1.0,minZoom:2});
     L.tileLayer(tileUrl,{maxZoom:18,noWrap:true}).addTo(_hmap);
+    _hmap.on('click',()=>{if(_hmap._feedPin){_hmap.removeLayer(_hmap._feedPin);_hmap._feedPin=null;}});
     // Coverage polygons live below the generation dots so dots stay clickable on top
     _hmap.createPane('covPane');_hmap.getPane('covPane').style.zIndex=350;
   }
@@ -1144,6 +1153,19 @@ function _initLeafletMap(){
   if(_mapLayers.coverage)_ensureCoverageLayer();
 }
 
+function focusFeedLocation(lat,lon,name){
+  const sec=document.getElementById('sec-heatmap');
+  if(sec){sec.scrollIntoView({behavior:'smooth',block:'start'});}
+  const doFocus=()=>{
+    if(!_hmap){setTimeout(doFocus,200);return;}
+    _hmap.invalidateSize();
+    _hmap.flyTo([lat,lon],15,{duration:1.1});
+    if(_hmap._feedPin){_hmap.removeLayer(_hmap._feedPin);}
+    _hmap._feedPin=L.circleMarker([lat,lon],{radius:10,color:'#E0A050',weight:2,fillColor:'#E0A050',fillOpacity:.35}).addTo(_hmap);
+    if(name){_hmap._feedPin.bindPopup(`<div style="font-family:DM Mono,monospace;font-size:11px;"><strong>${esc(name)}</strong></div>`).openPopup();}
+  };
+  setTimeout(doFocus,350);
+}
 function _populateHeatmap(data){
   if(!_hmap)return;
   if(_hmap._mg)_hmap.removeLayer(_hmap._mg);
@@ -1937,13 +1959,14 @@ async function loadMonitor(){
 
   const dayAgo=new Date(Date.now()-864e5).toISOString();
   const hourAgo=new Date(Date.now()-36e5).toISOString();
+  const weekAgo=new Date(Date.now()-7*864e5).toISOString();
 
   // Kick off everything in parallel: reachability pings + DB queries
   const supaT0=performance.now();
   const supaHealth=fetch(SUPABASE_URL+'/rest/v1/generations?select=id&limit=1',{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY},cache:'no-store'})
     .then(r=>({ok:r.ok,ms:Math.round(performance.now()-supaT0)})).catch(()=>({ok:false,ms:null}));
 
-  const [supa, elevPings, notifyPing, lastGen, win24, stuck, fails, admins] = await Promise.all([
+  const [supa, elevPings, notifyPing, lastGen, win24, stuck, fails, admins, authFails24, signups24, gens7d, allProfiles] = await Promise.all([
     supaHealth,
     Promise.all(MON_ELEVATION_WORKERS.map(w=>_pingHost('https://'+w+'.svanur300.workers.dev'))),
     _pingHost(MON_NOTIFY_WORKER),
@@ -1952,6 +1975,10 @@ async function loadMonitor(){
     _sb.from('generations').select('*',{count:'exact',head:true}).eq('status','started').lt('created_at',hourAgo),
     _sb.from('generations').select('created_at,error_stage,error_detail,country_code').eq('status','failed').order('created_at',{ascending:false}).limit(12),
     _sb.from('profiles').select('email').eq('is_admin',true),
+    _sb.from('events').select('created_at,properties').eq('event','signin_failed').gte('created_at',dayAgo).limit(500),
+    _sb.from('profiles').select('created_at,email').gte('created_at',dayAgo).limit(500),
+    _sb.from('generations').select('user_id').gte('created_at',weekAgo).limit(20000),
+    _sb.from('profiles').select('email').limit(10000),
   ]);
 
   // Reachability tallies
@@ -1970,6 +1997,36 @@ async function loadMonitor(){
   const lastGenTs=lastGen.data&&lastGen.data[0]?lastGen.data[0].created_at:null;
   const lastGenMins=lastGenTs?Math.round((Date.now()-new Date(lastGenTs).getTime())/60000):null;
 
+  // Auth failures (last 24h)
+  const authFailCount=(authFails24.data||[]).length;
+  const authFailByHour={};
+  (authFails24.data||[]).forEach(e=>{const h=new Date(e.created_at).toISOString().slice(0,13);authFailByHour[h]=(authFailByHour[h]||0)+1;});
+  const authFailPeakHour=Math.max(0,...Object.values(authFailByHour));
+
+  // Rapid signup detector (last 24h, per-hour bucketing)
+  const signupsByHour={};
+  (signups24.data||[]).forEach(p=>{const h=new Date(p.created_at).toISOString().slice(0,13);signupsByHour[h]=(signupsByHour[h]||0)+1;});
+  const signupPeakHour=Math.max(0,...Object.values(signupsByHour));
+  const signups24Total=(signups24.data||[]).length;
+  const RAPID_SIGNUP_THRESHOLD=8;
+
+  // Disposable email flag
+  const DISPOSABLE_DOMAINS = new Set([
+    'mailinator.com','tempmail.com','10minutemail.com','guerrillamail.com','yopmail.com',
+    'trashmail.com','throwawaymail.com','maildrop.cc','sharklasers.com','getnada.com',
+    'temp-mail.org','fakeinbox.com','dispostable.com','mytemp.email','tempinbox.com',
+    'mohmal.com','emailondeck.com','tempr.email','moakt.com','emailtemporanea.com'
+  ]);
+  const disposableCount=(allProfiles.data||[]).filter(p=>{const d=((p.email||'').split('@')[1]||'').toLowerCase();return DISPOSABLE_DOMAINS.has(d);}).length;
+
+  // 7d anon-vs-auth ratio
+  const gens7dRows=gens7d.data||[];
+  const gens7dTotal=gens7dRows.length;
+  const anon7d=gens7dRows.filter(r=>!r.user_id).length;
+  const anonShare7d=gens7dTotal>0?Math.round(anon7d/gens7dTotal*100):0;
+  const anonShare24=gens24>0?Math.round(anon24/gens24*100):0;
+  const anonShareDelta=anonShare24-anonShare7d;
+
   // Build the active-warnings banner
   const alerts=[];
   if(!supa.ok) alerts.push(['crit','Supabase read path is failing. Dashboard data may be stale']);
@@ -1981,6 +2038,11 @@ async function loadMonitor(){
   else if(failed24>=2&&failRate24>=10) alerts.push(['warn',`Elevated failure rate: ${failRate24.toFixed(0)}% in 24h`]);
   if(stuckCount>0) alerts.push(['warn',`${stuckCount} generation${stuckCount>1?'s':''} stuck in "started" over 1h, likely never finished`]);
   if(lastGenMins!==null&&lastGenMins>1440) alerts.push(['warn',`No generations in ${Math.round(lastGenMins/60)}h. Check the site is reachable`]);
+  if(authFailPeakHour>=15) alerts.push(['crit',`Auth attack likely: ${authFailPeakHour} failed sign-ins in a single hour`]);
+  else if(authFailPeakHour>=6) alerts.push(['warn',`Elevated auth failures: ${authFailPeakHour}/hr peak in last 24h`]);
+  if(signupPeakHour>=RAPID_SIGNUP_THRESHOLD) alerts.push(['warn',`Rapid signup burst: ${signupPeakHour} signups in a single hour (possible bot)`]);
+  if(disposableCount>0) alerts.push(['warn',`${disposableCount} account${disposableCount>1?'s':''} using disposable email domains`]);
+  if(gens7dTotal>=20&&Math.abs(anonShareDelta)>=30) alerts.push(['warn',`Anon share ${anonShareDelta>0?'jumped':'dropped'} ${Math.abs(anonShareDelta)}pt vs 7d avg (${anonShare24}% vs ${anonShare7d}%)`]);
   const worstLevel=alerts.some(a=>a[0]==='crit')?'crit':alerts.some(a=>a[0]==='warn')?'warn':'ok';
   if(badge)badge.textContent=worstLevel==='ok'?'all nominal':worstLevel==='warn'?alerts.length+' warning'+(alerts.length>1?'s':''):alerts.filter(a=>a[0]==='crit').length+' critical';
 
@@ -2029,6 +2091,13 @@ async function loadMonitor(){
         ${adminsHtml}
         <div class="mon-row"><span class="mon-dot ok"></span><div class="mon-label">Row-level security</div><div class="mon-val">enforced</div></div>
         <div class="mon-row"><span class="mon-dot ok"></span><div class="mon-label">Anon key scope</div><div class="mon-val">public read</div></div>
+      </div>
+      <div class="mon-block">
+        <div class="mon-block-title">Security signals · last 24h</div>
+        ${statusRow('Failed sign-ins',authFailCount<10,authFailCount+' · peak '+authFailPeakHour+'/hr',authFailCount===0)}
+        ${statusRow('Signups',signupPeakHour<RAPID_SIGNUP_THRESHOLD,signups24Total+' · peak '+signupPeakHour+'/hr',signups24Total===0)}
+        ${statusRow('Disposable emails (all-time)',disposableCount===0,disposableCount.toString(),disposableCount===0)}
+        ${statusRow('Anon share · 24h vs 7d',Math.abs(anonShareDelta)<30,anonShare24+'% · Δ'+(anonShareDelta>=0?'+':'')+anonShareDelta+'pt')}
       </div>
     </div>
     <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:16px;letter-spacing:.04em;">Reachability is a network-level liveness check, not app-logic health. Re-open this tab to refresh.</div>
@@ -2243,7 +2312,7 @@ async function loadCountryBars(){
 // ── Live feed ─────────────────────────────────────────────────
 async function loadFeed(){
   const ps=periodStart();
-  const qf=_sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,created_at,status,error_stage,error_detail,user_id').order('created_at',{ascending:false}).limit(30);
+  const qf=_sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,created_at,status,error_stage,error_detail,user_id,centroid_lat,centroid_lon').order('created_at',{ascending:false}).limit(30);
   const{data:gens}=await (ps?qf.gte('created_at',ps):qf);
   const{data:signups}=await _sb.from('profiles').select('email,plan,created_at').order('created_at',{ascending:false}).limit(10);
   const items=[];
@@ -2254,8 +2323,10 @@ async function loadFeed(){
     else if(r.status==='started') type='started';
     else type=(r.user_plan==='pro'||r.user_plan==='company')?'pro':'gen';
     const label=r.project_name?esc(r.project_name):(type==='started'?'<em style="color:var(--muted);font-style:normal;">in progress…</em>':type==='fail'?'<em style="color:var(--red);font-style:normal;">failed attempt</em>':'—');
-    const meta=`${who} · ${r.point_count?r.point_count.toLocaleString()+'pts':'—'} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}`;
-    items.push({type,time:r.created_at,dl:type==='fail'||type==='started'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?' — '+esc(r.error_detail):''}`:null});
+    const cName=CN[r.country_code]||r.country_code||'';
+    const meta=`${who} · ${r.point_count?r.point_count.toLocaleString()+'pts':'—'} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}${cName?' · '+esc(cName):''}`;
+    const loc=(r.centroid_lat!=null&&r.centroid_lon!=null)?{lat:+r.centroid_lat,lon:+r.centroid_lon,name:r.project_name||''}:null;
+    items.push({type,time:r.created_at,dl:type==='fail'||type==='started'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?' — '+esc(r.error_detail):''}`:null,loc});
   });
   (signups||[]).forEach(r=>items.push({type:r.plan!=='free'?'upgrade':'signup',time:r.created_at,dl:null,main:`New ${r.plan!=='free'?r.plan+' subscriber':'signup'} · ${esc((r.email||'').split('@')[0])}`,meta:r.plan!=='free'?r.plan+' tier':'free tier'}));
   items.sort((a,b)=>new Date(b.time)-new Date(a.time));
@@ -2268,7 +2339,7 @@ async function loadFeed(){
     <input id="feed-delete-name" type="text" placeholder="Project name to purge…" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:'DM Mono',monospace;font-size:11px;outline:none;border-radius:3px;">
     <button onclick="purgeByName()" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red);background:none;border:1px solid var(--red);padding:5px 10px;cursor:pointer;letter-spacing:.04em;border-radius:3px;white-space:nowrap;transition:all .15s;" onmouseover="this.style.background='rgba(226,85,85,.15)'" onmouseout="this.style.background='none'">⌫ Purge</button>
   </div>
-  <div class="feed">${items.slice(0,20).map(i=>`<div class="feed-item"><div class="feed-type ${typeClasses[i.type]}">${icons[i.type]}</div><div class="feed-content"><div class="feed-main">${i.main}${dlDot(i)}</div><div class="feed-meta">${i.meta}</div>${i.fail_detail?`<div class="feed-fail-detail">${i.fail_detail}</div>`:''}</div><div class="feed-time">${ago(i.time)}</div></div>`).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No activity yet</div>'}</div>`;
+  <div class="feed">${items.slice(0,20).map((i,idx)=>{const iconEl=i.loc?`<div class="feed-type ${typeClasses[i.type]}" onclick="focusFeedLocation(${i.loc.lat},${i.loc.lon},${JSON.stringify(i.loc.name||'').replace(/"/g,'&quot;')})" title="Show on heatmap" style="cursor:pointer;">${icons[i.type]}</div>`:`<div class="feed-type ${typeClasses[i.type]}">${icons[i.type]}</div>`;return`<div class="feed-item">${iconEl}<div class="feed-content"><div class="feed-main">${i.main}${dlDot(i)}</div><div class="feed-meta">${i.meta}</div>${i.fail_detail?`<div class="feed-fail-detail">${i.fail_detail}</div>`:''}</div><div class="feed-time">${ago(i.time)}</div></div>`}).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No activity yet</div>'}</div>`;
 }
 async function purgeByName(){
   const inp=document.getElementById('feed-delete-name');
@@ -2282,29 +2353,209 @@ async function purgeByName(){
   loadAll();
 }
 // ── Signups list ──────────────────────────────────────────────
+let _enrichedProfiles = null;
+const _PLAN_COLORS = {free:'var(--muted)',pro:'var(--blue)',company:'var(--purple)'};
+const _PLAN_BG = {free:'var(--surface2)',pro:'var(--blue-dk)',company:'rgba(139,122,198,.12)'};
+
+async function _loadEnrichedProfiles(){
+  const {data:profiles} = await _sb.from('profiles').select('id,email,plan,created_at,is_company_admin').order('created_at',{ascending:false}).limit(500);
+  if(!profiles||!profiles.length){_enrichedProfiles=[];return [];}
+  const ids = profiles.map(p=>p.id);
+  const [gensRes,evtsRes] = await Promise.all([
+    _sb.from('generations').select('user_id,created_at,file_name,status,country_code,area_km2').in('user_id',ids).eq('is_test',false),
+    _sb.from('events').select('user_id,event').in('user_id',ids).in('event',['download_gated','checkout_gated','download_attempted','free_limit_hit','upsell_popup_shown'])
+  ]);
+  const gensByUser={};
+  (gensRes.data||[]).forEach(g=>{
+    const u=g.user_id; if(!u)return;
+    if(!gensByUser[u])gensByUser[u]={count:0,downloads:0,fails:0,lastGen:null,countries:{},totalKm2:0};
+    const rec=gensByUser[u];
+    rec.count++;
+    if(g.file_name)rec.downloads++;
+    if(g.status==='failed')rec.fails++;
+    if(g.area_km2)rec.totalKm2+=g.area_km2;
+    if(!rec.lastGen||g.created_at>rec.lastGen)rec.lastGen=g.created_at;
+    if(g.country_code)rec.countries[g.country_code]=(rec.countries[g.country_code]||0)+1;
+  });
+  const evtsByUser={};
+  (evtsRes.data||[]).forEach(e=>{
+    const u=e.user_id; if(!u)return;
+    if(!evtsByUser[u])evtsByUser[u]={};
+    evtsByUser[u][e.event]=(evtsByUser[u][e.event]||0)+1;
+  });
+  _enrichedProfiles = profiles.map(p=>{
+    const g=gensByUser[p.id]||{count:0,downloads:0,fails:0,lastGen:null,countries:{},totalKm2:0};
+    const e=evtsByUser[p.id]||{};
+    const gated=(e.download_gated||0)+(e.checkout_gated||0);
+    const upsell=(e.upsell_popup_shown||0)+(e.free_limit_hit||0);
+    const score = g.count*1 + g.downloads*2 + gated*3 + upsell*4;
+    return Object.assign({},p,{
+      gens:g.count, downloads:g.downloads, fails:g.fails, lastGen:g.lastGen,
+      countries:g.countries, totalKm2:g.totalKm2, gated, upsell, score
+    });
+  });
+  return _enrichedProfiles;
+}
+
+function _scoreBadge(score){
+  const level = score>=15?'hot':score>=6?'warm':score>0?'cool':'cold';
+  const map = {hot:{c:'var(--red)',bg:'rgba(226,85,85,.15)',l:'HOT'},warm:{c:'var(--amber)',bg:'var(--amber-dk)',l:'WARM'},cool:{c:'var(--blue)',bg:'var(--blue-dk)',l:'COOL'},cold:{c:'var(--muted)',bg:'var(--surface2)',l:'—'}};
+  const m=map[level];
+  return `<span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;background:${m.bg};color:${m.c};border:1px solid ${m.c}40;font-family:'DM Mono',monospace;">${m.l} · ${score}</span>`;
+}
+
 async function loadSignups(){
-  const{data}=await _sb.from('profiles').select('email,plan,created_at,is_company_admin').order('created_at',{ascending:false}).limit(50);
-  if(!data||!data.length){document.getElementById('body-signups').innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">No signups yet</div>';return;}
-  document.getElementById('badge-signups').textContent=data.length+' latest';
-  const planColors={free:'var(--muted)',pro:'var(--blue)',company:'var(--purple)'};
-  const planBg={free:'var(--surface2)',pro:'var(--blue-dk)',company:'rgba(139,122,198,.12)'};
-  document.getElementById('body-signups').innerHTML=`<div style="display:flex;flex-direction:column;gap:0;max-height:100%;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;">
-    ${data.map(u=>{
+  const enriched = await _loadEnrichedProfiles();
+  const body = document.getElementById('body-signups');
+  if(!body)return;
+  if(!enriched.length){body.innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">No signups yet</div>';return;}
+  const rows = enriched.slice().sort((a,b)=>(b.score-a.score)||(new Date(b.created_at)-new Date(a.created_at))).slice(0,50);
+  document.getElementById('badge-signups').textContent=enriched.length+' users';
+  body.innerHTML=`<div style="display:flex;flex-direction:column;gap:0;max-height:100%;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;">
+    ${rows.map(u=>{
       const email=esc(u.email||'—');
       const plan=u.plan||'free';
       const isAdmin=u.is_company_admin?'<span style="font-family:DM Mono,monospace;font-size:8px;color:var(--amber);margin-left:4px;">ADMIN</span>':'';
-      return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(30,36,24,.5);">
+      return`<div onclick="showSignupDetail('${esc(u.id)}')" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(30,36,24,.5);cursor:pointer;" onmouseover="this.style.background='rgba(154,186,106,.05)'" onmouseout="this.style.background='transparent'">
         <div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;border:1px solid rgba(154,186,106,.3);color:var(--accent);background:var(--accent-dk);border-radius:4px;flex-shrink:0;">★</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${email}${isAdmin}</div>
-          <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);margin-top:1px;">
-            <span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;background:${planBg[plan]||planBg.free};color:${planColors[plan]||planColors.free};border:1px solid ${planColors[plan]||planColors.free}30;margin-right:6px;">${plan.toUpperCase()}</span>
-            ${ago(u.created_at)}
+          <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);margin-top:1px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;background:${_PLAN_BG[plan]||_PLAN_BG.free};color:${_PLAN_COLORS[plan]||_PLAN_COLORS.free};border:1px solid ${_PLAN_COLORS[plan]||_PLAN_COLORS.free}30;">${plan.toUpperCase()}</span>
+            ${_scoreBadge(u.score)}
+            <span>${u.gens} gen · ${u.downloads} dl</span>
+            <span style="opacity:.7">${ago(u.created_at)}</span>
           </div>
         </div>
       </div>`;
     }).join('')}
   </div>`;
+}
+
+async function loadHotLeads(){
+  const enriched = _enrichedProfiles || await _loadEnrichedProfiles();
+  const body = document.getElementById('body-hotleads');
+  if(!body)return;
+  const leads = enriched.filter(p=>p.plan==='free' && (p.gated>0||p.upsell>0||p.score>=6))
+                       .sort((a,b)=>b.score-a.score).slice(0,25);
+  const badge = document.getElementById('badge-hotleads'); if(badge) badge.textContent=leads.length+' leads';
+  if(!leads.length){body.innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">No hot leads yet. Free signups who hit a paywall or gate will show here.</div>';return;}
+  body.innerHTML=`<div style="font-size:10px;color:var(--muted);font-family:DM Mono,monospace;margin-bottom:8px;">Free users ranked by conversion intent · score = gens + dl×2 + gated×3 + paywall×4</div>
+  <div style="display:flex;flex-direction:column;gap:0;overflow-y:auto;max-height:calc(100% - 30px);">
+    ${leads.map(u=>`<div onclick="showSignupDetail('${esc(u.id)}')" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(30,36,24,.5);cursor:pointer;" onmouseover="this.style.background='rgba(226,85,85,.06)'" onmouseout="this.style.background='transparent'">
+      <div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;border:1px solid rgba(226,85,85,.35);color:var(--red);background:rgba(226,85,85,.12);border-radius:4px;flex-shrink:0;">⚑</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(u.email||'—')}</div>
+        <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);margin-top:1px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          ${_scoreBadge(u.score)}
+          <span>${u.gens} gen · ${u.gated} gated · ${u.upsell} paywall</span>
+          <span style="opacity:.6">${u.lastGen?'last '+ago(u.lastGen):'no gen'}</span>
+        </div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+async function loadEmailDomains(){
+  const enriched = _enrichedProfiles || await _loadEnrichedProfiles();
+  const body = document.getElementById('body-emaildomains');
+  if(!body)return;
+  const PERSONAL = new Set(['gmail.com','yahoo.com','hotmail.com','outlook.com','icloud.com','protonmail.com','proton.me','live.com','me.com','aol.com','msn.com','yandex.com','mail.com','gmx.com','gmx.de','web.de']);
+  const domCounts={};
+  let personal=0, business=0;
+  enriched.forEach(p=>{
+    const d=((p.email||'').split('@')[1]||'').toLowerCase();
+    if(!d)return;
+    domCounts[d]=(domCounts[d]||0)+1;
+    if(PERSONAL.has(d))personal++;else business++;
+  });
+  const top = Object.entries(domCounts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const total = personal+business;
+  const badge = document.getElementById('badge-emaildomains'); if(badge) badge.textContent=Object.keys(domCounts).length+' domains';
+  const max = top[0]?top[0][1]:1;
+  body.innerHTML=`<div style="display:flex;gap:14px;margin-bottom:12px;font-family:DM Mono,monospace;font-size:10px;">
+      <div><span style="color:var(--muted);">Business</span> <span style="color:var(--accent);font-weight:500;">${business}</span> <span style="opacity:.5">(${total?Math.round(business/total*100):0}%)</span></div>
+      <div><span style="color:var(--muted);">Personal</span> <span style="color:var(--blue);font-weight:500;">${personal}</span> <span style="opacity:.5">(${total?Math.round(personal/total*100):0}%)</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;overflow-y:auto;max-height:calc(100% - 50px);">
+      ${top.map(([d,c])=>{
+        const isPersonal=PERSONAL.has(d);
+        const color=isPersonal?'var(--blue)':'var(--accent)';
+        const w=Math.round(c/max*100);
+        return`<div style="display:flex;align-items:center;gap:8px;font-family:DM Mono,monospace;font-size:11px;">
+          <div style="flex:1;min-width:0;position:relative;background:var(--surface2);border-radius:3px;overflow:hidden;height:22px;">
+            <div style="position:absolute;top:0;left:0;bottom:0;width:${w}%;background:${color};opacity:.25;"></div>
+            <div style="position:relative;padding:3px 8px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(d)}${isPersonal?' <span style="opacity:.5;font-size:9px;">(personal)</span>':''}</div>
+          </div>
+          <div style="color:${color};min-width:32px;text-align:right;font-weight:500;">${c}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function showSignupDetail(userId){
+  const p = (_enrichedProfiles||[]).find(x=>x.id===userId);
+  if(!p)return;
+  let modal = document.getElementById('signup-detail-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'signup-detail-modal';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+    modal.addEventListener('click',(e)=>{if(e.target===modal)modal.style.display='none';});
+    document.body.appendChild(modal);
+  }
+  const plan=p.plan||'free';
+  const topCountries = Object.entries(p.countries||{}).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const countryList = topCountries.length?topCountries.map(([c,n])=>`${CF[c]||''} ${CN[c]||c} <span style="opacity:.6">×${n}</span>`).join(' · '):'—';
+  const domain = (p.email||'').split('@')[1]||'';
+  const daysSinceSignup = Math.floor((Date.now()-new Date(p.created_at).getTime())/86400000);
+  const daysSinceLastGen = p.lastGen?Math.floor((Date.now()-new Date(p.lastGen).getTime())/86400000):null;
+  modal.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:10px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:22px;font-family:'DM Mono',monospace;color:var(--text);">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:15px;font-weight:500;color:var(--text);word-break:break-all;">${esc(p.email||'—')}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;">${esc(domain)}${p.is_company_admin?' · <span style="color:var(--amber);">COMPANY ADMIN</span>':''}</div>
+      </div>
+      <button onclick="document.getElementById('signup-detail-modal').style.display='none'" style="background:none;border:1px solid var(--border);color:var(--muted);padding:4px 10px;cursor:pointer;border-radius:4px;font-family:inherit;font-size:12px;">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:11px;margin-bottom:16px;">
+      <div style="padding:10px;background:var(--surface2);border-radius:6px;">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Plan</div>
+        <div style="margin-top:4px;color:${_PLAN_COLORS[plan]};font-size:13px;">${plan.toUpperCase()}</div>
+      </div>
+      <div style="padding:10px;background:var(--surface2);border-radius:6px;">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Score</div>
+        <div style="margin-top:4px;">${_scoreBadge(p.score)}</div>
+      </div>
+      <div style="padding:10px;background:var(--surface2);border-radius:6px;">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Signed up</div>
+        <div style="margin-top:4px;font-size:12px;color:var(--text);">${daysSinceSignup}d ago</div>
+      </div>
+      <div style="padding:10px;background:var(--surface2);border-radius:6px;">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Last generation</div>
+        <div style="margin-top:4px;font-size:12px;color:var(--text);">${daysSinceLastGen==null?'never':daysSinceLastGen+'d ago'}</div>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Activity</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:11px;">
+        <div><span style="color:var(--muted);">Generations:</span> <span style="color:var(--text);">${p.gens}</span></div>
+        <div><span style="color:var(--muted);">Downloads:</span> <span style="color:var(--text);">${p.downloads}</span></div>
+        <div><span style="color:var(--muted);">Failed:</span> <span style="color:${p.fails?'var(--red)':'var(--text)'};">${p.fails}</span></div>
+        <div><span style="color:var(--muted);">Total area:</span> <span style="color:var(--text);">${p.totalKm2.toFixed(2)}km²</span></div>
+        <div><span style="color:var(--muted);">Gates hit:</span> <span style="color:${p.gated?'var(--amber)':'var(--text)'};">${p.gated}</span></div>
+        <div><span style="color:var(--muted);">Paywall hits:</span> <span style="color:${p.upsell?'var(--red)':'var(--text)'};">${p.upsell}</span></div>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Top locations</div>
+      <div style="font-size:11px;color:var(--text);">${countryList}</div>
+    </div>
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:8px;">
+      <a href="mailto:${esc(p.email||'')}" style="flex:1;text-align:center;padding:8px;background:var(--accent);color:var(--bg);text-decoration:none;border-radius:5px;font-size:11px;font-weight:500;">✉ Email user</a>
+    </div>
+  </div>`;
+  modal.style.display='flex';
 }
 
 // ── Export formats breakdown ─────────────────────────────────
@@ -2562,7 +2813,7 @@ window.addEventListener('resize', () => {
 
 async function loadAll(){
   updateClock();
-  await Promise.all([loadKPIs(),loadHeatmap(),loadRevenue(),loadTrends(),loadFunnel(),loadGapTable(),loadDonut(),loadCountryBars(),loadFeed(),loadSignups(),loadExportFormats(),loadDownloadRate(),loadBlogStats()]);
+  await Promise.all([loadKPIs(),loadHeatmap(),loadRevenue(),loadTrends(),loadFunnel(),loadGapTable(),loadDonut(),loadCountryBars(),loadFeed(),loadSignups(),loadHotLeads(),loadEmailDomains(),loadExportFormats(),loadDownloadRate(),loadBlogStats()]);
   // Auto-refresh live panels every 30s
   setInterval(()=>Promise.all([loadFeed(),loadSignups(),loadKPIs()]),30000);
 }
@@ -2583,6 +2834,8 @@ const MOB_TABS = [
   { id:'feed',      title:'Feed',       icon:'◇' },
   { id:'trends',    title:'Trends',     icon:'⟋' },
   { id:'signups',   title:'Signups',    icon:'★' },
+  { id:'hotleads',  title:'Hot Leads',  icon:'⚑' },
+  { id:'emaildomains', title:'Domains', icon:'@' },
   { id:'revenue',   title:'Revenue',    icon:'£' },
   { id:'funnel',    title:'Funnel',     icon:'▽' },
   { id:'heatmap',   title:'Map',        icon:'◎' },
@@ -2666,6 +2919,7 @@ function switchMobTab(id) {
     dauwaumau: loadDauWauMau, retention: loadRetention,
     actfunnel: loadActivationFunnel, paywallfunnel: loadPaywallFunnel, gatefunnel: loadGateFunnel,
     convchurn: loadConvChurn, usagestats: loadUsageStats,
+    hotleads: loadHotLeads, emaildomains: loadEmailDomains,
   };
   if (analyticsLoaders[id]) {
     setTimeout(() => { try { analyticsLoaders[id](); } catch(e) {} }, 40);
