@@ -3323,14 +3323,33 @@ function track(event, props) {
 // Runs over Supabase Realtime (WebSocket), not a table insert — independent
 // of the events/generations RLS path, so it degrades separately from it.
 let _presenceChannel = null;
+let _presenceIdle = false;
+let _presenceLastActive = Date.now();
+const PRESENCE_IDLE_MS = 5 * 60 * 1000;
 function initPresence() {
   try {
     _presenceChannel = _sb.channel('site-presence', { config: { presence: { key: getAnonId() } } });
     _presenceChannel.subscribe((status) => { if (status === 'SUBSCRIBED') updatePresence(); });
+    ['mousemove','keydown','scroll','touchstart','click'].forEach(ev =>
+      window.addEventListener(ev, _presenceBump, { passive: true })
+    );
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) _presenceBump(); });
+    setInterval(_presenceCheckIdle, 30000);
   } catch (e) { /* presence must never break the app */ }
 }
+function _presenceBump() {
+  _presenceLastActive = Date.now();
+  if (_presenceIdle) { _presenceIdle = false; updatePresence(); }
+}
+function _presenceCheckIdle() {
+  if (_presenceIdle || !_presenceChannel) return;
+  if (Date.now() - _presenceLastActive >= PRESENCE_IDLE_MS) {
+    _presenceIdle = true;
+    try { _presenceChannel.untrack(); } catch (e) {}
+  }
+}
 function updatePresence() {
-  if (!_presenceChannel) return;
+  if (!_presenceChannel || _presenceIdle) return;
   try { _presenceChannel.track({ role: _currentUser ? 'auth' : 'anon' }); } catch (e) {}
 }
 // Live "generation failed" alert shown instantly on the admin's Live on site box.
