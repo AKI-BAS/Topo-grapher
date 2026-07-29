@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>DTM vs DSM: What's the Difference (and Which Do You Need)? | Topo-grapher</title>
-<meta name="description" content="A DTM models the bare ground; a DSM includes buildings and trees on top. Here's the difference, with a clear comparison and which one you need for site topography in BIM.">
+<title>DTM vs DSM: What's the Difference and Which Do You Need?</title>
+<meta name="description" content="A DTM models the bare ground; a DSM includes buildings and trees on top. See the difference and which one you need for site topography in BIM.">
 <link rel="canonical" href="https://topo-grapher.com/learn/dtm-vs-dsm.html">
 <meta name="author" content="Aki, Topo-grapher">
 
@@ -14,6 +14,14 @@
 <meta property="og:description" content="A DTM models bare ground; a DSM includes everything on top. Which one you need for BIM site topography.">
 <meta property="og:url" content="https://topo-grapher.com/learn/dtm-vs-dsm.html">
 <meta property="og:site_name" content="Topo-grapher">
+<meta property="og:image" content="https://topo-grapher.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="DTM vs DSM: What's the Difference?">
+<meta name="twitter:description" content="A DTM models bare ground; a DSM includes everything on top. Which one you need for BIM site topography.">
+<meta name="twitter:image" content="https://topo-grapher.com/og-image.png">
 
 <!-- 1. Organization -->
 <script type="application/ld+json">
@@ -151,7 +159,7 @@
 
   <p class="lead">A <b>DTM (Digital Terrain Model)</b> represents the bare ground with buildings and vegetation stripped away. A <b>DSM (Digital Surface Model)</b> represents the top of everything on the ground &mdash; roofs, tree canopy, structures. For site topography in BIM you almost always want the <b>DTM</b>.</p>
 
-  <p class="byline">By Aki, founder of Topo-grapher &middot; Updated June 2026</p>
+  <p class="byline">By <a href="https://topo-grapher.com/about.html" rel="author">Aki</a>, founder of Topo-grapher &middot; Updated June 2026</p>
 
   <p>Both come from the same kind of source data, usually airborne LiDAR, but they answer different questions. The DTM asks "where is the ground?"; the DSM asks "what is the highest thing at this point?" Choosing the wrong one is one of the most common reasons a site model comes in looking lumpy or several metres too high.</p>
 
@@ -187,10 +195,16 @@
     <h3>Does Topo-grapher use a DTM or a DSM?</h3>
     <p>It uses the best terrain source per country and labels whether that source is a DTM or DSM. When buildings are added on a DSM source, their base is set to the surface height minus building height so they sit correctly on the ground.</p>
   </div>
+
+  <h2>Further reading</h2>
+  <ul>
+    <li><a href="https://www.usgs.gov/3d-elevation-program" target="_blank" rel="noopener external">USGS 3D Elevation Program</a> &mdash; the US federal DEM programme; explains DTM vs DSM terminology in a national context.</li>
+    <li><a href="https://www.ogc.org/" target="_blank" rel="noopener external">Open Geospatial Consortium (OGC)</a> &mdash; open standards body for geospatial data formats including elevation models.</li>
+  </ul>
 </main>
 
 <footer><div class="wrap">
-  Topo-grapher &middot; 3D site terrain for Revit, SketchUp, Rhino &amp; ArchiCAD &middot; <a href="https://topo-grapher.com/">topo-grapher.com</a>
+  Topo-grapher &middot; 3D site terrain for Revit, SketchUp, Rhino &amp; ArchiCAD &middot; <a href="https://topo-grapher.com/">topo-grapher.com</a> &middot; <a href="https://topographer-com.ghost.io/" target="_blank" rel="noopener">Blog</a>
 </div></footer>
 </body>
 </html>
