@@ -74,8 +74,8 @@
   "description": "The data sources and resolution Topo-grapher uses for each country, from 0.4m LiDAR to a 30m global fallback.",
   "author": { "@type": "Person", "name": "Aki", "@id": "https://topo-grapher.com/about.html#aki", "url": "https://topo-grapher.com/about.html" },
   "publisher": { "@id": "https://topo-grapher.com/#organization" },
-  "datePublished": "2026-06-07",
-  "dateModified": "2026-07-25"
+  "datePublished": "2026-06-07T00:00:00+00:00",
+  "dateModified": "2026-07-25T00:00:00+00:00"
 }
 </script>
 
@@ -88,17 +88,17 @@
     {
       "@type": "Question",
       "name": "What resolution elevation data can I get for my country?",
-      "acceptedAnswer": { "@type": "Answer", "text": "It depends on the open data each country publishes. Denmark offers 0.4m; the UK, France, Norway, Germany, the US and Canada offer 1m; Finland 2m; Spain and Czechia 5m; Italy and Iceland 10m; and everywhere else falls back to 30m global coverage." }
+      "acceptedAnswer": { "@type": "Answer", "text": "It depends on the open data each country publishes. Denmark offers 0.4m; Scotland, the Netherlands, Luxembourg and Switzerland 0.5m; England, Norway, Estonia, France, Germany and Canada 1m; the US 1 to 10m depending on 3DEP tier; Finland 2m; Czech Republic, Spain and Australia (populated areas) 5m; Italy and Iceland 10m; the rest of Europe 30m; and everywhere else falls back to 90m global coverage." }
     },
     {
       "@type": "Question",
       "name": "Where does the elevation data come from?",
-      "acceptedAnswer": { "@type": "Answer", "text": "From national open elevation programmes such as USGS 3DEP in the US, IGN in France, Kartverket in Norway, and the Datafordeler service in Denmark, plus Copernicus and ArcticDEM for global and Arctic coverage." }
+      "acceptedAnswer": { "@type": "Answer", "text": "From national open elevation programmes such as USGS 3DEP (US), IGN RGE ALTI (France), Kartverket (Norway), DHM/Terraen via Datafordeler (Denmark), EA LiDAR Composite (England), swissALTI3D (Switzerland), AHN via PDOK (Netherlands), ACT LiDAR (Luxembourg), Geoscience Australia DEM_LiDAR and others, plus Copernicus, EU-DTM, ArcticDEM and SRTM for continental and global coverage." }
     },
     {
       "@type": "Question",
       "name": "What if my country is not listed?",
-      "acceptedAnswer": { "@type": "Answer", "text": "A 30m global Copernicus dataset covers anywhere on land, so you can always generate terrain even where high-resolution national data is not available." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Global fallbacks (Copernicus GLO-30 at 30m and SRTM at 90m) cover anywhere on land, so you can always generate terrain even where high-resolution national data is not published." }
     }
   ]
 }
