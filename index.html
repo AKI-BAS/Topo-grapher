@@ -2449,9 +2449,31 @@ function getBboxAreaKm2(poly) {
 
 // ── Regional data-quality lookup ──────────────────────────────────────────
 // [minLat, minLon, maxLat, maxLon, name, bestRes_m, quality: 'hi'|'mid'|'lo']
+// ORDER MATTERS — first bbox whose centroid contains the polygon wins.
+// Sub-country boxes (e.g. German states, Australian cities) MUST come
+// before the parent country box so LiDAR-covered pockets get the 'hi'
+// label instead of the country-wide fallback.
 var REGION_DATA = [
+  // ── Sub-national LiDAR pockets (must come before parent countries) ──
+  // Germany: DGM1 1m served for NRW, Baden-Württemberg, Hessen only.
+  // Rest of Germany falls through to the 30m country box below.
+  [50.32, 5.87, 52.53,  9.46, 'Germany (NRW)',            1,   'hi'],
+  [47.53, 7.51, 49.79, 10.50, 'Germany (Baden-Württemberg)', 1, 'hi'],
+  [49.39, 7.77, 51.66, 10.24, 'Germany (Hessen)',         1,   'hi'],
+  // Australia: GA 5m LiDAR covers ~3% of the landmass, mostly major
+  // metros + Murray-Darling. Named metros get 'hi'; rest falls through
+  // to the country-wide 30m box.
+  [-34.20, 150.50, -33.50, 151.50, 'Sydney',              5,   'hi'],
+  [-38.40, 144.40, -37.50, 145.60, 'Melbourne',           5,   'hi'],
+  [-27.90, 152.70, -26.90, 153.50, 'Brisbane',            5,   'hi'],
+  [-32.50, 115.50, -31.50, 116.40, 'Perth',               5,   'hi'],
+  [-35.40, 138.30, -34.50, 139.00, 'Adelaide',            5,   'hi'],
+
+  // ── Country-level entries ──
   [54.5,  7.9,  57.8, 15.3, 'Denmark',        0.4, 'hi'],
   [57.8,  4.5,  71.2, 31.5, 'Norway',         1,   'hi'],
+  // Sweden: Lantmäteriet 1m WCS integrated in worker but not yet deployed —
+  // still served via EU_DTM 30m. Flip to {1, 'hi'} on deploy.
   [55.0, 10.9,  69.1, 24.2, 'Sweden',         30,  'lo'],
   [59.6, 19.0,  70.1, 31.6, 'Finland',        2,   'hi'],
   [49.8, -8.7,  61.0,  2.0, 'United Kingdom', 1,   'hi'],
@@ -2466,16 +2488,25 @@ var REGION_DATA = [
   [49.42, 5.70, 50.20, 6.55, 'Luxembourg',    0.5, 'hi'],
   [49.5,  2.5,  51.5,  6.4, 'Belgium',        30,  'lo'],
   [50.7,  3.3,  53.6,  7.2, 'Netherlands',    0.5, 'hi'],
-  [46.3,  9.5,  49.0, 17.2, 'Austria',        1,   'hi'],
+  // Austria: no dedicated BEV integration yet (planned) — served via
+  // EU_DTM 30m today. Flip to {1, 'hi'} when the BEV WCS lands.
+  [46.3,  9.5,  49.0, 17.2, 'Austria',        30,  'lo'],
+  [57.5, 21.7,  59.7, 28.2, 'Estonia',        1,   'hi'],
+  [48.5, 12.1,  51.1, 18.9, 'Czech Republic', 5,   'hi'],
+  [36.9, -9.6,  42.2, -6.1, 'Portugal',       30,  'lo'],
+  [51.3,-10.7,  55.5, -5.9, 'Ireland',        30,  'lo'],
   [41.3, -5.2,  51.1,  9.6, 'France',         1,   'hi'],
   [41.7,-141.0, 83.1,-52.6, 'Canada',         1,   'hi'],
   [24.4,-125.0, 49.4,-66.8, 'United States',  1,   'hi'],
-  [63.1,-24.6,  66.7,-13.1, 'Iceland',         2,  'hi'],
+  [63.1,-24.6,  66.7,-13.1, 'Iceland',       10,   'hi'],
   [45.2,  6.0,  55.1, 15.0, 'Germany',        30,  'lo'],
-  [35.9, -9.3,  43.8,  4.3, 'Spain',          30,  'lo'],
-  [36.4,  6.7,  47.1, 18.5, 'Italy',          30,  'lo'],
+  [35.9, -9.3,  43.8,  4.3, 'Spain',          5,   'hi'],
+  [36.4,  6.7,  47.1, 18.5, 'Italy',         10,   'hi'],
   [36.0, 25.0,  42.0, 26.5, 'Greece',         30,  'lo'],
   [49.0, 14.1,  54.9, 24.2, 'Poland',         30,  'lo'],
+  // Australia country-wide fallback: outside GA LiDAR footprint we
+  // serve COP30 30m via OpenTopo.
+  [-43.5, 112.9, -9.8, 153.7, 'Australia',    30,  'lo'],
 ];
 
 function getRegionInfo(poly) {
