@@ -860,7 +860,7 @@ const CF={};
 function flag(code){return code?`<img src="https://flagcdn.com/16x12/${code.toLowerCase()}.png" srcset="https://flagcdn.com/32x24/${code.toLowerCase()}.png 2x" width="16" height="12" alt="${code}" style="vertical-align:middle;border-radius:1px;" onerror="this.replaceWith(document.createTextNode('${code}'))">`:'';}
 // Populate CF with img tags for all known codes
 Object.keys(CN).forEach(c=>{CF[c]=flag(c);});
-const BEST_RES={DK:0.4,IS:10,NO:1,GB:1,US:1,CH:0.5,NL:0.5,FR:1};
+const BEST_RES={DK:0.4,IS:10,NO:1,GB:1,US:1,CH:0.5,NL:0.5,FR:1,AU:5};
 
 async function exportAllToExcel(){
   const btn = document.getElementById('export-xlsx-btn');
