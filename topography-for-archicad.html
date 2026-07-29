@@ -164,6 +164,11 @@
   .lead{font-size:19px;color:#d8d2c8;border-left:3px solid var(--accent);
         padding:4px 0 4px 18px;margin:18px 0 28px}
   .byline{font-family:var(--mono);font-size:13px;color:#7d776d;margin-bottom:30px}
+  .author-card{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:-4px 0 28px;font-family:var(--mono);font-size:13px;line-height:1.55;background:rgba(154,186,106,.03)}
+  .author-card .author-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px;margin-bottom:4px}
+  .author-card .author-head a{color:var(--heading);font-weight:600;font-size:14px}
+  .author-card .author-title{color:var(--text)}
+  .author-card .author-meta{color:#7d776d;font-size:12px}
   ol.steps{padding-left:0;counter-reset:s;list-style:none}
   ol.steps li{position:relative;padding:14px 0 14px 46px;border-bottom:1px solid var(--line)}
   ol.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:14px;
@@ -198,7 +203,13 @@
 
   <p class="lead">To model terrain in ArchiCAD, generate an <b>XYZ CSV of survey points</b> from real elevation data and build a <b>Mesh</b> with the Mesh tool, or import a finished surface as <b>DXF</b> or <b>IFC</b>. All three come from the same site in Topo-grapher, so no GIS software is needed.</p>
 
-  <p class="byline">By <a href="https://topo-grapher.com/about.html" rel="author">Aki</a>, founder of Topo-grapher &middot; Updated June 2026</p>
+  <div class="author-card" itemprop="author" itemscope itemtype="https://schema.org/Person">
+    <div class="author-head">
+      <a href="https://is.linkedin.com/in/sveinn-%C3%B3lafsson-78472a214" rel="author external" target="_blank" itemprop="url"><span itemprop="name">Aki</span></a>
+      <span class="author-title" itemprop="jobTitle">Construction Architect / Architectural Technologist</span>
+    </div>
+    <div class="author-meta">BSc Construction Architecture &middot; Studied in Edinburgh, Copenhagen &amp; Iceland &middot; Updated June 2026</div>
+  </div>
 
   <p>ArchiCAD's Mesh tool is built to turn 3D survey points into terrain, but getting accurate points usually means a surveyor or a GIS export. The shortcut is to generate the points from open elevation data and feed the Mesh tool directly. Here is the full workflow.</p>
 
