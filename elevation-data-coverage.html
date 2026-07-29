@@ -184,39 +184,48 @@
 
   <h2>Resolution by country</h2>
   <table>
-    <thead><tr><th>Country / region</th><th>Data source</th><th>Resolution</th></tr></thead>
+    <thead><tr><th>Country / region</th><th>Data source</th><th>Resolution</th><th>Vertical accuracy</th></tr></thead>
     <tbody>
-      <tr><td>Denmark</td><td>DHM (Datafordeler)</td><td>0.4m</td></tr>
-      <tr><td>United Kingdom</td><td>EA LiDAR (via GPXZ)</td><td>1m</td></tr>
-      <tr><td>France</td><td>IGN RGE ALTI</td><td>1m</td></tr>
-      <tr><td>Norway</td><td>Kartverket DTM</td><td>1m</td></tr>
-      <tr><td>Germany (NRW, BW, Hessen)</td><td>State DGM1</td><td>1m</td></tr>
-      <tr><td>United States</td><td>USGS 3DEP</td><td>1m*</td></tr>
-      <tr><td>Canada</td><td>NRCan HRDEM</td><td>1m</td></tr>
-      <tr><td>Switzerland</td><td>swissALTI3D</td><td>0.5-2m</td></tr>
-      <tr><td>Finland</td><td>NLS KM2</td><td>2m</td></tr>
-      <tr><td>Spain</td><td>IGN MDT</td><td>5m</td></tr>
-      <tr><td>Italy</td><td>TINITALY</td><td>10m</td></tr>
-      <tr><td>Iceland</td><td>ArcticDEM</td><td>10m</td></tr>
-      <tr><td>Australia, New Zealand, Japan</td><td>Copernicus</td><td>30m</td></tr>
-      <tr><td>Rest of Europe</td><td>EU-DTM</td><td>30m</td></tr>
-      <tr><td>Anywhere else (global)</td><td>Copernicus GLO-30</td><td>30m</td></tr>
+      <tr><td colspan="4"><b>National LiDAR datasets</b></td></tr>
+      <tr><td>Denmark</td><td>DHM/Terr&aelig;n</td><td>0.4m</td><td>&plusmn;0.05m</td></tr>
+      <tr><td>Scotland</td><td>SRSP LiDAR (Phases 1&ndash;6)</td><td>0.5m</td><td>&plusmn;0.15m</td></tr>
+      <tr><td>Netherlands</td><td>AHN (via PDOK WCS)</td><td>0.5m</td><td>&plusmn;0.05m</td></tr>
+      <tr><td>Luxembourg</td><td>ACT LiDAR 2024</td><td>0.5m</td><td>&mdash;</td></tr>
+      <tr><td>Switzerland</td><td>swissALTI3D</td><td>0.5m</td><td>&plusmn;0.1m</td></tr>
+      <tr><td>England</td><td>EA LiDAR Composite DTM</td><td>1m</td><td>&plusmn;0.15m RMSE</td></tr>
+      <tr><td>Norway</td><td>Kartverket DTM1</td><td>1m</td><td>&plusmn;0.15m</td></tr>
+      <tr><td>Estonia</td><td>Maa-amet DTM</td><td>1m</td><td>&plusmn;0.1m</td></tr>
+      <tr><td>France</td><td>IGN RGE ALTI</td><td>1m</td><td>&plusmn;0.2m</td></tr>
+      <tr><td>Germany (NRW, BW, Hessen)</td><td>DGM1</td><td>1m</td><td>&plusmn;0.2m</td></tr>
+      <tr><td>Canada</td><td>NRCan HRDEM</td><td>1m</td><td>&plusmn;0.2m RMSE</td></tr>
+      <tr><td>United States</td><td>USGS 3DEP</td><td>1&ndash;10m</td><td>&plusmn;0.82m RMSE</td></tr>
+      <tr><td>Finland</td><td>NLS KM2</td><td>2m</td><td>&plusmn;0.3m</td></tr>
+      <tr><td>Czech Republic</td><td>&#268;&Uacute;ZK DMR4G</td><td>5m</td><td>&plusmn;0.18m RMSE</td></tr>
+      <tr><td>Spain</td><td>IGN MDT (PNOA-LiDAR)</td><td>5m</td><td>&plusmn;0.4m</td></tr>
+      <tr><td>Australia</td><td>GA DEM_LiDAR (populated areas)</td><td>5m</td><td>&plusmn;0.3m</td></tr>
+      <tr><td>Italy</td><td>TINITALY</td><td>10m</td><td>&plusmn;3m</td></tr>
+      <tr><td colspan="4"><b>Continental &amp; global fallbacks</b></td></tr>
+      <tr><td>Iceland</td><td>ArcticDEM</td><td>10m</td><td>&plusmn;1&ndash;4m</td></tr>
+      <tr><td>Europe (other)</td><td>EU-DTM / Copernicus GLO-30</td><td>30m</td><td>&plusmn;1&ndash;3m</td></tr>
+      <tr><td>Global (fallback)</td><td>Open-Meteo / SRTM</td><td>90m</td><td>&plusmn;16m (90%)</td></tr>
+      <tr><td colspan="4"><b>Coming soon</b></td></tr>
+      <tr><td>Japan</td><td>GSI DEM</td><td>5&ndash;10m</td><td>&plusmn;1m</td></tr>
     </tbody>
   </table>
-  <p class="note">*US 1m where 3DEP coverage exists; otherwise the national fallback applies. Resolution shown is the best available source for that region; delivered detail depends on local coverage.</p>
+  <p class="note">Resolution shown is the best available source for that region. US resolution varies by 3DEP coverage tier; Australia's 5m is limited to populated areas covered by Geoscience Australia's DEM_LiDAR programme &mdash; outside those areas the global fallback applies.</p>
 
   <a class="cta" href="https://topo-grapher.com/">Check coverage for your site -></a>
 
   <h2>Frequently asked questions</h2>
   <div class="faq">
     <h3>What resolution elevation data can I get for my country?</h3>
-    <p>It depends on the open data each country publishes. Denmark offers 0.4m; the UK, France, Norway, Germany, the US and Canada offer 1m; Finland 2m; Spain and Czechia 5m; Italy and Iceland 10m; and everywhere else falls back to 30m global coverage.</p>
+    <p>It depends on the open data each country publishes. Denmark offers 0.4m; Scotland, the Netherlands, Luxembourg and Switzerland 0.5m; England, Norway, Estonia, France, Germany and Canada 1m; the US 1&ndash;10m depending on 3DEP tier; Finland 2m; Czech Republic, Spain and Australia (populated areas) 5m; Italy and Iceland 10m; the rest of Europe 30m; and everywhere else falls back to 90m global coverage.</p>
 
     <h3>Where does the elevation data come from?</h3>
-    <p>From national open elevation programmes such as USGS 3DEP in the US, IGN in France, Kartverket in Norway, and the Datafordeler service in Denmark, plus Copernicus and ArcticDEM for global and Arctic coverage.</p>
+    <p>From national open elevation programmes &mdash; USGS 3DEP (US), IGN RGE ALTI (France), Kartverket (Norway), DHM/Terr&aelig;n via Datafordeler (Denmark), EA LiDAR Composite (England), swissALTI3D (Switzerland), AHN via PDOK (Netherlands), ACT LiDAR (Luxembourg), Geoscience Australia DEM_LiDAR, and others &mdash; plus Copernicus, EU-DTM, ArcticDEM and SRTM for continental and global coverage.</p>
 
     <h3>What if my country isn't listed?</h3>
-    <p>A 30m global Copernicus dataset covers anywhere on land, so you can always generate terrain even where high-resolution national data isn't available.</p>
+    <p>Global fallbacks (Copernicus GLO-30 at 30m and SRTM at 90m) cover anywhere on land, so you can always generate terrain even where high-resolution national data isn't published.</p>
   </div>
 </main>
 

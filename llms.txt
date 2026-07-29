@@ -2,13 +2,13 @@
 
 > Topo-grapher generates accurate 3D site terrain and elevation point clouds for architects, BIM managers, and landscape architects — no GIS expertise required. Draw a polygon on a map, and it returns ready-to-import terrain in formats compatible with Revit, SketchUp, Rhino, and ArchiCAD.
 
-Topo-grapher is a browser-based tool. It sources high-resolution government elevation data (down to 0.4m in Denmark and 1m across much of Europe and the US) and converts it into XYZ CSV, IFC, and DXF files that drop straight into BIM and CAD software. There is no software to install and no coordinate-system wrangling.
+Topo-grapher is a browser-based tool. It sources high-resolution government elevation data (down to 0.4m in Denmark and 0.5–1m across much of Europe, the US and Canada) and converts it into XYZ CSV, IFC, and DXF files that drop straight into BIM and CAD software. There is no software to install and no coordinate-system wrangling.
 
 ## Key facts
 
 - Output formats: XYZ CSV (point cloud), IFC (for Revit Toposolid / ArchiCAD mesh), DXF (3D faces and points)
 - Compatible software: Autodesk Revit, Trimble SketchUp, Rhino/Grasshopper, ArchiCAD, and any tool that reads XYZ point data
-- Resolution by country: Denmark 0.4m, Netherlands / Luxembourg 0.5m, UK / Norway / France 1m, USA 1m (where 3DEP coverage exists), 5–10m across most of Europe, 30m fallback elsewhere (including Sweden, pending a dedicated national source)
+- Resolution by country: Denmark 0.4m (DHM/Terræn); Scotland 0.5m (SRSP), Netherlands 0.5m (AHN), Luxembourg 0.5m (ACT LiDAR), Switzerland 0.5m (swissALTI3D); England 1m (EA LiDAR Composite), Norway 1m (Kartverket DTM1), Estonia 1m (Maa-amet), France 1m (IGN RGE ALTI), Germany 1m (state DGM1, NRW/BW/Hessen), Canada 1m (NRCan HRDEM), USA 1–10m (USGS 3DEP); Finland 2m (NLS KM2); Czech Republic 5m (ČÚZK DMR4G), Spain 5m (IGN MDT / PNOA-LiDAR), Australia 5m (Geoscience Australia DEM_LiDAR, populated areas); Italy 10m (TINITALY), Iceland 10m (ArcticDEM); rest of Europe 30m (EU-DTM / Copernicus GLO-30); global fallback 90m (SRTM). Japan (GSI DEM, 5–10m) is coming soon
 - Free tier: 3 site generations per day, up to 250m × 250m, 12m point spacing, no account required
 - Pro tier: GBP 39.99/month — larger sites, finer spacing, building footprints, all formats
 - Company tier: GBP 29.99/seat/month (2+ seats)
