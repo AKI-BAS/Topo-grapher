@@ -278,17 +278,26 @@ body::before{content:'';position:fixed;inset:0;background-image:
 
 /* ── Monitor / health page ─────────────────────────────────── */
 .mon-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:clamp(12px,1.4vw,24px);align-items:start;}
+/* Regional checks: fixed to the empty right-side space next to the 1100px
+   capped content. Sticks in the viewport as the reader scrolls the main
+   panels. On narrow viewports it drops back into the normal grid flow. */
+.mon-block-sticky{position:fixed;top:80px;right:24px;width:320px;max-height:calc(100vh - 100px);overflow-y:auto;padding:20px 22px;background:var(--surface);border:1px solid var(--border);border-radius:10px;z-index:5;}
+.mon-block-sticky .mon-row{padding:13px 0;gap:18px;}
+.mon-block-sticky .mon-val-wrap{max-width:190px;}
+@media(max-width:1500px){.mon-block-sticky{position:static;width:auto;max-height:none;padding:0;background:none;border:none;border-radius:0;}.mon-block-sticky .mon-row{padding:11px 0;gap:16px;}}
 .mon-block{display:flex;flex-direction:column;gap:0;}
-.mon-block-title{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);}
-.mon-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(30,36,24,.5);}
+.mon-block-title{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.mon-row{display:flex;align-items:center;gap:16px;padding:11px 0;border-bottom:1px solid rgba(30,36,24,.5);line-height:1.45;}
 .mon-row:last-child{border-bottom:none;}
 .mon-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;box-shadow:0 0 7px currentColor;}
 .mon-dot.ok{background:var(--accent);color:var(--accent);}
 .mon-dot.warn{background:var(--amber);color:var(--amber);}
 .mon-dot.crit{background:var(--red);color:var(--red);}
 .mon-dot.idle{background:var(--muted);color:transparent;box-shadow:none;}
-.mon-label{font-size:12px;color:var(--text);flex:1;min-width:0;}
-.mon-val{font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mid);flex-shrink:0;}
+.mon-label{font-size:12px;color:var(--text);flex:1;min-width:0;line-height:1.45;}
+.mon-val{font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mid);flex-shrink:0;line-height:1.5;}
+/* Wrapping variant for long values (WCS error dumps, timeouts, etc.) */
+.mon-val-wrap{font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mid);flex:0 1 auto;min-width:0;text-align:right;word-break:break-word;overflow-wrap:anywhere;max-width:220px;line-height:1.55;padding-left:6px;}
 .mon-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:1px;}
 .mon-banner{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
 .mon-alert{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;font-size:12px;font-family:'DM Mono',monospace;border:1px solid;}
@@ -2138,26 +2147,26 @@ async function loadMonitor(){
         ${statusRow('Anon share · 24h vs 7d',Math.abs(anonShareDelta)<30,anonShare24+'% · Δ'+(anonShareDelta>=0?'+':'')+anonShareDelta+'pt')}
       </div>
       <div class="mon-block">
-        <div class="mon-block-title">Regional data sources · synthetic checks</div>
-        ${hcRows.length===0
-          ? '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No health-check data. Deploy the health-cron worker to populate this panel.</div>'
-          : regionKeys.map(k=>{
-              const r=latestByRegion[k];
-              const fails=failCountByRegion[k]||0;
-              const val=r.ok?(r.latency_ms+'ms'):(r.error||'DOWN').slice(0,40);
-              const suffix=fails>=2?` · ${fails} fails/hr`:'';
-              return `<div class="mon-row"><span class="mon-dot ${r.ok?'ok':'crit'}"></span><div class="mon-label">${esc(k)}</div><div class="mon-val">${esc(val+suffix)}</div></div>`;
-            }).join('')
-        }
-        ${newestCheck?`<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:8px;">Last cron: ${ago(newestCheck)} · window: last hour</div>`:''}
-      </div>
-      <div class="mon-block">
         <div class="mon-block-title">Client JS errors · last 24h</div>
         ${jsErrRows.length===0
           ? '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No client errors. Clean run</div>'
           : `<div class="mon-row"><span class="mon-dot ${jsErr24>=10?'crit':jsErr24>0?'warn':'ok'}"></span><div class="mon-label">Total</div><div class="mon-val">${jsErr24} · ${jsErrUniqueUsers} session${jsErrUniqueUsers===1?'':'s'}</div></div>`
             +jsErrTop.map(([msg,n])=>`<div class="mon-fail-row"><span class="mon-fail-stage">${n}×</span><span class="mon-fail-detail">${esc(msg.slice(0,90))}</span><span class="mon-fail-time"></span></div>`).join('')
         }
+      </div>
+      <div class="mon-block mon-block-sticky">
+        <div class="mon-block-title">Regional data sources · synthetic checks</div>
+        ${hcRows.length===0
+          ? '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No health-check data. Deploy the health-cron worker to populate this panel.</div>'
+          : regionKeys.map(k=>{
+              const r=latestByRegion[k];
+              const fails=failCountByRegion[k]||0;
+              const val=r.ok?(r.latency_ms+'ms'):(r.error||'DOWN').slice(0,80);
+              const suffix=fails>=2?` · ${fails} fails/hr`:'';
+              return `<div class="mon-row"><span class="mon-dot ${r.ok?'ok':'crit'}"></span><div class="mon-label">${esc(k)}</div><div class="mon-val-wrap">${esc(val+suffix)}</div></div>`;
+            }).join('')
+        }
+        ${newestCheck?`<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:8px;">Last cron: ${ago(newestCheck)} · window: last hour</div>`:''}
       </div>
     </div>
     <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:16px;letter-spacing:.04em;">Reachability is a network-level liveness check, not app-logic health. Re-open this tab to refresh.</div>
