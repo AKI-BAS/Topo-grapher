@@ -277,14 +277,38 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .cov-edit-close:hover{color:var(--text);}
 
 /* ── Monitor / health page ─────────────────────────────────── */
+/* mon-shell just wraps the main content grid — the sticky panel is
+   position:fixed so it escapes the 1100px .sec cap and floats to the
+   right edge of the viewport. */
+.mon-shell{display:block;}
 .mon-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:clamp(12px,1.4vw,24px);align-items:start;}
-/* Regional checks: fixed to the empty right-side space next to the 1100px
-   capped content. Sticks in the viewport as the reader scrolls the main
-   panels. On narrow viewports it drops back into the normal grid flow. */
-.mon-block-sticky{position:fixed;top:80px;right:24px;width:320px;max-height:calc(100vh - 100px);overflow-y:auto;padding:20px 22px;background:var(--surface);border:1px solid var(--border);border-radius:10px;z-index:5;}
-.mon-block-sticky .mon-row{padding:13px 0;gap:18px;}
-.mon-block-sticky .mon-val-wrap{max-width:190px;}
-@media(max-width:1500px){.mon-block-sticky{position:static;width:auto;max-height:none;padding:0;background:none;border:none;border-radius:0;}.mon-block-sticky .mon-row{padding:11px 0;gap:16px;}}
+/* Regional-sources card. `position:fixed` attaches it to the viewport so
+   it can sit in the empty right-side space that the 1100px-capped main
+   content leaves behind. Top offset clears the fixed page header (48px)
+   with breathing room. max-height reserves room at the bottom so the
+   scrolling content can never slide behind the fixed dock (~60px tall
+   at bottom:16px). Horizontal offset scales with viewport so it hugs
+   the right edge on wide screens but never crosses the 24px minimum
+   safety margin on narrower ones. Below 1400px it drops into normal
+   flow beneath the main grid so nothing overlaps. */
+.mon-block-sticky{
+  position:fixed;
+  top:70px;
+  right:24px;
+  width:320px;
+  max-height:calc(100vh - 160px);
+  overflow-y:auto;
+  padding:18px 20px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  z-index:5;
+}
+.mon-block-sticky .mon-row{padding:11px 0;gap:16px;}
+.mon-block-sticky .mon-val-wrap{max-width:200px;}
+@media(max-width:1400px){
+  .mon-block-sticky{position:static;width:auto;max-height:none;right:auto;top:auto;margin-top:clamp(12px,1.4vw,24px);}
+}
 .mon-block{display:flex;flex-direction:column;gap:0;}
 .mon-block-title{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
 .mon-row{display:flex;align-items:center;gap:16px;padding:11px 0;border-bottom:1px solid rgba(30,36,24,.5);line-height:1.45;}
@@ -2050,9 +2074,17 @@ async function loadMonitor(){
     if(!latestByRegion[r.region]) latestByRegion[r.region]=r;
     if(!r.ok) failCountByRegion[r.region]=(failCountByRegion[r.region]||0)+1;
   });
-  const regionKeys=Object.keys(latestByRegion).sort();
+  // Split region probes from border sentinels. Sentinel rows come from the
+  // same table but have region names prefixed with "sentinel:" — they probe
+  // the real generation endpoint and assert the routed data source. A
+  // sentinel failure means our own routing regressed, not that upstream is
+  // down, so we alert on it separately (and more loudly).
+  const allKeys=Object.keys(latestByRegion).sort();
+  const regionKeys=allKeys.filter(k=>!k.startsWith('sentinel:'));
+  const sentinelKeys=allKeys.filter(k=>k.startsWith('sentinel:'));
   const regionsDown=regionKeys.filter(k=>!latestByRegion[k].ok);
   const regionsFlappy=regionKeys.filter(k=>(failCountByRegion[k]||0)>=2 && latestByRegion[k].ok); // recovering but flapped recently
+  const sentinelsDown=sentinelKeys.filter(k=>!latestByRegion[k].ok);
   const oldestCheck=hcRows.length?hcRows[hcRows.length-1].checked_at:null;
   const newestCheck=hcRows.length?hcRows[0].checked_at:null;
   const cronStale=newestCheck ? (Date.now()-new Date(newestCheck).getTime())>15*60*1000 : true;
@@ -2088,6 +2120,14 @@ async function loadMonitor(){
   else if(cronStale) alerts.push(['warn',`Health-cron: last check ${ago(newestCheck)} — worker may have stopped`]);
   if(regionsDown.length>=3) alerts.push(['crit',`${regionsDown.length} regional data sources are DOWN: ${regionsDown.slice(0,4).join(', ')}${regionsDown.length>4?'…':''}`]);
   else if(regionsDown.length>0) alerts.push(['warn',`Regional source down: ${regionsDown.join(', ')}`]);
+  // Sentinel failures = a routing regression (wrong source returned). Louder
+  // than a plain "down" because a user in Boston is silently getting 90m
+  // data — the endpoint is up, the answer is wrong.
+  if(sentinelsDown.length>0){
+    const names=sentinelsDown.map(k=>k.replace(/^sentinel:/,''));
+    alerts.push([sentinelsDown.length>=2?'crit':'warn',
+      `Routing regression at ${sentinelsDown.length} sentinel${sentinelsDown.length>1?'s':''}: ${names.slice(0,4).join(', ')}${names.length>4?'…':''} (wrong data source returned)`]);
+  }
   if(jsErr24>=50) alerts.push(['crit',`${jsErr24} client JS errors in 24h across ${jsErrUniqueUsers} sessions — likely a shipped bug`]);
   else if(jsErr24>=10) alerts.push(['warn',`${jsErr24} client JS errors in 24h (${jsErrUniqueUsers} sessions)`]);
   const worstLevel=alerts.some(a=>a[0]==='crit')?'crit':alerts.some(a=>a[0]==='warn')?'warn':'ok';
@@ -2113,6 +2153,7 @@ async function loadMonitor(){
     <div id="speed-test"></div>
     <div class="mon-block-title" style="margin-top:22px;">System status</div>
     <div class="mon-banner">${bannerHtml}</div>
+    <div class="mon-shell">
     <div class="mon-grid">
       <div class="mon-block">
         <div class="mon-block-title">Service reachability</div>
@@ -2154,6 +2195,7 @@ async function loadMonitor(){
             +jsErrTop.map(([msg,n])=>`<div class="mon-fail-row"><span class="mon-fail-stage">${n}×</span><span class="mon-fail-detail">${esc(msg.slice(0,90))}</span><span class="mon-fail-time"></span></div>`).join('')
         }
       </div>
+      </div><!-- /mon-grid -->
       <div class="mon-block mon-block-sticky">
         <div class="mon-block-title">Regional data sources · synthetic checks</div>
         ${hcRows.length===0
@@ -2166,6 +2208,18 @@ async function loadMonitor(){
               return `<div class="mon-row"><span class="mon-dot ${r.ok?'ok':'crit'}"></span><div class="mon-label">${esc(k)}</div><div class="mon-val-wrap">${esc(val+suffix)}</div></div>`;
             }).join('')
         }
+        ${sentinelKeys.length?`
+          <div class="mon-block-title" style="margin-top:18px;">Border sentinels · routed source</div>
+          ${sentinelKeys.map(k=>{
+            const r=latestByRegion[k];
+            const name=k.replace(/^sentinel:/,'');
+            // For sentinels the interesting number is not latency but whether
+            // the router returned the expected data source. On failure the
+            // worker writes 'wrong source: expected X, got Y' into `error`.
+            const val=r.ok?'routed correctly':(r.error||'DOWN').slice(0,90);
+            return `<div class="mon-row"><span class="mon-dot ${r.ok?'ok':'crit'}"></span><div class="mon-label">${esc(name)}</div><div class="mon-val-wrap">${esc(val)}</div></div>`;
+          }).join('')}
+        `:''}
         ${newestCheck?`<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:8px;">Last cron: ${ago(newestCheck)} · window: last hour</div>`:''}
       </div>
     </div>
