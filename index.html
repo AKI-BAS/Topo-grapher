@@ -3368,6 +3368,54 @@ function track(event, props) {
   try { logEvent(event, props); } catch(e) {}
 }
 
+// ── Global error capture ───────────────────────────────────────────────────
+// Fires `js_error` to GA4 + Supabase so topo-admin's Monitor can flag issues
+// before a user reports them. Filtered to our own origin so browser
+// extensions and cross-origin script noise don't drown out real bugs.
+// Throttled: max 20 reports per page load to protect against loops.
+(function initErrorCapture(){
+  const own = location.origin;
+  let sent = 0;
+  const MAX = 20;
+  const recent = new Map(); // dedupe key -> ts
+  function report(kind, msg, file, line, col, stack){
+    if (sent >= MAX) return;
+    // Extension/cross-origin scripts either have no filename or a chrome-extension:// URL
+    if (file && file !== '' && !file.startsWith(own)) return;
+    const key = kind + '|' + (msg||'').slice(0,80) + '|' + line;
+    const now = Date.now();
+    const last = recent.get(key);
+    if (last && now - last < 60000) return; // same error within 60s = skip
+    recent.set(key, now);
+    sent++;
+    try {
+      track('js_error', {
+        kind,
+        msg:   String(msg||'').slice(0,300),
+        file:  (file||'').replace(own,''),
+        line:  line||0,
+        col:   col||0,
+        stack: String(stack||'').slice(0,500),
+        path:  location.pathname,
+        ua:    (navigator.userAgent||'').slice(0,120)
+      });
+    } catch(e) {}
+  }
+  window.addEventListener('error', function(e){
+    report('error', e.message, e.filename, e.lineno, e.colno,
+           e.error && e.error.stack);
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    const r = e.reason;
+    report('unhandledrejection',
+      (r && (r.message || (typeof r === 'string' ? r : ''))) || 'unknown',
+      (r && r.fileName) || '',
+      (r && r.lineNumber) || 0,
+      (r && r.columnNumber) || 0,
+      (r && r.stack) || '');
+  });
+})();
+
 // ── Live presence (feeds the "Live on site" box in Topo-admin) ─────────────
 // Runs over Supabase Realtime (WebSocket), not a table insert — independent
 // of the events/generations RLS path, so it degrades separately from it.

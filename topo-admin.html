@@ -1970,7 +1970,7 @@ async function loadMonitor(){
   const supaHealth=fetch(SUPABASE_URL+'/rest/v1/generations?select=id&limit=1',{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY},cache:'no-store'})
     .then(r=>({ok:r.ok,ms:Math.round(performance.now()-supaT0)})).catch(()=>({ok:false,ms:null}));
 
-  const [supa, elevPings, notifyPing, lastGen, win24, stuck, fails, admins, authFails24, signups24, gens7d, allProfiles] = await Promise.all([
+  const [supa, elevPings, notifyPing, lastGen, win24, stuck, fails, admins, authFails24, signups24, gens7d, allProfiles, healthChecks, jsErrors] = await Promise.all([
     supaHealth,
     Promise.all(MON_ELEVATION_WORKERS.map(w=>_pingHost('https://'+w+'.svanur300.workers.dev'))),
     _pingHost(MON_NOTIFY_WORKER),
@@ -1983,6 +1983,8 @@ async function loadMonitor(){
     _sb.from('profiles').select('created_at,email').gte('created_at',dayAgo).limit(500),
     _sb.from('generations').select('user_id').gte('created_at',weekAgo).limit(20000),
     _sb.from('profiles').select('email').limit(10000),
+    _sb.from('health_checks').select('region,ok,latency_ms,error,checked_at').gte('checked_at',hourAgo).order('checked_at',{ascending:false}).limit(500),
+    _sb.from('events').select('created_at,anon_id,user_id,properties').eq('event','js_error').gte('created_at',dayAgo).order('created_at',{ascending:false}).limit(100),
   ]);
 
   // Reachability tallies
@@ -2031,6 +2033,32 @@ async function loadMonitor(){
   const anonShare24=gens24>0?Math.round(anon24/gens24*100):0;
   const anonShareDelta=anonShare24-anonShare7d;
 
+  // Regional data-source health (from health-cron-worker)
+  const hcRows=healthChecks.data||[];
+  const latestByRegion={};   // region -> latest check row
+  const failCountByRegion={};// region -> count of failures in last hour
+  hcRows.forEach(r=>{
+    if(!latestByRegion[r.region]) latestByRegion[r.region]=r;
+    if(!r.ok) failCountByRegion[r.region]=(failCountByRegion[r.region]||0)+1;
+  });
+  const regionKeys=Object.keys(latestByRegion).sort();
+  const regionsDown=regionKeys.filter(k=>!latestByRegion[k].ok);
+  const regionsFlappy=regionKeys.filter(k=>(failCountByRegion[k]||0)>=2 && latestByRegion[k].ok); // recovering but flapped recently
+  const oldestCheck=hcRows.length?hcRows[hcRows.length-1].checked_at:null;
+  const newestCheck=hcRows.length?hcRows[0].checked_at:null;
+  const cronStale=newestCheck ? (Date.now()-new Date(newestCheck).getTime())>15*60*1000 : true;
+
+  // Client JS errors
+  const jsErrRows=jsErrors.data||[];
+  const jsErr24=jsErrRows.length;
+  const jsErrUniqueUsers=new Set(jsErrRows.map(e=>e.user_id||e.anon_id)).size;
+  const jsErrByMsg={};
+  jsErrRows.forEach(e=>{
+    const m=(e.properties&&e.properties.msg)||'unknown';
+    jsErrByMsg[m]=(jsErrByMsg[m]||0)+1;
+  });
+  const jsErrTop=Object.entries(jsErrByMsg).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
   // Build the active-warnings banner
   const alerts=[];
   if(!supa.ok) alerts.push(['crit','Supabase read path is failing. Dashboard data may be stale']);
@@ -2047,6 +2075,12 @@ async function loadMonitor(){
   if(signupPeakHour>=RAPID_SIGNUP_THRESHOLD) alerts.push(['warn',`Rapid signup burst: ${signupPeakHour} signups in a single hour (possible bot)`]);
   if(disposableCount>0) alerts.push(['warn',`${disposableCount} account${disposableCount>1?'s':''} using disposable email domains`]);
   if(gens7dTotal>=20&&Math.abs(anonShareDelta)>=30) alerts.push(['warn',`Anon share ${anonShareDelta>0?'jumped':'dropped'} ${Math.abs(anonShareDelta)}pt vs 7d avg (${anonShare24}% vs ${anonShare7d}%)`]);
+  if(cronStale && hcRows.length===0) alerts.push(['warn','Health-cron worker: no checks in last hour (worker may be down or not deployed)']);
+  else if(cronStale) alerts.push(['warn',`Health-cron: last check ${ago(newestCheck)} — worker may have stopped`]);
+  if(regionsDown.length>=3) alerts.push(['crit',`${regionsDown.length} regional data sources are DOWN: ${regionsDown.slice(0,4).join(', ')}${regionsDown.length>4?'…':''}`]);
+  else if(regionsDown.length>0) alerts.push(['warn',`Regional source down: ${regionsDown.join(', ')}`]);
+  if(jsErr24>=50) alerts.push(['crit',`${jsErr24} client JS errors in 24h across ${jsErrUniqueUsers} sessions — likely a shipped bug`]);
+  else if(jsErr24>=10) alerts.push(['warn',`${jsErr24} client JS errors in 24h (${jsErrUniqueUsers} sessions)`]);
   const worstLevel=alerts.some(a=>a[0]==='crit')?'crit':alerts.some(a=>a[0]==='warn')?'warn':'ok';
   if(badge)badge.textContent=worstLevel==='ok'?'all nominal':worstLevel==='warn'?alerts.length+' warning'+(alerts.length>1?'s':''):alerts.filter(a=>a[0]==='crit').length+' critical';
 
@@ -2102,6 +2136,28 @@ async function loadMonitor(){
         ${statusRow('Signups',signupPeakHour<RAPID_SIGNUP_THRESHOLD,signups24Total+' · peak '+signupPeakHour+'/hr',signups24Total===0)}
         ${statusRow('Disposable emails (all-time)',disposableCount===0,disposableCount.toString(),disposableCount===0)}
         ${statusRow('Anon share · 24h vs 7d',Math.abs(anonShareDelta)<30,anonShare24+'% · Δ'+(anonShareDelta>=0?'+':'')+anonShareDelta+'pt')}
+      </div>
+      <div class="mon-block">
+        <div class="mon-block-title">Regional data sources · synthetic checks</div>
+        ${hcRows.length===0
+          ? '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No health-check data. Deploy the health-cron worker to populate this panel.</div>'
+          : regionKeys.map(k=>{
+              const r=latestByRegion[k];
+              const fails=failCountByRegion[k]||0;
+              const val=r.ok?(r.latency_ms+'ms'):(r.error||'DOWN').slice(0,40);
+              const suffix=fails>=2?` · ${fails} fails/hr`:'';
+              return `<div class="mon-row"><span class="mon-dot ${r.ok?'ok':'crit'}"></span><div class="mon-label">${esc(k)}</div><div class="mon-val">${esc(val+suffix)}</div></div>`;
+            }).join('')
+        }
+        ${newestCheck?`<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:8px;">Last cron: ${ago(newestCheck)} · window: last hour</div>`:''}
+      </div>
+      <div class="mon-block">
+        <div class="mon-block-title">Client JS errors · last 24h</div>
+        ${jsErrRows.length===0
+          ? '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No client errors. Clean run</div>'
+          : `<div class="mon-row"><span class="mon-dot ${jsErr24>=10?'crit':jsErr24>0?'warn':'ok'}"></span><div class="mon-label">Total</div><div class="mon-val">${jsErr24} · ${jsErrUniqueUsers} session${jsErrUniqueUsers===1?'':'s'}</div></div>`
+            +jsErrTop.map(([msg,n])=>`<div class="mon-fail-row"><span class="mon-fail-stage">${n}×</span><span class="mon-fail-detail">${esc(msg.slice(0,90))}</span><span class="mon-fail-time"></span></div>`).join('')
+        }
       </div>
     </div>
     <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:16px;letter-spacing:.04em;">Reachability is a network-level liveness check, not app-logic health. Re-open this tab to refresh.</div>
