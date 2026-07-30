@@ -2070,9 +2070,9 @@ function declineCookies() {
           </tr>
           <tr>
             <td style="padding:9px 14px;color:var(--text);font-weight:500;">🌍 Global (fallback)</td>
-            <td style="padding:9px 14px;color:var(--text-mid);">Open-Meteo / SRTM</td>
-            <td style="padding:9px 14px;"><span style="color:var(--text-soft);background:var(--bg-input);border:1px solid var(--border);padding:2px 7px;border-radius:2px;font-size:10px;">90m</span></td>
-            <td style="padding:9px 14px;color:var(--text-soft);">±16m (90%)</td>
+            <td style="padding:9px 14px;color:var(--text-mid);">Copernicus GLO-30 → Open-Meteo</td>
+            <td style="padding:9px 14px;"><span style="color:var(--text-mid);background:var(--bg-input);border:1px solid var(--border-md);padding:2px 7px;border-radius:2px;font-size:10px;">30m</span></td>
+            <td style="padding:9px 14px;color:var(--text-soft);">±4m primary, ±16m backup</td>
           </tr>
           <!-- Coming soon -->
           <tr style="background:var(--bg-input);border-bottom:1px solid var(--border);border-top:1px solid var(--border);">
@@ -2530,7 +2530,7 @@ function getRegionInfo(poly) {
       return { name: r[4], res: r[5], quality: r[6] };
     }
   }
-  return { name: 'this region', res: 90, quality: 'lo' };
+  return { name: 'this region', res: 30, quality: 'lo' };
 }
 function pointInPoly(lat, lon, poly) {
   var inside = false;
@@ -2589,9 +2589,9 @@ function _showDataResFlag(poly) {
   flag.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;margin-top:3px;padding:4px 10px;border-radius:4px;background:' + bg + ';color:' + color + ';border:1px solid ' + color + ';font-family:\'DM Mono\',monospace;';
   var resLabel = info.res < 1 ? (info.res * 100).toFixed(0) + 'cm' : info.res + 'm';
   if (info.quality === 'lo' && info.res === 90) {
-    flag.innerHTML = icon + ' Limited data in this region \u2014 only 90m SRTM available. Expect \u00b116m vertical accuracy.';
+    flag.innerHTML = icon + ' Limited data in this region \u2014 only 90m Open-Meteo available. Expect \u00b116m vertical accuracy.';
   } else if (info.quality === 'lo') {
-    flag.innerHTML = icon + ' ' + info.name + ' \u2014 ' + resLabel + ' Copernicus data. Upgrade to Pro for best resolution.';
+    flag.innerHTML = icon + ' ' + info.name + ' \u2014 ' + resLabel + ' Copernicus GLO-30 data. Upgrade to Pro for best resolution.';
   } else {
     flag.innerHTML = icon + ' ' + info.name + ' \u2014 best available: ' + resLabel + '. Upgrade to Pro for full resolution.';
   }
