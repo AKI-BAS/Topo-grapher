@@ -4706,9 +4706,9 @@ a.href=URL.createObjectURL(new Blob([header+'\n'+rows.join('\n')],{type:'text/cs
   }
 }
 function handleDownload() {
+  if (!window._cleanOutMetric?.length) return;
   const fmt = document.getElementById('format-select')?.value || 'csv';
   track('download_attempted', { format: fmt });
-  if (!window._cleanOutMetric?.length) return;
   if (!_currentUser) {
     track('download_gated', { format: fmt });
     window._pendingDownloadFmt = fmt;
