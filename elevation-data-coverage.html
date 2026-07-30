@@ -89,12 +89,12 @@
     {
       "@type": "Question",
       "name": "What resolution elevation data can I get for my country?",
-      "acceptedAnswer": { "@type": "Answer", "text": "It depends on the open data each country publishes. Denmark offers 0.4m; Scotland, the Netherlands, Luxembourg and Switzerland 0.5m; England, Norway, Estonia, France, Germany and Canada 1m; the US 1 to 10m depending on 3DEP tier; Finland 2m; Czech Republic, Spain and Australia (populated areas) 5m; Italy and Iceland 10m; the rest of Europe 30m; and everywhere else falls back to 90m global coverage." }
+      "acceptedAnswer": { "@type": "Answer", "text": "It depends on the open data each country publishes. Denmark offers 0.4m; Scotland, the Netherlands, Luxembourg and Switzerland 0.5m; England, Norway, Estonia, France, Germany, Belgium (Flanders) and Canada 1m; the US 1 to 10m depending on 3DEP tier; Finland 2m; Czech Republic, Spain and Australia (populated areas) 5m; Italy and Iceland 10m; the rest of Europe 30m; and everywhere else falls back to 90m global coverage." }
     },
     {
       "@type": "Question",
       "name": "Where does the elevation data come from?",
-      "acceptedAnswer": { "@type": "Answer", "text": "From national open elevation programmes such as USGS 3DEP (US), IGN RGE ALTI (France), Kartverket (Norway), DHM/Terraen via Datafordeler (Denmark), EA LiDAR Composite (England), swissALTI3D (Switzerland), AHN via PDOK (Netherlands), ACT LiDAR (Luxembourg), Geoscience Australia DEM_LiDAR and others, plus Copernicus, EU-DTM, ArcticDEM and SRTM for continental and global coverage." }
+      "acceptedAnswer": { "@type": "Answer", "text": "From national open elevation programmes such as USGS 3DEP (US), IGN RGE ALTI (France), Kartverket (Norway), DHM/Terraen via Datafordeler (Denmark), EA LiDAR Composite (England), swissALTI3D (Switzerland), AHN via PDOK (Netherlands), ACT LiDAR (Luxembourg), Geoscience Australia DEM_LiDAR, DHMV II (Geo Vlaanderen, Flanders) and others, plus Copernicus, EU-DTM, ArcticDEM and SRTM for continental and global coverage." }
     },
     {
       "@type": "Question",
@@ -198,6 +198,7 @@
       <tr><td>Estonia</td><td>Maa-amet DTM</td><td>1m</td><td>&plusmn;0.1m</td></tr>
       <tr><td>France</td><td>IGN RGE ALTI</td><td>1m</td><td>&plusmn;0.2m</td></tr>
       <tr><td>Germany (NRW, BW, Hessen)</td><td>DGM1</td><td>1m</td><td>&plusmn;0.2m</td></tr>
+      <tr><td>Belgium (Flanders)</td><td>DHMV II (Geo Vlaanderen)</td><td>1m</td><td>&plusmn;0.15m</td></tr>
       <tr><td>Canada</td><td>NRCan HRDEM</td><td>1m</td><td>&plusmn;0.2m RMSE</td></tr>
       <tr><td>United States</td><td>USGS 3DEP</td><td>1&ndash;10m</td><td>&plusmn;0.82m RMSE</td></tr>
       <tr><td>Finland</td><td>NLS KM2</td><td>2m</td><td>&plusmn;0.3m</td></tr>
@@ -213,17 +214,17 @@
       <tr><td>Japan</td><td>GSI DEM</td><td>5&ndash;10m</td><td>&plusmn;1m</td></tr>
     </tbody>
   </table>
-  <p class="note">Resolution shown is the best available source for that region. US resolution varies by 3DEP coverage tier; Australia's 5m is limited to populated areas covered by Geoscience Australia's DEM_LiDAR programme &mdash; outside those areas the global fallback applies.</p>
+  <p class="note">Resolution shown is the best available source for that region. US resolution varies by 3DEP coverage tier; Australia's 5m is limited to populated areas covered by Geoscience Australia's DEM_LiDAR programme; Belgium's 1m is Flanders-only via Geo Vlaanderen DHMV II &mdash; outside those areas the global fallback applies.</p>
 
   <a class="cta" href="https://topo-grapher.com/">Check coverage for your site -></a>
 
   <h2>Frequently asked questions</h2>
   <div class="faq">
     <h3>What resolution elevation data can I get for my country?</h3>
-    <p>It depends on the open data each country publishes. Denmark offers 0.4m; Scotland, the Netherlands, Luxembourg and Switzerland 0.5m; England, Norway, Estonia, France, Germany and Canada 1m; the US 1&ndash;10m depending on 3DEP tier; Finland 2m; Czech Republic, Spain and Australia (populated areas) 5m; Italy and Iceland 10m; the rest of Europe 30m; and everywhere else falls back to 90m global coverage.</p>
+    <p>It depends on the open data each country publishes. Denmark offers 0.4m; Scotland, the Netherlands, Luxembourg and Switzerland 0.5m; England, Norway, Estonia, France, Germany, Belgium (Flanders) and Canada 1m; the US 1&ndash;10m depending on 3DEP tier; Finland 2m; Czech Republic, Spain and Australia (populated areas) 5m; Italy and Iceland 10m; the rest of Europe 30m; and everywhere else falls back to 90m global coverage.</p>
 
     <h3>Where does the elevation data come from?</h3>
-    <p>From national open elevation programmes &mdash; USGS 3DEP (US), IGN RGE ALTI (France), Kartverket (Norway), DHM/Terr&aelig;n via Datafordeler (Denmark), EA LiDAR Composite (England), swissALTI3D (Switzerland), AHN via PDOK (Netherlands), ACT LiDAR (Luxembourg), Geoscience Australia DEM_LiDAR, and others &mdash; plus Copernicus, EU-DTM, ArcticDEM and SRTM for continental and global coverage.</p>
+    <p>From national open elevation programmes &mdash; USGS 3DEP (US), IGN RGE ALTI (France), Kartverket (Norway), DHM/Terr&aelig;n via Datafordeler (Denmark), EA LiDAR Composite (England), swissALTI3D (Switzerland), AHN via PDOK (Netherlands), ACT LiDAR (Luxembourg), Geoscience Australia DEM_LiDAR, DHMV II (Geo Vlaanderen, Flanders), and others &mdash; plus Copernicus, EU-DTM, ArcticDEM and SRTM for continental and global coverage.</p>
 
     <h3>What if my country isn't listed?</h3>
     <p>Global fallbacks (Copernicus GLO-30 at 30m and SRTM at 90m) cover anywhere on land, so you can always generate terrain even where high-resolution national data isn't published.</p>
