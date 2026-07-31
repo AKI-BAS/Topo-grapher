@@ -913,24 +913,141 @@ async function exportAllToExcel(){
       }
       return all;
     }
+    const soft=async(label,promise)=>{
+      try{const r=await promise; if(r&&r.error) throw r.error; return r&&'data' in r?r.data:r;}
+      catch(e){console.warn('[export] '+label+' failed:',e.message||e); return null;}
+    };
 
-    const [profiles, generations, blogEvents] = await Promise.all([
+    const now=new Date();
+    const thisMonthStart=new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const prevMonthStart=new Date(now.getFullYear(), now.getMonth()-1, 1).toISOString();
+    const prevMonthEnd=new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+    const nowISO=now.toISOString();
+
+    const [profiles, generations, blogEvents, events, healthChecks, coverage] = await Promise.all([
       fetchAll('profiles','email,plan,is_company_admin,is_admin,seat_count,created_at','created_at'),
-      fetchAll('generations','created_at,project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,addon_charged_pence,centroid_lat,centroid_lon,user_id','created_at'),
-      fetchAll('blog_events','slug,event_type,created_at','created_at')
+      fetchAll('generations','created_at,project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,addon_charged_pence,centroid_lat,centroid_lon,user_id,status,error_stage,error_detail,is_test','created_at'),
+      fetchAll('blog_events','slug,event_type,created_at','created_at'),
+      soft('events', fetchAll('events','created_at,event,user_id,anon_id,is_test,properties','created_at')).then(r=>r||[]),
+      soft('health_checks', fetchAll('health_checks','region,ok,latency_ms,error,checked_at','checked_at')).then(r=>r||[]),
+      soft('coverage_countries', fetchAll('coverage_countries','*','iso3')).then(r=>r||[]),
     ]);
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(profiles), 'Profiles');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(generations), 'Generations');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(blogEvents), 'BlogEvents');
+    const [cohortSizes, cohortRetention, cancellationReasons, usageSummary,
+           activFunnelThis, activFunnelPrev, paywallThis, paywallPrev,
+           dau1, dau7, dau30, dauSeries] = await Promise.all([
+      soft('v_cohort_sizes', _sb.from('v_cohort_sizes').select('*').order('cohort_week',{ascending:false})),
+      soft('v_cohort_retention', _sb.from('v_cohort_retention').select('*')),
+      soft('v_cancellation_reasons', _sb.from('v_cancellation_reasons').select('*')),
+      soft('v_usage_summary', _sb.from('v_usage_summary').select('*')),
+      soft('activation_funnel this', _sb.rpc('activation_funnel',{p_start:thisMonthStart,p_end:nowISO})),
+      soft('activation_funnel prev', _sb.rpc('activation_funnel',{p_start:prevMonthStart,p_end:prevMonthEnd})),
+      soft('paywall_funnel this', _sb.rpc('paywall_funnel',{p_start:thisMonthStart,p_end:nowISO})),
+      soft('paywall_funnel prev', _sb.rpc('paywall_funnel',{p_start:prevMonthStart,p_end:prevMonthEnd})),
+      soft('active_users 1d', _sb.rpc('active_users_count',{p_days:1})),
+      soft('active_users 7d', _sb.rpc('active_users_count',{p_days:7})),
+      soft('active_users 30d', _sb.rpc('active_users_count',{p_days:30})),
+      soft('daily_active_users', _sb.rpc('daily_active_users',{p_days:30})),
+    ]);
 
-    const timeline = [];
+    function gateFunnel(startISO, endISO){
+      const inRange=e=>!e.is_test && e.created_at>=startISO && e.created_at<=endISO;
+      const c=list=>events.filter(e=>inRange(e)&&list.includes(e.event)).length;
+      return [
+        {step:'Anon hit gate (download/checkout)', count:c(['download_gated','checkout_gated'])},
+        {step:'Signed up and resumed action',      count:c(['download_resumed_after_auth','checkout_resumed_after_auth'])},
+        {step:'Subscription created',              count:c(['subscription_created'])},
+      ];
+    }
+
+    const activeGens=generations.filter(g=>!g.is_test && (g.status==='completed'||!g.status));
+    const nonAdmin=profiles.filter(p=>!p.is_admin);
+    const proUsers=nonAdmin.filter(p=>['pro','company'].includes(p.plan)).length;
+    const inMonth=(iso,s,e)=>iso>=s&&(!e||iso<=e);
+    const kpiSummary=[
+      {metric:'Export generated',                      value:nowISO},
+      {metric:'This-month window',                     value:`${thisMonthStart} → ${nowISO}`},
+      {metric:'Prev-month window',                     value:`${prevMonthStart} → ${prevMonthEnd}`},
+      {metric:'Total users (non-admin)',               value:nonAdmin.length},
+      {metric:'Pro/Company users',                     value:proUsers},
+      {metric:'Free→Pro conversion %',                 value:nonAdmin.length?Math.round(proUsers/nonAdmin.length*1000)/10:0},
+      {metric:'Total generations (completed, non-test)', value:activeGens.length},
+      {metric:'Generations this month',                value:activeGens.filter(g=>inMonth(g.created_at,thisMonthStart)).length},
+      {metric:'Generations prev month',                value:activeGens.filter(g=>inMonth(g.created_at,prevMonthStart,prevMonthEnd)).length},
+      {metric:'Signups this month',                    value:nonAdmin.filter(p=>inMonth(p.created_at,thisMonthStart)).length},
+      {metric:'Signups prev month',                    value:nonAdmin.filter(p=>inMonth(p.created_at,prevMonthStart,prevMonthEnd)).length},
+      {metric:'Downloads this month',                  value:activeGens.filter(g=>g.file_name&&inMonth(g.created_at,thisMonthStart)).length},
+      {metric:'Downloads prev month',                  value:activeGens.filter(g=>g.file_name&&inMonth(g.created_at,prevMonthStart,prevMonthEnd)).length},
+      {metric:'Active users (last 24h)',               value:dau1||0},
+      {metric:'Active users (last 7d)',                value:dau7||0},
+      {metric:'Active users (last 30d)',               value:dau30||0},
+      {metric:'Blog views this month',                 value:blogEvents.filter(b=>b.event_type==='view'&&inMonth(b.created_at,thisMonthStart)).length},
+      {metric:'Blog CTA clicks this month',            value:blogEvents.filter(b=>b.event_type==='click'&&inMonth(b.created_at,thisMonthStart)).length},
+    ];
+
+    const blogAgg={};
+    blogEvents.forEach(b=>{
+      if(!blogAgg[b.slug]) blogAgg[b.slug]={slug:b.slug,views:0,clicks:0};
+      if(b.event_type==='view') blogAgg[b.slug].views++;
+      else if(b.event_type==='click') blogAgg[b.slug].clicks++;
+    });
+    const blogStats=Object.values(blogAgg)
+      .map(r=>({...r, ctr_pct:r.views?Math.round(r.clicks/r.views*1000)/10:0}))
+      .sort((a,b)=>b.views-a.views);
+
+    const countryAgg={};
+    activeGens.forEach(g=>{
+      const c=g.country_code||'UNKNOWN';
+      if(!countryAgg[c]) countryAgg[c]={country:c,generations:0,_users:new Set()};
+      countryAgg[c].generations++;
+      if(g.user_id) countryAgg[c]._users.add(g.user_id);
+    });
+    const countryBreakdown=Object.values(countryAgg)
+      .map(r=>({country:r.country, generations:r.generations, unique_users:r._users.size}))
+      .sort((a,b)=>b.generations-a.generations);
+
+    const fmtAgg={};
+    generations.forEach(g=>{
+      if(!g.file_name||g.is_test) return;
+      const ext=(g.file_name.split('.').pop()||'').toLowerCase();
+      if(!ext) return;
+      fmtAgg[ext]=(fmtAgg[ext]||0)+1;
+    });
+    const formatBreakdown=Object.entries(fmtAgg)
+      .map(([format,count])=>({format,count}))
+      .sort((a,b)=>b.count-a.count);
+
+    const wb=XLSX.utils.book_new();
+    const add=(name,rows)=>XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows&&rows.length?rows:[{note:'no data'}]), name);
+
+    add('Summary',              kpiSummary);
+    add('ActivationFunnel_This', activFunnelThis||[]);
+    add('ActivationFunnel_Prev', activFunnelPrev||[]);
+    add('PaywallFunnel_This',    paywallThis||[]);
+    add('PaywallFunnel_Prev',    paywallPrev||[]);
+    add('GateFunnel_This',       gateFunnel(thisMonthStart, nowISO));
+    add('GateFunnel_Prev',       gateFunnel(prevMonthStart, prevMonthEnd));
+    add('CohortSizes',           cohortSizes||[]);
+    add('CohortRetention',       cohortRetention||[]);
+    add('UsageSummary',          usageSummary||[]);
+    add('CancellationReasons',   cancellationReasons||[]);
+    add('DAU_Last30d',           dauSeries||[]);
+    add('BlogPostStats',         blogStats);
+    add('CountryBreakdown',      countryBreakdown);
+    add('FormatBreakdown',       formatBreakdown);
+    add('Profiles',              profiles);
+    add('Generations',           generations);
+    add('BlogEvents',            blogEvents);
+    add('Events',                events);
+    add('HealthChecks',          healthChecks);
+    add('CoverageCountries',     coverage);
+
+    const timeline=[];
     profiles.forEach(p=>timeline.push({date:p.created_at, type:'signup', plan:p.plan, detail:p.email}));
     generations.forEach(g=>timeline.push({date:g.created_at, type:'generation', plan:g.user_plan, detail:`${g.project_name||''} · ${g.country_code||''}`}));
     blogEvents.forEach(b=>timeline.push({date:b.created_at, type:'blog_'+b.event_type, plan:'', detail:b.slug}));
     timeline.sort((a,b)=> new Date(a.date) - new Date(b.date));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(timeline), 'Timeline');
+    add('Timeline', timeline);
 
     XLSX.writeFile(wb, `topo-grapher-export-${new Date().toISOString().slice(0,10)}.xlsx`);
   }catch(err){
