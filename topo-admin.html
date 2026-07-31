@@ -21,7 +21,7 @@
   --green: #3A5E2A; --green-lt: #5A8E3A;
   --blue: #4EA0D9; --blue-dk: #1A2E3E;
   --amber: #E0A050; --amber-dk: #2E2010;
-  --red: #E25555;
+  --red: #E25555; --red-dk: #2a1a10; --orange: #f09975;
   --purple: #8B7AC6;
   --grid: rgba(30,38,24,0.35);
   --kpi-text: #fff;
@@ -43,7 +43,7 @@
   --green: #3A7A2A; --green-lt: #2A6A1A;
   --blue: #2878C8; --blue-dk: #E0EEF8;
   --amber: #B87A20; --amber-dk: #F8EED8;
-  --red: #CC3333;
+  --red: #CC3333; --red-dk: #FBEAE3; --orange: #B85A2E;
   --purple: #6A5AA6;
   --grid: rgba(200,195,185,0.3);
   --kpi-text: #1A1A18;
@@ -211,7 +211,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .badge-lidar{background:var(--blue-dk);color:var(--blue);border:1px solid rgba(78,160,217,.3);}
 .badge-good{background:var(--accent-dk);color:var(--accent);border:1px solid rgba(154,186,106,.3);}
 .badge-mid{background:var(--amber-dk);color:var(--amber);border:1px solid rgba(224,160,80,.3);}
-.badge-low{background:#2a1a10;color:#f09975;border:1px solid rgba(216,90,48,.3);}
+.badge-low{background:var(--red-dk);color:var(--orange);border:1px solid rgba(216,90,48,.3);}
 
 /* ── Bar chart ─────────────────────────────────────────────── */
 .bar-chart-h{display:flex;flex-direction:column;gap:5px;}
@@ -309,6 +309,14 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .mon-block-sticky .mon-val-wrap{max-width:200px;}
 @media(max-width:1400px){
   .mon-block-sticky{position:static;width:auto;max-height:none;right:auto;top:auto;margin-top:clamp(12px,1.4vw,24px);}
+}
+/* Between 1401-1800px the sticky panel is still position:fixed (docked to the
+   viewport's right edge, 320px + 24px margin) but #sec-monitor's normal
+   1100px cap only leaves that much clearance once the viewport is ~1788px+.
+   Narrow the health tab itself in that gap so its content never runs behind
+   the fixed synthetic-checks panel. */
+@media(min-width:1401px) and (max-width:1800px){
+  #sec-monitor{max-width:700px;}
 }
 .mon-block{display:flex;flex-direction:column;gap:0;}
 .mon-block-title{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
@@ -432,6 +440,8 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .feed-main{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .feed-meta{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:1px;}
 .feed-time{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);flex-shrink:0;margin-top:3px;}
+.feed-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}
+.badge-sm{font-size:8px;padding:1px 5px;}
 
 /* ── Animations ────────────────────────────────────────────── */
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -1100,8 +1110,7 @@ const OVERVIEW_SECS = [
 const PAGES = [
   { id: 'overview',  title: 'Overview',            icon: '◈', secs: [] },
   { id: 'monitor',   title: 'Monitor',             icon: '⚠', secs: [
-      { id: 'monitor',   title: 'System Health',   icon: '⚠' },
-      { id: 'gatewatch', title: 'Gate Bypass Watch', icon: '⛔' } ] },
+      { id: 'monitor',   title: 'System Health',   icon: '⚠' } ] },
   { id: 'trends',    title: 'Trends',              icon: '⟋', secs: [
       { id: 'trends',    title: 'Trends',          icon: '⟋' } ] },
   { id: 'geo',       title: 'Countries & Priority', icon: '⚑', secs: [
@@ -1159,7 +1168,7 @@ function switchPage(id) {
   if (id === 'trends') setTimeout(() => { try { loadTrendsChart(); } catch(e) {} }, 60);
   if (id === 'blogstats') setTimeout(() => { try { loadBlogStats(); } catch(e) {} }, 60);
   // Monitor runs network pings, so load on demand each time the page is opened
-  if (id === 'monitor') setTimeout(() => { try { loadMonitor(); loadGateWatch(); } catch(e) {} }, 40);
+  if (id === 'monitor') setTimeout(() => { try { loadMonitor(); } catch(e) {} }, 40);
   // Analytics pages: heavier queries against `events`, so load on demand too
   if (id === 'growth') setTimeout(() => { try { loadDauWauMau(); loadRetention(); } catch(e) {} }, 40);
   if (id === 'funnels') setTimeout(() => { try { loadActivationFunnel(); loadPaywallFunnel(); loadGateFunnel(); } catch(e) {} }, 40);
@@ -2144,12 +2153,27 @@ function _pingHost(url,timeoutMs=5000){
   });
 }
 
+// Monitor tab has two views sharing one panel (toggle, not a second smushed
+// column) — System Health and Gate Bypass Watch. Each loader renders the
+// toggle bar itself so switching views is just calling the other loader.
+let _monitorView='health';
+function monitorToggleHtml(active){
+  return `<div class="speed-strat" style="margin-bottom:14px;">
+    <button class="${active==='health'?'active':''}" onclick="setMonitorView('health')">System Health</button>
+    <button class="${active==='gatewatch'?'active':''}" onclick="setMonitorView('gatewatch')">Gate Bypass Watch</button>
+  </div>`;
+}
+function setMonitorView(v){
+  _monitorView=v;
+  if(v==='health') loadMonitor(); else loadGateWatch();
+}
+
 async function loadMonitor(){
   const body=document.getElementById('body-monitor');
   if(!body)return;
   const badge=document.getElementById('badge-monitor');
   if(badge)badge.textContent='checking…';
-  body.innerHTML='<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:20px 0;">Running health checks…</div>';
+  body.innerHTML=monitorToggleHtml('health')+'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:20px 0;">Running health checks…</div>';
 
   const dayAgo=new Date(Date.now()-864e5).toISOString();
   const hourAgo=new Date(Date.now()-36e5).toISOString();
@@ -2305,7 +2329,7 @@ async function loadMonitor(){
     ? admins.data.map(a=>`<div class="mon-row"><span class="mon-dot ok"></span><div class="mon-label">${esc(a.email||'—')}</div><div class="mon-val">admin</div></div>`).join('')
     : '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">No admin accounts found</div>';
 
-  body.innerHTML=`
+  body.innerHTML=monitorToggleHtml('health')+`
     <div class="mon-block-title" style="border:none;margin-bottom:10px;">Site speed <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· Google PageSpeed, on demand</span></div>
     <div id="speed-test"></div>
     <div class="mon-block-title" style="margin-top:22px;">System status</div>
@@ -2398,10 +2422,10 @@ async function loadMonitor(){
 // captured currently, so this can't tell multiple people behind one anon_id
 // apart from one person clearing localStorage — noted in the panel footer.
 async function loadGateWatch(){
-  const badge=document.getElementById('badge-gatewatch');
-  const body=document.getElementById('body-gatewatch');
+  const badge=document.getElementById('badge-monitor');
+  const body=document.getElementById('body-monitor');
   if(!body) return;
-  body.innerHTML='<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">Loading…</div>';
+  body.innerHTML=monitorToggleHtml('gatewatch')+'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">Loading…</div>';
 
   const FREE_DAILY_LIMIT=3;
   const sevenDaysAgo=new Date(Date.now()-7*864e5).toISOString();
@@ -2420,7 +2444,7 @@ async function loadGateWatch(){
 
   if(queryError){
     if(badge) badge.textContent='no data';
-    body.innerHTML=`<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">events table (or anon_id/user_id columns) not available yet — ${esc(queryError.message||'query failed')}</div>`;
+    body.innerHTML=monitorToggleHtml('gatewatch')+`<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">events table (or anon_id/user_id columns) not available yet — ${esc(queryError.message||'query failed')}</div>`;
     return;
   }
 
@@ -2464,7 +2488,7 @@ async function loadGateWatch(){
     ? `<div class="mon-alert ok"><span class="mon-dot ok"></span>No gate-bypass signals in the last 7 days</div>`
     : `<div class="mon-alert crit"><span class="mon-dot crit"></span>${limitBypasses.length} anon_id/day bucket${limitBypasses.length===1?'':'s'} over the free daily cap · ${downloadBypasses.length} anon_id/day bucket${downloadBypasses.length===1?'':'s'} with ungated downloads</div>`;
 
-  body.innerHTML=`
+  body.innerHTML=monitorToggleHtml('gatewatch')+`
     <div class="mon-banner">${bannerHtml}</div>
     <div class="mon-grid">
       <div class="mon-block">
@@ -2702,10 +2726,10 @@ async function loadFeed(){
     // Guest/user badge — who a generation came from, at a glance (Guest = no user_id, i.e. anon_id-only session)
     const badgeCls=who==='anon'?'badge-low':who==='free'?'badge-mid':who==='pro'?'badge-lidar':'badge-good';
     const badgeLabel=who==='anon'?'Guest':'User — '+who;
-    const whoBadge=`<span class="badge ${badgeCls}" title="${who==='anon'?'No user_id — anonymous/guest generation':'Signed-in user, plan: '+who}">${badgeLabel}</span>`;
-    const meta=`${whoBadge} · ${r.point_count?r.point_count.toLocaleString()+'pts':'—'} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}${cName?' · '+esc(cName):''}`;
+    const whoBadge=`<span class="badge badge-sm ${badgeCls}" title="${who==='anon'?'No user_id — anonymous/guest generation':'Signed-in user, plan: '+who}">${badgeLabel}</span>`;
+    const meta=`${r.point_count?r.point_count.toLocaleString()+'pts':'—'} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}${cName?' · '+esc(cName):''}`;
     const loc=(r.centroid_lat!=null&&r.centroid_lon!=null)?{lat:+r.centroid_lat,lon:+r.centroid_lon,name:r.project_name||''}:null;
-    items.push({type,time:r.created_at,dl:type==='fail'||type==='started'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?' — '+esc(r.error_detail):''}`:null,loc});
+    items.push({type,time:r.created_at,dl:type==='fail'||type==='started'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,badge:whoBadge,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?' — '+esc(r.error_detail):''}`:null,loc});
   });
   (signups||[]).forEach(r=>items.push({type:r.plan!=='free'?'upgrade':'signup',time:r.created_at,dl:null,main:`New ${r.plan!=='free'?r.plan+' subscriber':'signup'} · ${esc((r.email||'').split('@')[0])}`,meta:r.plan!=='free'?r.plan+' tier':'free tier'}));
   items.sort((a,b)=>new Date(b.time)-new Date(a.time));
@@ -2718,7 +2742,7 @@ async function loadFeed(){
     <input id="feed-delete-name" type="text" placeholder="Project name to purge…" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:'DM Mono',monospace;font-size:11px;outline:none;border-radius:3px;">
     <button onclick="purgeByName()" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red);background:none;border:1px solid var(--red);padding:5px 10px;cursor:pointer;letter-spacing:.04em;border-radius:3px;white-space:nowrap;transition:all .15s;" onmouseover="this.style.background='rgba(226,85,85,.15)'" onmouseout="this.style.background='none'">⌫ Purge</button>
   </div>
-  <div class="feed">${items.slice(0,20).map((i,idx)=>{const iconEl=i.loc?`<div class="feed-type ${typeClasses[i.type]}" onclick="focusFeedLocation(${i.loc.lat},${i.loc.lon},${JSON.stringify(i.loc.name||'').replace(/"/g,'&quot;')})" title="Show on heatmap" style="cursor:pointer;">${icons[i.type]}</div>`:`<div class="feed-type ${typeClasses[i.type]}">${icons[i.type]}</div>`;return`<div class="feed-item">${iconEl}<div class="feed-content"><div class="feed-main">${i.main}${dlDot(i)}</div><div class="feed-meta">${i.meta}</div>${i.fail_detail?`<div class="feed-fail-detail">${i.fail_detail}</div>`:''}</div><div class="feed-time">${ago(i.time)}</div></div>`}).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No activity yet</div>'}</div>`;
+  <div class="feed">${items.slice(0,20).map((i,idx)=>{const iconEl=i.loc?`<div class="feed-type ${typeClasses[i.type]}" onclick="focusFeedLocation(${i.loc.lat},${i.loc.lon},${JSON.stringify(i.loc.name||'').replace(/"/g,'&quot;')})" title="Show on heatmap" style="cursor:pointer;">${icons[i.type]}</div>`:`<div class="feed-type ${typeClasses[i.type]}">${icons[i.type]}</div>`;return`<div class="feed-item">${iconEl}<div class="feed-content"><div class="feed-main">${i.main}${dlDot(i)}</div><div class="feed-meta">${i.meta}</div>${i.fail_detail?`<div class="feed-fail-detail">${i.fail_detail}</div>`:''}</div><div class="feed-right">${i.badge||''}<div class="feed-time">${ago(i.time)}</div></div></div>`}).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No activity yet</div>'}</div>`;
 }
 async function purgeByName(){
   const inp=document.getElementById('feed-delete-name');
@@ -3219,7 +3243,6 @@ const MOB_TABS = [
   { id:'funnel',    title:'Funnel',     icon:'▽' },
   { id:'heatmap',   title:'Map',        icon:'◎' },
   { id:'monitor',   title:'Monitor',    icon:'◐' },
-  { id:'gatewatch', title:'Gate Watch', icon:'⛔' },
   { id:'users',     title:'Users',      icon:'◉' },
   { id:'countries', title:'Countries',  icon:'⚑' },
   { id:'gaps',      title:'Priority',   icon:'⊿' },
@@ -3293,9 +3316,6 @@ function switchMobTab(id) {
   // Monitor: reachability pings + speed test render, on demand each open
   if (id === 'monitor') {
     setTimeout(() => { try { loadMonitor(); } catch(e) {} }, 40);
-  }
-  if (id === 'gatewatch') {
-    setTimeout(() => { try { loadGateWatch(); } catch(e) {} }, 40);
   }
   // Analytics tabs: on demand each open, same as monitor/trends
   const analyticsLoaders = {
