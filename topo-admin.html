@@ -1743,7 +1743,11 @@ const TREND_METRICS=[
   {id:'downloads',  label:'Downloads',  color:'#4EA0D9'},
   {id:'signups',    label:'Signups',    color:'#E0A050'},
   {id:'blogviews',  label:'Blog views', color:'#8B7AC6'},
+  {id:'pageviews',  label:'Page views', color:'#5DBFA8'},
+  {id:'ctaclicks',  label:'CTA clicks', color:'#D97676'},
 ];
+// Events counted as "CTA clicks" — anything showing purchase/upsell intent
+const CTA_EVENTS=['pro_cta_clicked','addon_info_clicked','checkout_started','checkout_gated','upsell_popup_shown','signup_prompt_shown'];
 let _trendMetric='generations';
 let _trendCache=null; // {labels,values,color} for redraws on resize and page show
 
@@ -1753,12 +1757,17 @@ async function loadTrends(){
   const ps=periodStart();
   const met=TREND_METRICS.find(m=>m.id===_trendMetric)||TREND_METRICS[0];
   let q;
+  const wantsProps=(met.id==='pageviews'||met.id==='ctaclicks');
   if(met.id==='signups'){
     q=_sb.from('profiles').select('created_at').eq('is_admin',false).order('created_at',{ascending:true}).limit(10000);
   }else if(met.id==='blogviews'){
     q=_sb.from('blog_events').select('created_at').eq('event_type','view').order('created_at',{ascending:true}).limit(10000);
   }else if(met.id==='downloads'){
     q=_sb.from('generations').select('created_at').eq('is_test',false).or('status.eq.completed,status.is.null').not('file_name','is',null).order('created_at',{ascending:true}).limit(10000);
+  }else if(met.id==='pageviews'){
+    q=_sb.from('events').select('created_at,properties').eq('is_test',false).eq('event','page_open').order('created_at',{ascending:true}).limit(10000);
+  }else if(met.id==='ctaclicks'){
+    q=_sb.from('events').select('created_at,event,properties').eq('is_test',false).in('event',CTA_EVENTS).order('created_at',{ascending:true}).limit(10000);
   }else{
     q=_sb.from('generations').select('created_at').eq('is_test',false).or('status.eq.completed,status.is.null').order('created_at',{ascending:true}).limit(10000);
   }
@@ -1802,6 +1811,36 @@ async function loadTrends(){
   const mh=Math.max(...hc,1);
   const avg=(rows.length/buckets.n).toFixed(1);
 
+  // Breakdown for the two events-backed metrics
+  let breakdownHtml='';
+  if(met.id==='pageviews'){
+    const refCounts={};
+    rows.forEach(r=>{
+      const raw=(r.properties&&r.properties.referrer)||'(direct)';
+      let key=raw;
+      try{const u=new URL(raw); key=u.hostname.replace(/^www\./,'')+u.pathname.replace(/\/$/,'');}catch(e){}
+      if(!key||key==='null'||key==='undefined') key='(direct)';
+      refCounts[key]=(refCounts[key]||0)+1;
+    });
+    const top=Object.entries(refCounts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const mr=Math.max(1,...top.map(t=>t[1]));
+    breakdownHtml=`
+      <div style="margin-top:12px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">Top referrers (${top.length})</div>
+      <div class="bar-chart-h">${top.map(([k,v])=>barRow(esc(k),v,mr,'bar-fill-accent')).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No referrer data</div>'}</div>`;
+  }else if(met.id==='ctaclicks'){
+    const evCounts={};
+    rows.forEach(r=>{evCounts[r.event]=(evCounts[r.event]||0)+1;});
+    const top=Object.entries(evCounts).sort((a,b)=>b[1]-a[1]);
+    const mr=Math.max(1,...top.map(t=>t[1]));
+    breakdownHtml=`
+      <div style="margin-top:12px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">By CTA event</div>
+      <div class="bar-chart-h">${top.map(([k,v])=>barRow(esc(k),v,mr,'bar-fill-accent')).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No CTA clicks yet</div>'}</div>`;
+  }else{
+    breakdownHtml=`
+      <div style="margin-top:12px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">By hour (UTC)</div>
+      <div class="bar-chart-h">${[0,3,6,9,12,15,18,21].map(h=>barRow(String(h).padStart(2,'0')+':00',hc[h],mh,'bar-fill-accent')).join('')}</div>`;
+  }
+
   bodyEl.innerHTML=tabs+`
     <div style="display:flex;gap:16px;margin-bottom:12px;">
       <div style="text-align:center;flex:1;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">TODAY</div><div style="font-size:18px;font-weight:500;color:${met.color};">${todayC}</div></div>
@@ -1809,8 +1848,7 @@ async function loadTrends(){
       <div style="text-align:center;flex:1;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">AVG / BUCKET</div><div style="font-size:18px;font-weight:500;color:var(--text);">${avg}</div></div>
     </div>
     <div class="chart-area" id="trend-chart"></div>
-    <div style="margin-top:12px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">By hour (UTC)</div>
-    <div class="bar-chart-h">${[0,3,6,9,12,15,18,21].map(h=>barRow(String(h).padStart(2,'0')+':00',hc[h],mh,'bar-fill-accent')).join('')}</div>
+    ${breakdownHtml}
   `;
   _trendCache={labels:days.map(d=>buckets.fmt(d)),values:days.map(d=>dc[d]||0),color:met.color};
   requestAnimationFrame(()=>{if(_trendCache)buildSVG('trend-chart',_trendCache.labels,_trendCache.values,_trendCache.color);});
