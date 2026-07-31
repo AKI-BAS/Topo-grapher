@@ -1100,7 +1100,8 @@ const OVERVIEW_SECS = [
 const PAGES = [
   { id: 'overview',  title: 'Overview',            icon: '◈', secs: [] },
   { id: 'monitor',   title: 'Monitor',             icon: '⚠', secs: [
-      { id: 'monitor',   title: 'System Health',   icon: '⚠' } ] },
+      { id: 'monitor',   title: 'System Health',   icon: '⚠' },
+      { id: 'gatewatch', title: 'Gate Bypass Watch', icon: '⛔' } ] },
   { id: 'trends',    title: 'Trends',              icon: '⟋', secs: [
       { id: 'trends',    title: 'Trends',          icon: '⟋' } ] },
   { id: 'geo',       title: 'Countries & Priority', icon: '⚑', secs: [
@@ -1158,7 +1159,7 @@ function switchPage(id) {
   if (id === 'trends') setTimeout(() => { try { loadTrendsChart(); } catch(e) {} }, 60);
   if (id === 'blogstats') setTimeout(() => { try { loadBlogStats(); } catch(e) {} }, 60);
   // Monitor runs network pings, so load on demand each time the page is opened
-  if (id === 'monitor') setTimeout(() => { try { loadMonitor(); } catch(e) {} }, 40);
+  if (id === 'monitor') setTimeout(() => { try { loadMonitor(); loadGateWatch(); } catch(e) {} }, 40);
   // Analytics pages: heavier queries against `events`, so load on demand too
   if (id === 'growth') setTimeout(() => { try { loadDauWauMau(); loadRetention(); } catch(e) {} }, 40);
   if (id === 'funnels') setTimeout(() => { try { loadActivationFunnel(); loadPaywallFunnel(); loadGateFunnel(); } catch(e) {} }, 40);
@@ -2384,6 +2385,101 @@ async function loadMonitor(){
   _renderSpeedTest();
 }
 
+// ── Gate bypass watch ────────────────────────────────────────────
+// Two signals, both read from `events` (generations has no anon_id column):
+//  1. Free daily-limit gate: generation_completed events with no user_id,
+//     bucketed by anon_id + day. FREE_DAILY_LIMIT (3, mirrors index.html) is
+//     enforced client-side — a bucket over that means the gate didn't hold.
+//  2. Download-requires-signup gate: download_attempted always fires
+//     immediately followed by download_gated for guests (see handleDownload()
+//     in index.html). attempted > gated for an anon_id/day means a download
+//     slipped through ungated.
+// Degrades gracefully if `events`/anon_id/user_id aren't there yet. No IP is
+// captured currently, so this can't tell multiple people behind one anon_id
+// apart from one person clearing localStorage — noted in the panel footer.
+async function loadGateWatch(){
+  const badge=document.getElementById('badge-gatewatch');
+  const body=document.getElementById('body-gatewatch');
+  if(!body) return;
+  body.innerHTML='<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">Loading…</div>';
+
+  const FREE_DAILY_LIMIT=3;
+  const sevenDaysAgo=new Date(Date.now()-7*864e5).toISOString();
+
+  let genRows=[], dlRows=[], queryError=null;
+  try {
+    const [genRes, dlRes] = await Promise.all([
+      _sb.from('events').select('created_at,anon_id').eq('event','generation_completed').is('user_id',null).gte('created_at',sevenDaysAgo).limit(20000),
+      _sb.from('events').select('created_at,anon_id,event').in('event',['download_attempted','download_gated']).is('user_id',null).gte('created_at',sevenDaysAgo).limit(20000),
+    ]);
+    if(genRes.error) throw genRes.error;
+    if(dlRes.error) throw dlRes.error;
+    genRows=genRes.data||[];
+    dlRows=dlRes.data||[];
+  } catch(e) { queryError=e; }
+
+  if(queryError){
+    if(badge) badge.textContent='no data';
+    body.innerHTML=`<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">events table (or anon_id/user_id columns) not available yet — ${esc(queryError.message||'query failed')}</div>`;
+    return;
+  }
+
+  const byAnonDay={};
+  genRows.forEach(r=>{
+    if(!r.anon_id) return;
+    const key=r.anon_id+'|'+(r.created_at||'').slice(0,10);
+    byAnonDay[key]=(byAnonDay[key]||0)+1;
+  });
+  const limitBypasses=Object.entries(byAnonDay)
+    .filter(([,n])=>n>FREE_DAILY_LIMIT)
+    .map(([key,n])=>{const[anon,day]=key.split('|');return{anon,day,n};})
+    .sort((a,b)=>b.n-a.n);
+
+  const dlByAnonDay={};
+  dlRows.forEach(r=>{
+    if(!r.anon_id) return;
+    const key=r.anon_id+'|'+(r.created_at||'').slice(0,10);
+    if(!dlByAnonDay[key]) dlByAnonDay[key]={attempted:0,gated:0};
+    if(r.event==='download_attempted') dlByAnonDay[key].attempted++; else dlByAnonDay[key].gated++;
+  });
+  const downloadBypasses=Object.entries(dlByAnonDay)
+    .map(([key,v])=>{const[anon,day]=key.split('|');return{anon,day,attempted:v.attempted,gated:v.gated,slipped:v.attempted-v.gated};})
+    .filter(r=>r.slipped>0)
+    .sort((a,b)=>b.slipped-a.slipped);
+
+  const totalSignals=limitBypasses.length+downloadBypasses.length;
+  if(badge) badge.textContent=totalSignals===0?'clean':totalSignals+' signal'+(totalSignals>1?'s':'');
+
+  const rowHtml=(label,val)=>`<div class="mon-row"><span class="mon-dot crit"></span><div class="mon-label">${esc(label)}</div><div class="mon-val">${esc(val)}</div></div>`;
+
+  const limitRowsHtml=limitBypasses.length
+    ? limitBypasses.slice(0,15).map(r=>rowHtml(r.anon.slice(0,18)+' · '+r.day, r.n+' completed (cap '+FREE_DAILY_LIMIT+')')).join('')
+    : '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No anon_id exceeded the free daily cap in the last 7 days</div>';
+
+  const dlRowsHtml=downloadBypasses.length
+    ? downloadBypasses.slice(0,15).map(r=>rowHtml(r.anon.slice(0,18)+' · '+r.day, r.slipped+' ungated of '+r.attempted+' attempted')).join('')
+    : '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No ungated downloads detected in the last 7 days</div>';
+
+  const bannerHtml = totalSignals===0
+    ? `<div class="mon-alert ok"><span class="mon-dot ok"></span>No gate-bypass signals in the last 7 days</div>`
+    : `<div class="mon-alert crit"><span class="mon-dot crit"></span>${limitBypasses.length} anon_id/day bucket${limitBypasses.length===1?'':'s'} over the free daily cap · ${downloadBypasses.length} anon_id/day bucket${downloadBypasses.length===1?'':'s'} with ungated downloads</div>`;
+
+  body.innerHTML=`
+    <div class="mon-banner">${bannerHtml}</div>
+    <div class="mon-grid">
+      <div class="mon-block">
+        <div class="mon-block-title">Free daily-limit gate (&gt;${FREE_DAILY_LIMIT}/day, anon, last 7d)</div>
+        ${limitRowsHtml}
+      </div>
+      <div class="mon-block">
+        <div class="mon-block-title">Download-requires-signup gate (ungated, anon, last 7d)</div>
+        ${dlRowsHtml}
+      </div>
+    </div>
+    <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:16px;letter-spacing:.04em;">Grouped by anon_id + calendar day (UTC). No IP is captured yet, so this can't tell multiple people behind one anon_id apart from one person clearing localStorage. Signal 1 reads the generation_completed event (not the generations table, which has no anon_id column).</div>
+  `;
+}
+
 // ── Site speed test (Google PageSpeed Insights / Lighthouse) ───
 // Runs the same lab engine third-party speed tools use, against the live site.
 // Keyless works for occasional use; paste a PageSpeed API key for higher limits.
@@ -2603,7 +2699,11 @@ async function loadFeed(){
     else type=(r.user_plan==='pro'||r.user_plan==='company')?'pro':'gen';
     const label=r.project_name?esc(r.project_name):(type==='started'?'<em style="color:var(--muted);font-style:normal;">in progress…</em>':type==='fail'?'<em style="color:var(--red);font-style:normal;">failed attempt</em>':'—');
     const cName=CN[r.country_code]||r.country_code||'';
-    const meta=`${who} · ${r.point_count?r.point_count.toLocaleString()+'pts':'—'} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}${cName?' · '+esc(cName):''}`;
+    // Guest/user badge — who a generation came from, at a glance (Guest = no user_id, i.e. anon_id-only session)
+    const badgeCls=who==='anon'?'badge-low':who==='free'?'badge-mid':who==='pro'?'badge-lidar':'badge-good';
+    const badgeLabel=who==='anon'?'Guest':'User — '+who;
+    const whoBadge=`<span class="badge ${badgeCls}" title="${who==='anon'?'No user_id — anonymous/guest generation':'Signed-in user, plan: '+who}">${badgeLabel}</span>`;
+    const meta=`${whoBadge} · ${r.point_count?r.point_count.toLocaleString()+'pts':'—'} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}${cName?' · '+esc(cName):''}`;
     const loc=(r.centroid_lat!=null&&r.centroid_lon!=null)?{lat:+r.centroid_lat,lon:+r.centroid_lon,name:r.project_name||''}:null;
     items.push({type,time:r.created_at,dl:type==='fail'||type==='started'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?' — '+esc(r.error_detail):''}`:null,loc});
   });
@@ -3119,6 +3219,7 @@ const MOB_TABS = [
   { id:'funnel',    title:'Funnel',     icon:'▽' },
   { id:'heatmap',   title:'Map',        icon:'◎' },
   { id:'monitor',   title:'Monitor',    icon:'◐' },
+  { id:'gatewatch', title:'Gate Watch', icon:'⛔' },
   { id:'users',     title:'Users',      icon:'◉' },
   { id:'countries', title:'Countries',  icon:'⚑' },
   { id:'gaps',      title:'Priority',   icon:'⊿' },
@@ -3192,6 +3293,9 @@ function switchMobTab(id) {
   // Monitor: reachability pings + speed test render, on demand each open
   if (id === 'monitor') {
     setTimeout(() => { try { loadMonitor(); } catch(e) {} }, 40);
+  }
+  if (id === 'gatewatch') {
+    setTimeout(() => { try { loadGateWatch(); } catch(e) {} }, 40);
   }
   // Analytics tabs: on demand each open, same as monitor/trends
   const analyticsLoaders = {
