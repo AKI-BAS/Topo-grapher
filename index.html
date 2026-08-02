@@ -2597,6 +2597,7 @@ var REGION_DATA = [
   [36.4,  6.7,  47.1, 18.5, 'Italy',         10,   'hi'],
   [36.0, 25.0,  42.0, 26.5, 'Greece',         30,  'lo'],
   [49.0, 14.1,  54.9, 24.2, 'Poland',         30,  'lo'],
+  [45.7, 16.1,  48.6, 22.9, 'Hungary',        30,  'lo'],
   // Australia country-wide fallback: outside GA LiDAR footprint we
   // serve COP30 30m via OpenTopo.
   [-43.5, 112.9, -9.8, 153.7, 'Australia',    30,  'lo'],
@@ -4699,6 +4700,49 @@ async function fetchElevations(pts, onP) {
   }
 }
 
+// ── Low-data-region popup ─────────────────────────────────────────────────
+// Shown once per region per session when the user is about to generate in
+// an area where our best source is 30m or coarser. Resolves true if the
+// user chooses to continue anyway, false if they dismiss (so convert()
+// aborts silently instead of chewing through a free-tier generation on
+// bad data).
+window._lowDataShownFor = window._lowDataShownFor || {};
+function _maybeShowLowDataPopup(poly) {
+  return new Promise(function(resolve){
+    var info = getRegionInfo(poly);
+    if (!info || info.quality !== 'lo') { resolve(true); return; }
+    if (window._lowDataShownFor[info.name]) { resolve(true); return; }
+    window._lowDataShownFor[info.name] = true;
+    try { track('low_data_popup_shown', { region: info.name, res: info.res }); } catch(_){}
+
+    var overlay = document.createElement('div');
+    overlay.className = 'auth-overlay show';
+    overlay.style.zIndex = 10000;
+    var resLabel = info.res >= 90 ? '90m Open-Meteo' : info.res + 'm Copernicus GLO-30';
+    overlay.innerHTML =
+      '<div class="auth-modal" style="max-width:440px;text-align:center;">' +
+        '<button class="auth-close" type="button" aria-label="Close">×</button>' +
+        '<h2 style="text-align:center;">Limited data in ' + info.name + '</h2>' +
+        '<p style="text-align:center;">Sadly we don’t have amazing data in this location right now — the best we can serve here is ' + resLabel + '. Sign up and we’ll let you know when we get better data in your region! It might be sooner than you think.</p>' +
+        '<button type="button" class="auth-submit" data-act="signup" style="margin-bottom:10px;">Notify me when it improves</button>' +
+        '<button type="button" data-act="continue" style="width:100%;background:transparent;color:var(--text-mid);border:1px solid var(--border);padding:10px;border-radius:6px;font-family:\'DM Mono\',monospace;font-size:12px;cursor:pointer;">Generate anyway with ' + resLabel + '</button>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    var done = function(result, action){
+      try { track('low_data_popup_action', { region: info.name, action: action }); } catch(_){}
+      overlay.remove();
+      resolve(result);
+    };
+    overlay.querySelector('[data-act="signup"]').onclick = function(){
+      done(false, 'signup');
+      openAuth('signup', 'low_data');
+    };
+    overlay.querySelector('[data-act="continue"]').onclick = function(){ done(true, 'continue'); };
+    overlay.querySelector('.auth-close').onclick = function(){ done(false, 'dismiss'); };
+    overlay.onclick = function(e){ if (e.target === overlay) done(false, 'dismiss'); };
+  });
+}
+
 // ── Convert ───────────────────────────────────────────────────────────────
 async function convert() {
   hideError(); showResult(false);
@@ -4715,6 +4759,11 @@ async function convert() {
   }
   nEl.classList.remove('error');
   if (!polygonLatLngs) { showError('Draw a site area on the map first.'); return; }
+  // Low-data-region gate — Hungary, Poland, Ireland, etc. where the best
+  // we can serve is 30m EU_DTM (or 90m fallback). Give the user a chance
+  // to sign up for coverage updates before they burn a generation.
+  const _proceed = await _maybeShowLowDataPopup(polygonLatLngs);
+  if (!_proceed) { document.getElementById('convert-btn').disabled = false; return; }
   document.getElementById('convert-btn').disabled = true;
   showProgress(true); setProgress(0.02,'Preparing…','Setting up coordinate grid');
   try {
