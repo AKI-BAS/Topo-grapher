@@ -2184,7 +2184,7 @@ async function loadMonitor(){
   const supaHealth=fetch(SUPABASE_URL+'/rest/v1/generations?select=id&limit=1',{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY},cache:'no-store'})
     .then(r=>({ok:r.ok,ms:Math.round(performance.now()-supaT0)})).catch(()=>({ok:false,ms:null}));
 
-  const [supa, elevPings, notifyPing, lastGen, win24, stuck, fails, admins, authFails24, signups24, gens7d, allProfiles, healthChecks, jsErrors] = await Promise.all([
+  const [supa, elevPings, notifyPing, lastGen, win24, stuck, fails, admins, authFails24, signups24, gens7d, allProfiles, healthChecks, jsErrors, upstreamTimings] = await Promise.all([
     supaHealth,
     Promise.all(MON_ELEVATION_WORKERS.map(w=>_pingHost('https://'+w+'.svanur300.workers.dev'))),
     _pingHost(MON_NOTIFY_WORKER),
@@ -2199,6 +2199,7 @@ async function loadMonitor(){
     _sb.from('profiles').select('email').limit(10000),
     _sb.from('health_checks').select('region,ok,latency_ms,error,checked_at').gte('checked_at',hourAgo).order('checked_at',{ascending:false}).limit(500),
     _sb.from('events').select('created_at,anon_id,user_id,properties').eq('event','js_error').gte('created_at',dayAgo).order('created_at',{ascending:false}).limit(100),
+    _sb.from('events').select('created_at,properties').eq('event','upstream_timing').gte('created_at',hourAgo).order('created_at',{ascending:false}).limit(2000),
   ]);
 
   // Reachability tallies
@@ -2270,6 +2271,41 @@ async function loadMonitor(){
   const newestCheck=hcRows.length?hcRows[0].checked_at:null;
   const cronStale=newestCheck ? (Date.now()-new Date(newestCheck).getTime())>15*60*1000 : true;
 
+  // Upstream response times — per-region avg/p95/degrade-rate over last hour.
+  // Fed by the frontend `upstream_timing` event (fired after every generation
+  // in convert()). Answers "which national data source is choking under load?"
+  // without needing worker-side telemetry infra. Also detects sustained
+  // fallback via the `degraded` flag returned by the worker.
+  const utRows=(upstreamTimings.data||[])
+    .map(r=>r.properties||{})
+    .filter(p=>p&&typeof p.wall_ms==='number');
+  const utByRegion={};
+  utRows.forEach(p=>{
+    const k=p.region||'global';
+    if(!utByRegion[k]) utByRegion[k]={n:0,degraded:0,walls:[],workers:[],sources:{}};
+    const bucket=utByRegion[k];
+    bucket.n++;
+    if(p.degraded) bucket.degraded++;
+    bucket.walls.push(p.wall_ms);
+    if(typeof p.worker_ms==='number') bucket.workers.push(p.worker_ms);
+    const src=(p.source||'unknown').split(' ')[0];
+    bucket.sources[src]=(bucket.sources[src]||0)+1;
+  });
+  const percentile=(arr,p)=>{if(!arr.length)return 0;const s=arr.slice().sort((a,b)=>a-b);return s[Math.min(s.length-1,Math.floor(s.length*p))];};
+  const utStats=Object.keys(utByRegion).map(k=>{
+    const b=utByRegion[k];
+    const avgWall=b.walls.reduce((s,v)=>s+v,0)/b.n;
+    const p95Wall=percentile(b.walls,0.95);
+    const degRate=b.degraded/b.n;
+    const topSrc=Object.entries(b.sources).sort((a,b)=>b[1]-a[1])[0];
+    return {region:k, n:b.n, avgMs:avgWall, p95Ms:p95Wall, degRate, source:topSrc?topSrc[0]:'unknown'};
+  }).sort((a,b)=>b.p95Ms-a.p95Ms);
+  // Alert thresholds: only meaningful with ≥5 samples in the hour so single
+  // slow outliers don't page. p95 > 8s is "users are visibly waiting";
+  // degrade-rate > 15% is "we're routinely dropping to a lower tier".
+  const utSlow=utStats.filter(s=>s.n>=5 && s.p95Ms>8000);
+  const utDeg =utStats.filter(s=>s.n>=5 && s.degRate>=0.15);
+
   // Client JS errors
   const jsErrRows=jsErrors.data||[];
   const jsErr24=jsErrRows.length;
@@ -2311,6 +2347,16 @@ async function loadMonitor(){
   }
   if(jsErr24>=50) alerts.push(['crit',`${jsErr24} client JS errors in 24h across ${jsErrUniqueUsers} sessions — likely a shipped bug`]);
   else if(jsErr24>=10) alerts.push(['warn',`${jsErr24} client JS errors in 24h (${jsErrUniqueUsers} sessions)`]);
+  if(utSlow.length>0){
+    const names=utSlow.map(s=>`${s.region} (p95 ${(s.p95Ms/1000).toFixed(1)}s)`);
+    alerts.push([utSlow.some(s=>s.p95Ms>15000)?'crit':'warn',
+      `Upstream slow in ${utSlow.length} region${utSlow.length>1?'s':''}: ${names.slice(0,3).join(', ')}${names.length>3?'…':''} — users are waiting; consider adding a queue`]);
+  }
+  if(utDeg.length>0){
+    const names=utDeg.map(s=>`${s.region} (${Math.round(s.degRate*100)}%)`);
+    alerts.push([utDeg.some(s=>s.degRate>=0.4)?'crit':'warn',
+      `Upstream degraded (fell back to lower tier) in ${utDeg.length} region${utDeg.length>1?'s':''}: ${names.slice(0,3).join(', ')}${names.length>3?'…':''} — national source may be down or throttling`]);
+  }
   const worstLevel=alerts.some(a=>a[0]==='crit')?'crit':alerts.some(a=>a[0]==='warn')?'warn':'ok';
   if(badge)badge.textContent=worstLevel==='ok'?'all nominal':worstLevel==='warn'?alerts.length+' warning'+(alerts.length>1?'s':''):alerts.filter(a=>a[0]==='crit').length+' critical';
 
@@ -2402,6 +2448,21 @@ async function loadMonitor(){
           }).join('')}
         `:''}
         ${newestCheck?`<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:8px;">Last cron: ${ago(newestCheck)} · window: last hour</div>`:''}
+      </div>
+      <div class="mon-block mon-block-sticky" style="left:24px;right:auto;">
+        <div class="mon-block-title">Upstream response times · last hour <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· from real generations</span></div>
+        ${utStats.length===0
+          ? '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No generations in the last hour. Nothing to report.</div>'
+          : utStats.map(s=>{
+              const bad=(s.n>=5 && s.p95Ms>8000) || (s.n>=5 && s.degRate>=0.15);
+              const warn=(s.n>=5 && s.p95Ms>4000) || (s.n>=5 && s.degRate>=0.05);
+              const dot=bad?'crit':warn?'warn':'ok';
+              const dgPct=Math.round(s.degRate*100);
+              const val=`p95 ${(s.p95Ms/1000).toFixed(1)}s · avg ${(s.avgMs/1000).toFixed(1)}s · ${s.n} gen${s.n===1?'':'s'} · ${dgPct}% degraded · ${s.source}`;
+              return `<div class="mon-row"><span class="mon-dot ${dot}"></span><div class="mon-label">${esc(s.region)}</div><div class="mon-val-wrap">${esc(val)}</div></div>`;
+            }).join('')
+        }
+        <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:8px;">Alert when p95 &gt; 8s OR degrade-rate &gt; 15% (needs ≥5 samples/hr). Slow region = candidate for a queue; degraded region = national source is failing over.</div>
       </div>
     </div>
     <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:16px;letter-spacing:.04em;">Reachability is a network-level liveness check, not app-logic health. Re-open this tab to refresh.</div>

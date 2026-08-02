@@ -1300,6 +1300,7 @@ function declineCookies() {
           <button id="cancel-btn" class="btn-cancel" onclick="cancelGeneration()">Cancel</button>
         </div>
       </div>
+      <div id="high-demand-banner" style="display:none;margin-top:10px;padding:8px 12px;border-radius:4px;background:rgba(224,160,80,0.12);border:1px solid #e0a050;color:#e0a050;font-family:'DM Mono',monospace;font-size:12px;line-height:1.5;"></div>
     </div>
 
     <!-- Result card (hidden until generation completes) -->
@@ -4448,6 +4449,7 @@ function showProgress(v) {
 function showResult(v) { const rc = document.getElementById('result-card'); if (rc) rc.classList.toggle('show', v); }
 function cancelGeneration() {
   window._cancelled = true; window._isGenerating = false; showProgress(false);
+  _hideHighDemandBanner();
   const cb = document.getElementById('convert-btn'); if (cb) cb.disabled = false;
   if (_currentGenerationId) {
     _sb.from('generations').update({
@@ -4584,13 +4586,16 @@ async function tryWorkerSingle(pts, onProgress) {
   if (d.elevation.length !== pts.length) throw new Error('worker-post-length: got ' + d.elevation.length + ' expected ' + pts.length);
   if (looksLikeFailure(d.elevation)) throw new Error('worker-post returned zeros');
   if (onProgress) onProgress(1, '1/1 batches');
-  return { elevations: d.elevation, source: d.source || 'worker (single POST)' };
+  return { elevations: d.elevation, source: d.source || 'worker (single POST)', degraded: !!d.degraded, region: d.region || null, duration_ms: typeof d.duration_ms === 'number' ? d.duration_ms : null };
 }
 
 async function tryWorkerProxy(pts, onProgress) {
   const CHUNK = 200, PARALLEL = WORKER_URLS.length;
   const e = new Array(pts.length);
   let workerSource = null;
+  let workerDegraded = false;
+  let workerRegion = null;
+  let workerDurationMax = 0;
   const batches = [];
   for (let i=0; i<pts.length; i+=CHUNK) { const b=pts.slice(i,i+CHUNK); batches.push({ offset:i, lats:b.map(p=>p.lat.toFixed(6)).join(','), lons:b.map(p=>p.lon.toFixed(6)).join(',') }); }
   let done = 0;
@@ -4607,6 +4612,9 @@ async function tryWorkerProxy(pts, onProgress) {
         if (!Array.isArray(d.elevation)) throw new Error('proxy-format');
         d.elevation.forEach((v,j)=>{ e[batch.offset+j]=v; });
         if (d.source && !workerSource) workerSource = d.source;
+        if (d.degraded) workerDegraded = true;
+        if (d.region && !workerRegion) workerRegion = d.region;
+        if (typeof d.duration_ms === 'number' && d.duration_ms > workerDurationMax) workerDurationMax = d.duration_ms;
       });
     });
     await Promise.all(promises);
@@ -4615,7 +4623,7 @@ async function tryWorkerProxy(pts, onProgress) {
     if (w+PARALLEL < batches.length) await sleep(300);
   }
   if (looksLikeFailure(e)) throw new Error('proxy returned zeros');
-  return { elevations: e, source: workerSource || 'worker (7-parallel GET)' };
+  return { elevations: e, source: workerSource || 'worker (7-parallel GET)', degraded: workerDegraded, region: workerRegion, duration_ms: workerDurationMax || null };
 }
 
 async function tryOpenMeteo(pts) {
@@ -4688,12 +4696,12 @@ async function fetchElevations(pts, onP) {
     if (USE_SINGLE_POST) {
       onP(0,'Fetching elevation data…',pts.length+' points · single request');
       const result=await tryWorkerSingle(pts,(frac,label)=>onP(frac*0.95,'Fetching elevation data…',label));
-      return {elevations:result.elevations,source:result.source};
+      return {elevations:result.elevations,source:result.source,degraded:result.degraded,region:result.region,duration_ms:result.duration_ms};
     } else {
       const totalBatches=Math.ceil(pts.length/200);
       onP(0,'Fetching elevation data…',pts.length+' points · '+totalBatches+' batches · ~'+Math.max(2,Math.ceil(totalBatches/7)*2)+'s');
       const result=await tryWorkerProxy(pts,(frac,label)=>onP(frac*0.95,'Fetching elevation data…',label));
-      return {elevations:result.elevations,source:result.source};
+      return {elevations:result.elevations,source:result.source,degraded:result.degraded,region:result.region,duration_ms:result.duration_ms};
     }
   }catch(e){
     throw new Error('Elevation fetch failed — '+e.message.slice(0,120));
@@ -4743,6 +4751,23 @@ function _maybeShowLowDataPopup(poly) {
   });
 }
 
+// ── High-demand banner ────────────────────────────────────────────────────
+// Shown inside the progress card when either (a) worker returned degraded
+// (a national upstream failed and we fell back to a coarser tier) or
+// (b) the fetch is taking longer than SLOW_MS wall-clock, which usually
+// means upstreams are slow under load. Non-blocking — generation keeps
+// running. Cleared on next convert() and on cancel.
+function _showHighDemandBanner(html) {
+  const el = document.getElementById('high-demand-banner');
+  if (!el) return;
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+function _hideHighDemandBanner() {
+  const el = document.getElementById('high-demand-banner');
+  if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+}
+
 // ── Convert ───────────────────────────────────────────────────────────────
 async function convert() {
   hideError(); showResult(false);
@@ -4787,8 +4812,40 @@ async function convert() {
     if (grid.length>POINT_CAP) throw new Error(grid.length.toLocaleString()+' points exceeds the '+(_isPro?'limit of '+POINT_CAP.toLocaleString():'free limit of 2,000. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for larger areas.'));
     const estSecs = Math.ceil(grid.length/50*0.6);
     setProgress(0.1,'Extracting data…',grid.length.toLocaleString()+' points — est. '+estSecs+'s');
-    const {elevations,source} = await fetchElevations(grid,(f,l,s)=>setProgress(0.1+f*0.78,null,s));
-    if (window._cancelled) return;
+    _hideHighDemandBanner();
+    const SLOW_MS = 20000;
+    const _slowTimer = setTimeout(function(){
+      _showHighDemandBanner('⏳ Lots of people generating right now — hang tight, your data will be here in a minute. No need to refresh.');
+      try { track('high_demand_slow_shown', {}); } catch(_){}
+    }, SLOW_MS);
+    let elevations, source, degraded, region, workerMs;
+    const _wallT0 = Date.now();
+    try {
+      const _r = await fetchElevations(grid,(f,l,s)=>setProgress(0.1+f*0.78,null,s));
+      elevations = _r.elevations; source = _r.source; degraded = !!_r.degraded;
+      region = _r.region || null; workerMs = _r.duration_ms || null;
+    } finally {
+      clearTimeout(_slowTimer);
+    }
+    const wallMs = Date.now() - _wallT0;
+    // Per-source timing telemetry → Supabase `events` table via track().
+    // topo-admin's Monitor → Upstream Health reads these and flags any
+    // region whose p95 > 8s or degraded-rate > 15% over the last hour.
+    try {
+      track('upstream_timing', {
+        region: region,
+        source: source,
+        degraded: degraded,
+        worker_ms: workerMs,
+        wall_ms: wallMs,
+        points: grid.length
+      });
+    } catch(_){}
+    if (window._cancelled) { _hideHighDemandBanner(); return; }
+    if (degraded) {
+      _showHighDemandBanner('⚠ Our high-res source for this region was busy — we served <b>' + (source.split(' ')[0] || 'a fallback tier') + '</b> instead. Everything else is normal; try again in a minute for full resolution.');
+      try { track('degraded_result_shown', { source: source, region: region }); } catch(_){}
+    }
     setProgress(0.9,'Calculating coordinates…','');
     const utm = grid.map((p,i)=>({...latLonToUTM(p.lat,p.lon),alt:elevations[i]}));
     // IDW smoothing for coarse sources
