@@ -2790,10 +2790,28 @@ async function loadFeed(){
     const whoBadge=`<span class="badge badge-sm ${badgeCls}" title="${who==='anon'?'No user_id — anonymous/guest generation':'Signed-in user, plan: '+who}">${badgeLabel}</span>`;
     const meta=`${r.point_count?r.point_count.toLocaleString()+'pts':'—'} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}${cName?' · '+esc(cName):''}`;
     const loc=(r.centroid_lat!=null&&r.centroid_lon!=null)?{lat:+r.centroid_lat,lon:+r.centroid_lon,name:r.project_name||''}:null;
-    items.push({type,time:r.created_at,dl:type==='fail'||type==='started'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,badge:whoBadge,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?' — '+esc(r.error_detail):''}`:null,loc});
+    // Rage-click group key: same (user OR draw spot) + same first line of error, so adjacent identical rejections collapse
+    const groupKey=type==='fail'
+      ? 'f|'+(r.user_id||('a:'+(r.centroid_lat||'')+','+(r.centroid_lon||'')))+'|'+(r.error_stage||'')+'|'+((r.error_detail||'').slice(0,60))
+      : null;
+    items.push({type,time:r.created_at,dl:type==='fail'||type==='started'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,badge:whoBadge,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?' — '+esc(r.error_detail):''}`:null,loc,groupKey,count:1});
   });
-  (signups||[]).forEach(r=>items.push({type:r.plan!=='free'?'upgrade':'signup',time:r.created_at,dl:null,main:`New ${r.plan!=='free'?r.plan+' subscriber':'signup'} · ${esc((r.email||'').split('@')[0])}`,meta:r.plan!=='free'?r.plan+' tier':'free tier'}));
+  (signups||[]).forEach(r=>items.push({type:r.plan!=='free'?'upgrade':'signup',time:r.created_at,dl:null,main:`New ${r.plan!=='free'?r.plan+' subscriber':'signup'} · ${esc((r.email||'').split('@')[0])}`,meta:r.plan!=='free'?r.plan+' tier':'free tier',count:1}));
   items.sort((a,b)=>new Date(b.time)-new Date(a.time));
+
+  // Collapse consecutive rage-clicks (same user/spot + same error, within 5 min of the previous entry in the group)
+  const collapsed=[];
+  const RAGE_WINDOW_MS=5*60*1000;
+  for(const it of items){
+    const last=collapsed[collapsed.length-1];
+    if(it.groupKey && last && last.groupKey===it.groupKey && (new Date(last.oldestTime||last.time)-new Date(it.time))<=RAGE_WINDOW_MS){
+      last.count++;
+      last.oldestTime=it.time; // extend the window from the most recent item we've absorbed
+    } else {
+      collapsed.push({...it, oldestTime:it.time});
+    }
+  }
+  const finalItems=collapsed;
   const icons={gen:'◇',pro:'⬡',signup:'★',upgrade:'↑',fail:'✕',started:'◌'};
   const typeClasses={gen:'feed-type-gen',pro:'feed-type-pro',signup:'feed-type-signup',upgrade:'feed-type-upgrade',fail:'feed-type-fail',started:'feed-type-started'};
   const dlDot=i=>i.dl===null?'':(i.dl?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:5px;vertical-align:middle;" title="Exported"></span>':'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--border2);margin-left:5px;vertical-align:middle;" title="No export"></span>');
@@ -2803,7 +2821,7 @@ async function loadFeed(){
     <input id="feed-delete-name" type="text" placeholder="Project name to purge…" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:'DM Mono',monospace;font-size:11px;outline:none;border-radius:3px;">
     <button onclick="purgeByName()" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red);background:none;border:1px solid var(--red);padding:5px 10px;cursor:pointer;letter-spacing:.04em;border-radius:3px;white-space:nowrap;transition:all .15s;" onmouseover="this.style.background='rgba(226,85,85,.15)'" onmouseout="this.style.background='none'">⌫ Purge</button>
   </div>
-  <div class="feed">${items.slice(0,20).map((i,idx)=>{const iconEl=i.loc?`<div class="feed-type ${typeClasses[i.type]}" onclick="focusFeedLocation(${i.loc.lat},${i.loc.lon},${JSON.stringify(i.loc.name||'').replace(/"/g,'&quot;')})" title="Show on heatmap" style="cursor:pointer;">${icons[i.type]}</div>`:`<div class="feed-type ${typeClasses[i.type]}">${icons[i.type]}</div>`;return`<div class="feed-item">${iconEl}<div class="feed-content"><div class="feed-main">${i.main}${dlDot(i)}</div><div class="feed-meta">${i.meta}</div>${i.fail_detail?`<div class="feed-fail-detail">${i.fail_detail}</div>`:''}</div><div class="feed-right">${i.badge||''}<div class="feed-time">${ago(i.time)}</div></div></div>`}).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No activity yet</div>'}</div>`;
+  <div class="feed">${finalItems.slice(0,20).map((i,idx)=>{const iconEl=i.loc?`<div class="feed-type ${typeClasses[i.type]}" onclick="focusFeedLocation(${i.loc.lat},${i.loc.lon},${JSON.stringify(i.loc.name||'').replace(/"/g,'&quot;')})" title="Show on heatmap" style="cursor:pointer;">${icons[i.type]}</div>`:`<div class="feed-type ${typeClasses[i.type]}">${icons[i.type]}</div>`;const countTag=i.count>1?` <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:var(--surface2);padding:1px 6px;border-radius:8px;margin-left:6px;" title="${i.count} identical attempts collapsed">×${i.count}</span>`:'';return`<div class="feed-item">${iconEl}<div class="feed-content"><div class="feed-main">${i.main}${countTag}${dlDot(i)}</div><div class="feed-meta">${i.meta}</div>${i.fail_detail?`<div class="feed-fail-detail">${i.fail_detail}</div>`:''}</div><div class="feed-right">${i.badge||''}<div class="feed-time">${ago(i.time)}</div></div></div>`}).join('')||'<div class="mono" style="color:var(--muted);font-size:11px;">No activity yet</div>'}</div>`;
 }
 async function purgeByName(){
   const inp=document.getElementById('feed-delete-name');
