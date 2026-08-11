@@ -5639,6 +5639,9 @@ function updateElevationSourceBanner(source, _pro) {
   else if (s.includes('ga-australia')||s.includes('ga-5m')){tier='lidar';resText='5m · Geoscience Australia LiDAR';}
   else if (s.includes('gpxz'))                          {tier='lidar';resText='1m · GPXZ LiDAR (UK)';}
   else if (s.includes('usgs')||s.includes('3dep'))      {tier='lidar';resText='USGS 3DEP (up to 1m)';}
+  // IGN Spain must be matched BEFORE the France IGN rule — both source
+  // strings contain 'ign'. Spain returns e.g. 'IGN-Spain-5m' at 5m.
+  else if (s.includes('ign-spain')||s.includes('ign-españa')||s.includes('pnoa')){tier='lidar';resText='5m · IGN PNOA LiDAR Spain';}
   else if (s.includes('ign')||s.includes('rge'))        {tier='lidar';resText='1m · IGN RGE ALTI France';}
   else if (s.includes('swissalti'))                     {tier='lidar';resText='0.5m · swissALTI3D';}
   else if (s.includes('ea-lidar'))                      {tier='lidar';resText='1m · EA LiDAR England';}
