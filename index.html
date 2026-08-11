@@ -2561,13 +2561,26 @@ var REGION_DATA = [
   [-35.40, 138.30, -34.50, 139.00, 'Adelaide',            5,   'hi'],
 
   // ── Country-level entries ──
-  [54.5,  7.9,  57.8, 15.3, 'Denmark',        0.4, 'hi'],
-  [57.8,  4.5,  71.2, 31.5, 'Norway',         1,   'hi'],
+  // Denmark south = 54.85°N (border with Germany runs ~54.87°N through
+  // Padborg). Original 54.5°N swallowed Flensburg (54.78°N, German).
+  [54.85, 7.9,  57.8, 15.3, 'Denmark',        0.4, 'hi'],
+  // Norway split — main body + Finnmark tip. Original single box (4.5-31.5°E)
+  // covered all of Sweden/Finland and misrouted Stockholm→Norway (Lantmäteriet
+  // LiDAR loss). Narvik/Tromsø preserved via Finnmark; Bodø via main.
+  [57.8,  4.5,  71.2, 16.0, 'Norway',         1,   'hi'],
+  [68.0, 16.0,  71.2, 31.1, 'Norway',         1,   'hi'],
   // Sweden: Lantmäteriet 1m WCS integrated in worker but not yet deployed —
   // still served via EU_DTM 30m. Flip to {1, 'hi'} on deploy.
   [55.0, 10.9,  69.1, 24.2, 'Sweden',         30,  'lo'],
-  [59.6, 19.0,  70.1, 31.6, 'Finland',        2,   'hi'],
-  [49.8, -8.7,  61.0,  2.0, 'United Kingdom', 1,   'hi'],
+  // Finland — mainland west edge tightened to 23.5°E (Torne River border)
+  // + Åland archipelago box so Swedish Norrland (Umeå/Luleå/Kiruna) stays
+  // Sweden instead of misrouting to Finland.
+  [59.7, 19.0,  60.7, 21.5, 'Finland',        2,   'hi'], // Åland
+  [59.6, 23.5,  70.1, 31.6, 'Finland',        2,   'hi'], // mainland
+  // UK — trimmed south (49.9°N) and east (1.5°E) so Calais/Boulogne/Cherbourg
+  // stop misrouting to UK (French IGN 1m loss). Lizard Point (49.96°N) and
+  // Margate (1.38°E) preserved.
+  [49.9, -8.7,  61.0,  1.5, 'United Kingdom', 1,   'hi'],
   [45.7,  5.9,  47.9, 10.5, 'Switzerland',    0.5, 'hi'],
   // Luxembourg must be checked before Belgium, and Belgium before
   // Netherlands — each larger box overlaps the smaller country's real
@@ -2587,14 +2600,28 @@ var REGION_DATA = [
   [46.3,  9.5,  49.0, 17.2, 'Austria',        30,  'lo'],
   [57.5, 21.7,  59.7, 28.2, 'Estonia',        1,   'hi'],
   [48.5, 12.1,  51.1, 18.9, 'Czech Republic', 5,   'hi'],
+  // Portugal must precede Spain — otherwise Porto (41.15, -8.61) and Lisbon
+  // (38.72, -9.14) fall inside the Spain-west box first and the hint reads
+  // "5m Spain" for Portuguese sites (which will hit EU_DTM 30m anyway).
   [36.9, -9.6,  42.2, -6.1, 'Portugal',       30,  'lo'],
   [51.3,-10.7,  55.5, -5.9, 'Ireland',        30,  'lo'],
+  // Spain must come before France — bboxes overlap along the Pyrenees.
+  // Split into west (Atlantic Basque) and east (Catalonia + Balearics) so
+  // Barcelona/Girona/San Sebastián route to Spain while Biarritz/Perpignan
+  // stay in France. Without the split, France's south edge (41.3°N) claimed
+  // Barcelona (41.38°N) and sent it to the France worker.
+  [35.9, -9.3,  43.35, -1.5, 'Spain',         5,   'hi'],
+  [35.9, -1.5,  42.7,   4.3, 'Spain',         5,   'hi'],
   [41.3, -5.2,  51.1,  9.6, 'France',         1,   'hi'],
   [41.7,-141.0, 83.1,-52.6, 'Canada',         1,   'hi'],
   [24.4,-125.0, 49.4,-66.8, 'United States',  1,   'hi'],
   [63.1,-24.6,  66.7,-13.1, 'Iceland',       10,   'hi'],
   [45.2,  6.0,  55.1, 15.0, 'Germany',        30,  'lo'],
-  [35.9, -9.3,  43.8,  4.3, 'Spain',          5,   'hi'],
+  // Slovenia + Croatia must come before Italy — Italy's bbox (36.4-47.1,
+  // 6.7-18.5) fully contains both. Without these, Ljubljana/Zagreb sites
+  // are hinted "10m Italy" then fall through to EU_DTM 30m.
+  [45.4, 13.4,  46.9, 16.6, 'Slovenia',       30,  'lo'],
+  [42.4, 13.5,  46.55, 19.45, 'Croatia',      30,  'lo'],
   [36.4,  6.7,  47.1, 18.5, 'Italy',         10,   'hi'],
   [36.0, 25.0,  42.0, 26.5, 'Greece',         30,  'lo'],
   [49.0, 14.1,  54.9, 24.2, 'Poland',         30,  'lo'],
@@ -4566,7 +4593,14 @@ let _workerIdx = 0;
 function nextWorker() { const url = WORKER_URLS[_workerIdx % WORKER_URLS.length]; _workerIdx++; return url; }
 const FRANCE_WORKER = 'https://france-elevation.svanur300.workers.dev';
 const CANADA_WORKER = 'https://canada-elevation.svanur300.workers.dev';
-function isInFrance(lat, lon) { return lat >= 41.3 && lat <= 51.1 && lon >= -5.2 && lon <= 9.6; }
+function isInFrance(lat, lon) {
+  if (!(lat >= 41.3 && lat <= 51.1 && lon >= -5.2 && lon <= 9.6)) return false;
+  // Exclude the Iberian corner that also sits inside this bbox — Barcelona
+  // (41.38°N) etc. must not be sent to the France worker.
+  if (lat < 43.35 && lon < -1.5) return false;              // Atlantic Basque (Spain)
+  if (lat < 42.7  && lon >= -1.5 && lon < 4.3) return false; // Catalonia (Spain)
+  return true;
+}
 function isInCanada(lat, lon) { return lat >= 41.7 && lat <= 83.1 && lon >= -141.0 && lon <= -52.6; }
 function allPointsInFrance(pts) { return pts.length > 0 && pts.every(p => isInFrance(p.lat, p.lon)); }
 function allPointsInCanada(pts) { return pts.length > 0 && pts.every(p => isInCanada(p.lat, p.lon)); }
