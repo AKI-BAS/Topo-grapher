@@ -1069,6 +1069,12 @@ async function exportAllToExcel(){
   }
 }
 
+// ── Basemap (Stadia Maps — same visuals as CARTO positron/dark-matter, keyed) ──
+const STADIA_KEY = 'd245d462-0af7-4433-bb16-72e0b8285942';
+const stadiaTileUrl = theme => (theme === 'light'
+  ? `https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png?api_key=${STADIA_KEY}`
+  : `https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png?api_key=${STADIA_KEY}`);
+
 // ── Theme ─────────────────────────────────────────────────────
 function setAdminTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
@@ -1077,11 +1083,8 @@ function setAdminTheme(theme) {
     b.classList.toggle('active', b.dataset.theme === theme);
   });
   if (_hmap) {
-    _hmap.eachLayer(l => { if (l._url && l._url.includes('carto')) _hmap.removeLayer(l); });
-    const tileUrl = theme === 'light'
-      ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-    L.tileLayer(tileUrl, { maxZoom: 18, noWrap: true }).addTo(_hmap);
+    _hmap.eachLayer(l => { if (l._url && (l._url.includes('stadiamaps') || l._url.includes('carto'))) _hmap.removeLayer(l); });
+    L.tileLayer(stadiaTileUrl(theme), { maxZoom: 18, noWrap: true }).addTo(_hmap);
   }
 }
 (function() {
@@ -1305,11 +1308,10 @@ function _initLeafletMap(){
 
   _hmapInited=true;
   const theme=document.documentElement.getAttribute('data-theme')||'dark';
-  const tileUrl=theme==='light'?'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png':'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
   if(!_hmap){
     _hmap=L.map('heatmap-container',{center:[52,10],zoom:4,zoomControl:true,attributionControl:false,maxBounds:[[-85,-180],[85,180]],maxBoundsViscosity:1.0,minZoom:2});
-    L.tileLayer(tileUrl,{maxZoom:18,noWrap:true}).addTo(_hmap);
+    L.tileLayer(stadiaTileUrl(theme),{maxZoom:18,noWrap:true}).addTo(_hmap);
     _hmap.on('click',()=>{if(_hmap._feedPin){_hmap.removeLayer(_hmap._feedPin);_hmap._feedPin=null;}});
     // Coverage polygons live below the generation dots so dots stay clickable on top
     _hmap.createPane('covPane');_hmap.getPane('covPane').style.zIndex=350;
@@ -1573,20 +1575,17 @@ async function _initCoverageMap(){
   const container = document.getElementById('coverage-map');
   if (!container) return;
   const theme = document.documentElement.getAttribute('data-theme') || 'dark';
-  const tileUrl = theme === 'light'
-    ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
   if (!_cmap){
     _cmap = L.map('coverage-map', {
       center:[30,10], zoom:2, zoomControl:true, attributionControl:false,
       maxBounds:[[-85,-180],[85,180]], maxBoundsViscosity:1.0, minZoom:2,
     });
-    L.tileLayer(tileUrl, { maxZoom:10, noWrap:true }).addTo(_cmap);
+    L.tileLayer(stadiaTileUrl(theme), { maxZoom:10, noWrap:true }).addTo(_cmap);
   } else {
     // Theme may have changed since last open — swap tile layer
-    _cmap.eachLayer(l => { if (l._url && l._url.includes('carto')) _cmap.removeLayer(l); });
-    L.tileLayer(tileUrl, { maxZoom:10, noWrap:true }).addTo(_cmap);
+    _cmap.eachLayer(l => { if (l._url && (l._url.includes('stadiamaps') || l._url.includes('carto'))) _cmap.removeLayer(l); });
+    L.tileLayer(stadiaTileUrl(theme), { maxZoom:10, noWrap:true }).addTo(_cmap);
   }
   setTimeout(() => _cmap.invalidateSize(), 100);
 
