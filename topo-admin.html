@@ -435,6 +435,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .feed-type-upgrade{color:var(--amber);background:var(--amber-dk);border-color:rgba(224,160,80,.3);}
 .feed-type-fail{color:var(--red);background:rgba(226,85,85,.12);border-color:rgba(226,85,85,.35);}
 .feed-type-started{color:var(--muted);background:var(--surface2);border-color:var(--border);opacity:.75;}
+.feed-type-blocked{color:var(--amber);background:var(--amber-dk);border-color:rgba(224,160,80,.3);}
 .feed-fail-detail{font-family:'DM Mono',monospace;font-size:10px;color:var(--red);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .feed-content{flex:1;min-width:0;}
 .feed-main{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -2160,11 +2161,12 @@ function monitorToggleHtml(active){
   return `<div class="speed-strat" style="margin-bottom:14px;">
     <button class="${active==='health'?'active':''}" onclick="setMonitorView('health')">System Health</button>
     <button class="${active==='gatewatch'?'active':''}" onclick="setMonitorView('gatewatch')">Gate Bypass Watch</button>
+    <button class="${active==='funnels'?'active':''}" onclick="setMonitorView('funnels')">Funnels</button>
   </div>`;
 }
 function setMonitorView(v){
   _monitorView=v;
-  if(v==='health') loadMonitor(); else loadGateWatch();
+  if(v==='health') loadMonitor(); else if(v==='gatewatch') loadGateWatch(); else loadFunnels();
 }
 
 async function loadMonitor(){
@@ -2183,13 +2185,17 @@ async function loadMonitor(){
   const supaHealth=fetch(SUPABASE_URL+'/rest/v1/generations?select=id&limit=1',{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY},cache:'no-store'})
     .then(r=>({ok:r.ok,ms:Math.round(performance.now()-supaT0)})).catch(()=>({ok:false,ms:null}));
 
-  const [supa, elevPings, notifyPing, lastGen, win24, stuck, fails, admins, authFails24, signups24, gens7d, allProfiles, healthChecks, jsErrors, upstreamTimings] = await Promise.all([
+  const [supa, elevPings, notifyPing, lastGen, win24, stuck, fails, admins, authFails24, signups24, gens7d, allProfiles, healthChecks, jsErrors, upstreamTimings, gateEvents24] = await Promise.all([
     supaHealth,
     Promise.all(MON_ELEVATION_WORKERS.map(w=>_pingHost('https://'+w+'.svanur300.workers.dev'))),
     _pingHost(MON_NOTIFY_WORKER),
     _sb.from('generations').select('created_at').order('created_at',{ascending:false}).limit(1),
     _sb.from('generations').select('status,user_id').gte('created_at',dayAgo).limit(10000),
+    // status='started' only — 'blocked' (free-tier gate hits) is a distinct terminal
+    // status and correctly never matches here, so gate hits never inflate this alert.
     _sb.from('generations').select('*',{count:'exact',head:true}).eq('status','started').lt('created_at',hourAgo),
+    // status='failed' only — 'blocked' rows are gate hits, not errors, and are
+    // intentionally excluded from both this list and the fail-rate math below.
     _sb.from('generations').select('created_at,error_stage,error_detail,country_code').eq('status','failed').order('created_at',{ascending:false}).limit(12),
     _sb.from('profiles').select('email').eq('is_admin',true),
     _sb.from('events').select('created_at,properties').eq('event','signin_failed').gte('created_at',dayAgo).limit(500),
@@ -2199,6 +2205,11 @@ async function loadMonitor(){
     _sb.from('health_checks').select('region,ok,latency_ms,error,checked_at').gte('checked_at',hourAgo).order('checked_at',{ascending:false}).limit(500),
     _sb.from('events').select('created_at,anon_id,user_id,properties').eq('event','js_error').gte('created_at',dayAgo).order('created_at',{ascending:false}).limit(100),
     _sb.from('events').select('created_at,properties').eq('event','upstream_timing').gte('created_at',hourAgo).order('created_at',{ascending:false}).limit(2000),
+    // Gate-type breakdown for the "Blocked" panel — sourced from events, not the
+    // generations table, since blockGeneration() itself writes no error_stage/detail
+    // (it isn't an error). size_limit_hit/spacing_gate_hit/point_cap_hit are new
+    // events and will read 0 here until the instrumented index.html deploys.
+    _sb.from('events').select('event').in('event',['size_limit_hit','spacing_gate_hit','free_limit_hit','point_cap_hit']).gte('created_at',dayAgo).limit(20000),
   ]);
 
   // Reachability tallies
@@ -2210,10 +2221,17 @@ async function loadMonitor(){
   const gens24=rows.length;
   const failed24=rows.filter(r=>r.status==='failed').length;
   const completed24=rows.filter(r=>r.status==='completed'||r.status===null).length;
+  // 'blocked' (free-tier gate hits) deliberately excluded from both completed24
+  // and failed24 above, and therefore from attempts24/failRate24 too — a gate
+  // hit is neither a completed attempt nor an error.
+  const blocked24=rows.filter(r=>r.status==='blocked').length;
   const attempts24=completed24+failed24;
   const failRate24=attempts24>0?(failed24/attempts24*100):0;
   const anon24=rows.filter(r=>!r.user_id).length;
   const stuckCount=stuck.count||0;
+  const GATE_EVENT_LABELS={size_limit_hit:'size cap',spacing_gate_hit:'spacing',free_limit_hit:'daily cap',point_cap_hit:'point cap'};
+  const gateBreakdown={size_limit_hit:0,spacing_gate_hit:0,free_limit_hit:0,point_cap_hit:0};
+  (gateEvents24.data||[]).forEach(e=>{ if(gateBreakdown.hasOwnProperty(e.event)) gateBreakdown[e.event]++; });
   const lastGenTs=lastGen.data&&lastGen.data[0]?lastGen.data[0].created_at:null;
   const lastGenMins=lastGenTs?Math.round((Date.now()-new Date(lastGenTs).getTime())/60000):null;
 
@@ -2393,12 +2411,21 @@ async function loadMonitor(){
         ${statusRow('Generations (24h)',gens24>0,gens24.toString(),gens24===0)}
         ${statusRow('Completed (24h)',true,completed24.toString(),completed24===0)}
         ${statusRow('Failed (24h)',failed24===0,failed24+' · '+failRate24.toFixed(0)+'%')}
+        ${statusRow('Blocked (24h)',true,blocked24.toString(),blocked24===0)}
         ${statusRow('Stuck in "started"',stuckCount===0,stuckCount.toString(),stuckCount===0)}
         ${statusRow('Anonymous share (24h)',true,gens24>0?Math.round(anon24/gens24*100)+'%':'—',gens24===0)}
       </div>
       <div class="mon-block">
         <div class="mon-block-title">Recent failures</div>
         ${failsHtml}
+      </div>
+      <div class="mon-block">
+        <div class="mon-block-title">Blocked · gate type (24h)</div>
+        ${Object.values(gateBreakdown).every(n=>n===0)
+          ? '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No gate-hit events in the last 24h</div>'
+          : Object.entries(gateBreakdown).map(([k,n])=>`<div class="mon-row"><span class="mon-dot ${n>0?'ok':'idle'}"></span><div class="mon-label">${GATE_EVENT_LABELS[k]}</div><div class="mon-val">${n}</div></div>`).join('')
+        }
+        <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:8px;">From live event tracking, not the generations table — size cap / spacing / point cap will read 0 until the instrumented index.html deploys. Daily cap (free_limit_hit) is already live.</div>
       </div>
       <div class="mon-block">
         <div class="mon-block-title">Access &amp; config</div>
@@ -2562,6 +2589,69 @@ async function loadGateWatch(){
     </div>
     <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:16px;letter-spacing:.04em;">Grouped by anon_id + calendar day (UTC). No IP is captured yet, so this can't tell multiple people behind one anon_id apart from one person clearing localStorage. Signal 1 reads the generation_completed event (not the generations table, which has no anon_id column).</div>
   `;
+}
+
+// ── Funnels: size cap → signup → generation, download gate → signup →
+// generation, coverage-gap dead-end rate by region. All three read the
+// funnel_* RPCs added to Supabase for this — see the audit report for the
+// SQL. Shares the Monitor toggle/body/badge with System Health and Gate
+// Bypass Watch, same pattern as loadGateWatch().
+async function loadFunnels(){
+  const badge=document.getElementById('badge-monitor');
+  const body=document.getElementById('body-monitor');
+  if(!body) return;
+  body.innerHTML=monitorToggleHtml('funnels')+'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">Loading…</div>';
+
+  const pStart=periodStart()||'2000-01-01T00:00:00Z', pEnd=new Date().toISOString();
+
+  let sizeCapRows=[], downloadRows=[], coverageRows=[], queryError=null;
+  try {
+    const [r1,r2,r3] = await Promise.all([
+      _sb.rpc('funnel_size_cap_to_generation',{p_start:pStart,p_end:pEnd}),
+      _sb.rpc('funnel_download_gate_to_generation',{p_start:pStart,p_end:pEnd}),
+      _sb.rpc('funnel_coverage_gap_dead_end_by_region',{p_start:pStart,p_end:pEnd}),
+    ]);
+    if(r1.error) throw r1.error;
+    if(r2.error) throw r2.error;
+    if(r3.error) throw r3.error;
+    sizeCapRows=r1.data||[];
+    downloadRows=r2.data||[];
+    coverageRows=r3.data||[];
+  } catch(e) { queryError=e; }
+
+  if(queryError){
+    if(badge) badge.textContent='no data';
+    body.innerHTML=monitorToggleHtml('funnels')+`<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">Funnel RPCs not available yet — ${esc(queryError.message||'query failed')}</div>`;
+    return;
+  }
+
+  if(badge) badge.textContent=periodLabel();
+
+  const stageRowsHtml=(rows)=>{
+    if(!rows.length) return '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No data for this period</div>';
+    const colors=['var(--red)','var(--amber)','var(--blue)','var(--accent)'];
+    const maxC=rows[0].identity_count||1;
+    return `<div class="funnel">${rows.map((r,i)=>{
+      const pct=maxC>0?Math.round((r.identity_count||0)/maxC*100):0;
+      const rate=r.conversion_to_next_pct!=null?` <span style="color:var(--muted);">(${r.conversion_to_next_pct}% next)</span>`:'';
+      return `<div class="funnel-step"><div class="funnel-label"><span class="funnel-name">${esc(r.stage)}${rate}</span><span class="funnel-count">${(r.identity_count||0).toLocaleString()}</span></div><div class="funnel-bar-bg"><div class="funnel-bar-fill" style="width:0%;background:${colors[i%colors.length]}" data-w="${pct}"></div></div></div>`;
+    }).join('')}</div>`;
+  };
+
+  const regionRowsHtml = coverageRows.length
+    ? coverageRows.slice(0,15).map(r=>`<div class="mon-row"><span class="mon-dot ${(r.dead_end_pct||0)>=50?'warn':'ok'}"></span><div class="mon-label">${esc(r.region||'unknown')}</div><div class="mon-val">${r.shown_count} shown · ${r.continued_count} continued · ${r.dead_end_pct!=null?r.dead_end_pct+'%':'—'} dead-end</div></div>`).join('')
+    : '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No low-data-popup activity for this period</div>';
+
+  body.innerHTML=monitorToggleHtml('funnels')+`
+    <div class="mon-block-title" style="border:none;margin-bottom:6px;">Size cap → signup → generation</div>
+    <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:10px;">Stage 1 (size_limit_hit) reads 0 until the instrumented index.html deploys — it's a brand-new event.</div>
+    ${stageRowsHtml(sizeCapRows)}
+    <div class="mon-block-title" style="margin-top:22px;margin-bottom:6px;">Download gate → signup → generation</div>
+    ${stageRowsHtml(downloadRows)}
+    <div class="mon-block-title" style="margin-top:22px;">Coverage gap dead-end rate, by region</div>
+    ${regionRowsHtml}
+  `;
+  requestAnimationFrame(()=>{document.querySelectorAll('#body-monitor .funnel-bar-fill').forEach(el=>{setTimeout(()=>{el.style.width=el.dataset.w+'%';},100);});});
 }
 
 // ── Site speed test (Google PageSpeed Insights / Lighthouse) ───
@@ -2780,8 +2870,9 @@ async function loadFeed(){
     let type;
     if(r.status==='failed') type='fail';
     else if(r.status==='started') type='started';
+    else if(r.status==='blocked') type='blocked';
     else type=(r.user_plan==='pro'||r.user_plan==='company')?'pro':'gen';
-    const label=r.project_name?esc(r.project_name):(type==='started'?'<em style="color:var(--muted);font-style:normal;">in progress…</em>':type==='fail'?'<em style="color:var(--red);font-style:normal;">failed attempt</em>':'—');
+    const label=r.project_name?esc(r.project_name):(type==='started'?'<em style="color:var(--muted);font-style:normal;">in progress…</em>':type==='fail'?'<em style="color:var(--red);font-style:normal;">failed attempt</em>':type==='blocked'?'<em style="color:var(--amber);font-style:normal;">free-tier gate</em>':'—');
     const cName=CN[r.country_code]||r.country_code||'';
     // Guest/user badge — who a generation came from, at a glance (Guest = no user_id, i.e. anon_id-only session)
     const badgeCls=who==='anon'?'badge-low':who==='free'?'badge-mid':who==='pro'?'badge-lidar':'badge-good';
@@ -2793,7 +2884,7 @@ async function loadFeed(){
     const groupKey=type==='fail'
       ? 'f|'+(r.user_id||('a:'+(r.centroid_lat||'')+','+(r.centroid_lon||'')))+'|'+(r.error_stage||'')+'|'+((r.error_detail||'').slice(0,60))
       : null;
-    items.push({type,time:r.created_at,dl:type==='fail'||type==='started'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,badge:whoBadge,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?' — '+esc(r.error_detail):''}`:null,loc,groupKey,count:1});
+    items.push({type,time:r.created_at,dl:type==='fail'||type==='started'||type==='blocked'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,badge:whoBadge,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?' — '+esc(r.error_detail):''}`:null,loc,groupKey,count:1});
   });
   (signups||[]).forEach(r=>items.push({type:r.plan!=='free'?'upgrade':'signup',time:r.created_at,dl:null,main:`New ${r.plan!=='free'?r.plan+' subscriber':'signup'} · ${esc((r.email||'').split('@')[0])}`,meta:r.plan!=='free'?r.plan+' tier':'free tier',count:1}));
   items.sort((a,b)=>new Date(b.time)-new Date(a.time));
@@ -2811,8 +2902,8 @@ async function loadFeed(){
     }
   }
   const finalItems=collapsed;
-  const icons={gen:'◇',pro:'⬡',signup:'★',upgrade:'↑',fail:'✕',started:'◌'};
-  const typeClasses={gen:'feed-type-gen',pro:'feed-type-pro',signup:'feed-type-signup',upgrade:'feed-type-upgrade',fail:'feed-type-fail',started:'feed-type-started'};
+  const icons={gen:'◇',pro:'⬡',signup:'★',upgrade:'↑',fail:'✕',started:'◌',blocked:'⊘'};
+  const typeClasses={gen:'feed-type-gen',pro:'feed-type-pro',signup:'feed-type-signup',upgrade:'feed-type-upgrade',fail:'feed-type-fail',started:'feed-type-started',blocked:'feed-type-blocked'};
   const dlDot=i=>i.dl===null?'':(i.dl?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:5px;vertical-align:middle;" title="Exported"></span>':'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--border2);margin-left:5px;vertical-align:middle;" title="No export"></span>');
 
   document.getElementById('badge-feed').textContent='Live tail';
