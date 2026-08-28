@@ -4296,6 +4296,7 @@ async function startGeneration() {
     const { data, error } = await _sb.from('generations').insert({
       user_id:      _currentUser ? _currentUser.id : null,
       user_plan:    _currentUser ? (_currentProfile?.plan || 'free') : 'anon',
+      anon_id:      getAnonId(),
       centroid_lat: cLat !== null ? parseFloat(cLat.toFixed(6)) : null,
       centroid_lon: cLon !== null ? parseFloat(cLon.toFixed(6)) : null,
       country_code: countryCode,
@@ -4383,6 +4384,22 @@ async function failGeneration(stage, detail) {
   } catch(e) { console.warn('failGeneration update failed', e); }
   _currentGenerationId = null;
 }
+// A free-tier gate (size/spacing/daily/point cap) stopped the generation before
+// it ever attempted real work — not a failure, not a cancellation. Resolves the
+// row to its own terminal status so it never shows up in either the failed-rate
+// math or the "stuck in started > 1h" alert. Intentionally does NOT call
+// broadcastGenFailure — gate hits are routine and should not trigger the admin
+// live-failure broadcast.
+async function blockGeneration() {
+  if (!_currentGenerationId) return;
+  try {
+    await _sb.from('generations').update({
+      status:       'blocked',
+      completed_at: new Date().toISOString()
+    }).eq('id', _currentGenerationId);
+  } catch(e) { console.warn('blockGeneration update failed', e); }
+  _currentGenerationId = null;
+}
 function getCountryCode(poly) {
   if (!poly || !poly.length) return null;
   const lats = poly.map(p => p.lat !== undefined ? p.lat : p[0]);
@@ -4437,10 +4454,10 @@ async function checkDailyLimit() {
   if (_currentUser) {
     const today = new Date().toISOString().slice(0, 10);
     const { count } = await _sb.from('generations').select('*', { count: 'exact', head: true }).eq('user_id', _currentUser.id).gte('created_at', today + 'T00:00:00Z');
-    if (count >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'server' }); throw new Error('Free tier limit reached — ' + FREE_DAILY_LIMIT + ' generations per day. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.'); }
+    if (count >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'server' }); const _e = new Error('Free tier limit reached — ' + FREE_DAILY_LIMIT + ' generations per day. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.'); _e._gateHit = true; throw _e; }
   } else {
     const used = getGenerationsToday();
-    if (used >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'local' }); throw new Error('Free tier limit reached. <a href="#" onclick="openAuth()" style="color:var(--accent)">Sign in</a> or <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.'); }
+    if (used >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'local' }); const _e = new Error('Free tier limit reached. <a href="#" onclick="openAuth()" style="color:var(--accent)">Sign in</a> or <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.'); _e._gateHit = true; throw _e; }
   }
 }
 
@@ -4832,9 +4849,10 @@ async function convert() {
     const siteW = (Math.max(...lons)-Math.min(...lons))*mpd.lon;
     const siteH = (Math.max(...lats)-Math.min(...lats))*mpd.lat;
     const _isPro = isPro();
+    const plan = _currentProfile?.plan || 'anon';
     if (!_isPro) {
-      if (siteW>FREE_MAX_M||siteH>FREE_MAX_M) throw new Error('Free tier is limited to 250 × 250m sites. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for sites up to 2 × 2km.');
-      if (selectedSpacing<FREE_MAX_SPACING) throw new Error('Free tier supports 12m spacing only. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for 3m and 6m precision.');
+      if (siteW>FREE_MAX_M||siteH>FREE_MAX_M) { track('size_limit_hit', { area_m2: Math.round(siteW*siteH), site_w_m: Math.round(siteW), site_h_m: Math.round(siteH), plan }); const _e = new Error('Free tier is limited to 250 × 250m sites. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for sites up to 2 × 2km.'); _e._gateHit = true; throw _e; }
+      if (selectedSpacing<FREE_MAX_SPACING) { track('spacing_gate_hit', { spacing: selectedSpacing, min: FREE_MAX_SPACING, plan }); const _e = new Error('Free tier supports 12m spacing only. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for 3m and 6m precision.'); _e._gateHit = true; throw _e; }
     }
     window._effectiveSpacing = selectedSpacing;
     await checkDailyLimit();
@@ -4843,7 +4861,7 @@ async function convert() {
     const grid = generateGrid(polygonLatLngs, effSpacing, isNatural);
     if (grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
     const POINT_CAP = _isPro ? 50000 : 2000;
-    if (grid.length>POINT_CAP) throw new Error(grid.length.toLocaleString()+' points exceeds the '+(_isPro?'limit of '+POINT_CAP.toLocaleString():'free limit of 2,000. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for larger areas.'));
+    if (grid.length>POINT_CAP) { track('point_cap_hit', { point_count: grid.length, cap: POINT_CAP, plan }); const _e = new Error(grid.length.toLocaleString()+' points exceeds the '+(_isPro?'limit of '+POINT_CAP.toLocaleString():'free limit of 2,000. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for larger areas.')); _e._gateHit = true; throw _e; }
     const estSecs = Math.ceil(grid.length/50*0.6);
     setProgress(0.1,'Extracting data…',grid.length.toLocaleString()+' points — est. '+estSecs+'s');
     _hideHighDemandBanner();
@@ -4957,7 +4975,7 @@ async function convert() {
   }catch(err){
     showProgress(false); showError(err.message);
     track('generation_failed',{error:err.message.slice(0,100),spacing:selectedSpacing});
-    failGeneration('client_error', err.message);
+    if (err._gateHit) blockGeneration(); else failGeneration('client_error', err.message);
   }finally{
     window._isGenerating=false;
     document.getElementById('convert-btn').disabled=false;
@@ -5442,6 +5460,7 @@ async function _fetchBuildingsData() {
     const resp = await fetch(url,{headers:{'Authorization':token}});
     if(!resp.ok){
       let msg=''; try{const j=await resp.json();msg=j.error||'';} catch{try{msg=await resp.text();}catch{}}
+      try { track('buildings_fetch_failed', { status: resp.status, detail: msg.slice(0,120), plan: _currentProfile?.plan || 'anon' }); } catch(_){}
       throw new Error('Buildings worker HTTP '+resp.status+(msg?' — '+msg.slice(0,120):''));
     }
     data = await resp.json();
