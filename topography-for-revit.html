@@ -90,7 +90,7 @@
   "step": [
     { "@type": "HowToStep", "position": 1, "name": "Define your site", "text": "Open Topo-grapher and draw a polygon around your site on the map, or paste coordinates. The free tier covers up to 250m x 250m." },
     { "@type": "HowToStep", "position": 2, "name": "Generate the terrain", "text": "Choose XYZ CSV as the output format and generate. Topo-grapher pulls the highest-resolution government elevation data available for the location." },
-    { "@type": "HowToStep", "position": 3, "name": "Open the Toposolid tool in Revit", "text": "In Revit 2024+, go to the Massing & Site tab and choose Toposolid, then Create from Import, then Create from Points File." },
+    { "@type": "HowToStep", "position": 3, "name": "Open the Toposolid tool in Revit", "text": "In Revit 2024+, go to the Massing & Site tab and choose Toposolid, then Create from Import, then Create from CSV." },
     { "@type": "HowToStep", "position": 4, "name": "Import the CSV", "text": "Select the downloaded XYZ CSV. Set the units to metres and confirm the comma delimiter. Revit builds the Toposolid surface from the points." },
     { "@type": "HowToStep", "position": 5, "name": "Position the site", "text": "Align the terrain to your project base point. Topo-grapher can also output a site reference column for orientation." }
   ]
@@ -121,7 +121,7 @@
     {
       "@type": "Question",
       "name": "Can you import topography into Revit without Civil 3D or GIS software?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Yes. You only need an XYZ CSV point cloud, which Revit's Toposolid tool reads directly via Create from Points File. Topo-grapher generates that CSV from real government elevation data in your browser, so no Civil 3D, GIS package, or coordinate-system setup is required." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. You only need an XYZ CSV point cloud, which Revit's Toposolid tool reads directly via Create from CSV. Topo-grapher generates that CSV from real government elevation data in your browser, so no Civil 3D, GIS package, or coordinate-system setup is required." }
     },
     {
       "@type": "Question",
@@ -227,7 +227,7 @@
   <!-- First H2 is a question, with a self-contained answer directly under it —
        this is the passage AI engines extract. -->
   <h2>How do you import site topography into Revit?</h2>
-  <p class="lead">To bring site topography into Revit, generate an XYZ CSV elevation point cloud, then use Revit's <b>Toposolid → Create from Import → Create from Points File</b> tool. Revit reads the comma-delimited X, Y, Z points directly, building a terrain surface without Civil 3D, GIS software, or manual coordinate conversion.</p>
+  <p class="lead">To bring site topography into Revit, generate an XYZ CSV elevation point cloud, then use Revit's <b>Toposolid → Create from Import → Create from CSV</b> tool. Revit reads the comma-delimited X, Y, Z points directly, building a terrain surface without Civil 3D, GIS software, or manual coordinate conversion.</p>
 
   <p>Topo-grapher generates that CSV from real government elevation data — down to 0.4m resolution in Denmark, 1m across much of Europe and the US — and also exports IFC and DXF if you'd rather import a finished surface. The free tier covers sites up to 250m × 250m at 12m point spacing (up to 2,000 points), with no account required.</p>
 
@@ -235,7 +235,7 @@
   <ol class="steps">
     <li><b>Define your site.</b> Draw a polygon around the site on the map in Topo-grapher, or paste coordinates. The free tier covers up to 250m × 250m.</li>
     <li><b>Generate as XYZ CSV.</b> Pick XYZ CSV and generate. The tool pulls the highest-resolution government elevation data available for that location.</li>
-    <li><b>Open the Toposolid tool.</b> In Revit 2024 or later, go to <b>Massing &amp; Site → Toposolid → Create from Import → Create from Points File</b>.</li>
+    <li><b>Open the Toposolid tool.</b> In Revit 2024 or later, go to <b>Massing &amp; Site → Toposolid → Create from Import → Create from CSV</b>.</li>
     <li><b>Import the CSV.</b> Select the downloaded file, set units to metres, confirm the comma delimiter. Revit builds the surface from the points.</li>
     <li><b>Position the model.</b> Align the terrain to your project base point. Topo-grapher can also export a site reference column to make orientation unambiguous.</li>
   </ol>
@@ -272,7 +272,7 @@
   <h2>Frequently asked questions</h2>
   <div class="faq">
     <h3>Can you import topography into Revit without Civil 3D or GIS software?</h3>
-    <p>Yes. You only need an XYZ CSV point cloud, which Revit's Toposolid tool reads directly via Create from Points File. Topo-grapher generates that CSV from real government elevation data in your browser, so no Civil 3D, GIS package, or coordinate-system setup is required.</p>
+    <p>Yes. You only need an XYZ CSV point cloud, which Revit's Toposolid tool reads directly via Create from CSV. Topo-grapher generates that CSV from real government elevation data in your browser, so no Civil 3D, GIS package, or coordinate-system setup is required.</p>
 
     <h3>What file format does Revit need for site topography?</h3>
     <p>Revit's Toposolid and Topography Surface tools accept a comma-delimited points file with X, Y, Z values — an XYZ CSV. Topo-grapher exports exactly this, plus IFC and DXF if you'd rather import a finished mesh.</p>
