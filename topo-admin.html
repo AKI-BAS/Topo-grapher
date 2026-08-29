@@ -3481,6 +3481,7 @@ const MOB_TABS = [
   { id:'formats',   title:'Formats',    icon:'⤓' },
   { id:'dlrate',    title:'DL Rate',    icon:'↓' },
   { id:'blogstats', title:'Blog',       icon:'✎' },
+  { id:'traffic',   title:'Traffic',    icon:'⇢' },
   { id:'dauwaumau',     title:'DAU/WAU/MAU', icon:'↗' },
   { id:'retention',     title:'Retention',   icon:'◫' },
   { id:'actfunnel',     title:'Activation',  icon:'▷' },
@@ -3554,7 +3555,7 @@ function switchMobTab(id) {
     dauwaumau: loadDauWauMau, retention: loadRetention,
     actfunnel: loadActivationFunnel, paywallfunnel: loadPaywallFunnel, gatefunnel: loadGateFunnel,
     convchurn: loadConvChurn, usagestats: loadUsageStats,
-    hotleads: loadHotLeads, emaildomains: loadEmailDomains,
+    hotleads: loadHotLeads, emaildomains: loadEmailDomains, traffic: loadTrafficSources,
   };
   if (analyticsLoaders[id]) {
     setTimeout(() => { try { analyticsLoaders[id](); } catch(e) {} }, 40);
@@ -3620,7 +3621,7 @@ function setPeriod(p) {
   // Update FAB label
   const fab = document.getElementById('mob-period-fab-lbl');
   if (fab) fab.textContent = p.toUpperCase();
-  Promise.all([loadKPIs(),loadTrends(),loadFunnel(),loadCountryBars(),loadGapTable(),loadDownloadRate(),loadFeed(),loadBlogStats()]);
+  Promise.all([loadKPIs(),loadTrends(),loadFunnel(),loadCountryBars(),loadGapTable(),loadDownloadRate(),loadFeed(),loadBlogStats(),loadTrafficSources()]);
 }
 
 function togglePeriodPopover() {
