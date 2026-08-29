@@ -3449,10 +3449,13 @@ function captureFirstTouch() {
     if (localStorage.getItem(FIRST_TOUCH_KEY)) return null; // already captured — not the first touch
     const params = new URLSearchParams(location.search);
     const touch = { referrer: document.referrer || null };
-    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'].forEach(function(k) {
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'ref'].forEach(function(k) {
       const v = params.get(k);
       if (v) touch[k] = v;
     });
+    // Ghost blog appends a bare ?ref= to its outbound CTA links; treat it as the source
+    // so it is not silently dropped (captureFirstTouch previously ignored bare ref).
+    if (touch.ref && !touch.utm_source) touch.utm_source = touch.ref;
     localStorage.setItem(FIRST_TOUCH_KEY, JSON.stringify(touch));
     return touch;
   } catch (e) { return null; }

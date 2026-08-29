@@ -276,5 +276,41 @@
 <footer><div class="wrap">
   Topo-grapher &middot; 3D site terrain for Revit, SketchUp, Rhino &amp; ArchiCAD &middot; <a href="https://topo-grapher.com/">topo-grapher.com</a> &middot; <a href="https://topographer-com.ghost.io/" target="_blank" rel="noopener">Blog</a>
 </div></footer>
+<script>
+/* guide-cta-attribution: forward an incoming blog / AI-search origin (utm_*/ref on
+   this guide page URL) onto the app CTA links so it survives the hop to
+   topo-grapher.com; if none present, tag the links as coming from this guide page.
+   Vanilla JS, no dependencies. */
+(function () {
+  try {
+    var qp = new URLSearchParams(location.search);
+    var carry = {};
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'ref'].forEach(function (k) {
+      var v = qp.get(k);
+      if (v) carry[k] = v;
+    });
+    if (!carry.utm_source && !carry.ref) {
+      carry.utm_source = 'guide';
+      if (!carry.utm_content) carry.utm_content = 'rhino';
+    }
+    var pairs = Object.keys(carry).map(function (k) {
+      return encodeURIComponent(k) + '=' + encodeURIComponent(carry[k]);
+    });
+    if (!pairs.length) return;
+    var qs = pairs.join('&');
+    var links = document.querySelectorAll('a[href*="topo-grapher.com"]');
+    Array.prototype.forEach.call(links, function (a) {
+      var u;
+      try { u = new URL(a.href, location.href); } catch (e) { return; }
+      if (u.hostname !== 'topo-grapher.com') return;
+      if (u.pathname !== '/' && u.pathname !== '') return;
+      var txt = (a.textContent || '').toLowerCase();
+      if (txt.indexOf('open the app') === -1 && txt.indexOf('generate your site terrain') === -1) return;
+      u.search = u.search ? (u.search + '&' + qs) : ('?' + qs);
+      a.href = u.toString();
+    });
+  } catch (e) {}
+})();
+</script>
 </body>
 </html>
