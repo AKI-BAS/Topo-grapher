@@ -800,6 +800,53 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 .auth-google { width:100%; background:var(--bg-input); border:1px solid var(--border-md); color:var(--text); padding:11px; border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; letter-spacing:.04em; margin-bottom:4px; transition:border-color .15s; }
 .auth-google:hover { border-color:var(--accent-md); }
 
+/* ── Format picker modal (Pro-visibility rollout) ───────────────────────── */
+.fp-modal { position:relative; background:var(--bg-card); border:1px solid var(--border-md); border-radius:12px; overflow:hidden; width:100%; max-width:min(520px,94vw); max-height:min(88vh,660px); display:flex; flex-direction:column; }
+.fp-hero { flex:none; height:76px; position:relative; overflow:hidden; background:linear-gradient(150deg,#071210 0%,#0e2018 55%,#091812 100%); }
+[data-theme="light"] .fp-hero { background:linear-gradient(150deg,#182e1e 0%,#1f3a28 55%,#162a1e 100%); }
+.fp-hero svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.fp-hero-fade { position:absolute; inset:0; pointer-events:none; z-index:2; background:linear-gradient(to bottom, transparent 25%, var(--bg-card) 100%); }
+.fp-hero-text { position:absolute; bottom:11px; left:18px; z-index:3; }
+.fp-hero-text small { display:block; font-size:8px; letter-spacing:.18em; text-transform:uppercase; color:rgba(140,210,110,.7); margin-bottom:2px; }
+.fp-hero-text h3 { font-family:'Syne',sans-serif; font-size:15px; font-weight:600; color:#cee8b8; margin:0; }
+.fp-body { padding:14px 16px; overflow-y:auto; flex:1; }
+.fp-rec { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+.fp-rec label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-soft); flex:none; }
+#fp-software { flex:1; min-width:150px; padding:6px 7px; font-family:'DM Mono',monospace; font-size:12px; background:var(--bg-input); color:var(--text); border:1px solid var(--border-md); border-radius:5px; }
+.fp-rec-hint { flex-basis:100%; font-size:10.5px; color:var(--accent); min-height:0; }
+.fp-rec-hint:empty { display:none; }
+.fp-cards { display:grid; grid-template-columns:1fr; gap:7px; }
+@media (min-width:500px) { .fp-cards { grid-template-columns:1fr 1fr; } }
+.fp-card { position:relative; text-align:left; width:100%; background:var(--bg-input); border:1.5px solid var(--border-md); border-radius:8px; padding:10px 12px; cursor:pointer; font-family:inherit; color:var(--text); transition:border-color .13s, background .13s, box-shadow .13s; }
+.fp-card:hover { border-color:var(--accent-md); }
+.fp-card.is-selected { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 13%, var(--bg-input)); box-shadow:0 0 0 1px var(--accent) inset; }
+.fp-card.is-selected .fp-card-name { color:var(--accent); }
+.fp-card-locked { opacity:.62; }
+.fp-card-locked.is-selected { opacity:1; border-style:dashed; }
+.fp-card-check { position:absolute; top:9px; right:10px; width:15px; height:15px; border-radius:50%; background:var(--accent); color:var(--bg-card); font-size:10px; line-height:15px; text-align:center; display:none; }
+.fp-card.is-selected .fp-card-check { display:block; }
+.fp-card.is-selected.fp-card-locked .fp-card-check { background:#c8892f; }
+.fp-card-top { display:flex; align-items:center; gap:7px; margin-bottom:3px; padding-right:18px; }
+.fp-card-name { font-family:'Syne',sans-serif; font-weight:600; font-size:13px; }
+.fp-tag { font-family:'DM Mono',monospace; font-size:8px; letter-spacing:.06em; text-transform:uppercase; padding:1px 5px; border-radius:3px; border:1px solid currentColor; white-space:nowrap; }
+.fp-tag-free { color:var(--accent); }
+.fp-tag-pro { color:#c8892f; }
+[data-theme="light"] .fp-tag-pro { color:#8f6216; }
+.fp-tag-inc { color:var(--text-soft); }
+.fp-card-desc { font-size:10.5px; line-height:1.45; color:var(--text-mid); margin:0; }
+.fp-card-meta, .fp-card-note { font-size:9.5px; margin:5px 0 0; font-family:'DM Mono',monospace; }
+.fp-card-meta { color:var(--text-soft); }
+.fp-card-note { color:#c8892f; }
+[data-theme="light"] .fp-card-note { color:#8f6216; }
+.fp-foot { flex:none; padding:12px 16px 14px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:8px; background:var(--bg-card); }
+.fp-note { font-size:10.5px; color:var(--text-mid); line-height:1.45; }
+.fp-note:empty { display:none; }
+.fp-dl { width:100%; padding:11px; border-radius:7px; border:1px solid var(--green-lt); background:var(--green); color:#EFE3D8; font-family:'DM Mono',monospace; font-size:12px; letter-spacing:.05em; text-transform:uppercase; cursor:pointer; transition:opacity .13s; }
+.fp-dl:hover { opacity:.88; }
+.fp-seepro { font-size:10px; color:var(--text-soft); text-align:center; }
+.fp-seepro:empty { display:none; }
+.fp-seepro a { color:var(--accent); cursor:pointer; }
+
 /* Account settings / saved projects */
 .settings-tab { background:none; border:none; border-bottom:2px solid transparent; padding:8px 16px; font-family:'DM Mono',monospace; font-size:12px; color:var(--text-soft); cursor:pointer; letter-spacing:.06em; text-transform:uppercase; transition:color .15s,border-color .15s; }
 .settings-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
@@ -1772,6 +1819,71 @@ function declineCookies() {
   </div>
 </div>
 
+<!-- ═══ FORMAT PICKER MODAL (Pro-visibility rollout) ═══ -->
+<div class="auth-overlay" id="fp-overlay">
+  <div class="fp-modal" role="dialog" aria-modal="true" aria-label="Choose export format">
+    <div class="fp-hero">
+      <svg style="position:absolute;inset:0;width:100%;height:100%;display:block;" viewBox="0 0 500 90" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M-10,50 C30,38 65,46 105,34 C148,21 178,31 218,20 C258,9 295,23 338,18 C380,13 420,25 510,20 L510,104 L-10,104 Z" fill="rgba(15,42,20,.65)"/>
+        <path d="M-10,65 C35,55 80,62 125,51 C170,41 208,50 250,40 C292,32 336,42 378,34 C420,26 462,38 510,31 L510,104 L-10,104 Z" fill="rgba(9,28,13,.8)"/>
+        <path d="M-10,80 C50,71 100,77 155,69 C210,61 252,69 300,63 C348,57 392,66 440,60 C468,57 488,63 510,60 L510,104 L-10,104 Z" fill="rgba(6,18,9,.92)"/>
+      </svg>
+      <div class="upgrade-hero-sheen"></div>
+      <div class="fp-hero-fade"></div>
+      <div class="fp-hero-text">
+        <small>Export</small>
+        <h3>Choose your format</h3>
+      </div>
+      <button class="upgrade-hero-close" id="fp-close" type="button" aria-label="Close">&#x2715;</button>
+    </div>
+    <div class="fp-body">
+      <div class="fp-rec">
+        <label for="fp-software">I use</label>
+        <select id="fp-software">
+          <option value="">&mdash; pick your tool &mdash;</option>
+          <option value="revit" data-fmt="ifc">Revit</option>
+          <option value="sketchup" data-fmt="dxf">SketchUp</option>
+          <option value="autocad" data-fmt="dxf">AutoCAD / Civil 3D</option>
+          <option value="rhino" data-fmt="dxf">Rhino / Grasshopper</option>
+          <option value="archicad" data-fmt="xyz">ArchiCAD</option>
+          <option value="vectorworks" data-fmt="ifc">Vectorworks</option>
+          <option value="allplan" data-fmt="ifc">Allplan</option>
+        </select>
+        <div class="fp-rec-hint" id="fp-rec-hint"></div>
+      </div>
+      <div class="fp-cards">
+        <button class="fp-card" type="button" data-fmt="csv">
+          <span class="fp-card-check">&#x2713;</span>
+          <div class="fp-card-top"><span class="fp-card-name">CSV</span><span class="fp-tag fp-tag-free">Free</span></div>
+          <p class="fp-card-desc">Raw points, one per row. Build the surface yourself in Revit, SketchUp, Rhino or ArchiCAD.</p>
+          <p class="fp-card-meta" id="fp-csv-meta"></p>
+        </button>
+        <button class="fp-card" type="button" data-fmt="xyz">
+          <span class="fp-card-check">&#x2713;</span>
+          <div class="fp-card-top"><span class="fp-card-name">XYZ</span><span class="fp-tag fp-tag-free">Free</span></div>
+          <p class="fp-card-desc">Headerless X&nbsp;Y&nbsp;Z points. Straight into ArchiCAD's surveyor import.</p>
+        </button>
+        <button class="fp-card fp-card-pro" type="button" data-fmt="dxf">
+          <span class="fp-card-check">&#x2713;</span>
+          <div class="fp-card-top"><span class="fp-card-name">DXF</span><span class="fp-tag" data-role="tag"></span></div>
+          <p class="fp-card-desc">Points + contour lines for AutoCAD, Civil 3D, Rhino and SketchUp. Skips surface-building.</p>
+          <p class="fp-card-note" data-role="note"></p>
+        </button>
+        <button class="fp-card fp-card-pro" type="button" data-fmt="ifc">
+          <span class="fp-card-check">&#x2713;</span>
+          <div class="fp-card-top"><span class="fp-card-name">IFC</span><span class="fp-tag" data-role="tag"></span></div>
+          <p class="fp-card-desc">Opens as a TopoSolid in Revit, a Mesh in ArchiCAD. No surface work.</p>
+          <p class="fp-card-note" data-role="note"></p>
+        </button>
+      </div>
+    </div>
+    <div class="fp-foot">
+      <span class="fp-note" id="fp-note"></span>
+      <button class="fp-dl" id="fp-dl" type="button">Download CSV</button>
+      <span class="fp-seepro" id="fp-seepro"></span>
+    </div>
+  </div>
+</div>
 <!-- ═══ SETTINGS MODAL ═══ -->
 <div class="auth-overlay" id="settings-overlay">
   <div class="auth-modal-wrap">
@@ -5050,7 +5162,9 @@ a.click(); URL.revokeObjectURL(a.href);
 function _syncDlBtn() {
   const fmt = document.getElementById('format-select')?.value || 'csv';
   const btn = document.getElementById('download-btn');
-  if (btn) btn.innerHTML = fmt === 'ifc' ? '&#x2193; Download IFC'
+  // With the picker on, the button opens the format chooser, so keep its label neutral.
+  if (btn && typeof _fpPickerOn === 'function' && _fpPickerOn()) { btn.innerHTML = '&#x2193; Download'; }
+  else if (btn) btn.innerHTML = fmt === 'ifc' ? '&#x2193; Download IFC'
                          : fmt === 'dxf' ? '&#x2193; Download DXF'
                          : fmt === 'xyz' ? '&#x2193; Download XYZ'
                          : '&#x2193; Download CSV';
@@ -5069,6 +5183,184 @@ function _syncDlBtn() {
   }
 }
 
+// ── Format picker (Pro-visibility rollout, steps 2 + 3) ────────────────────
+// Kill switch: set FEATURE_FORMAT_PICKER=false, or load the page with ?picker=0.
+// The picker only ever CALLS handleDownload()/startCheckout() — it never touches
+// the download or checkout code paths themselves.
+const FEATURE_FORMAT_PICKER = true;
+// DXF + IFC download free for everyone until this instant; Pro-only afterwards.
+// Move the deadline by editing this one value. All countdown copy derives from it.
+const PRO_FORMATS_FREE_UNTIL = Date.parse('2026-09-19T23:59:59Z');
+const _FP_LABEL = { csv: 'CSV', xyz: 'XYZ', ifc: 'IFC', dxf: 'DXF' };
+let _fpTick = null;
+let _fpSel = 'csv';
+
+function _fpPickerOn() {
+  try { if (new URLSearchParams(location.search).get('picker') === '0') return false; } catch (e) {}
+  return FEATURE_FORMAT_PICKER && !!document.getElementById('fp-overlay');
+}
+function _fpCountdown() {
+  const ms = PRO_FORMATS_FREE_UNTIL - Date.now();
+  if (!isFinite(ms) || ms <= 0) return null;            // window closed -> locked
+  const hrs = ms / 3600000;
+  if (hrs <= 48) {
+    const h = Math.floor(hrs);
+    const m = Math.floor((ms % 3600000) / 60000);
+    return h >= 1 ? (h + 'h ' + m + 'm left free') : (m + ' min left free');
+  }
+  return Math.ceil(hrs / 24) + ' days left free';
+}
+function _fpLocked(fmt) {
+  return (fmt === 'dxf' || fmt === 'ifc') && !isPro() && _fpCountdown() === null;
+}
+// Per-card tags / notes on the two Pro cards (Free-now countdown vs Included vs locked).
+function _fpApplyState() {
+  const ov = document.getElementById('fp-overlay');
+  if (!ov) return;
+  const pro = isPro();
+  const cd = _fpCountdown();
+  const locked = !pro && cd === null;
+  ov.querySelectorAll('.fp-card-pro').forEach(function (card) {
+    const tag = card.querySelector('[data-role="tag"]');
+    const note = card.querySelector('[data-role="note"]');
+    card.classList.toggle('fp-card-locked', locked && !card.classList.contains('is-selected'));
+    if (pro) {
+      if (tag) { tag.textContent = 'Included'; tag.className = 'fp-tag fp-tag-inc'; }
+      if (note) note.textContent = '';
+    } else if (locked) {
+      if (tag) { tag.textContent = 'Pro'; tag.className = 'fp-tag fp-tag-pro'; }
+      if (note) note.textContent = '\uD83D\uDD12 Upgrade to unlock';
+    } else {
+      if (tag) { tag.textContent = 'Free now'; tag.className = 'fp-tag fp-tag-free'; }
+      if (note) note.textContent = cd;
+    }
+  });
+}
+// Footer: the big Download button + the line above it, driven by the selection.
+function _fpRender() {
+  const btn = document.getElementById('fp-dl');
+  const note = document.getElementById('fp-note');
+  const seepro = document.getElementById('fp-seepro');
+  if (!btn) return;
+  const pro = isPro();
+  const cd = _fpCountdown();
+  const locked = _fpLocked(_fpSel);
+  const L = _FP_LABEL[_fpSel] || 'file';
+  if (locked) {
+    btn.innerHTML = 'Unlock ' + L + ' with Pro &rarr;';
+  } else {
+    btn.innerHTML = '&#x2193; Download ' + L;
+  }
+  if (note) {
+    if (pro) note.textContent = '';
+    else if (locked) note.textContent = 'DXF and IFC are Pro now. Upgrade for every format, unlimited generations and all data sources.';
+    else if ((_fpSel === 'dxf' || _fpSel === 'ifc') && cd) note.textContent = L + ' is free right now — ' + cd + '. Upgrade to keep it after that.';
+    else if (cd) note.textContent = 'DXF and IFC are free for everyone — ' + cd + '.';
+    else note.textContent = '';
+  }
+  if (seepro) {
+    seepro.innerHTML = (!pro && !locked) ? 'or <a id="fp-seepro-link">upgrade to Pro</a> for every format, always' : '';
+  }
+}
+function _fpSelect(fmt) {
+  if (!fmt || !_FP_LABEL[fmt]) return;
+  _fpSel = fmt;
+  const ov = document.getElementById('fp-overlay');
+  if (ov) ov.querySelectorAll('.fp-card').forEach(function (c) {
+    const on = c.getAttribute('data-fmt') === fmt;
+    c.classList.toggle('is-selected', on);
+    c.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  const dd = document.getElementById('format-select');
+  if (dd) dd.value = fmt;
+  _fpApplyState();
+  _fpRender();
+}
+function _fpRecommend(fire) {
+  const sel = document.getElementById('fp-software');
+  const hint = document.getElementById('fp-rec-hint');
+  if (!sel) return;
+  const opt = sel.options[sel.selectedIndex];
+  const fmt = (opt && opt.dataset) ? opt.dataset.fmt : '';
+  if (hint) hint.textContent = fmt ? ('Best for ' + opt.textContent + ': ' + _FP_LABEL[fmt]) : '';
+  if (fmt) _fpSelect(fmt);
+  if (sel.value) {
+    try { localStorage.setItem('topo_fmt_software', sel.value); } catch (e) {}
+    if (fire) { try { track('format_recommender_used', { software: sel.value, format: fmt, via: 'picker' }); } catch (e) {} }
+  }
+}
+function openFormatPicker() {
+  const ov = document.getElementById('fp-overlay');
+  if (!ov) { handleDownload(); return; }
+  const meta = document.getElementById('fp-csv-meta');
+  const n = (window._cleanOutMetric && window._cleanOutMetric.length) || 0;
+  const sp = window._effectiveSpacing || selectedSpacing;
+  if (meta) meta.textContent = n ? ('~' + n.toLocaleString() + ' points at ' + sp + 'm spacing') : '';
+  let initial = (document.getElementById('format-select') || {}).value || 'csv';
+  try {
+    const saved = localStorage.getItem('topo_fmt_software');
+    const soft = document.getElementById('fp-software');
+    if (saved && soft && soft.querySelector('option[value="' + saved + '"]')) {
+      soft.value = saved;
+      const o = soft.options[soft.selectedIndex];
+      const rf = (o && o.dataset) ? o.dataset.fmt : '';
+      const h = document.getElementById('fp-rec-hint');
+      if (h) h.textContent = rf ? ('Best for ' + o.textContent + ': ' + _FP_LABEL[rf]) : '';
+      if (rf) initial = rf;
+    }
+  } catch (e) {}
+  _fpSelect(_FP_LABEL[initial] ? initial : 'csv');
+  if (_fpTick) clearInterval(_fpTick);
+  _fpTick = setInterval(function () { _fpApplyState(); _fpRender(); }, 30000);
+  ov.classList.add('show');
+  try {
+    track('format_picker_shown', {
+      plan: _currentProfile?.plan || 'anon',
+      window_open: (!isPro() && _fpCountdown() !== null)
+    });
+  } catch (e) {}
+  setTimeout(function () { const c = document.getElementById('fp-close'); if (c) c.focus(); }, 0);
+}
+function closeFormatPicker() {
+  const ov = document.getElementById('fp-overlay');
+  if (ov) ov.classList.remove('show');
+  if (_fpTick) { clearInterval(_fpTick); _fpTick = null; }
+}
+// The Download button in the footer — the one clear call to action.
+function _fpDl() {
+  const fmt = _fpSel;
+  if (_fpLocked(fmt)) {
+    try { track('format_locked_clicked', { format: fmt, plan: _currentProfile?.plan || 'anon' }); } catch (e) {}
+    try { track('pro_cta_clicked', { source: 'format_picker' }); } catch (e) {}
+    closeFormatPicker();
+    startCheckout('pro');
+    return;
+  }
+  try { track('format_selected', { format: fmt, via: 'picker', plan: _currentProfile?.plan || 'anon' }); } catch (e) {}
+  const dd = document.getElementById('format-select');
+  if (dd) dd.value = fmt;
+  closeFormatPicker();
+  handleDownload();
+}
+(function _fpWire() {
+  const ov = document.getElementById('fp-overlay');
+  if (!ov) return;
+  ov.addEventListener('click', function (e) {
+    if (e.target === ov || (e.target.closest && e.target.closest('#fp-close'))) { closeFormatPicker(); return; }
+    if (e.target.closest && e.target.closest('#fp-seepro-link')) {
+      try { track('pro_cta_clicked', { source: 'format_picker' }); } catch (err) {}
+      closeFormatPicker(); startCheckout('pro'); return;
+    }
+    if (e.target.closest && e.target.closest('#fp-dl')) { _fpDl(); return; }
+    const card = e.target.closest && e.target.closest('.fp-card');
+    if (card) _fpSelect(card.getAttribute('data-fmt'));
+  });
+  const soft = document.getElementById('fp-software');
+  if (soft) soft.addEventListener('change', function () { _fpRecommend(true); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && ov.classList.contains('show')) closeFormatPicker();
+  });
+})();
 // ── IFC / DXF helpers ──────────────────────────────────────────────────────
 function _ifcGuid() {
   const c='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$';
@@ -7595,9 +7887,17 @@ document.addEventListener('DOMContentLoaded', function() {
   var cbEl = document.getElementById('convert-btn');
   if (cbEl) cbEl.addEventListener('click', convert);
   var dlEl = document.getElementById('download-btn');
-  if (dlEl) dlEl.addEventListener('click', handleDownload);
+  if (dlEl) dlEl.addEventListener('click', function () {
+    if (_fpPickerOn() && window._cleanOutMetric && window._cleanOutMetric.length) openFormatPicker();
+    else handleDownload();
+  });
   var fmtSel = document.getElementById('format-select');
-  if (fmtSel) fmtSel.addEventListener('change', _syncDlBtn);
+  if (fmtSel) fmtSel.addEventListener('change', function () {
+    _syncDlBtn();
+    // Pro-visibility rollout, step 1: log every format switch (manual or via the
+    // software recommender), so we can see whether anyone reaches for DXF/IFC.
+    try { track('format_selected', { format: fmtSel.value, plan: _currentProfile?.plan || 'anon' }); } catch (e) {}
+  });
 
   // ── Floating ribbon avoids the footer ──
   (function() {
