@@ -203,7 +203,7 @@
 
   <h1>How to create site topography in ArchiCAD (Mesh from survey points)</h1>
 
-  <p class="lead">To model terrain in ArchiCAD, generate an <b>XYZ CSV of survey points</b> from real elevation data and build a <b>Mesh</b> with the Mesh tool, or import a finished surface as <b>DXF</b> or <b>IFC</b>. All three come from the same site in Topo-grapher, so no GIS software is needed.</p>
+  <p class="lead">To model terrain in ArchiCAD, generate an <b>XYZ point file</b> from real elevation data and build a <b>Mesh</b> with the Mesh tool, or import a finished surface as <b>DXF</b> or <b>IFC</b>. All three come from the same site in Topo-grapher, so no GIS software is needed.</p>
 
   <div class="author author-card" itemprop="author" itemscope itemtype="https://schema.org/Person">
     <div class="author-label">Author</div>
@@ -219,18 +219,18 @@
   <h2>Step-by-step</h2>
   <ol class="steps">
     <li><b>Define your site.</b> Draw a polygon around the site on the map in Topo-grapher, or paste coordinates. The free tier covers up to 250m &times; 250m.</li>
-    <li><b>Generate the points.</b> Pick XYZ CSV for survey points to feed the Mesh tool, or DXF/IFC to import a finished surface.</li>
-    <li><b>Bring the data in.</b> Import the XYZ points via <b>File → Interoperability → Place Mesh from Surveyors Data</b>, or use the <b>DXF-DWG translator</b> for a DXF terrain. IFC imports as a linked model element.</li>
+    <li><b>Generate the points.</b> Pick the <b>XYZ</b> format for survey points to feed the Mesh tool, or DXF/IFC to import a finished surface.</li>
+    <li><b>Bring the data in.</b> Import the <b>.xyz</b> file via <b>File → Interoperability → Place Mesh from Surveyors Data</b>, or use the <b>DXF-DWG translator</b> for a DXF terrain. IFC imports as a linked model element.</li>
     <li><b>Build the Mesh.</b> Use the <b>Mesh tool</b> to generate a 3D terrain from the imported survey points; ArchiCAD triangulates them into a mesh surface.</li>
     <li><b>Set the site reference.</b> Position the mesh against project zero so levels read correctly across the model.</li>
   </ol>
 
   <h2>Which format should you use?</h2>
-  <p>XYZ CSV drives the native Mesh tool; DXF and IFC let you import a surface that's already built.</p>
+  <p>XYZ drives the native Mesh tool; DXF and IFC let you import a surface that's already built.</p>
   <table>
     <thead><tr><th>Format</th><th>Best for in ArchiCAD</th><th>Resolution</th></tr></thead>
     <tbody>
-      <tr><td>XYZ CSV</td><td>Mesh tool from survey points</td><td>native</td></tr>
+      <tr><td>XYZ</td><td>Mesh tool from survey points</td><td>native</td></tr>
       <tr><td>DXF</td><td>DXF-DWG terrain import</td><td>native</td></tr>
       <tr><td>IFC</td><td>BIM model exchange</td><td>native</td></tr>
     </tbody>
@@ -257,7 +257,7 @@
     <p>Yes. The ArchiCAD Mesh tool builds a 3D terrain by triangulating imported 3D survey points. An XYZ CSV from Topo-grapher supplies those points, so you can generate site terrain without GIS software.</p>
 
     <h3>What format is best for ArchiCAD terrain?</h3>
-    <p>Use XYZ CSV to drive the Mesh tool from survey points, or import a finished surface as DXF or IFC. Topo-grapher exports all three from the same site.</p>
+    <p>Use XYZ to drive the Mesh tool from survey points, or import a finished surface as DXF or IFC. Topo-grapher exports all three from the same site.</p>
 
     <h3>How accurate is the terrain?</h3>
     <p>It depends on the country's open data: 0.4m in Denmark, 1m across the UK, Sweden, Norway, France and parts of the US, 5-10m across most of Europe, and a 30m global fallback elsewhere.</p>

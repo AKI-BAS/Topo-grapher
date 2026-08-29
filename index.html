@@ -1181,6 +1181,7 @@ function declineCookies() {
         <div class="settings-sep"></div>
         <select id="format-select" title="File format">
           <option value="csv">CSV</option>
+          <option value="xyz">XYZ</option>
           <option value="ifc">IFC</option>
           <option value="dxf">DXF</option>
         </select>
@@ -1197,7 +1198,7 @@ function declineCookies() {
           <option value="sketchup" data-fmt="dxf">SketchUp</option>
           <option value="autocad" data-fmt="dxf">AutoCAD / Civil 3D</option>
           <option value="rhino" data-fmt="dxf">Rhino / Grasshopper</option>
-          <option value="archicad" data-fmt="ifc">ArchiCAD</option>
+          <option value="archicad" data-fmt="xyz">ArchiCAD</option>
           <option value="vectorworks" data-fmt="ifc">Vectorworks</option>
           <option value="allplan" data-fmt="ifc">Allplan</option>
         </select>
@@ -1211,7 +1212,7 @@ function declineCookies() {
         var hint=document.getElementById('fmt-help-hint');
         var fmtSel=document.getElementById('format-select');
         if(!btn||!pop||!soft||!fmtSel) return;
-        var FMT_LABEL={csv:'CSV',ifc:'IFC',dxf:'DXF'};
+        var FMT_LABEL={csv:'CSV',xyz:'XYZ',ifc:'IFC',dxf:'DXF'};
 
         // Restore last-picked software preference
         try{
@@ -1608,12 +1609,11 @@ function declineCookies() {
     <!-- ArchiCAD -->
     <div id="ig-archicad" class="ig-content" style="display:none;">
       <div style="font-size:12px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:22px;">ArchiCAD 25 and later · Mesh tool</div>
-      <div class="ig-step"><div class="ig-step-n">01</div><div class="ig-step-body"><div class="ig-step-title">Download your CSV</div><div class="ig-step-desc">Click <strong>↓ Download CSV</strong> above. ArchiCAD accepts XYZ survey data directly via the Mesh tool workflow.</div></div></div>
+      <div class="ig-step"><div class="ig-step-n">01</div><div class="ig-step-body"><div class="ig-step-title">Download the XYZ file</div><div class="ig-step-desc">Set the format selector to <strong>XYZ</strong>, then click <strong>↓ Download XYZ</strong> above. It is a headerless, space-delimited X&nbsp;Y&nbsp;Z point file in metres that ArchiCAD reads directly.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">02</div><div class="ig-step-body"><div class="ig-step-title">Open Site Plan, set units to Metres</div><div class="ig-step-desc">Switch to your <strong>Site Plan</strong> view. Set working units under <strong>Options → Project Preferences → Working Units → Metre</strong>.</div></div></div>
-      <div class="ig-step"><div class="ig-step-n">03</div><div class="ig-step-body"><div class="ig-step-title">Import survey data</div><div class="ig-step-desc">Go to <strong>File → Interoperability → Place Mesh from Surveyors Data</strong> and select your CSV. Set the unit and your Project Zero elevation when prompted — ArchiCAD creates the Mesh automatically.</div></div></div>
+      <div class="ig-step"><div class="ig-step-n">03</div><div class="ig-step-body"><div class="ig-step-title">Import survey data</div><div class="ig-step-desc">Go to <strong>File → Interoperability → Place Mesh from Surveyors Data</strong> and select your <strong>.xyz</strong> file. Set the unit and your Project Zero elevation when prompted — ArchiCAD creates the Mesh automatically.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">04</div><div class="ig-step-body"><div class="ig-step-title">Refine the mesh surface</div><div class="ig-step-desc">Select the new Mesh and use the <strong>Mesh tool</strong> to adjust ridge and valley lines for drainage accuracy.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">05</div><div class="ig-step-body"><div class="ig-step-title">Mesh terrain created ✓</div><div class="ig-step-desc">Topography placed at real-world elevation. LiDAR data gives you accurate drainage gradients even on very shallow slopes.</div></div></div>
-      <div class="ig-tip">💡 Use the Site Map image (↓ download above) as an underlay in ArchiCAD to visually verify the terrain aligns with your boundary.</div>
 <a class="guide-cta" href="topography-for-archicad.html">Read the full ArchiCAD guide</a>
     </div>
     <!-- Rhino -->
@@ -4986,16 +4986,23 @@ async function convert() {
 }
 
 // ── Download ──────────────────────────────────────────────────────────────
-function downloadCSV() {
+function downloadCSV(fmt) {
   const pts=_getTerrainExportPts(); // flattened copy if DSM + buildings; else original
   if (!pts||!pts.length) return;
   const imperial=exportUnits==='imperial', mult=imperial?M_TO_FT:1, decimals=imperial?2:3;
-  const header=imperial?'X_ft,Y_ft,Z_ft':'X,Y,Z', suffix=imperial?'_ft':'_m';
-  const rows=pts.map(p=>(p.x*mult).toFixed(decimals)+','+(p.y*mult).toFixed(decimals)+','+(p.z*mult).toFixed(decimals));
+  const suffix=imperial?'_ft':'_m';
+  // XYZ = headerless, space-delimited point file. ArchiCAD's "Place Mesh from
+  // Surveyors Data" and most point-cloud importers expect this; the numbers are
+  // identical to the CSV export, only the header and delimiter change.
+  const isXyz = fmt === 'xyz';
+  const sep = isXyz ? ' ' : ',';
+  const header = isXyz ? '' : (imperial?'X_ft,Y_ft,Z_ft':'X,Y,Z');
+  const ext = isXyz ? '.xyz' : '.csv';
+  const rows=pts.map(p=>(p.x*mult).toFixed(decimals)+sep+(p.y*mult).toFixed(decimals)+sep+(p.z*mult).toFixed(decimals));
   const safe=projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
   const a=document.createElement('a');
-a.href=URL.createObjectURL(new Blob([header+'\n'+rows.join('\n')],{type:'text/csv'}));
-  a.download=safe+'_toposolid'+suffix+'.csv'; a.click();
+a.href=URL.createObjectURL(new Blob([(header?header+'\n':'')+rows.join('\n')],{type:isXyz?'text/plain':'text/csv'}));
+  a.download=safe+'_toposolid'+suffix+ext; a.click();
   if (window._siteColumns && window._siteColumns.length > 0) {
     _downloadSiteColumnsIFC(safe);
   }
@@ -5032,7 +5039,7 @@ function handleDownload() {
     a.href = URL.createObjectURL(new Blob([content],{type:'image/vnd.dxf'}));
     a.download = safe + '_toposolid.dxf';
   } else {
-    downloadCSV(); return;
+    downloadCSV(fmt); return;   // 'csv' or 'xyz'
   }
 a.click(); URL.revokeObjectURL(a.href);
   if (window._siteColumns && window._siteColumns.length > 0) {
@@ -5045,6 +5052,7 @@ function _syncDlBtn() {
   const btn = document.getElementById('download-btn');
   if (btn) btn.innerHTML = fmt === 'ifc' ? '&#x2193; Download IFC'
                          : fmt === 'dxf' ? '&#x2193; Download DXF'
+                         : fmt === 'xyz' ? '&#x2193; Download XYZ'
                          : '&#x2193; Download CSV';
   const bBtn = document.getElementById('download-buildings-btn');
   if (bBtn && !bBtn.disabled) {
