@@ -3152,34 +3152,59 @@ function showSignupDetail(userId){
   modal.style.display='flex';
 }
 
-// ── Export formats breakdown ─────────────────────────────────
+// ── Format demand: what people download, what they wanted but couldn't ─────
+// Events-based. The old version read generations.file_name, which is always
+// ".csv" regardless of the real download, so it was measuring nothing.
 async function loadExportFormats(){
-  const{data}=await _sb.from('generations').select('file_name').eq('is_test',false).not('file_name','is',null).limit(10000);
-  if(!data||!data.length){document.getElementById('body-formats').innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">No export data yet</div>';return;}
-  const fc={csv:0,ifc:0,dxf:0,other:0};
-  data.forEach(r=>{
-    const fn=(r.file_name||'').toLowerCase();
-    if(fn.endsWith('.ifc'))fc.ifc++;
-    else if(fn.endsWith('.dxf'))fc.dxf++;
-    else if(fn.endsWith('.csv'))fc.csv++;
-    else fc.other++;
-  });
-  const total=data.length;
-  document.getElementById('badge-formats').textContent=total+' exports';
-  const mx=Math.max(fc.csv,fc.ifc,fc.dxf,fc.other,1);
-  document.getElementById('body-formats').innerHTML=`<div class="bar-chart-h">
-    ${barRow('CSV',fc.csv,mx,'bar-fill-accent')}
-    ${barRow('IFC',fc.ifc,mx,'bar-fill-blue')}
-    ${barRow('DXF',fc.dxf,mx,'bar-fill-amber')}
-    ${fc.other?barRow('Other',fc.other,mx,'bar-fill-red'):''}
-  </div>
-  <div style="margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
-    <div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:2px;">CSV</div><div style="font-size:16px;font-weight:500;color:var(--accent);">${total>0?Math.round(fc.csv/total*100):0}%</div></div>
-    <div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:2px;">IFC</div><div style="font-size:16px;font-weight:500;color:var(--blue);">${total>0?Math.round(fc.ifc/total*100):0}%</div></div>
-    <div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:2px;">DXF</div><div style="font-size:16px;font-weight:500;color:var(--amber);">${total>0?Math.round(fc.dxf/total*100):0}%</div></div>
-  </div>`;
+  const body=document.getElementById('body-formats');
+  if(!body)return;
+  const ps=periodStart();
+  try{
+    let q=_sb.from('events').select('event,properties')
+      .eq('is_test',false)
+      .in('event',['download_attempted','format_locked_clicked','format_picker_shown','pro_cta_clicked','checkout_started','subscription_created'])
+      .order('created_at',{ascending:false}).limit(20000);
+    if(ps) q=q.gte('created_at',ps);
+    const {data,error}=await q;
+    if(error) throw error;
+    const rows=data||[];
+    const cnt=n=>rows.filter(r=>r.event===n).length;
+    const byFmt=n=>{const m={};rows.filter(r=>r.event===n).forEach(r=>{const f=String((r.properties||{}).format||'?').toLowerCase();m[f]=(m[f]||0)+1;});return m;};
+    const dl=byFmt('download_attempted');
+    const locked=byFmt('format_locked_clicked');
+    const dlTot=Object.values(dl).reduce((a,b)=>a+b,0);
+    const lockTot=Object.values(locked).reduce((a,b)=>a+b,0);
+    const shown=cnt('format_picker_shown');
+    const proCta=rows.filter(r=>r.event==='pro_cta_clicked'&&String((r.properties||{}).source||'')==='format_picker').length;
+    const checkout=cnt('checkout_started');
+    const subs=cnt('subscription_created');
+    const badge=document.getElementById('badge-formats'); if(badge) badge.textContent=periodLabel();
+    if(!dlTot && !shown){ _analyticsNoData(body,'formats','No format events in this period yet.'); return; }
+    const ORDER=['csv','xyz','dxf','ifc'];
+    const COL={csv:'bar-fill-accent',xyz:'bar-fill-accent',dxf:'bar-fill-amber',ifc:'bar-fill-blue'};
+    const mx=Math.max(1,...ORDER.map(f=>dl[f]||0));
+    const mxl=Math.max(1,(locked.dxf||0),(locked.ifc||0));
+    const K="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;";
+    body.innerHTML=`
+      <div style="display:flex;gap:14px;margin-bottom:12px;">
+        <div style="text-align:center;flex:1;"><div style="${K}margin-bottom:2px;">Picker shown</div><div style="font-size:16px;font-weight:500;color:var(--text);">${shown.toLocaleString()}</div></div>
+        <div style="text-align:center;flex:1;"><div style="${K}margin-bottom:2px;">Downloads</div><div style="font-size:16px;font-weight:500;color:var(--accent);">${dlTot.toLocaleString()}</div></div>
+        <div style="text-align:center;flex:1;"><div style="${K}margin-bottom:2px;">Pro-locked clicks</div><div style="font-size:16px;font-weight:500;color:var(--amber);">${lockTot.toLocaleString()}</div></div>
+      </div>
+      <div style="${K}margin-bottom:6px;">Downloaded, by format</div>
+      <div class="bar-chart-h">${ORDER.map(f=>barRow(f.toUpperCase(),dl[f]||0,mx,COL[f])).join('')}</div>
+      ${lockTot?`<div style="${K}margin:14px 0 6px;">Wanted, but Pro-gated</div><div class="bar-chart-h">${barRow('DXF',locked.dxf||0,mxl,'bar-fill-amber')}${barRow('IFC',locked.ifc||0,mxl,'bar-fill-amber')}</div>`:''}
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);line-height:1.95;">
+        shown <b style="color:var(--text);">${shown}</b> &rarr;
+        locked-click <b style="color:var(--amber);">${lockTot}</b> &rarr;
+        upgrade CTA <b style="color:var(--text);">${proCta}</b> &rarr;
+        checkout <b style="color:var(--text);">${checkout}</b> &rarr;
+        subscribed <b style="color:var(--accent);">${subs}</b>
+      </div>`;
+  }catch(err){
+    _analyticsNoData(body,'formats', /events|column|properties/i.test(err.message||'')?'events table not available yet':esc(err.message||'query failed'));
+  }
 }
-
 // ── Download rate (gen → export conversion) ──────────────────
 async function loadDownloadRate(){
   const ps=periodStart();
@@ -3621,7 +3646,7 @@ function setPeriod(p) {
   // Update FAB label
   const fab = document.getElementById('mob-period-fab-lbl');
   if (fab) fab.textContent = p.toUpperCase();
-  Promise.all([loadKPIs(),loadTrends(),loadFunnel(),loadCountryBars(),loadGapTable(),loadDownloadRate(),loadFeed(),loadBlogStats(),loadTrafficSources()]);
+  Promise.all([loadKPIs(),loadTrends(),loadFunnel(),loadCountryBars(),loadGapTable(),loadDownloadRate(),loadFeed(),loadBlogStats(),loadTrafficSources(),loadExportFormats()]);
 }
 
 function togglePeriodPopover() {
