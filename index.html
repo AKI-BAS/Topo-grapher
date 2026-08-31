@@ -1772,11 +1772,11 @@ function declineCookies() {
       <div class="upgrade-hero-fade"></div>
       <!-- Label -->
       <div class="upgrade-hero-text">
-        <small>Pro Feature</small>
-        <h3>Unlock Buildings Export</h3>
-        <p>IFC &nbsp;·&nbsp; DXF &nbsp;·&nbsp; Full 3D terrain viewer</p>
+        <small id="upgrade-hero-kicker">Pro Feature</small>
+        <h3 id="upgrade-hero-title">Unlock Buildings Export</h3>
+        <p id="upgrade-hero-sub">IFC &nbsp;·&nbsp; DXF &nbsp;·&nbsp; Full 3D terrain viewer</p>
       </div>
-      <button class="upgrade-hero-close" onclick="closeUpgrade(); track('upsell_popup_dismissed', {context:'buildings'});">&#x2715;</button>
+      <button class="upgrade-hero-close" onclick="closeUpgrade(); track('upsell_popup_dismissed', {context: window._upgradeCtx || 'buildings'});">&#x2715;</button>
     </div>
 
     <!-- Plan cards -->
@@ -1795,7 +1795,7 @@ function declineCookies() {
         </ul>
         <button class="upgrade-plan-cta" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);"
           onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"
-          onclick="closeUpgrade(); startCheckout('pro');">Get Pro &rarr;</button>
+          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings'}); closeUpgrade(); startCheckout('pro');">Get Pro &rarr;</button>
       </div>
 
       <!-- Company -->
@@ -1812,7 +1812,7 @@ function declineCookies() {
         </ul>
         <button class="upgrade-plan-cta" style="background:var(--accent);color:var(--bg-card);"
           onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"
-          onclick="closeUpgrade(); if(!_currentUser){openAuth();} else {document.getElementById('seat-picker-overlay').classList.add('show');updateSeatTotal();}">Get Company &rarr;</button>
+          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings', plan:'company'}); closeUpgrade(); if(!_currentUser){openAuth();} else {document.getElementById('seat-picker-overlay').classList.add('show');updateSeatTotal();}">Get Company &rarr;</button>
       </div>
 
     </div>
@@ -3828,9 +3828,23 @@ function openAuth(mode, context) {
     if (mode === 'signup') { switchTab('signup'); track('signup_prompt_shown', {}); } else switchTab('signin');
   }
 }
-function openUpgrade() {
+// Hero copy per trigger context. [kicker, title, subline]
+const UPGRADE_COPY = {
+  buildings:   ['Pro Feature', 'Unlock Buildings Export',        'IFC · DXF · Full 3D terrain viewer'],
+  size_limit:  ['Pro',         'Go bigger than 250 m',           'Sites up to 2 × 2 km · all LiDAR sources'],
+  spacing:     ['Pro',         'Tighter than 12 m spacing',      '3 m and 6 m precision · all LiDAR sources'],
+  points:      ['Pro',         'More detail than the free cap',  'Up to 50,000 points per site'],
+  session:     ['Pro',         'You’re on the free tier',   'Bigger sites · all LiDAR · saved projects · every format']
+};
+function openUpgrade(context) {
+  const ctx = UPGRADE_COPY[context] ? context : 'buildings';
+  window._upgradeCtx = ctx;
+  const c = UPGRADE_COPY[ctx];
+  const k = document.getElementById('upgrade-hero-kicker'); if (k) k.textContent = c[0];
+  const t = document.getElementById('upgrade-hero-title');  if (t) t.textContent = c[1];
+  const s = document.getElementById('upgrade-hero-sub');    if (s) s.textContent = c[2];
   document.getElementById('upgrade-overlay').classList.add('show');
-  track('upsell_popup_shown', { context: 'buildings' });
+  track('upsell_popup_shown', { context: ctx });
 }
 function closeUpgrade() {
   document.getElementById('upgrade-overlay').classList.remove('show');
@@ -4966,8 +4980,8 @@ async function convert() {
     const _isPro = isPro();
     const plan = _currentProfile?.plan || 'anon';
     if (!_isPro) {
-      if (siteW>FREE_MAX_M||siteH>FREE_MAX_M) { track('size_limit_hit', { area_m2: Math.round(siteW*siteH), site_w_m: Math.round(siteW), site_h_m: Math.round(siteH), plan }); const _e = new Error('Free tier is limited to 250 × 250m sites. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for sites up to 2 × 2km.'); _e._gateHit = true; throw _e; }
-      if (selectedSpacing<FREE_MAX_SPACING) { track('spacing_gate_hit', { spacing: selectedSpacing, min: FREE_MAX_SPACING, plan }); const _e = new Error('Free tier supports 12m spacing only. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for 3m and 6m precision.'); _e._gateHit = true; throw _e; }
+      if (siteW>FREE_MAX_M||siteH>FREE_MAX_M) { track('size_limit_hit', { area_m2: Math.round(siteW*siteH), site_w_m: Math.round(siteW), site_h_m: Math.round(siteH), plan }); const _e = new Error('Free tier is limited to 250 × 250m sites. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for sites up to 2 × 2km.'); _e._gateHit = true; _e._gateKind = 'size_limit'; throw _e; }
+      if (selectedSpacing<FREE_MAX_SPACING) { track('spacing_gate_hit', { spacing: selectedSpacing, min: FREE_MAX_SPACING, plan }); const _e = new Error('Free tier supports 12m spacing only. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for 3m and 6m precision.'); _e._gateHit = true; _e._gateKind = 'spacing'; throw _e; }
     }
     window._effectiveSpacing = selectedSpacing;
     await checkDailyLimit();
@@ -4976,7 +4990,7 @@ async function convert() {
     const grid = generateGrid(polygonLatLngs, effSpacing, isNatural);
     if (grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
     const POINT_CAP = _isPro ? 50000 : 2000;
-    if (grid.length>POINT_CAP) { track('point_cap_hit', { point_count: grid.length, cap: POINT_CAP, plan }); const _e = new Error(grid.length.toLocaleString()+' points exceeds the '+(_isPro?'limit of '+POINT_CAP.toLocaleString():'free limit of 2,000. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for larger areas.')); _e._gateHit = true; throw _e; }
+    if (grid.length>POINT_CAP) { track('point_cap_hit', { point_count: grid.length, cap: POINT_CAP, plan }); const _e = new Error(grid.length.toLocaleString()+' points exceeds the '+(_isPro?'limit of '+POINT_CAP.toLocaleString():'free limit of 2,000. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for larger areas.')); _e._gateHit = true; if (!_isPro) _e._gateKind = 'points'; throw _e; }
     const estSecs = Math.ceil(grid.length/50*0.6);
     setProgress(0.1,'Extracting data…',grid.length.toLocaleString()+' points — est. '+estSecs+'s');
     _hideHighDemandBanner();
@@ -5072,6 +5086,20 @@ async function convert() {
       utmOrigin: { easting: oE, northing: oN }
     };
     window._isGenerating=false;
+    // Once-per-session Pro reminder: after a free user's 2nd successful generation,
+    // show the upgrade modal one time. Kill switch: ?nudge=0. Shares the
+    // topo_upsell_seen flag with the gate-hit modal (a visitor sees Pro once, max).
+    try {
+      if (!isPro()) {
+        const _sg = (parseInt(sessionStorage.getItem('topo_sess_gens')||'0',10) || 0) + 1;
+        sessionStorage.setItem('topo_sess_gens', _sg);
+        const _noNudge = new URLSearchParams(location.search).get('nudge') === '0';
+        if (_sg >= 2 && !_noNudge && !sessionStorage.getItem('topo_upsell_seen')) {
+          sessionStorage.setItem('topo_upsell_seen','1');
+          setTimeout(()=>{ try { openUpgrade('session'); } catch(e){} }, 1400);
+        }
+      }
+    } catch(e){}
     setTimeout(()=>{
       showProgress(false); showResult(true); updateExportFormatUI();
       const af=cleanOut.map(p=>p.z).filter(z=>isFinite(z)&&!isNaN(z));
@@ -5090,7 +5118,18 @@ async function convert() {
   }catch(err){
     showProgress(false); showError(err.message);
     track('generation_failed',{error:err.message.slice(0,100),spacing:selectedSpacing});
-    if (err._gateHit) blockGeneration(); else failGeneration('client_error', err.message);
+    if (err._gateHit) {
+      blockGeneration();
+      // First Pro-gate hit of the session pops the upgrade modal; later hits fall
+      // back to the inline error + red polygon only. Shares the once-per-session
+      // flag with the post-2nd-generation nudge so a visitor sees Pro once, max.
+      try {
+        if (err._gateKind && !isPro() && !sessionStorage.getItem('topo_upsell_seen')) {
+          sessionStorage.setItem('topo_upsell_seen','1');
+          openUpgrade(err._gateKind);
+        }
+      } catch(e){}
+    } else failGeneration('client_error', err.message);
   }finally{
     window._isGenerating=false;
     document.getElementById('convert-btn').disabled=false;

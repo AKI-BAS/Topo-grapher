@@ -2045,6 +2045,29 @@ async function loadPaywallFunnel(){
       return`<div class="funnel-step"><div class="funnel-label"><span class="funnel-name">${s.name}</span><span class="funnel-count">${s.count.toLocaleString()}</span></div><div class="funnel-bar-bg"><div class="funnel-bar-fill" style="width:0%;background:${s.color}" data-w="${pct}"></div></div><div class="funnel-pct">${pct}%</div></div>`;
     }).join('')}</div>`;
     requestAnimationFrame(()=>{document.querySelectorAll('#body-paywallfunnel .funnel-bar-fill').forEach(el=>{setTimeout(()=>{el.style.width=el.dataset.w+'%';},100);});});
+    // Which trigger drove the popup, and which surface drove the CTA click.
+    // Own try/catch so a breakdown failure never blanks the funnel above.
+    try{
+      let bq=_sb.from('events').select('event,properties').eq('is_test',false)
+        .in('event',['upsell_popup_shown','pro_cta_clicked']).limit(20000);
+      if(pStart&&pStart!=='2000-01-01T00:00:00Z') bq=bq.gte('created_at',pStart);
+      const {data:bd,error:be}=await bq;
+      if(!be && bd && bd.length){
+        const tidy=s=>String(s||'?').replace(/_/g,' ');
+        const grp=(ev,key)=>{const m={};bd.filter(r=>r.event===ev).forEach(r=>{const k=tidy((r.properties||{})[key]);m[k]=(m[k]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
+        const ctx=grp('upsell_popup_shown','context');
+        const src=grp('pro_cta_clicked','source');
+        const K="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;";
+        const list=(rows,cls)=>{const mx=Math.max(1,...rows.map(r=>r[1]));return`<div class="bar-chart-h">${rows.map(r=>barRow(esc(r[0]),r[1],mx,cls)).join('')}</div>`;};
+        let h=`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">`;
+        h+=`<div style="${K}margin-bottom:6px;">Popup shown, by trigger</div>`;
+        h+= ctx.length?list(ctx,'bar-fill-amber'):`<div class="mono" style="color:var(--muted);font-size:11px;">none yet</div>`;
+        h+=`<div style="${K}margin:14px 0 6px;">Upgrade CTA clicked, by surface</div>`;
+        h+= src.length?list(src,'bar-fill-blue'):`<div class="mono" style="color:var(--muted);font-size:11px;">none yet</div>`;
+        h+=`</div>`;
+        body.insertAdjacentHTML('beforeend',h);
+      }
+    }catch(e){}
   }catch(err){
     _analyticsNoData(body,'paywallfunnel');
   }
