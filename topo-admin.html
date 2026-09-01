@@ -2234,7 +2234,7 @@ async function loadMonitor(){
     // generations table, since blockGeneration() itself writes no error_stage/detail
     // (it isn't an error). size_limit_hit/spacing_gate_hit/point_cap_hit are new
     // events and will read 0 here until the instrumented index.html deploys.
-    _sb.from('events').select('event').in('event',['size_limit_hit','spacing_gate_hit','free_limit_hit','point_cap_hit']).gte('created_at',dayAgo).limit(20000),
+    _sb.from('events').select('event').eq('is_test',false).in('event',['size_limit_hit','spacing_gate_hit','free_limit_hit','point_cap_hit']).gte('created_at',dayAgo).limit(20000),
   ]);
 
   // Reachability tallies
@@ -2886,7 +2886,7 @@ async function loadCountryBars(){
 // ── Live feed ─────────────────────────────────────────────────
 async function loadFeed(){
   const ps=periodStart();
-  const qf=_sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,created_at,status,error_stage,error_detail,user_id,anon_id,centroid_lat,centroid_lon').order('created_at',{ascending:false}).limit(30);
+  const qf=_sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,created_at,status,error_stage,error_detail,user_id,anon_id,centroid_lat,centroid_lon').eq('is_test',false).order('created_at',{ascending:false}).limit(30);
   const{data:gens}=await (ps?qf.gte('created_at',ps):qf);
   const{data:signups}=await _sb.from('profiles').select('email,plan,created_at').order('created_at',{ascending:false}).limit(10);
   const items=[];

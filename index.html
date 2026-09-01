@@ -3578,14 +3578,20 @@ function getFirstTouch() {
     return raw ? JSON.parse(raw) : {};
   } catch (e) { return {}; }
 }
+function _isTestSession() {
+  return !!(_currentProfile && _currentProfile.test_mode)
+    || (typeof localStorage !== 'undefined' && localStorage.getItem('topo_test_mode') === '1');
+}
+const _BOT_UA_RE = /(bot|crawl|spider|headless|slurp|bingbot|googlebot|gptbot|ccbot|bytespider|ahrefs|semrush|dataforseo|petalbot)/i;
 function logEvent(event, properties) {
   try {
+    if (navigator.webdriver === true || _BOT_UA_RE.test(navigator.userAgent || '')) return;
     _sb.from('events').insert({
       user_id: _currentUser ? _currentUser.id : null,
       anon_id: getAnonId(),
       event,
       properties: properties || {},
-      is_test: !!(_currentProfile && _currentProfile.test_mode)
+      is_test: _isTestSession()
     }).then(() => {}, () => {});
   } catch (e) { /* analytics must never break the app */ }
 }
@@ -3726,6 +3732,10 @@ async function handleSession(session) {
     console.warn('Profile fetch error:', e.message);
     _currentProfile = null;
   }
+  try {
+    if (_currentProfile && _currentProfile.test_mode) localStorage.setItem('topo_test_mode', '1');
+    else localStorage.removeItem('topo_test_mode');
+  } catch(e) {}
   updateNavUI();
   if (_currentProfile && (_currentProfile.plan === 'pro' || _currentProfile.plan === 'company')) {
     applyProUI();
@@ -4134,6 +4144,7 @@ async function toggleTestMode(checked) {
     return;
   }
   if (_currentProfile) _currentProfile.test_mode = checked;
+  try { checked ? localStorage.setItem('topo_test_mode', '1') : localStorage.removeItem('topo_test_mode'); } catch(e) {}
   if (msgEl) {
     msgEl.textContent = checked ? 'On — your activity from now on is excluded from analytics.' : 'Off — your activity now logs normally.';
     msgEl.style.color = 'var(--text-soft)';
@@ -4430,7 +4441,7 @@ async function startGeneration() {
       centroid_lon: cLon !== null ? parseFloat(cLon.toFixed(6)) : null,
       country_code: countryCode,
       status:       'started',
-      is_test:      !!(_currentProfile && _currentProfile.test_mode)
+      is_test:      _isTestSession()
     }).select('id').single();
     if (error) { console.warn('startGeneration failed', error); return; }
     _currentGenerationId = data.id;
@@ -4468,7 +4479,7 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
         country_code:      countryCode,
         status:            'completed',
         completed_at:      new Date().toISOString(),
-        is_test:           !!(_currentProfile && _currentProfile.test_mode)
+        is_test:           _isTestSession()
       });
     } catch(e) { console.warn('logGeneration legacy insert error:', e); }
     return;
@@ -7698,7 +7709,7 @@ async function shareProjectToCompany(lid, name) {
       name:            name || entry.projectName || 'Untitled',
       polygon_geojson: { type:'Polygon', coordinates:[coords] },
       settings_json:   { spacing: entry.spacing || selectedSpacing },
-      is_test:         !!(_currentProfile && _currentProfile.test_mode)
+      is_test:         _isTestSession()
     });
     if (error) throw error;
     track('library_share_from_history', { name: name });
@@ -7910,7 +7921,9 @@ async function sendFeedback() {
 document.addEventListener('DOMContentLoaded', function() {
   updateLimitBadge();
   var _firstTouch = captureFirstTouch();
-  track('page_open', _firstTouch || { referrer: document.referrer || null });
+  var _poPayload = _firstTouch || { referrer: document.referrer || null };
+  try { _poPayload.ua = navigator.userAgent; } catch(e) {}
+  track('page_open', _poPayload);
   initPresence();
   if (window.location.search.includes('upgraded=true')) {
     track('subscription_created', { source: 'checkout_success_redirect' });
