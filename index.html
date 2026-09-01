@@ -2772,15 +2772,41 @@ function generateGrid(poly, spacing, scatter) {
   var minLon = Math.min.apply(null,lons), maxLon = Math.max.apply(null,lons);
   var mpd = metresPerDeg((minLat+maxLat)/2);
   var dLat = spacing/mpd.lat, dLon = spacing/mpd.lon;
+  // Inner-edge buffer: skip points within one grid step of the polygon
+  // boundary so every kept sample has interior neighbours on all sides.
+  // Without this, the outermost triangles fan out with only one interior
+  // vertex and produce jagged silhouettes in the exported mesh.
+  var buffM = spacing * 1.0;
   var pts = [];
   for (var lat = minLat; lat <= maxLat + dLat*0.5; lat += dLat) {
     for (var lon = minLon; lon <= maxLon + dLon*0.5; lon += dLon) {
       var jLat = lat + (scatter ? (Math.random()-.5)*dLat*.8 : 0);
       var jLon = lon + (scatter ? (Math.random()-.5)*dLon*.8 : 0);
-      if (pointInPoly(jLat, jLon, poly)) pts.push({ lat: jLat, lon: jLon });
+      if (!pointInPoly(jLat, jLon, poly)) continue;
+      if (buffM > 0 && _distToPolyEdgeM(jLat, jLon, poly, mpd) < buffM) continue;
+      pts.push({ lat: jLat, lon: jLon });
     }
   }
   return pts;
+}
+
+// Metric distance from (lat, lon) to the nearest polygon edge, using a
+// local flat-earth projection scaled by metresPerDeg at the test point.
+function _distToPolyEdgeM(lat, lon, poly, mpd) {
+  var best = Infinity;
+  for (var i = 0; i < poly.length; i++) {
+    var a = poly[i], b = poly[(i+1) % poly.length];
+    var ax = (a.lng - lon) * mpd.lon, ay = (a.lat - lat) * mpd.lat;
+    var bx = (b.lng - lon) * mpd.lon, by = (b.lat - lat) * mpd.lat;
+    var dx = bx - ax, dy = by - ay;
+    var len2 = dx*dx + dy*dy;
+    var t = len2 > 0 ? -(ax*dx + ay*dy) / len2 : 0;
+    if (t < 0) t = 0; else if (t > 1) t = 1;
+    var px = ax + t*dx, py = ay + t*dy;
+    var d = Math.sqrt(px*px + py*py);
+    if (d < best) best = d;
+  }
+  return best;
 }
 
 // \u2500\u2500 Live map hint & point count update \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -5038,6 +5064,39 @@ async function convert() {
       _showHighDemandBanner('⚠ Our high-res source for this region was busy — we served <b>' + (source.split(' ')[0] || 'a fallback tier') + '</b> instead. Everything else is normal; try again in a minute for full resolution.');
       try { track('degraded_result_shown', { source: source, region: region }); } catch(_){}
     }
+    // ── Drop NoData / ocean samples ─────────────────────────────────────
+    // Elevation workers return 0 (and occasionally null/NaN) for cells
+    // outside DEM coverage or on water bodies. When those get triangulated
+    // against real land points they produce vertical curtain-spikes in the
+    // exported mesh. Filter them out here so every downstream format (CSV,
+    // XYZ, DXF, IFC, viewer) sees a clean point cloud.
+    if (elevations && elevations.length === grid.length) {
+      const _live = elevations.filter(z => isFinite(z) && z !== 0);
+      const _sorted = _live.slice().sort((a,b) => a - b);
+      const _siteMedian = _sorted.length ? _sorted[Math.floor(_sorted.length/2)] : 0;
+      // Only strip literal zeros when the site clearly isn't at sea level —
+      // a genuinely low-lying site (Netherlands, salt flats) can legitimately
+      // sample z=0, and we mustn't gut it. 3 m median is well clear of that.
+      const _stripZeros = Math.abs(_siteMedian) > 3;
+      const _keptGrid = [], _keptElev = [];
+      for (let i = 0; i < grid.length; i++) {
+        const z = elevations[i];
+        if (!isFinite(z)) continue;
+        if (_stripZeros && z === 0) continue;
+        _keptGrid.push(grid[i]);
+        _keptElev.push(z);
+      }
+      const _dropped = grid.length - _keptGrid.length;
+      if (_dropped > 0) {
+        grid.length = _keptGrid.length;
+        for (let i = 0; i < _keptGrid.length; i++) grid[i] = _keptGrid[i];
+        elevations = _keptElev;
+        try { track('nodata_samples_dropped', { dropped: _dropped, kept: grid.length, source: source, site_median: Math.round(_siteMedian) }); } catch(_){}
+      }
+    }
+    if (grid.length === 0) {
+      throw new Error('No usable elevation samples in this area — it may be entirely ocean or outside our DEM coverage. Try moving or shrinking the polygon.');
+    }
     setProgress(0.9,'Calculating coordinates…','');
     const utm = grid.map((p,i)=>({...latLonToUTM(p.lat,p.lon),alt:elevations[i]}));
     // IDW smoothing for coarse sources
@@ -5057,7 +5116,41 @@ async function convert() {
     const snapped = isNatural ? out : snapGrid(out,effSpacing);
     const gridMap=new Map();
     snapped.forEach(p=>{const key=p.x+','+p.y;if(!gridMap.has(key)||p.z>gridMap.get(key).z)gridMap.set(key,p);});
-    const cleanOut=Array.from(gridMap.values()).sort((a,b)=>a.y!==b.y?a.y-b.y:a.x-b.x);
+    let cleanOut=Array.from(gridMap.values()).sort((a,b)=>a.y!==b.y?a.y-b.y:a.x-b.x);
+    // ── Local outlier rejection ───────────────────────────────────────
+    // Compare each point's z to the median of its 8 grid neighbours.
+    // Drop when |z − nbrMedian| exceeds max(10 m, 3× local IQR). The
+    // IQR term auto-widens on real cliffs (bimodal neighbours → large
+    // IQR → looser tolerance) so we only strip isolated shards, not
+    // legitimate terrain relief. Fixes the boundary "spikes" that show
+    // up when a DSM catches a tall tree or wall at the polygon edge.
+    {
+      const _sp = effSpacing;
+      const _idx = new Map();
+      cleanOut.forEach((p,i) => _idx.set(Math.round(p.x/_sp)+','+Math.round(p.y/_sp), i));
+      const _kept = [];
+      for (const p of cleanOut) {
+        const kx = Math.round(p.x/_sp), ky = Math.round(p.y/_sp);
+        const nbrZs = [];
+        for (let dx=-1; dx<=1; dx++) for (let dy=-1; dy<=1; dy++) {
+          if (!dx && !dy) continue;
+          const ni = _idx.get((kx+dx)+','+(ky+dy));
+          if (ni != null) nbrZs.push(cleanOut[ni].z);
+        }
+        if (nbrZs.length < 3) continue; // isolated point at boundary → drop
+        nbrZs.sort((a,b) => a-b);
+        const med = nbrZs[Math.floor(nbrZs.length/2)];
+        const q1  = nbrZs[Math.floor(nbrZs.length*0.25)];
+        const q3  = nbrZs[Math.floor(nbrZs.length*0.75)];
+        const tol = Math.max(10, 3*(q3-q1));
+        if (Math.abs(p.z - med) <= tol) _kept.push(p);
+      }
+      const _outliersDropped = cleanOut.length - _kept.length;
+      if (_outliersDropped > 0) {
+        cleanOut = _kept;
+        try { track('outlier_samples_dropped', { dropped: _outliersDropped, kept: cleanOut.length, source: source }); } catch(_){}
+      }
+    }
     window._cleanOutMetric=cleanOut;
     window._origTerrainZ=cleanOut.map(p=>p.z); // snapshot for building base-Z calcs — saved before any DSM flatten
     csvData='X,Y,Z\n'+cleanOut.map(p=>p.x+','+p.y+','+p.z).join('\n');
@@ -5421,6 +5514,56 @@ function _ifcN(n) {
   const s = parseFloat(n.toFixed(4)).toString();
   return s.includes('.') ? s : s+'.';
 }
+// Contour interval as a function of vertical range. Same rule as the 3D
+// viewer's showWireframe(), factored out so the DXF export produces
+// contours that match what the viewer displays.
+function _contourInterval(range) {
+  if (range > 500) return 25;
+  if (range > 150) return 10;
+  if (range > 50)  return 5;
+  if (range > 15)  return 2;
+  if (range > 5)   return 1;
+  if (range > 2)   return 0.5;
+  return 0.25;
+}
+
+// TIN contour extraction: for each triangle, emit the (up to one) line
+// segment where the plane z=level cuts through it, using linear
+// interpolation on the two crossed edges. Returns a flat array of
+// {x,y,z} pairs — every two entries make one segment. Standard method
+// used by every terrain-contouring library; robust for irregular TINs.
+function _triContourSegments(tris, minZ, maxZ, interval) {
+  const segs = [];
+  const first = Math.ceil(minZ/interval) * interval;
+  for (let L = first; L <= maxZ + 1e-6; L += interval) {
+    // Nudge L off any vertex exactly at this level so we never divide by
+    // zero and never emit a zero-length segment.
+    const level = L + 1e-7;
+    for (const [a,b,c] of tris) {
+      const av = a.z > level, bv = b.z > level, cv = c.z > level;
+      const nAbove = (av?1:0) + (bv?1:0) + (cv?1:0);
+      if (nAbove === 0 || nAbove === 3) continue;
+      let odd, o1, o2;
+      if (nAbove === 1) {
+        odd = av ? a : (bv ? b : c);
+        o1  = av ? b : (bv ? a : a);
+        o2  = av ? c : (bv ? c : b);
+      } else {
+        odd = !av ? a : (!bv ? b : c);
+        o1  = !av ? b : (!bv ? a : a);
+        o2  = !av ? c : (!bv ? c : b);
+      }
+      const t1 = (L - odd.z) / (o1.z - odd.z);
+      const t2 = (L - odd.z) / (o2.z - odd.z);
+      segs.push(
+        { x: odd.x + t1*(o1.x - odd.x), y: odd.y + t1*(o1.y - odd.y), z: L },
+        { x: odd.x + t2*(o2.x - odd.x), y: odd.y + t2*(o2.y - odd.y), z: L }
+      );
+    }
+  }
+  return segs;
+}
+
 function _triGrid(pts) {
   // Build a grid map keyed by (ix,iy) and triangulate each 2×2 cell
   const sp = window._effectiveSpacing || 12;
@@ -5552,14 +5695,25 @@ function _generateTerrainDXF(pts, name) {
   const mult = imp ? M_TO_FT : 1;
   const iu   = imp ? '2' : '6'; // DXF INSUNITS: 2=feet, 6=metres
   const N = n => parseFloat((n*mult).toFixed(4)).toString();
+  // Contour segments (LINE entities) — match the interval used by the 3D viewer.
+  let contourSegs = [];
+  {
+    let minZ = Infinity, maxZ = -Infinity;
+    for (const p of pts) { if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z; }
+    const range = maxZ - minZ;
+    if (isFinite(range) && range > 0) {
+      contourSegs = _triContourSegments(tris, minZ, maxZ, _contourInterval(range));
+    }
+  }
   const L=[
     '0','SECTION','2','HEADER',
     '9','$ACADVER','1','AC1009',
     '0','ENDSEC',
     '0','SECTION','2','TABLES',
-    '0','TABLE','2','LAYER','70','3',
+    '0','TABLE','2','LAYER','70','4',
     '0','LAYER','2','0','70','0','62','7','6','Continuous',
-    '0','LAYER','2','terrain','70','0','62','3','6','Continuous',
+    '0','LAYER','2','terrain','70','0','62','7','6','Continuous',
+    '0','LAYER','2','contours','70','0','62','1','6','Continuous',
     '0','LAYER','2','buildings','70','0','62','5','6','Continuous',
     '0','ENDTAB',
     '0','ENDSEC',
@@ -5573,6 +5727,17 @@ function _generateTerrainDXF(pts, name) {
       '12',N(p2.x),'22',N(p2.y),'32',N(p2.z),
       '13',N(p2.x),'23',N(p2.y),'33',N(p2.z),
       '70','0'
+    );
+  }
+  // Contour lines: LINE entities on the "contours" layer. R12/AC1009 doesn't
+  // have LWPOLYLINE, so we emit segments per triangle-crossing. Drafters can
+  // JOIN or PEDIT them into polylines in one command if desired.
+  for (let i = 0; i < contourSegs.length; i += 2) {
+    const a = contourSegs[i], b = contourSegs[i+1];
+    L.push(
+      '0','LINE','8','contours',
+      '10',N(a.x),'20',N(a.y),'30',N(a.z),
+      '11',N(b.x),'21',N(b.y),'31',N(b.z)
     );
   }
   L.push('0','ENDSEC','0','EOF');
@@ -5715,7 +5880,7 @@ function _generateBuildingsDXF(data, name) {
     '0','SECTION','2','TABLES',
     '0','TABLE','2','LAYER','70','3',
     '0','LAYER','2','0','70','0','62','7','6','Continuous',
-    '0','LAYER','2','terrain','70','0','62','3','6','Continuous',
+    '0','LAYER','2','terrain','70','0','62','7','6','Continuous',
     '0','LAYER','2','buildings','70','0','62','5','6','Continuous',
     '0','ENDTAB',
     '0','ENDSEC',
@@ -6041,16 +6206,9 @@ async function loadDelaunator() {
 }
 
 function showWireframe(points, minZ, maxZ) {
-  // Compute contour interval (same for all users)
-  const realRange = maxZ - minZ;
-  let interval = 0.5;
-  if      (realRange > 500) interval = 25;
-  else if (realRange > 150) interval = 10;
-  else if (realRange > 50)  interval = 5;
-  else if (realRange > 15)  interval = 2;
-  else if (realRange > 5)   interval = 1;
-  else if (realRange > 2)   interval = 0.5;
-  else                      interval = 0.25;
+  // Contour interval — shared with the DXF exporter via _contourInterval so
+  // what the user sees in the viewer matches what they get in the file.
+  const interval = _contourInterval(maxZ - minZ);
 
   // Stop the demo terrain — applies to all users
   if (window._demoTerrain3DDispose) {
