@@ -2772,11 +2772,12 @@ function generateGrid(poly, spacing, scatter) {
   var minLon = Math.min.apply(null,lons), maxLon = Math.max.apply(null,lons);
   var mpd = metresPerDeg((minLat+maxLat)/2);
   var dLat = spacing/mpd.lat, dLon = spacing/mpd.lon;
-  // Inner-edge buffer: skip points within one grid step of the polygon
-  // boundary so every kept sample has interior neighbours on all sides.
-  // Without this, the outermost triangles fan out with only one interior
-  // vertex and produce jagged silhouettes in the exported mesh.
-  var buffM = spacing * 1.0;
+  // Inner-edge buffer: skip points within two grid steps of the polygon
+  // boundary. One step wasn't enough — some DEM sources return a whole
+  // block of inflated samples right at the tile edge, not just isolated
+  // shards, and the neighbour-median outlier filter can't catch a block
+  // where every neighbour is equally wrong. Two steps peels the strip.
+  var buffM = spacing * 2.0;
   var pts = [];
   for (var lat = minLat; lat <= maxLat + dLat*0.5; lat += dLat) {
     for (var lon = minLon; lon <= maxLon + dLon*0.5; lon += dLon) {
@@ -5117,17 +5118,29 @@ async function convert() {
     const gridMap=new Map();
     snapped.forEach(p=>{const key=p.x+','+p.y;if(!gridMap.has(key)||p.z>gridMap.get(key).z)gridMap.set(key,p);});
     let cleanOut=Array.from(gridMap.values()).sort((a,b)=>a.y!==b.y?a.y-b.y:a.x-b.x);
-    // ── Local outlier rejection ───────────────────────────────────────
-    // Compare each point's z to the median of its 8 grid neighbours.
-    // Drop when |z − nbrMedian| exceeds max(10 m, 3× local IQR). The
-    // IQR term auto-widens on real cliffs (bimodal neighbours → large
-    // IQR → looser tolerance) so we only strip isolated shards, not
-    // legitimate terrain relief. Fixes the boundary "spikes" that show
-    // up when a DSM catches a tall tree or wall at the polygon edge.
+    // ── Outlier rejection ─────────────────────────────────────────────
+    // Two-layered filter:
+    //  • Local: compare each point's z to its 8 grid-neighbour median.
+    //    Drop when |z − nbrMedian| > max(10 m, 3× local IQR). The IQR
+    //    term auto-widens on real cliffs (bimodal neighbours → large
+    //    IQR → looser tolerance) so only isolated shards get stripped.
+    //  • Global (edge-only): points with fewer than 6 grid neighbours
+    //    are on/near the polygon boundary. Some DEM sources return a
+    //    coherent block of inflated samples at tile edges — the local
+    //    filter can't see that because every neighbour is equally
+    //    wrong. So for edge-ish points we ALSO require z to sit within
+    //    3× site-MAD of the site median. Interior points keep the
+    //    local-only rule so real mountains survive.
     {
       const _sp = effSpacing;
       const _idx = new Map();
       cleanOut.forEach((p,i) => _idx.set(Math.round(p.x/_sp)+','+Math.round(p.y/_sp), i));
+      // Site-wide median and MAD (median absolute deviation) — robust to outliers.
+      const _allZ = cleanOut.map(p => p.z).slice().sort((a,b) => a-b);
+      const _siteMed = _allZ.length ? _allZ[Math.floor(_allZ.length/2)] : 0;
+      const _absDev = _allZ.map(z => Math.abs(z - _siteMed)).sort((a,b) => a-b);
+      const _siteMad = _absDev.length ? _absDev[Math.floor(_absDev.length/2)] : 0;
+      const _globalTol = Math.max(15, 5 * _siteMad);
       const _kept = [];
       for (const p of cleanOut) {
         const kx = Math.round(p.x/_sp), ky = Math.round(p.y/_sp);
@@ -5137,18 +5150,21 @@ async function convert() {
           const ni = _idx.get((kx+dx)+','+(ky+dy));
           if (ni != null) nbrZs.push(cleanOut[ni].z);
         }
-        if (nbrZs.length < 3) continue; // isolated point at boundary → drop
+        if (nbrZs.length < 3) continue; // isolated boundary point → drop
         nbrZs.sort((a,b) => a-b);
         const med = nbrZs[Math.floor(nbrZs.length/2)];
         const q1  = nbrZs[Math.floor(nbrZs.length*0.25)];
         const q3  = nbrZs[Math.floor(nbrZs.length*0.75)];
-        const tol = Math.max(10, 3*(q3-q1));
-        if (Math.abs(p.z - med) <= tol) _kept.push(p);
+        const localTol = Math.max(10, 3*(q3-q1));
+        if (Math.abs(p.z - med) > localTol) continue;
+        // Edge points get the extra global check.
+        if (nbrZs.length < 6 && Math.abs(p.z - _siteMed) > _globalTol) continue;
+        _kept.push(p);
       }
       const _outliersDropped = cleanOut.length - _kept.length;
       if (_outliersDropped > 0) {
         cleanOut = _kept;
-        try { track('outlier_samples_dropped', { dropped: _outliersDropped, kept: cleanOut.length, source: source }); } catch(_){}
+        try { track('outlier_samples_dropped', { dropped: _outliersDropped, kept: cleanOut.length, source: source, site_mad: Math.round(_siteMad*10)/10 }); } catch(_){}
       }
     }
     window._cleanOutMetric=cleanOut;
@@ -5680,6 +5696,35 @@ function _generateTerrainIFC(pts, name) {
   const iSite=e('IFCSITE('+g()+',#'+iOwn+",'"+safe+"',$,$,#"+iSLP+',#'+iPDS+',$,.ELEMENT.,$,$,$,$,$)');
   e('IFCRELAGGREGATES('+g()+',#'+iOwn+',$,$,#'+iPrj+',(#'+iSite+'))');
 
+  // AOI boundary annotation — matches the DXF "boundary" polyline. Emitted
+  // as an IFCANNOTATION with an IFCGEOMETRICCURVESET so it renders as a
+  // thin polyline at ground level in Revit/ArchiCAD/BIMcollab, giving a
+  // clear "what the user drew vs what came back as terrain" indicator for
+  // coastal or partial-coverage sites.
+  {
+    const tc = window._lastTerrainContext;
+    if (tc && tc.utmOrigin && polygonLatLngs && polygonLatLngs.length >= 3) {
+      const oE = tc.utmOrigin.easting, oN = tc.utmOrigin.northing;
+      let minZb = Infinity;
+      for (const p of pts) if (p.z < minZb) minZb = p.z;
+      if (!isFinite(minZb)) minZb = 0;
+      const ringPtIds = polygonLatLngs.map(p => {
+        const u = latLonToUTM(p.lat, p.lng);
+        return e('IFCCARTESIANPOINT(('+N(u.easting-oE)+','+N(u.northing-oN)+','+N(minZb)+'))');
+      });
+      // Close the ring so the polyline forms a loop.
+      ringPtIds.push(ringPtIds[0]);
+      const iBPoly = e('IFCPOLYLINE(('+ringPtIds.map(f=>'#'+f).join(',')+'))');
+      const iBSet  = e('IFCGEOMETRICCURVESET((#'+iBPoly+'))');
+      const iBSR   = e('IFCSHAPEREPRESENTATION(#'+iCtx+",'Annotation','GeometricCurveSet',(#"+iBSet+'))');
+      const iBPDS  = e('IFCPRODUCTDEFINITIONSHAPE($,$,(#'+iBSR+'))');
+      const iBAP   = e('IFCAXIS2PLACEMENT3D(#'+iO+',#'+iZd+',#'+iXd+')');
+      const iBLP   = e('IFCLOCALPLACEMENT(#'+iSLP+',#'+iBAP+')');
+      const iAnno  = e('IFCANNOTATION('+g()+',#'+iOwn+",'AOI Boundary',$,$,#"+iBLP+',#'+iBPDS+')');
+      e('IFCRELCONTAINEDINSPATIALSTRUCTURE('+g()+',#'+iOwn+",'Boundary',$,(#"+iAnno+'),#'+iSite+')');
+    }
+  }
+
   return "ISO-10303-21;\nHEADER;\n"+
     "FILE_DESCRIPTION(('Topo-grapher terrain export'),'2;1');\n"+
     "FILE_NAME('"+safe+".ifc','"+now+"',(''),(''),'',' ','');\n"+
@@ -5697,12 +5742,30 @@ function _generateTerrainDXF(pts, name) {
   const N = n => parseFloat((n*mult).toFixed(4)).toString();
   // Contour segments (LINE entities) — match the interval used by the 3D viewer.
   let contourSegs = [];
+  let minZ = Infinity, maxZ = -Infinity;
+  for (const p of pts) { if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z; }
   {
-    let minZ = Infinity, maxZ = -Infinity;
-    for (const p of pts) { if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z; }
     const range = maxZ - minZ;
     if (isFinite(range) && range > 0) {
       contourSegs = _triContourSegments(tris, minZ, maxZ, _contourInterval(range));
+    }
+  }
+  // AOI boundary polyline (closed loop of LINE entities) in the same local
+  // coordinate frame as the mesh. Gives drafters a clear "land ends here"
+  // marker in plan view, especially useful for coastal sites.
+  const boundarySegs = [];
+  {
+    const tc = window._lastTerrainContext;
+    if (tc && tc.utmOrigin && polygonLatLngs && polygonLatLngs.length >= 3) {
+      const oE = tc.utmOrigin.easting, oN = tc.utmOrigin.northing;
+      const bZ = isFinite(minZ) ? minZ : 0;
+      const ring = polygonLatLngs.map(p => {
+        const u = latLonToUTM(p.lat, p.lng);
+        return { x: u.easting - oE, y: u.northing - oN, z: bZ };
+      });
+      for (let i = 0; i < ring.length; i++) {
+        boundarySegs.push(ring[i], ring[(i+1) % ring.length]);
+      }
     }
   }
   const L=[
@@ -5710,10 +5773,14 @@ function _generateTerrainDXF(pts, name) {
     '9','$ACADVER','1','AC1009',
     '0','ENDSEC',
     '0','SECTION','2','TABLES',
-    '0','TABLE','2','LAYER','70','4',
+    '0','TABLE','2','LAYER','70','5',
     '0','LAYER','2','0','70','0','62','7','6','Continuous',
+    // Terrain mesh visible by default (70=0). Casual users previewing in
+    // Autodesk's free online viewer see the full model; drafters wanting a
+    // plan-only view can freeze this layer in one click in their CAD tool.
     '0','LAYER','2','terrain','70','0','62','7','6','Continuous',
     '0','LAYER','2','contours','70','0','62','1','6','Continuous',
+    '0','LAYER','2','boundary','70','0','62','4','6','Continuous',
     '0','LAYER','2','buildings','70','0','62','5','6','Continuous',
     '0','ENDTAB',
     '0','ENDSEC',
@@ -5736,6 +5803,15 @@ function _generateTerrainDXF(pts, name) {
     const a = contourSegs[i], b = contourSegs[i+1];
     L.push(
       '0','LINE','8','contours',
+      '10',N(a.x),'20',N(a.y),'30',N(a.z),
+      '11',N(b.x),'21',N(b.y),'31',N(b.z)
+    );
+  }
+  // AOI boundary loop.
+  for (let i = 0; i < boundarySegs.length; i += 2) {
+    const a = boundarySegs[i], b = boundarySegs[i+1];
+    L.push(
+      '0','LINE','8','boundary',
       '10',N(a.x),'20',N(a.y),'30',N(a.z),
       '11',N(b.x),'21',N(b.y),'31',N(b.z)
     );
