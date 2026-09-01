@@ -5555,14 +5555,13 @@ function _generateTerrainDXF(pts, name) {
   const L=[
     '0','SECTION','2','HEADER',
     '9','$ACADVER','1','AC1009',
-    '9','$INSUNITS','70',iu,
     '0','ENDSEC',
     '0','SECTION','2','TABLES',
     '0','TABLE','2','LAYER','70','3',
     '0','LAYER','2','0','70','0','62','7','6','Continuous',
     '0','LAYER','2','terrain','70','0','62','3','6','Continuous',
     '0','LAYER','2','buildings','70','0','62','5','6','Continuous',
-    '0','ENDTABLE',
+    '0','ENDTAB',
     '0','ENDSEC',
     '0','SECTION','2','ENTITIES',
   ];
@@ -5577,7 +5576,7 @@ function _generateTerrainDXF(pts, name) {
     );
   }
   L.push('0','ENDSEC','0','EOF');
-  return L.join('\n');
+  return L.join('\r\n');
 }
 
 function _generateBuildingsIFC(data, name) {
@@ -5712,14 +5711,13 @@ function _generateBuildingsDXF(data, name) {
   const L=[
     '0','SECTION','2','HEADER',
     '9','$ACADVER','1','AC1009',
-    '9','$INSUNITS','70',iu,
     '0','ENDSEC',
     '0','SECTION','2','TABLES',
     '0','TABLE','2','LAYER','70','3',
     '0','LAYER','2','0','70','0','62','7','6','Continuous',
     '0','LAYER','2','terrain','70','0','62','3','6','Continuous',
     '0','LAYER','2','buildings','70','0','62','5','6','Continuous',
-    '0','ENDTABLE',
+    '0','ENDTAB',
     '0','ENDSEC',
     '0','SECTION','2','ENTITIES',
   ];
@@ -5777,7 +5775,7 @@ function _generateBuildingsDXF(data, name) {
     }
   }
   L.push('0','ENDSEC','0','EOF');
-  return L.join('\n');
+  return L.join('\r\n');
 }
 
 // Standalone buildings fetch — used by both the sidebar button and _doFetchAndRender.
