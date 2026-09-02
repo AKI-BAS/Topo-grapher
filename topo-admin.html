@@ -676,8 +676,53 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .blast-btn-confirm:hover{background:#9a4e18;}
 .blast-status{font-family:'DM Mono',monospace;font-size:11px;min-height:16px;padding:0 2px;}
 
+/* ── Specific-recipients disclosure ───────────────────────── */
+.blast-disclosure{border:1px solid var(--border);border-radius:5px;background:var(--surface2);}
+.blast-disclosure>summary{list-style:none;cursor:pointer;padding:8px 12px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.05em;user-select:none;display:flex;align-items:center;gap:6px;}
+.blast-disclosure>summary::-webkit-details-marker{display:none;}
+.blast-disclosure>summary::before{content:'\25B8';display:inline-block;font-size:9px;color:var(--muted);width:10px;transition:transform .12s;}
+.blast-disclosure[open]>summary::before{transform:rotate(90deg);}
+.blast-disclosure>summary:hover{color:var(--text-mid);}
+.blast-recipients-body{padding:0 12px 12px 12px;display:flex;flex-direction:column;gap:8px;}
+.blast-recipients-textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:9px 12px;font-family:'DM Mono',monospace;font-size:11px;outline:none;border-radius:4px;transition:border-color .15s;resize:vertical;min-height:110px;line-height:1.55;box-sizing:border-box;}
+.blast-recipients-textarea:focus{border-color:var(--accent2);}
+.blast-recipients-meta{display:flex;justify-content:space-between;align-items:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);gap:8px;flex-wrap:wrap;}
+.blast-recipients-meta-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.blast-recipients-count-valid{color:var(--accent,#7aa96a);}
+.blast-recipients-count-invalid{color:var(--amber);}
+.blast-recipients-showinvalid,.blast-recipients-clear{background:none;border:none;color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;padding:0;text-decoration:underline;letter-spacing:.03em;}
+.blast-recipients-showinvalid:hover,.blast-recipients-clear:hover{color:var(--text-mid);}
+.blast-recipients-invalid-list{display:none;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);line-height:1.6;max-height:110px;overflow:auto;word-break:break-all;}
+.blast-recipients-invalid-list.show{display:block;}
+.blast-audience-lock-note{font-family:'DM Mono',monospace;font-size:9px;color:var(--amber);letter-spacing:.04em;margin-top:5px;display:none;}
+.blast-audience-lock-note.show{display:block;}
+.blast-aud-btn.locked{opacity:.35;cursor:not-allowed;pointer-events:none;}
+
+/* ── Specific-recipients confirm modal (>=10 sends) ───────── */
+.blast-modal2-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9700;display:none;align-items:center;justify-content:center;padding:20px;}
+.blast-modal2-overlay.show{display:flex;}
+.blast-modal2{background:#141412;border:1px solid #2c2b28;border-radius:8px;width:min(460px,96vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.75);}
+.blast-modal2-head{padding:14px 18px;border-bottom:1px solid #2c2b28;font-family:'DM Mono',monospace;font-size:12px;color:var(--text);letter-spacing:.05em;}
+.blast-modal2-body{padding:16px 18px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text-mid);line-height:1.7;display:flex;flex-direction:column;gap:10px;overflow:auto;}
+.blast-modal2-body strong{color:var(--text);}
+.blast-modal2-sample{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-size:11px;color:var(--muted);word-break:break-all;line-height:1.6;}
+.blast-modal2-actions{padding:12px 18px;border-top:1px solid #2c2b28;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+.blast-btn-danger{background:#7a1e1e;border:1px solid #c14545;color:#f4dede;}
+.blast-btn-danger:hover{background:#9a2a2a;}
+
+/* ── Failed-addresses panel (after send) ──────────────────── */
+.blast-failed-panel{border:1px solid rgba(224,80,80,.35);background:rgba(224,80,80,.06);border-radius:5px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red,#e25555);display:none;flex-direction:column;gap:8px;}
+.blast-failed-panel.show{display:flex;}
+.blast-failed-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
+.blast-failed-actions{display:flex;gap:8px;}
+.blast-failed-btn{background:none;border:1px solid rgba(224,80,80,.4);color:var(--red,#e25555);font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;cursor:pointer;letter-spacing:.03em;}
+.blast-failed-btn:hover{background:rgba(224,80,80,.12);}
+.blast-failed-list{display:none;max-height:180px;overflow:auto;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-size:10px;color:var(--text-mid);line-height:1.65;word-break:break-all;}
+.blast-failed-list.show{display:block;}
+.blast-failed-list .em{color:var(--red,#e25555);}
+
 /* ── Email preview overlay ─────────────────────────────────── */
-.blast-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9500;display:none;align-items:center;justify-content:center;padding:20px;}
+.blast-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9800;display:none;align-items:center;justify-content:center;padding:20px;}
 .blast-preview-overlay.show{display:flex;}
 .blast-preview-frame-wrap{background:#111110;border:1px solid #2c2b28;border-radius:8px;width:min(620px,98vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.7);}
 .blast-preview-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #2c2b28;flex-shrink:0;background:#1c1b19;}
@@ -843,11 +888,26 @@ body::before{content:'';position:fixed;inset:0;background-image:
         <!-- Audience -->
         <div>
           <div class="blast-label">Audience</div>
-          <div class="blast-audience">
+          <div class="blast-audience" id="blast-audience-wrap">
             <button class="blast-aud-btn active" data-aud="all"  onclick="setBlastAud('all')">All users</button>
             <button class="blast-aud-btn"        data-aud="pro"  onclick="setBlastAud('pro')">Paid only</button>
             <button class="blast-aud-btn"        data-aud="free" onclick="setBlastAud('free')">Free only</button>
           </div>
+          <div class="blast-audience-lock-note" id="blast-audience-lock-note">Overridden by specific recipients</div>
+        </div>
+        <!-- Specific recipients (optional override) -->
+        <div>
+          <details class="blast-disclosure" id="blast-recipients-disclosure">
+            <summary>Send to specific recipients only (overrides audience selection)</summary>
+            <div class="blast-recipients-body">
+              <textarea class="blast-recipients-textarea" id="blast-recipients" rows="6" placeholder="Paste emails, separated by commas, spaces, or newlines" oninput="onBlastRecipientsInput()"></textarea>
+              <div class="blast-recipients-meta">
+                <div class="blast-recipients-meta-left" id="blast-recipients-meta">Detected: <span class="blast-recipients-count-valid">0 valid</span></div>
+                <button type="button" class="blast-recipients-clear" onclick="clearBlastRecipients()">Clear</button>
+              </div>
+              <div class="blast-recipients-invalid-list" id="blast-recipients-invalid-list"></div>
+            </div>
+          </details>
         </div>
         <!-- Subject -->
         <div>
@@ -871,6 +931,17 @@ body::before{content:'';position:fixed;inset:0;background-image:
         </div>
         <!-- Status -->
         <div class="blast-status" id="blast-status"></div>
+        <!-- Failed addresses (after send) -->
+        <div class="blast-failed-panel" id="blast-failed-panel">
+          <div class="blast-failed-head">
+            <span id="blast-failed-summary">✗ 0 failed.</span>
+            <div class="blast-failed-actions">
+              <button type="button" class="blast-failed-btn" onclick="toggleFailedList()" id="blast-failed-toggle">Show addresses ▾</button>
+              <button type="button" class="blast-failed-btn" onclick="copyFailedList()">Copy to clipboard</button>
+            </div>
+          </div>
+          <div class="blast-failed-list" id="blast-failed-list"></div>
+        </div>
       </div>
       <div class="blast-footer">
         <div class="blast-recipient-count" id="blast-recipient-count">Recipients: <span>—</span></div>
@@ -891,6 +962,19 @@ body::before{content:'';position:fixed;inset:0;background-image:
         <button class="blast-preview-bar-close" onclick="closeBlastPreview()">✕</button>
       </div>
       <iframe class="blast-preview-iframe" id="blast-preview-iframe" sandbox="allow-same-origin"></iframe>
+    </div>
+  </div>
+
+  <!-- ═══ BLAST CONFIRM MODAL (10+ recipients) ═══ -->
+  <div class="blast-modal2-overlay" id="blast-modal2-overlay" onclick="if(event.target===this)closeBlastConfirmModal()">
+    <div class="blast-modal2" role="dialog" aria-modal="true" aria-labelledby="blast-modal2-title">
+      <div class="blast-modal2-head" id="blast-modal2-title">Confirm blast</div>
+      <div class="blast-modal2-body" id="blast-modal2-body"></div>
+      <div class="blast-modal2-actions">
+        <button type="button" class="blast-btn blast-btn-secondary" onclick="previewBlastEmail()">📧 Preview</button>
+        <button type="button" class="blast-btn blast-btn-abort" id="blast-modal2-cancel" onclick="closeBlastConfirmModal()">Cancel</button>
+        <button type="button" class="blast-btn blast-btn-danger" id="blast-modal2-send" onclick="closeBlastConfirmModal();executeSend()">Send</button>
+      </div>
     </div>
   </div>
 
@@ -3874,6 +3958,83 @@ blank: {
 let _blastAud = 'all';
 let _blastRecipientCount = null;
 let _blastTemplate = 'update';
+let _blastRecipients = [];   // valid, deduped, lowercased
+let _blastInvalid = [];      // raw tokens that failed validation
+let _blastLastFailed = [];   // {email,error}[] from most recent send
+
+function parseBlastRecipients(raw) {
+  const tokens = (raw || '').split(/[,\s\n]+/).map(t => t.trim()).filter(Boolean);
+  const seen = new Set();
+  const valid = [];
+  const invalid = [];
+  for (const t of tokens) {
+    const low = t.toLowerCase();
+    const ok = low.includes('@') && (low.split('@')[1] || '').includes('.');
+    if (ok) {
+      if (!seen.has(low)) { seen.add(low); valid.push(low); }
+    } else {
+      invalid.push(t);
+    }
+  }
+  return { valid, invalid };
+}
+
+function onBlastRecipientsInput() {
+  const ta = document.getElementById('blast-recipients');
+  if (!ta) return;
+  const { valid, invalid } = parseBlastRecipients(ta.value);
+  _blastRecipients = valid;
+  _blastInvalid = invalid;
+  const meta = document.getElementById('blast-recipients-meta');
+  if (meta) {
+    let html = 'Detected: <span class="blast-recipients-count-valid">' + valid.length + ' valid</span>';
+    if (invalid.length) {
+      html += ', <span class="blast-recipients-count-invalid">' + invalid.length + ' invalid</span> '
+           + '<button type="button" class="blast-recipients-showinvalid" onclick="toggleInvalidList()">show</button>';
+    }
+    meta.innerHTML = html;
+  }
+  const inv = document.getElementById('blast-recipients-invalid-list');
+  if (inv && !invalid.length) { inv.classList.remove('show'); inv.innerHTML = ''; }
+  _syncAudienceLock();
+  // Refresh footer count line
+  const rc = document.getElementById('blast-recipient-count');
+  if (rc) {
+    if (_blastRecipients.length) {
+      rc.innerHTML = 'Recipients: <span>' + _blastRecipients.length.toLocaleString() + ' specific</span>';
+    } else {
+      _updateBlastRecipientCount();
+    }
+  }
+}
+
+function toggleInvalidList() {
+  const inv = document.getElementById('blast-recipients-invalid-list');
+  if (!inv) return;
+  if (inv.classList.contains('show')) { inv.classList.remove('show'); return; }
+  inv.innerHTML = _blastInvalid.map(t => t.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))).join('<br>');
+  inv.classList.add('show');
+}
+
+function clearBlastRecipients() {
+  const ta = document.getElementById('blast-recipients');
+  if (ta) ta.value = '';
+  _blastRecipients = [];
+  _blastInvalid = [];
+  const meta = document.getElementById('blast-recipients-meta');
+  if (meta) meta.innerHTML = 'Detected: <span class="blast-recipients-count-valid">0 valid</span>';
+  const inv = document.getElementById('blast-recipients-invalid-list');
+  if (inv) { inv.classList.remove('show'); inv.innerHTML = ''; }
+  _syncAudienceLock();
+  _updateBlastRecipientCount();
+}
+
+function _syncAudienceLock() {
+  const locked = _blastRecipients.length > 0;
+  document.querySelectorAll('.blast-aud-btn').forEach(b => b.classList.toggle('locked', locked));
+  const note = document.getElementById('blast-audience-lock-note');
+  if (note) note.classList.toggle('show', locked);
+}
 
 // Build the full email HTML exactly as the worker does
 function buildBlastPreviewHtml(subject, bodyText) {
@@ -3945,6 +4106,11 @@ function _showBlastModal() {
   document.getElementById('blast-status').textContent = '';
   document.getElementById('blast-status').style.color = '';
   document.getElementById('blast-send-btn').disabled = false;
+  const failed = document.getElementById('blast-failed-panel');
+  if (failed) failed.classList.remove('show');
+  const disc = document.getElementById('blast-recipients-disclosure');
+  if (disc) disc.open = false;
+  clearBlastRecipients();
   setBlastAud('all');
   loadBlastTemplate('update');
   _updateBlastRecipientCount();
@@ -3991,6 +4157,10 @@ function setBlastAud(aud) {
 async function _updateBlastRecipientCount() {
   const el = document.getElementById('blast-recipient-count');
   if (!el) return;
+  if (_blastRecipients.length) {
+    el.innerHTML = 'Recipients: <span>' + _blastRecipients.length.toLocaleString() + ' specific</span>';
+    return;
+  }
   const {data:{session}} = await _sb.auth.getSession();
   if (!session) {
     el.innerHTML = 'Recipients: <span style="color:var(--muted)">—</span>';
@@ -4066,10 +4236,48 @@ function confirmBlast() {
   const statusEl = document.getElementById('blast-status');
   if (!subject) { statusEl.textContent='⚠ Subject is empty.'; statusEl.style.color='var(--amber)'; return; }
   if (!body)    { statusEl.textContent='⚠ Body is empty.';    statusEl.style.color='var(--amber)'; return; }
-  const n = _blastRecipientCount != null ? _blastRecipientCount : '?';
-  document.getElementById('blast-confirm-n').textContent = n+' ('+_blastAud+')';
-  document.getElementById('blast-confirm').classList.add('show');
   statusEl.textContent='';
+
+  const usingSpecific = _blastRecipients.length > 0;
+  const count = usingSpecific ? _blastRecipients.length : (_blastRecipientCount != null ? _blastRecipientCount : null);
+
+  // Under 10: send directly, no prompt.
+  if (count != null && count < 10) {
+    executeSend();
+    return;
+  }
+  // Unknown count and no specific list: fall back to the legacy inline confirm.
+  if (count == null) {
+    document.getElementById('blast-confirm-n').textContent = '? ('+_blastAud+')';
+    document.getElementById('blast-confirm').classList.add('show');
+    return;
+  }
+
+  openBlastConfirmModal(count, usingSpecific);
+}
+
+function openBlastConfirmModal(count, usingSpecific) {
+  const body = document.getElementById('blast-modal2-body');
+  const send = document.getElementById('blast-modal2-send');
+  const cancel = document.getElementById('blast-modal2-cancel');
+  const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  let html = 'You are about to send this email to <strong>' + count.toLocaleString() + ' users</strong>.';
+  if (usingSpecific) {
+    const first = _blastRecipients.slice(0, 3).map(esc).join(', ');
+    const more = count > 3 ? ' and ' + (count - 3) + ' more' : '';
+    html += '<div class="blast-modal2-sample">' + first + more + '</div>';
+  } else {
+    const label = _blastAud === 'pro' ? 'Paid only' : _blastAud === 'free' ? 'Free only' : 'All users';
+    html += '<div class="blast-modal2-sample">Audience: <strong>' + esc(label) + '</strong></div>';
+  }
+  body.innerHTML = html;
+  send.textContent = 'Send ' + count.toLocaleString() + ' emails';
+  document.getElementById('blast-modal2-overlay').classList.add('show');
+  setTimeout(() => { cancel && cancel.focus(); }, 40);
+}
+
+function closeBlastConfirmModal() {
+  document.getElementById('blast-modal2-overlay').classList.remove('show');
 }
 
 function abortBlast() {
@@ -4082,6 +4290,8 @@ async function executeSend() {
   const statusEl = document.getElementById('blast-status');
   const sendBtn  = document.getElementById('blast-send-btn');
   document.getElementById('blast-confirm').classList.remove('show');
+  const failedPanel = document.getElementById('blast-failed-panel');
+  if (failedPanel) failedPanel.classList.remove('show');
   sendBtn.disabled = true;
   statusEl.style.color = 'var(--muted)';
   statusEl.textContent = 'Sending…';
@@ -4090,22 +4300,75 @@ async function executeSend() {
     .map(p=>`<p style="margin:0 0 18px 0;font-size:14px;line-height:1.85;color:#2a2a28;">${
       p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
     }</p>`).join('');
+  const payload = { subject, bodyHtml, bodyText, dryRun:false, template:_blastTemplate };
+  if (_blastRecipients.length) {
+    payload.recipients = _blastRecipients;
+  } else {
+    payload.audience = _blastAud;
+  }
   try {
     const {data:{session}} = await _sb.auth.getSession();
     const res = await fetch(NOTIFY_WORKER+'/send-blast', {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-      body: JSON.stringify({subject,bodyHtml,bodyText,audience:_blastAud,dryRun:false,template:_blastTemplate})
+      body: JSON.stringify(payload)
     });
     const d = await res.json();
     if (d.error) throw new Error(d.error);
     statusEl.style.color='var(--accent)';
     statusEl.textContent=`✓ Sent to ${d.sent} users${d.failed?' · '+d.failed+' failed':''}`;
+    renderFailedPanel(d);
     if (!d.failed) setTimeout(closeBlast, 3000);
   } catch(e) {
     statusEl.style.color='var(--red)';
     statusEl.textContent='⚠ '+e.message;
     sendBtn.disabled=false;
+  }
+}
+
+function renderFailedPanel(d) {
+  const panel = document.getElementById('blast-failed-panel');
+  if (!panel) return;
+  if (!d || !d.failed) { panel.classList.remove('show'); return; }
+  _blastLastFailed = Array.isArray(d.errors) ? d.errors : [];
+  const summary = document.getElementById('blast-failed-summary');
+  if (summary) summary.textContent = '✗ ' + d.failed + ' failed.';
+  const list = document.getElementById('blast-failed-list');
+  const toggle = document.getElementById('blast-failed-toggle');
+  if (list) { list.classList.remove('show'); list.innerHTML = ''; }
+  if (toggle) toggle.textContent = 'Show addresses ▾';
+  panel.classList.add('show');
+}
+
+function toggleFailedList() {
+  const list = document.getElementById('blast-failed-list');
+  const toggle = document.getElementById('blast-failed-toggle');
+  if (!list) return;
+  if (list.classList.contains('show')) {
+    list.classList.remove('show');
+    if (toggle) toggle.textContent = 'Show addresses ▾';
+    return;
+  }
+  const esc = s => String(s == null ? '' : s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  list.innerHTML = _blastLastFailed.map(r => esc(r.email) + ' <span class="em">(' + esc(r.error) + ')</span>').join('<br>');
+  list.classList.add('show');
+  if (toggle) toggle.textContent = 'Hide addresses ▴';
+}
+
+function copyFailedList() {
+  const text = _blastLastFailed.map(r => r.email).join('\n');
+  if (!text) return;
+  const done = () => {
+    const st = document.getElementById('blast-status');
+    if (st) { const prev = st.textContent; st.textContent = '✓ Copied ' + _blastLastFailed.length + ' addresses'; setTimeout(() => { st.textContent = prev; }, 1600); }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, () => {});
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch(e) {}
+    document.body.removeChild(ta);
   }
 }
 
@@ -4134,6 +4397,21 @@ function renderMobileBlastPanel() {
           <button class="blast-aud-btn ${_blastAud==='pro'?'active':''}" data-aud="pro"  onclick="setBlastAud('pro');renderMobileBlastPanel()">Paid</button>
           <button class="blast-aud-btn ${_blastAud==='free'?'active':''}" data-aud="free" onclick="setBlastAud('free');renderMobileBlastPanel()">Free</button>
         </div>
+        <div class="blast-audience-lock-note" id="blast-audience-lock-note">Overridden by specific recipients</div>
+      </div>
+      <!-- Specific recipients (optional override) -->
+      <div>
+        <details class="blast-disclosure" id="blast-recipients-disclosure" ${_blastRecipients.length?'open':''}>
+          <summary>Send to specific recipients only (overrides audience)</summary>
+          <div class="blast-recipients-body">
+            <textarea class="blast-recipients-textarea" id="blast-recipients" rows="5" placeholder="Paste emails, separated by commas, spaces, or newlines" oninput="onBlastRecipientsInput()">${(document.getElementById('blast-recipients')||{value:''}).value.replace(/</g,'&lt;')}</textarea>
+            <div class="blast-recipients-meta">
+              <div class="blast-recipients-meta-left" id="blast-recipients-meta">Detected: <span class="blast-recipients-count-valid">0 valid</span></div>
+              <button type="button" class="blast-recipients-clear" onclick="clearBlastRecipients()">Clear</button>
+            </div>
+            <div class="blast-recipients-invalid-list" id="blast-recipients-invalid-list"></div>
+          </div>
+        </details>
       </div>
       <!-- Subject -->
       <div>
@@ -4165,7 +4443,20 @@ function renderMobileBlastPanel() {
       </div>
       <!-- Status -->
       <div class="blast-status" id="blast-status"></div>
+      <!-- Failed addresses (after send) -->
+      <div class="blast-failed-panel" id="blast-failed-panel">
+        <div class="blast-failed-head">
+          <span id="blast-failed-summary">✗ 0 failed.</span>
+          <div class="blast-failed-actions">
+            <button type="button" class="blast-failed-btn" onclick="toggleFailedList()" id="blast-failed-toggle">Show ▾</button>
+            <button type="button" class="blast-failed-btn" onclick="copyFailedList()">Copy</button>
+          </div>
+        </div>
+        <div class="blast-failed-list" id="blast-failed-list"></div>
+      </div>
     </div>`;
+  // Re-sync the recipients UI after re-render so counter and audience lock reflect state.
+  onBlastRecipientsInput();
   _updateBlastRecipientCount();
 }
 
