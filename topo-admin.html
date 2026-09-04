@@ -2259,8 +2259,8 @@ async function loadPaywallFunnel(){
     // Which trigger drove the popup, and which surface drove the CTA click.
     // Own try/catch so a breakdown failure never blanks the funnel above.
     try{
-      let bq=_sb.from('events').select('event,properties').eq('is_test',false)
-        .in('event',['upsell_popup_shown','pro_cta_clicked']).limit(20000);
+      let bq=_sb.from('events').select('event,properties,created_at').eq('is_test',false)
+        .in('event',['upsell_popup_shown','pro_cta_clicked','checkout_started','checkout_failed']).limit(20000);
       if(pStart&&pStart!=='2000-01-01T00:00:00Z') bq=bq.gte('created_at',pStart);
       const {data:bd,error:be}=await bq;
       if(!be && bd && bd.length){
@@ -2275,6 +2275,18 @@ async function loadPaywallFunnel(){
         h+= ctx.length?list(ctx,'bar-fill-amber'):`<div class="mono" style="color:var(--muted);font-size:11px;">none yet</div>`;
         h+=`<div style="${K}margin:14px 0 6px;">Upgrade CTA clicked, by surface</div>`;
         h+= src.length?list(src,'bar-fill-blue'):`<div class="mono" style="color:var(--muted);font-size:11px;">none yet</div>`;
+        // Checkout: did people actually reach Stripe, and did the request ever error out?
+        const checkoutStarted=bd.filter(r=>r.event==='checkout_started');
+        const checkoutFailed=bd.filter(r=>r.event==='checkout_failed');
+        const coRows=[['Started',checkoutStarted.length],['Failed',checkoutFailed.length]];
+        h+=`<div style="${K}margin:14px 0 6px;">Checkout</div>`;
+        h+= checkoutStarted.length?list(coRows,'bar-fill-blue'):`<div class="mono" style="color:var(--muted);font-size:11px;">none yet</div>`;
+        if(checkoutFailed.length){
+          const recent=checkoutFailed.slice(-5).reverse();
+          h+=`<div style="margin-top:6px;font-family:'DM Mono',monospace;font-size:10px;color:var(--red);line-height:1.6;">`+
+             recent.map(r=>ago(r.created_at)+' — '+esc((r.properties||{}).message||'unknown error')).join('<br>')+
+             `</div>`;
+        }
         h+=`</div>`;
         body.insertAdjacentHTML('beforeend',h);
       }
