@@ -920,7 +920,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
         </div>
         <!-- Body -->
         <div>
-          <div class="blast-label">Email body — plain text. Aki's voice. Paragraphs separated by blank lines.</div>
+          <div class="blast-label">Email body — plain text. Aki's voice. Paragraphs separated by blank lines. Use **text** for bold, and paste bare URLs (https://…) to make them clickable links.</div>
           <textarea class="blast-textarea" id="blast-body" placeholder="Hey —&#10;&#10;Write your message here…"></textarea>
         </div>
         <!-- Dry-run recipient preview -->
@@ -4052,12 +4052,14 @@ function _syncAudienceLock() {
   if (note) note.classList.toggle('show', locked);
 }
 
-// Escape a paragraph for safe HTML, then turn any bare http(s) URL into a
-// real link — the blast textarea is plain text, so this is the only way a
-// pasted URL becomes clickable in the sent email.
+// Escape a paragraph for safe HTML, then apply the tiny bit of formatting the
+// blast textarea supports: **bold** and bare http(s) URLs become real links —
+// the textarea itself is plain text, so this is the only way either shows up
+// in the sent email.
 function blastEscapeAndLinkify(p) {
   const esc = p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const linked = esc.replace(/(https?:\/\/[^\s]+?)([.,;:!?)\]]*)(?=\s|$)/g,
+  const bold = esc.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  const linked = bold.replace(/(https?:\/\/[^\s]+?)([.,;:!?)\]]*)(?=\s|$)/g,
     (_, url, trail) => `<a href="${url}" style="color:#4a7a2a;text-decoration:underline;">${url}</a>${trail}`);
   return linked.replace(/\n/g,'<br>');
 }
