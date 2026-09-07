@@ -2264,7 +2264,7 @@ async function loadPaywallFunnel(){
     // Own try/catch so a breakdown failure never blanks the funnel above.
     try{
       let bq=_sb.from('events').select('event,properties,created_at').eq('is_test',false)
-        .in('event',['upsell_popup_shown','pro_cta_clicked','checkout_started','checkout_failed']).limit(20000);
+        .in('event',['upsell_popup_shown','pro_cta_clicked','checkout_started','checkout_failed','email_opened','email_clicked']).limit(20000);
       if(pStart&&pStart!=='2000-01-01T00:00:00Z') bq=bq.gte('created_at',pStart);
       const {data:bd,error:be}=await bq;
       if(!be && bd && bd.length){
@@ -2290,6 +2290,18 @@ async function loadPaywallFunnel(){
           h+=`<div style="margin-top:6px;font-family:'DM Mono',monospace;font-size:10px;color:var(--red);line-height:1.6;">`+
              recent.map(r=>ago(r.created_at)+' — '+esc((r.properties||{}).message||'unknown error')).join('<br>')+
              `</div>`;
+        }
+        // Email blasts: opens/clicks per send (grouped by subject), from the
+        // Resend webhook — shows whether a specific email's links got used.
+        const emailOpened=bd.filter(r=>r.event==='email_opened');
+        const emailClicked=bd.filter(r=>r.event==='email_clicked');
+        if(emailOpened.length||emailClicked.length){
+          const bySubject=(rows)=>{const m={};rows.forEach(r=>{const k=(r.properties||{}).subject||'(no subject)';m[k]=(m[k]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
+          const opened=bySubject(emailOpened), clicked=bySubject(emailClicked);
+          h+=`<div style="${K}margin:14px 0 6px;">Email opened, by subject</div>`;
+          h+= opened.length?list(opened,'bar-fill-amber'):`<div class="mono" style="color:var(--muted);font-size:11px;">none yet</div>`;
+          h+=`<div style="${K}margin:14px 0 6px;">Email link clicked, by subject</div>`;
+          h+= clicked.length?list(clicked,'bar-fill-blue'):`<div class="mono" style="color:var(--muted);font-size:11px;">none yet</div>`;
         }
         h+=`</div>`;
         body.insertAdjacentHTML('beforeend',h);
