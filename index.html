@@ -2285,7 +2285,7 @@ function declineCookies() {
         </tbody>
       </table>
     </div>
-    <p style="font-size:11px;color:var(--text-soft);line-height:1.6;">Data sourced from open public datasets under their respective licences. The best available source is selected automatically based on your drawn boundary.</p>
+    <p style="font-size:11px;color:var(--text-soft);line-height:1.6;">Elevation data is sourced from open public datasets under their respective licences; the best available source is selected automatically based on your drawn boundary. Building footprints are &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color:var(--text-mid);">OpenStreetMap</a> contributors, available under the Open Database Licence (ODbL).</p>
     <a class="guide-cta" href="elevation-data-coverage.html">Full coverage &amp; resolution by country</a>
   </div>
   <div style="padding:14px 30px;border-top:1px solid var(--border);flex-shrink:0;display:flex;justify-content:flex-end;">
@@ -5869,6 +5869,98 @@ function _generateTerrainDXF(pts, name) {
   return L.join('\r\n');
 }
 
+// ── Pitched-roof geometry (Phase 3) ──────────────────────────────────────────
+// Shared by the 3D viewer and the DXF reference mesh. Approximate shapes are
+// fine for context: apex (pyramid/dome/cone), tent (gabled/hipped/mansard…),
+// mono (skillion/lean-to). Anything else → flat, current box behaviour.
+const _ROOF_FRAC = { gabled:0.28, hipped:0.26, half_hipped:0.26, gambrel:0.32, mansard:0.34,
+  round:0.30, saltbox:0.30, pyramidal:0.45, dome:0.5, onion:0.6, cone:0.55, conical:0.55,
+  skillion:0.20, lean_to:0.20, mono_pitch:0.20 };
+function _roofKind(shape) {
+  if (!shape) return null;
+  const s = String(shape).toLowerCase().replace(/[\s-]+/g, '_');
+  if (['pyramidal','dome','onion','cone','conical','sphere'].includes(s)) return 'apex';
+  if (['skillion','lean_to','mono_pitch','shed'].includes(s)) return 'mono';
+  if (['gabled','hipped','half_hipped','gambrel','mansard','round','saltbox','pitched','side_hipped'].includes(s)) return 'tent';
+  return null;
+}
+// → { kind, wallH, ridgeH } in metres.  ringM: footprint in metres. totalH: b.height.
+function _roofProfile(ringM, totalH, roof, floorH) {
+  const kind = _roofKind(roof && roof.shape);
+  if (!kind || totalH <= 3) return { kind: null, wallH: totalH, ridgeH: totalH };
+  const cx = ringM.reduce((s,p)=>s+p.x,0)/ringM.length, cy = ringM.reduce((s,p)=>s+p.y,0)/ringM.length;
+  let maxR = 0; for (const p of ringM) maxR = Math.max(maxR, Math.hypot(p.x-cx, p.y-cy));
+  let rh;
+  if (roof.height != null && roof.height > 0)            rh = roof.height;
+  else if (roof.levels != null && roof.levels > 0)       rh = roof.levels * (floorH || 3) * 0.7;
+  else if (roof.angle != null && roof.angle > 3 && roof.angle < 80)
+    rh = maxR * Math.tan(roof.angle * Math.PI/180) * (kind === 'apex' ? 1 : 0.55);
+  else rh = totalH * (_ROOF_FRAC[String(roof.shape).toLowerCase().replace(/[\s-]+/g,'_')] || 0.28);
+  rh = Math.max(0.8, Math.min(rh, totalH * 0.75, 45));
+  return { kind, wallH: Math.max(2.2, totalH - rh), ridgeH: totalH };
+}
+// Roof surface as triangles with a normalised height t∈[0,1] (0 = eave, 1 = ridge).
+// ring2D: [{x,y}] in ANY horizontal frame; the caller maps t → its own vertical units.
+function _roofTris(ring2D, roof, kind) {
+  if (!kind) return [];
+  // Drop the duplicated closing vertex OSM ways carry.
+  if (ring2D.length > 3) {
+    const f = ring2D[0], l = ring2D[ring2D.length - 1];
+    if (Math.abs(f.x - l.x) < 1e-6 && Math.abs(f.y - l.y) < 1e-6) ring2D = ring2D.slice(0, -1);
+  }
+  const n = ring2D.length;
+  if (n < 3) return [];
+  const cx = ring2D.reduce((s,p)=>s+p.x,0)/n, cy = ring2D.reduce((s,p)=>s+p.y,0)/n;
+  const P = (p,t) => ({ x:p.x, y:p.y, t });
+  if (kind === 'apex') {
+    const A = { x:cx, y:cy, t:1 }, out = [];
+    for (let i=0;i<n;i++) out.push([ P(ring2D[i],0), P(ring2D[(i+1)%n],0), A ]);
+    return out;
+  }
+  // principal (long) axis via 2×2 covariance eigenvector
+  let sxx=0,syy=0,sxy=0;
+  for (const p of ring2D){ const dx=p.x-cx,dy=p.y-cy; sxx+=dx*dx; syy+=dy*dy; sxy+=dx*dy; }
+  sxx/=n; syy/=n; sxy/=n;
+  const trc=sxx+syy, disc=Math.sqrt(Math.max(0, trc*trc/4 - (sxx*syy - sxy*sxy)));
+  let ax, ay;
+  if (Math.abs(sxy) > 1e-9) { ax = (trc/2 + disc) - syy; ay = sxy; }
+  else if (sxx >= syy) { ax = 1; ay = 0; } else { ax = 0; ay = 1; }
+  const al = Math.hypot(ax,ay)||1; ax/=al; ay/=al;
+  if (kind === 'mono') {
+    let dx, dy;
+    if (roof.direction != null && isFinite(Number(roof.direction))) {
+      const rad = (90 - Number(roof.direction)) * Math.PI/180; dx = Math.cos(rad); dy = Math.sin(rad);
+    } else { dx = -ay; dy = ax; }
+    let lo=Infinity, hi=-Infinity;
+    for (const p of ring2D){ const d=(p.x-cx)*dx+(p.y-cy)*dy; if(d<lo)lo=d; if(d>hi)hi=d; }
+    const rng=(hi-lo)||1, tOf = p => Math.max(0, Math.min(1, ((p.x-cx)*dx+(p.y-cy)*dy - lo)/rng));
+    const out = [];
+    // tilted top plane (fan)
+    for (let i=1;i<n-1;i++) out.push([ P(ring2D[0],tOf(ring2D[0])), P(ring2D[i],tOf(ring2D[i])), P(ring2D[i+1],tOf(ring2D[i+1])) ]);
+    // vertical infill so the uniform-height walls still close under the tilt
+    for (let i=0;i<n;i++){
+      const a=ring2D[i], b=ring2D[(i+1)%n], ta=tOf(a), tb=tOf(b);
+      if (ta < 1e-4 && tb < 1e-4) continue;
+      out.push([ P(a,0), P(b,0), P(b,tb) ]);
+      out.push([ P(a,0), P(b,tb), P(a,ta) ]);
+    }
+    return out;
+  }
+  // tent: two ridge points along the long axis; each footprint vertex slopes to the nearer.
+  let tmin=Infinity, tmax=-Infinity;
+  for (const p of ring2D){ const t=(p.x-cx)*ax+(p.y-cy)*ay; if(t<tmin)tmin=t; if(t>tmax)tmax=t; }
+  const mid=(tmin+tmax)/2, inset=(tmax-tmin)*0.18;
+  const R0={x:cx+ax*(tmin+inset),y:cy+ay*(tmin+inset),t:1}, R1={x:cx+ax*(tmax-inset),y:cy+ay*(tmax-inset),t:1};
+  const near = p => ((p.x-cx)*ax+(p.y-cy)*ay) < mid ? R0 : R1;
+  const out = [];
+  for (let i=0;i<n;i++){
+    const a=ring2D[i], b=ring2D[(i+1)%n], Ra=near(a), Rb=near(b), A=P(a,0), B=P(b,0);
+    if (Ra === Rb) out.push([ A, B, Ra ]);
+    else { out.push([ A, B, Ra ]); out.push([ B, Rb, Ra ]); }
+  }
+  return out;
+}
+
 function _generateBuildingsIFC(data, name) {
   const tc = window._lastTerrainContext;
   if (!tc) { alert('Generate terrain first — the buildings IFC needs the terrain coordinate origin.'); return null; }
@@ -5925,6 +6017,12 @@ function _generateBuildingsIFC(data, name) {
       const u=latLonToUTM(lat,lon);
       return {x:u.easting-oE, y:u.northing-oN};
     });
+    // Drop OSM's duplicated closing vertex so faces/loops don't go degenerate.
+    if (ring.length > 3) {
+      const _f=ring[0], _l=ring[ring.length-1];
+      if (Math.abs(_f.x-_l.x)<1e-6 && Math.abs(_f.y-_l.y)<1e-6) ring.pop();
+    }
+    if (ring.length < 3) continue;
     // Centroid
     const cx=ring.reduce((s,p)=>s+p.x,0)/ring.length;
     const cy=ring.reduce((s,p)=>s+p.y,0)/ring.length;
@@ -5955,15 +6053,33 @@ function _generateBuildingsIFC(data, name) {
       baseZ=_sampleOrigTerrainZ(cx,cy);
     }
 
-    // 2D profile points relative to centroid (profile lives in XY plane at element origin)
-    const profPtIds=ring.map(p=>e('IFCCARTESIANPOINT(('+N(p.x-cx)+','+N(p.y-cy)+'))'));
-    profPtIds.push(profPtIds[0]); // close ring
-    const iPoly=e('IFCPOLYLINE(('+profPtIds.map(f=>'#'+f).join(',')+'))');
-    const iProf=e('IFCARBITRARYCLOSEDPROFILEDEF(.AREA.,$,#'+iPoly+')');
-    const iSolid=e('IFCEXTRUDEDAREASOLID(#'+iProf+',#'+iSolAP+',#'+iZd+','+N(b.height)+')');
-
-    // Shape representation
-    const iSR=e('IFCSHAPEREPRESENTATION(#'+iCtx+",'Body','SweptSolid',(#"+iSolid+'))');
+    // Geometry — flat roof: clean extrusion; pitched: faceted brep (floor + walls + roof).
+    // Profile / points live in the XY plane at the element origin (centroid-relative).
+    const _prof = ring.map(p => ({ x: p.x - cx, y: p.y - cy }));
+    const _rp = _roofProfile(ring, b.height, b.roof, 3);
+    let iSR;
+    if (!_rp.kind) {
+      const profPtIds = _prof.map(p => e('IFCCARTESIANPOINT(('+N(p.x)+','+N(p.y)+'))'));
+      profPtIds.push(profPtIds[0]); // close ring
+      const iPoly = e('IFCPOLYLINE(('+profPtIds.map(f=>'#'+f).join(',')+'))');
+      const iProf = e('IFCARBITRARYCLOSEDPROFILEDEF(.AREA.,$,#'+iPoly+')');
+      const iSolid = e('IFCEXTRUDEDAREASOLID(#'+iProf+',#'+iSolAP+',#'+iZd+','+N(b.height)+')');
+      iSR = e('IFCSHAPEREPRESENTATION(#'+iCtx+",'Body','SweptSolid',(#"+iSolid+'))');
+    } else {
+      const rtris = _roofTris(_prof.map(p => ({ x: p.x, y: p.y })), b.roof, _rp.kind);
+      const wallH = _rp.wallH, span = _rp.ridgeH - _rp.wallH, nP = _prof.length;
+      const _pc = {};
+      const CP = (x, y, z) => { const k = N(x)+'|'+N(y)+'|'+N(z); return _pc[k] || (_pc[k] = e('IFCCARTESIANPOINT(('+N(x)+','+N(y)+','+N(z)+'))')); };
+      const face = ids => e('IFCFACE((#'+e('IFCFACEOUTERBOUND(#'+e('IFCPOLYLOOP(('+ids.map(f=>'#'+f).join(',')+'))')+',.T.)')+'))');
+      const faceIds = [];
+      faceIds.push(face(_prof.map(p => CP(p.x, p.y, 0)).reverse()));   // floor, downward
+      for (let i=0;i<nP;i++){ const j=(i+1)%nP;
+        faceIds.push(face([ CP(_prof[i].x,_prof[i].y,0), CP(_prof[j].x,_prof[j].y,0),
+                            CP(_prof[j].x,_prof[j].y,wallH), CP(_prof[i].x,_prof[i].y,wallH) ])); }
+      for (const tri of rtris) faceIds.push(face(tri.map(v => CP(v.x, v.y, wallH + v.t*span))));
+      const brep = e('IFCFACETEDBREP(#'+e('IFCCLOSEDSHELL(('+faceIds.map(f=>'#'+f).join(',')+'))')+')');
+      iSR = e('IFCSHAPEREPRESENTATION(#'+iCtx+",'Body','Brep',(#"+brep+'))');
+    }
     const iPDS=e('IFCPRODUCTDEFINITIONSHAPE($,$,(#'+iSR+'))');
 
     // Element placed at (cx, cy, baseZ) relative to storey (= world position)
@@ -6056,8 +6172,10 @@ function _generateBuildingsDXF(data, name) {
     } else {
       baseZ=_sampleOrigTerrainZ(cx,cy);
     }
-    const topZ=baseZ+b.height;
     const n=ring.length;
+    const rp = _roofProfile(ring, b.height, b.roof, 3);
+    const eaveZ = baseZ + rp.wallH;        // wall top ( = topZ when the roof is flat )
+    const topZ  = baseZ + rp.ridgeH;       // ridge / apex
 
     // ── Closed footprint polyline + height label — the editable-mass source ──
     L.push('0','POLYLINE','8',LYR_FP,'66','1','70','9','10','0.0','20','0.0','30',N(baseZ));
@@ -6068,28 +6186,40 @@ function _generateBuildingsDXF(data, name) {
       '40',String(txtH),'1',hLbl,'72','1','11',N(cx),'21',N(cy),'31',N(baseZ));
 
     // ── 3D reference mesh — freeze/delete layer TG-BLDG-MASS-REF once masses are built ──
-    // Walls: each edge → 2 triangles (3DFACE)
+    // Walls: each edge → 2 triangles (3DFACE), up to eave height
     for(let i=0;i<n;i++){
       const a=ring[i], b2=ring[(i+1)%n];
       L.push('0','3DFACE','8',LYR_REF,
         '10',N(a.x),'20',N(a.y),'30',N(baseZ),
         '11',N(b2.x),'21',N(b2.y),'31',N(baseZ),
-        '12',N(b2.x),'22',N(b2.y),'32',N(topZ),
-        '13',N(b2.x),'23',N(b2.y),'33',N(topZ),'70','0');
+        '12',N(b2.x),'22',N(b2.y),'32',N(eaveZ),
+        '13',N(b2.x),'23',N(b2.y),'33',N(eaveZ),'70','0');
       L.push('0','3DFACE','8',LYR_REF,
         '10',N(a.x),'20',N(a.y),'30',N(baseZ),
-        '11',N(b2.x),'21',N(b2.y),'31',N(topZ),
-        '12',N(a.x),'22',N(a.y),'32',N(topZ),
-        '13',N(a.x),'23',N(a.y),'33',N(topZ),'70','0');
+        '11',N(b2.x),'21',N(b2.y),'31',N(eaveZ),
+        '12',N(a.x),'22',N(a.y),'32',N(eaveZ),
+        '13',N(a.x),'23',N(a.y),'33',N(eaveZ),'70','0');
     }
-    // Roof: fan triangulation from centroid
-    for(let i=0;i<n;i++){
-      const a=ring[i], b2=ring[(i+1)%n];
-      L.push('0','3DFACE','8',LYR_REF,
-        '10',N(cx),'20',N(cy),'30',N(topZ),
-        '11',N(a.x),'21',N(a.y),'31',N(topZ),
-        '12',N(b2.x),'22',N(b2.y),'32',N(topZ),
-        '13',N(b2.x),'23',N(b2.y),'33',N(topZ),'70','0');
+    // Roof: pitched surface from _roofTris, or a flat centroid fan
+    if (rp.kind) {
+      const spanZ = topZ - eaveZ;
+      for (const tri of _roofTris(ring.map(p=>({x:p.x,y:p.y})), b.roof, rp.kind)) {
+        const [p0,p1,p2] = tri.map(v => ({ x:v.x, y:v.y, z: eaveZ + v.t*spanZ }));
+        L.push('0','3DFACE','8',LYR_REF,
+          '10',N(p0.x),'20',N(p0.y),'30',N(p0.z),
+          '11',N(p1.x),'21',N(p1.y),'31',N(p1.z),
+          '12',N(p2.x),'22',N(p2.y),'32',N(p2.z),
+          '13',N(p2.x),'23',N(p2.y),'33',N(p2.z),'70','0');
+      }
+    } else {
+      for(let i=0;i<n;i++){
+        const a=ring[i], b2=ring[(i+1)%n];
+        L.push('0','3DFACE','8',LYR_REF,
+          '10',N(cx),'20',N(cy),'30',N(topZ),
+          '11',N(a.x),'21',N(a.y),'31',N(topZ),
+          '12',N(b2.x),'22',N(b2.y),'32',N(topZ),
+          '13',N(b2.x),'23',N(b2.y),'33',N(topZ),'70','0');
+      }
     }
   }
   L.push('0','ENDSEC','0','EOF');
@@ -7485,8 +7615,15 @@ const meshMat = new THREE.MeshBasicMaterial({
     for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i].sx, pts[i].shy);
     shape.closePath();
 
+    // Pitched roof? Split the total height into a wall part + a roof part.
+    // Total (b.height + 4) is preserved; the roof takes the top `rh` metres.
+    const _ringM = pts.map(p => ({ x: p.sx / scale, y: p.sz / scale }));
+    const _rp = _roofProfile(_ringM, b.height + 4, b.roof, 3);
+    const wallHScene  = _rp.kind ? _rp.wallH  * yScale : hScene;
+    const ridgeHScene = _rp.kind ? _rp.ridgeH * yScale : hScene;
+
     // NOTE: renamed from `geo` to `bldGeo` so it doesn't shadow the terrain BufferGeometry
-    const bldGeo = new THREE.ExtrudeGeometry(shape, { depth: hScene, bevelEnabled: false });
+    const bldGeo = new THREE.ExtrudeGeometry(shape, { depth: wallHScene, bevelEnabled: false });
     bldGeo.rotateX(-Math.PI / 2);    // XZ footprint → upright in scene
     bldGeo.translate(0, baseY, 0);   // lift to terrain level
 
@@ -7504,6 +7641,30 @@ const meshMat = new THREE.MeshBasicMaterial({
     buildingEdgeGroup.add(new THREE.LineSegments(
       eg, new THREE.LineBasicMaterial({ color: 0x0d1a2a, transparent: true, opacity: 0.4 })
     ));
+
+    // ── Pitched roof surface ────────────────────────────────────────
+    if (_rp.kind) {
+      const rtris = _roofTris(pts.map(p => ({ x: p.sx, y: p.sz })), b.roof, _rp.kind);
+      if (rtris.length) {
+        const eaveY = baseY + wallHScene, spanY = ridgeHScene - wallHScene;
+        const rpos = new Float32Array(rtris.length * 9);
+        let k = 0;
+        for (const tri of rtris) for (const v of tri) { rpos[k++] = v.x; rpos[k++] = eaveY + v.t * spanY; rpos[k++] = v.y; }
+        const rgeo = new THREE.BufferGeometry();
+        rgeo.setAttribute('position', new THREE.BufferAttribute(rpos, 3));
+        rgeo.computeVertexNormals();
+        const rcol = new THREE.Color(_buildingColor(b.type)).multiplyScalar(0.7);
+        const rmesh = new THREE.Mesh(rgeo, new THREE.MeshStandardMaterial({
+          color: rcol, roughness: 0.8, metalness: 0.03, side: THREE.DoubleSide, depthWrite: true,
+        }));
+        rmesh.renderOrder = 1;
+        buildingGroup.add(rmesh);
+        buildingEdgeGroup.add(new THREE.LineSegments(
+          new THREE.EdgesGeometry(rgeo, 20),
+          new THREE.LineBasicMaterial({ color: 0x0d1a2a, transparent: true, opacity: 0.4 })
+        ));
+      }
+    }
   }
 
   // ── Flatten terrain under building footprints ─────────────────────
