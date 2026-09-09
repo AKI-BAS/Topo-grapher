@@ -5973,8 +5973,20 @@ function _generateBuildingsIFC(data, name) {
 
     const typeStr=(b.type||'yes').replace(/['\$]/g,'');
     const idStr  =(b.id||'').replace(/['\$]/g,'');
-    elemIds.push(e('IFCBUILDINGELEMENTPROXY('+g()+',#'+iOwn+
-      ",'"+idStr+"','building:"+typeStr+"','"+typeStr+"',#"+iELP+',#'+iPDS+',$,.ELEMENT.)'));
+    const iProxy = e('IFCBUILDINGELEMENTPROXY('+g()+',#'+iOwn+
+      ",'"+idStr+"','building:"+typeStr+"','"+typeStr+"',#"+iELP+',#'+iPDS+',$,.ELEMENT.)');
+    elemIds.push(iProxy);
+
+    // Property set — Height / Storeys / Type become schedulable parameters in
+    // Revit/ArchiCAD after import (they do NOT drive the geometry — see the DXF
+    // footprint export for editable masses).
+    const _pv = [ e("IFCPROPERTYSINGLEVALUE('Height',$,IFCLENGTHMEASURE("+N(b.height)+"),$)") ];
+    if (b.levels) _pv.push(e("IFCPROPERTYSINGLEVALUE('NumberOfStoreys',$,IFCINTEGER("+b.levels+"),$)"));
+    if (b.min_height) _pv.push(e("IFCPROPERTYSINGLEVALUE('BaseOffset',$,IFCLENGTHMEASURE("+N(b.min_height)+"),$)"));
+    _pv.push(e("IFCPROPERTYSINGLEVALUE('BuildingType',$,IFCLABEL('"+typeStr+"'),$)"));
+    _pv.push(e("IFCPROPERTYSINGLEVALUE('HeightSource',$,IFCLABEL('"+String(b.height_source||'osm').replace(/['\$]/g,'')+"'),$)"));
+    const _ps = e("IFCPROPERTYSET("+g()+",#"+iOwn+",'Pset_TopoGrapher_Building',$,("+_pv.map(f=>'#'+f).join(',')+"))");
+    e('IFCRELDEFINESBYPROPERTIES('+g()+',#'+iOwn+',$,$,(#'+iProxy+'),#'+_ps+')');
   }
 
   if(elemIds.length)
@@ -5998,15 +6010,21 @@ function _generateBuildingsDXF(data, name) {
   const mult=imp?M_TO_FT:1;
   const iu=imp?'2':'6';
   const N=n=>parseFloat((n*mult).toFixed(4)).toString();
+  const LYR_FP='TG-BLDG-FOOTPRINT', LYR_HT='TG-BLDG-HEIGHT', LYR_REF='TG-BLDG-MASS-REF';
+  const txtH = imp ? 6 : 2;   // height-label text size, in export units
   const L=[
+    '999','Topo-grapher buildings — footprint linework for editable masses',
+    '999','Revit: Massing & Site > In-Place Mass > Pick Lines (layer '+LYR_FP+') > Create Form; set the height from the '+LYR_HT+' label',
+    '999','Freeze or delete layer '+LYR_REF+' once your masses are built',
     '0','SECTION','2','HEADER',
     '9','$ACADVER','1','AC1009',
     '0','ENDSEC',
     '0','SECTION','2','TABLES',
-    '0','TABLE','2','LAYER','70','3',
+    '0','TABLE','2','LAYER','70','4',
     '0','LAYER','2','0','70','0','62','7','6','Continuous',
-    '0','LAYER','2','terrain','70','0','62','7','6','Continuous',
-    '0','LAYER','2','buildings','70','0','62','5','6','Continuous',
+    '0','LAYER','2',LYR_FP,'70','0','62','5','6','Continuous',
+    '0','LAYER','2',LYR_HT,'70','0','62','3','6','Continuous',
+    '0','LAYER','2',LYR_REF,'70','0','62','8','6','Continuous',
     '0','ENDTAB',
     '0','ENDSEC',
     '0','SECTION','2','ENTITIES',
@@ -6040,15 +6058,25 @@ function _generateBuildingsDXF(data, name) {
     }
     const topZ=baseZ+b.height;
     const n=ring.length;
+
+    // ── Closed footprint polyline + height label — the editable-mass source ──
+    L.push('0','POLYLINE','8',LYR_FP,'66','1','70','9','10','0.0','20','0.0','30',N(baseZ));
+    for(const p of ring) L.push('0','VERTEX','8',LYR_FP,'70','32','10',N(p.x),'20',N(p.y),'30',N(baseZ));
+    L.push('0','SEQEND','8',LYR_FP);
+    const hLbl = imp ? (b.height*M_TO_FT).toFixed(1)+"'" : b.height.toFixed(1)+' m';
+    L.push('0','TEXT','8',LYR_HT,'10',N(cx),'20',N(cy),'30',N(baseZ),
+      '40',String(txtH),'1',hLbl,'72','1','11',N(cx),'21',N(cy),'31',N(baseZ));
+
+    // ── 3D reference mesh — freeze/delete layer TG-BLDG-MASS-REF once masses are built ──
     // Walls: each edge → 2 triangles (3DFACE)
     for(let i=0;i<n;i++){
       const a=ring[i], b2=ring[(i+1)%n];
-      L.push('0','3DFACE','8','buildings',
+      L.push('0','3DFACE','8',LYR_REF,
         '10',N(a.x),'20',N(a.y),'30',N(baseZ),
         '11',N(b2.x),'21',N(b2.y),'31',N(baseZ),
         '12',N(b2.x),'22',N(b2.y),'32',N(topZ),
         '13',N(b2.x),'23',N(b2.y),'33',N(topZ),'70','0');
-      L.push('0','3DFACE','8','buildings',
+      L.push('0','3DFACE','8',LYR_REF,
         '10',N(a.x),'20',N(a.y),'30',N(baseZ),
         '11',N(b2.x),'21',N(b2.y),'31',N(topZ),
         '12',N(a.x),'22',N(a.y),'32',N(topZ),
@@ -6057,7 +6085,7 @@ function _generateBuildingsDXF(data, name) {
     // Roof: fan triangulation from centroid
     for(let i=0;i<n;i++){
       const a=ring[i], b2=ring[(i+1)%n];
-      L.push('0','3DFACE','8','buildings',
+      L.push('0','3DFACE','8',LYR_REF,
         '10',N(cx),'20',N(cy),'30',N(topZ),
         '11',N(a.x),'21',N(a.y),'31',N(topZ),
         '12',N(b2.x),'22',N(b2.y),'32',N(topZ),
@@ -6066,6 +6094,47 @@ function _generateBuildingsDXF(data, name) {
   }
   L.push('0','ENDSEC','0','EOF');
   return L.join('\r\n');
+}
+
+// ── OSM building parse (shared by the dev / free-view fetch paths) ──
+// Mirrors buildings-worker.js parseOsmHeight(). Priority:
+// height -> building:height -> est_height -> levels x type floor-height -> type default.
+const _OSM_FLOOR_H = { house:3.0,detached:3.0,semidetached_house:3.0,terrace:3.0,residential:3.0,apartments:3.0,dormitory:3.0,bungalow:3.0,hut:2.6,cabin:2.6,garage:2.6,garages:2.6,shed:2.6,commercial:3.8,office:3.8,retail:3.9,supermarket:4.5,hotel:3.2,industrial:6.0,warehouse:7.0,hangar:9.0,factory:6.0,church:9.0,cathedral:12.0,chapel:6.0,mosque:8.0,hospital:3.6,school:3.6,university:3.8,college:3.8,public:3.8,civic:3.8,train_station:8.0,stadium:12.0 };
+const _OSM_DEFAULT_H = { house:6.0,detached:6.0,semidetached_house:6.0,terrace:8.0,residential:9.0,apartments:15.0,garage:2.6,garages:2.6,shed:2.6,hut:2.6,roof:3.0,carport:2.6,greenhouse:3.0,commercial:11.0,office:18.0,retail:6.0,supermarket:8.0,industrial:9.0,warehouse:10.0,church:12.0,cathedral:25.0,hospital:20.0,school:10.0,university:15.0 };
+function _osmNum(v) {
+  if (v == null) return NaN;
+  const s = String(v).trim();
+  const ft = s.match(/^(-?[\d.]+)\s*(?:'|ft|feet)$/i);
+  if (ft) return parseFloat(ft[1]) * 0.3048;
+  return parseFloat(s);
+}
+function _buildingFromOsmEl(el) {
+  if (el.type !== 'way' || !el.geometry || el.geometry.length < 3) return null;
+  const tags = el.tags || {};
+  const type = tags.building || 'yes';
+  const floorH = _OSM_FLOOR_H[type] || 3.2;
+  let height = _osmNum(tags.height), height_source = 'measured';
+  if (!(height > 0)) height = _osmNum(tags['building:height']);
+  if (!(height > 0)) { height = _osmNum(tags['est_height']); height_source = 'estimated'; }
+  let levels = null;
+  if (!(height > 0)) {
+    const bl = parseInt(tags['building:levels'], 10);
+    if (bl > 0) { levels = bl; const rl = parseInt(tags['roof:levels'], 10); height = bl * floorH + (rl > 0 ? rl * floorH * 0.6 : 0); height_source = 'levels'; }
+  }
+  if (!(height > 0)) { height = _OSM_DEFAULT_H[type] || 8; height_source = 'default'; }
+  const mh = _osmNum(tags.min_height);
+  const roof = { shape: tags['roof:shape'] || null, height: _osmNum(tags['roof:height']), levels: parseInt(tags['roof:levels'], 10), angle: _osmNum(tags['roof:angle']), direction: tags['roof:direction'] || null };
+  ['height','levels','angle'].forEach(k => { if (!(roof[k] >= 0)) roof[k] = null; });
+  return {
+    id: 'way/' + el.id,
+    polygon: el.geometry.map(pt => [pt.lat, pt.lon]),
+    height, height_source, levels,
+    min_height: mh > 0 ? mh : null,
+    roof: (roof.shape || roof.height != null || roof.levels != null || roof.angle != null) ? roof : null,
+    ground_elevation: null,
+    type,
+    source: 'osm',
+  };
 }
 
 // Standalone buildings fetch — used by both the sidebar button and _doFetchAndRender.
@@ -6084,21 +6153,12 @@ async function _fetchBuildingsData() {
     if (!resp.ok) throw new Error('Overpass returned HTTP '+resp.status);
     const raw = await resp.json();
     const buildings=[];
-    for(const el of raw.elements){
-      if(el.type!=='way'||!el.geometry||el.geometry.length<3) continue;
-      const polygon=el.geometry.map(pt=>[pt.lat,pt.lon]);
-      const tags=el.tags||{};
-      let height=null,hs='default',levels=null;
-      if(tags.height){const h=parseFloat(tags.height);if(!isNaN(h)&&h>0){height=h;hs='measured';}}
-      if(height===null&&tags['building:levels']){const l=parseInt(tags['building:levels'],10);if(!isNaN(l)&&l>0){levels=l;height=l*3.2;hs='levels';}}
-      if(height===null)height=8;
-      buildings.push({id:'way/'+el.id,polygon,height,height_source:hs,levels,ground_elevation:null,type:tags.building||'yes',source:'osm'});
-    }
+    for(const el of raw.elements){ const b=_buildingFromOsmEl(el); if(b) buildings.push(b); }
     data={buildings,meta:{count:buildings.length,source:'osm (dev)',source_note:'Overpass API — dev mode'}};
   } else {
     const token = await getAuthHeader();
     const url='https://buildings.svanur300.workers.dev/?south='+south+'&west='+west+'&north='+north+'&east='+east;
-    const resp = await fetch(url,{headers:{'Authorization':token}});
+    const resp = await fetch(url,{headers:{'Authorization':token}, signal: AbortSignal.timeout(25000)});
     if(!resp.ok){
       let msg=''; try{const j=await resp.json();msg=j.error||'';} catch{try{msg=await resp.text();}catch{}}
       try { track('buildings_fetch_failed', { status: resp.status, detail: msg.slice(0,120), plan: _currentProfile?.plan || 'anon' }); } catch(_){}
@@ -6257,8 +6317,7 @@ async function downloadBuildings() {
   if (!data?.buildings?.length) { alert('No buildings found in this area.'); return; }
 
   const fmt  = document.getElementById('format-select')?.value || 'ifc';
-  const safe = (projectName||'site').replace(/[^a-zA-Z0-9_\-]/g,'_');
-  const a = document.createElement('a');
+  const safe = 'Topo-grapher-terrain'+(projectName?'-'+projectName.replace(/[^a-zA-Z0-9_\-]/g,'_'):'');
   let content, mime, ext;
   if (fmt === 'dxf') {
     content = _generateBuildingsDXF(data, projectName);
@@ -6269,9 +6328,7 @@ async function downloadBuildings() {
     if (!content) return;
     mime = 'application/x-step'; ext = '_buildings.ifc';
   }
-  a.href = URL.createObjectURL(new Blob([content],{type:mime}));
-  a.download = safe + ext;
-  a.click(); URL.revokeObjectURL(a.href);
+  _saveBlob(new Blob([content],{type:mime}), safe + ext);
 }
 
 // ── Elevation source banner ───────────────────────────────────────────────
@@ -7144,16 +7201,7 @@ const meshMat = new THREE.MeshBasicMaterial({
         if (!resp.ok) { console.warn('[Buildings] Overpass returned', resp.status); return; }
         const raw = await resp.json();
         const buildings = [];
-        for (const el of raw.elements) {
-          if (el.type !== 'way' || !el.geometry || el.geometry.length < 3) continue;
-          const polygon = el.geometry.map(pt => [pt.lat, pt.lon]);
-          const tags = el.tags || {};
-          let height = null, height_source = 'default', levels = null;
-          if (tags.height) { const h = parseFloat(tags.height); if (!isNaN(h) && h > 0) { height = h; height_source = 'measured'; } }
-          if (height === null && tags['building:levels']) { const l = parseInt(tags['building:levels'], 10); if (!isNaN(l) && l > 0) { levels = l; height = l * 3.2; height_source = 'levels'; } }
-          if (height === null) { height = 8; }
-          buildings.push({ id: 'way/' + el.id, polygon, height, height_source, levels, ground_elevation: null, type: tags.building || 'yes', source: 'osm' });
-        }
+        for (const el of raw.elements) { const b = _buildingFromOsmEl(el); if (b) buildings.push(b); }
         data = { buildings, meta: { count: buildings.length, source: 'osm (dev)', source_note: 'Direct Overpass — dev mode' } };
         console.log('[Buildings] Overpass returned', buildings.length, 'buildings');
       } catch(e) { console.error('[Buildings] Overpass error:', e); return; }
@@ -7164,7 +7212,7 @@ const meshMat = new THREE.MeshBasicMaterial({
       const bUrl = 'https://buildings.svanur300.workers.dev/?south=' + south +
                    '&west=' + west + '&north=' + north + '&east=' + east;
       try {
-        const resp = await fetch(bUrl, { headers: { 'Authorization': token } });
+        const resp = await fetch(bUrl, { headers: { 'Authorization': token }, signal: AbortSignal.timeout(25000) });
         if (!resp.ok) { console.warn('[Buildings] Worker returned', resp.status, await resp.text()); return; }
         data = await resp.json();
         console.log('[Buildings] Worker returned', data.meta?.count, 'buildings');
@@ -7179,16 +7227,7 @@ const meshMat = new THREE.MeshBasicMaterial({
         if (!resp.ok) { console.warn('[Buildings] Overpass returned', resp.status); return; }
         const raw = await resp.json();
         const buildings = [];
-        for (const el of raw.elements) {
-          if (el.type !== 'way' || !el.geometry || el.geometry.length < 3) continue;
-          const polygon = el.geometry.map(pt => [pt.lat, pt.lon]);
-          const tags = el.tags || {};
-          let height = null, height_source = 'default', levels = null;
-          if (tags.height) { const h = parseFloat(tags.height); if (!isNaN(h) && h > 0) { height = h; height_source = 'measured'; } }
-          if (height === null && tags['building:levels']) { const l = parseInt(tags['building:levels'], 10); if (!isNaN(l) && l > 0) { levels = l; height = l * 3.2; height_source = 'levels'; } }
-          if (height === null) { height = 8; }
-          buildings.push({ id: 'way/' + el.id, polygon, height, height_source, levels, ground_elevation: null, type: tags.building || 'yes', source: 'osm' });
-        }
+        for (const el of raw.elements) { const b = _buildingFromOsmEl(el); if (b) buildings.push(b); }
         data = { buildings, meta: { count: buildings.length, source: 'osm (free)', source_note: 'Overpass — view only' } };
         console.log('[Buildings] Overpass returned', buildings.length, 'buildings');
       } catch(e) { console.error('[Buildings] Overpass error:', e); return; }
@@ -7670,7 +7709,7 @@ const meshMat = new THREE.MeshBasicMaterial({
   // This also populates window._lastBuildingData so that the export download
   // functions can apply the flatten even without the user pressing Buildings.
   setTimeout(async () => {
-    if (buildingsLoaded) return;          // user already pressed Buildings
+    if (state.disposed || buildingsLoaded) return;   // viewer replaced by a new generation, or user already pressed Buildings
     if (window._lastBuildingData?.buildings?.length) {
       // Data already cached (e.g., from a previous press) — just flatten the mesh
       buildingsLoaded = true;
@@ -7685,11 +7724,12 @@ const meshMat = new THREE.MeshBasicMaterial({
       buildingsLoaded = true;
       // Hide the building meshes — user will turn them on explicitly
       if (!buildingsOn) { buildingGroup.visible = false; buildingEdgeGroup.visible = false; }
+      try { _syncDlBtn(); } catch(_e) {}  // flip "Get Buildings" → "Download Buildings" now that data is cached
       console.log('[Buildings] Auto-flatten complete — terrain is ready for export');
     } catch(e) {
       console.warn('[Buildings] Auto-flatten failed (non-fatal):', e);
     }
-  }, 800);
+  }, 200);
 
   new ResizeObserver(()=>{
     if(state.disposed) return;
