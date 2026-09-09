@@ -5262,6 +5262,48 @@ async function convert() {
 }
 
 // ── Download ──────────────────────────────────────────────────────────────
+// Robust single-file save: in-DOM anchor + deferred revoke. Avoids the
+// "download cancelled" race and the browser multi-download gate that a
+// second synchronous a.click() used to trigger.
+function _saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function () { try { document.body.removeChild(a); } catch (e) {} URL.revokeObjectURL(url); }, 15000);
+}
+// Store-only (no compression) ZIP writer — dependency-free. files: [{name, data:string}].
+const _CRC32_TABLE = (function () {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; }
+  return t;
+})();
+function _crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = _CRC32_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function _zipBlob(files) {
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  const u16 = n => new Uint8Array([n & 0xFF, (n >>> 8) & 0xFF]);
+  const u32 = n => new Uint8Array([n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF]);
+  const cat = arrs => { let len = 0; arrs.forEach(a => len += a.length); const o = new Uint8Array(len); let p = 0; arrs.forEach(a => { o.set(a, p); p += a.length; }); return o; };
+  files.forEach(function (f) {
+    const nameB = enc.encode(f.name), dataB = enc.encode(f.data), crc = _crc32(dataB);
+    const local = cat([u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0), u32(crc), u32(dataB.length), u32(dataB.length), u16(nameB.length), u16(0), nameB]);
+    parts.push(local, dataB);
+    central.push(cat([u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0), u32(crc), u32(dataB.length), u32(dataB.length), u16(nameB.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), nameB]));
+    offset += local.length + dataB.length;
+  });
+  const centralStart = offset;
+  let centralSize = 0;
+  central.forEach(function (c) { parts.push(c); centralSize += c.length; });
+  parts.push(cat([u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(centralSize), u32(centralStart), u16(0)]));
+  return new Blob(parts, { type: 'application/zip' });
+}
 function downloadCSV(fmt) {
   const pts=_getTerrainExportPts(); // flattened copy if DSM + buildings; else original
   if (!pts||!pts.length) return;
@@ -5275,13 +5317,16 @@ function downloadCSV(fmt) {
   const header = isXyz ? '' : (imperial?'X_ft,Y_ft,Z_ft':'X,Y,Z');
   const ext = isXyz ? '.xyz' : '.csv';
   const rows=pts.map(p=>(p.x*mult).toFixed(decimals)+sep+(p.y*mult).toFixed(decimals)+sep+(p.z*mult).toFixed(decimals));
-  const safe=projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
-  const a=document.createElement('a');
-a.href=URL.createObjectURL(new Blob([(header?header+'\n':'')+rows.join('\n')],{type:isXyz?'text/plain':'text/csv'}));
-  a.download=safe+'_toposolid'+suffix+ext; a.click();
+  const safe='Topo-grapher-terrain'+(projectName?'-'+projectName.replace(/[^a-zA-Z0-9_\-]/g,'_'):'');
+  const body=(header?header+'\n':'')+rows.join('\n');
+  const fname=safe+'_toposolid'+suffix+ext;
   if (window._siteColumns && window._siteColumns.length > 0) {
-    _downloadSiteColumnsIFC(safe);
+    try {
+      const ifc=_buildSiteColumnsIFC(window._siteColumns, safe);
+      if (ifc) { _saveBlob(_zipBlob([{name:fname,data:body},{name:safe+'_site_columns.ifc',data:ifc}]), safe+'_toposolid'+suffix+'.zip'); return; }
+    } catch(e) { console.warn('site columns bundle failed, terrain only:', e); }
   }
+  _saveBlob(new Blob([body],{type:isXyz?'text/plain':'text/csv'}), fname);
 }
 function handleDownload() {
   if (!window._cleanOutMetric?.length) return;
@@ -5302,25 +5347,24 @@ function handleDownload() {
     openAuth('signup', 'download');
     return;
   }
-  const safe = projectName.replace(/[^a-zA-Z0-9_\-]/g,'_');
-  const a = document.createElement('a');
+  const safe = 'Topo-grapher-terrain'+(projectName?'-'+projectName.replace(/[^a-zA-Z0-9_\-]/g,'_'):'');
+  let content, fname, mime;
   if (fmt === 'ifc') {
-    const pts = _getTerrainExportPts(); // flattened copy if DSM + buildings available
-    const content = _generateTerrainIFC(pts, projectName);
-    a.href = URL.createObjectURL(new Blob([content],{type:'application/x-step'}));
-    a.download = safe + '_toposolid.ifc';
+    content = _generateTerrainIFC(_getTerrainExportPts(), projectName); // flattened copy if DSM + buildings available
+    fname = safe + '_toposolid.ifc'; mime = 'application/x-step';
   } else if (fmt === 'dxf') {
-    const pts = _getTerrainExportPts();
-    const content = _generateTerrainDXF(pts, projectName);
-    a.href = URL.createObjectURL(new Blob([content],{type:'image/vnd.dxf'}));
-    a.download = safe + '_toposolid.dxf';
+    content = _generateTerrainDXF(_getTerrainExportPts(), projectName);
+    fname = safe + '_toposolid.dxf'; mime = 'image/vnd.dxf';
   } else {
     downloadCSV(fmt); return;   // 'csv' or 'xyz'
   }
-a.click(); URL.revokeObjectURL(a.href);
   if (window._siteColumns && window._siteColumns.length > 0) {
-    _downloadSiteColumnsIFC(projectName);
+    try {
+      const ifc = _buildSiteColumnsIFC(window._siteColumns, safe);
+      if (ifc) { _saveBlob(_zipBlob([{name:fname,data:content},{name:safe+'_site_columns.ifc',data:ifc}]), safe+'_toposolid.zip'); return; }
+    } catch(e) { console.warn('site columns bundle failed, terrain only:', e); }
   }
+  _saveBlob(new Blob([content],{type:mime}), fname);
 }
 
 function _syncDlBtn() {
@@ -7907,7 +7951,7 @@ function historyDownload(lid, name) {
   var entry = entries.find(function(e) { return e.id === lid; });
   if (!entry || !entry.csvData) return;
 
-  var safe = (name || 'terrain').replace(/[^a-zA-Z0-9_\-]/g, '_');
+  var safe = 'Topo-grapher-terrain' + (name ? '-' + name.replace(/[^a-zA-Z0-9_\-]/g, '_') : '');
   var blob = new Blob([entry.csvData], { type: 'text/csv' });
   var url  = URL.createObjectURL(blob);
   var a    = document.createElement('a');
