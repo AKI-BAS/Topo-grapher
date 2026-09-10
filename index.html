@@ -765,7 +765,7 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 .lib-tab:last-child  { border-radius:0 4px 4px 0; }
 
 /* ── Upgrade modal ──────────────────────────────────────────────────────── */
-.upgrade-modal { max-width:480px; width:100%; background:var(--bg-card); border:1px solid var(--border-md); border-radius:12px; overflow:hidden; position:relative; }
+.upgrade-modal { max-width:540px; width:100%; background:var(--bg-card); border:1px solid var(--border-md); border-radius:12px; overflow:hidden; position:relative; }
 .upgrade-hero  { height:156px; position:relative; overflow:hidden; background:linear-gradient(150deg,#071210 0%,#0e2018 55%,#091812 100%); }
 [data-theme="light"] .upgrade-hero { background:linear-gradient(150deg,#182e1e 0%,#1f3a28 55%,#162a1e 100%); }
 .upgrade-hero-sheen {
@@ -796,7 +796,7 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 .upgrade-plan-per   { font-size:11px; color:var(--text-soft); margin:3px 0 14px; }
 .upgrade-plan ul    { list-style:none; padding:0; margin:0 0 16px; font-size:11px; color:var(--text-mid); line-height:2; }
 .upgrade-plan ul li::before { content:'✓ '; color:var(--accent); }
-.upgrade-plan-cta   { width:100%; padding:10px 0; border-radius:5px; font-family:'DM Mono',monospace; font-size:11px; cursor:pointer; letter-spacing:.06em; text-transform:uppercase; transition:opacity .15s; border:none; }
+.upgrade-plan-cta   { width:100%; padding:11px 0; border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; font-weight:700; cursor:pointer; letter-spacing:.04em; text-transform:uppercase; transition:opacity .15s; border:none; }
 .auth-google { width:100%; background:var(--bg-input); border:1px solid var(--border-md); color:var(--text); padding:11px; border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; letter-spacing:.04em; margin-bottom:4px; transition:border-color .15s; }
 .auth-google:hover { border-color:var(--accent-md); }
 
@@ -1044,7 +1044,7 @@ function declineCookies() {
       <div class="user-dropdown" id="user-dropdown">
         <span style="display:block;padding:12px 14px 10px;font-size:12px;color:var(--text-soft);border-bottom:1px solid var(--border);" id="user-email-display"></span>
         <button onclick="openSettings()">Account settings</button>
-        <a href="#pricing" id="nav-upgrade-link" onclick="document.getElementById('user-dropdown').classList.remove('show');track('pro_cta_clicked',{source:'nav_dropdown'});startCheckout('pro')">Upgrade to Pro &#x2192;</a>
+        <a href="#pricing" id="nav-upgrade-link" onclick="document.getElementById('user-dropdown').classList.remove('show');track('pro_cta_clicked',{source:'nav_dropdown'});startCheckout('pro')">Start free trial &#x2192;</a>
         <button onclick="signOut()">Sign out</button>
       </div>
     </div>
@@ -1485,6 +1485,7 @@ function declineCookies() {
         <div class="tier-hero-label">
           <div class="tier-name">Pro</div>
           <div class="tier-price">&pound;39.99<span class="tier-per"> /month</span></div>
+          <div class="tier-desc" style="opacity:.85;">14 days free, then billed monthly. Cancel anytime.</div>
           <div class="tier-desc">For individual architects working on real projects.</div>
         </div>
       </div>
@@ -1498,7 +1499,7 @@ function declineCookies() {
         <li class="feat-ok">Priority support</li>
         <li class="feat-add">Large site add-on available</li>
       </ul>
-      <button class="tier-cta" id="checkout-btn-pro" onclick="track('pro_cta_clicked',{source:'pricing_card'});startCheckout('pro')">Get Pro &rarr;</button>
+      <button class="tier-cta" id="checkout-btn-pro" onclick="track('pro_cta_clicked',{source:'pricing_card'});startCheckout('pro')">Start 14-day free trial &rarr;</button>
     </div>
 
     <!-- Company -->
@@ -1514,6 +1515,7 @@ function declineCookies() {
         <div class="tier-hero-label">
           <div class="tier-name">Company</div>
           <div class="tier-price">&pound;29.99<span class="tier-per"> /seat/month</span></div>
+          <div class="tier-desc" style="opacity:.85;">14 days free, then billed monthly. Cancel anytime.</div>
           <div class="tier-desc">For practices and studios. Scales with your team.</div>
         </div>
       </div>
@@ -1527,7 +1529,7 @@ function declineCookies() {
         <li class="feat-ok">Invoiced billing available</li>
         <li class="feat-add">Large site add-on available</li>
       </ul>
-      <button class="tier-cta" id="checkout-btn-company" onclick="if(!_currentUser){openAuth();return;}document.getElementById('seat-picker-overlay').classList.add('show');updateSeatTotal();">Get Company &rarr;</button>
+      <button class="tier-cta" id="checkout-btn-company" onclick="if(!_currentUser){openAuth();return;}document.getElementById('seat-picker-overlay').classList.add('show');updateSeatTotal();">Start free trial &rarr;</button>
     </div>
 
   </div>
@@ -1786,8 +1788,8 @@ function declineCookies() {
       <!-- Pro -->
       <div class="upgrade-plan">
         <div class="upgrade-plan-tier">Pro</div>
-        <div class="upgrade-plan-price">£39.99</div>
-        <div class="upgrade-plan-per">/month</div>
+        <div class="upgrade-plan-price">14 days free</div>
+        <div class="upgrade-plan-per">then £39.99/month · cancel anytime</div>
         <ul>
           <li>Unlimited generations</li>
           <li>Buildings IFC &amp; DXF export</li>
@@ -1796,15 +1798,15 @@ function declineCookies() {
         </ul>
         <button class="upgrade-plan-cta" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);"
           onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"
-          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings'}); closeUpgrade(); startCheckout('pro');">Get Pro &rarr;</button>
+          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings'}); closeUpgrade(); startCheckout('pro');">Start free trial &rarr;</button>
       </div>
 
       <!-- Company -->
       <div class="upgrade-plan featured">
         <div class="upgrade-plan-badge">Team</div>
         <div class="upgrade-plan-tier">Company</div>
-        <div class="upgrade-plan-price">£29.99</div>
-        <div class="upgrade-plan-per">/seat/month</div>
+        <div class="upgrade-plan-price">14 days free</div>
+        <div class="upgrade-plan-per">then £29.99/seat/month · cancel anytime</div>
         <ul>
           <li>Everything in Pro</li>
           <li>Shared team workspace</li>
@@ -1813,7 +1815,7 @@ function declineCookies() {
         </ul>
         <button class="upgrade-plan-cta" style="background:var(--accent);color:var(--bg-card);"
           onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"
-          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings', plan:'company'}); closeUpgrade(); if(!_currentUser){openAuth();} else {document.getElementById('seat-picker-overlay').classList.add('show');updateSeatTotal();}">Get Company &rarr;</button>
+          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings', plan:'company'}); closeUpgrade(); if(!_currentUser){openAuth();} else {document.getElementById('seat-picker-overlay').classList.add('show');updateSeatTotal();}">Start free trial &rarr;</button>
       </div>
 
     </div>
@@ -1923,8 +1925,8 @@ function declineCookies() {
           <div style="padding:16px;background:var(--bg-input);border-radius:6px;border:1px solid var(--border);">
             <div style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">Subscription</div>
             <div id="settings-free-cta" style="display:none;">
-              <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;line-height:1.65;">Upgrade to Pro for 3m precision, LiDAR accuracy, and sites up to 4 km².</p>
-              <button class="tier-cta" onclick="closeSettings();track('pro_cta_clicked',{source:'settings'});startCheckout('pro')">Upgrade to Pro →</button>
+              <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;line-height:1.65;">Start a 14-day free trial for 3m precision, LiDAR accuracy, and sites up to 4 km². Cancel anytime.</p>
+              <button class="tier-cta" onclick="closeSettings();track('pro_cta_clicked',{source:'settings'});startCheckout('pro')">Start 14-day free trial →</button>
             </div>
             <div id="settings-pro-info" style="display:none;">
               <p style="font-size:13px;color:var(--text-mid);line-height:1.65;">You have an active Pro subscription.<br>To manage billing contact <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
@@ -2391,7 +2393,7 @@ function declineCookies() {
   <div id="history-locked" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px;text-align:center;">
     <div style="font-size:36px;margin-bottom:20px;opacity:.4;">🔒</div>
     <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:500;color:var(--text);margin-bottom:10px;">Pro feature</div>
-    <div style="font-size:13px;color:var(--text-mid);line-height:1.75;max-width:300px;margin-bottom:24px;">Upgrade to Pro to save your generated sites and return to them at any time — re-view on the map, re-open 3D terrain, or re-download the CSV.</div>
+    <div style="font-size:13px;color:var(--text-mid);line-height:1.75;max-width:300px;margin-bottom:24px;">Start a 14-day free trial to save your generated sites and return to them any time — re-view on the map, re-open 3D terrain, or re-download the CSV.</div>
     <button id="history-locked-cta" onclick="_libraryGateCta()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:11px 24px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;transition:all .15s;" onmouseover="this.style.background='var(--green-lt)'" onmouseout="this.style.background='var(--green)'">Sign up to save projects →</button>
   </div>
 
@@ -2846,9 +2848,9 @@ function _showDataResFlag(poly) {
   if (info.quality === 'lo' && info.res === 90) {
     flag.innerHTML = icon + ' Limited data in this region \u2014 only 90m Open-Meteo available. Expect \u00b116m vertical accuracy.';
   } else if (info.quality === 'lo') {
-    flag.innerHTML = icon + ' ' + info.name + ' \u2014 ' + resLabel + ' Copernicus GLO-30 data. Upgrade to Pro for best resolution.';
+    flag.innerHTML = icon + ' ' + info.name + ' \u2014 ' + resLabel + ' Copernicus GLO-30 data. Start a free trial for best resolution.';
   } else {
-    flag.innerHTML = icon + ' ' + info.name + ' \u2014 best available: ' + resLabel + '. Upgrade to Pro for full resolution.';
+    flag.innerHTML = icon + ' ' + info.name + ' \u2014 best available: ' + resLabel + '. Start a free trial for full resolution.';
   }
 }
 
@@ -2876,7 +2878,7 @@ function updateHint() {
     var sW = (Math.max(...polygonLatLngs.map(p=>p.lng))-Math.min(...polygonLatLngs.map(p=>p.lng)))*mpd2.lon;
     var sH = (Math.max(...polygonLatLngs.map(p=>p.lat))-Math.min(...polygonLatLngs.map(p=>p.lat)))*mpd2.lat;
     if (sW > 250 || sH > 250) {
-      el.innerHTML = '\u26a0 Site is too large for the free tier (max 250 \xd7 250 m). Redraw a smaller area or <a href="#pricing" style="color:var(--accent)">upgrade to Pro</a>.';
+      el.innerHTML = '\u26a0 Site is too large for the free tier (max 250 \xd7 250 m). Redraw a smaller area or <a href="#pricing" style="color:var(--accent)">start a 14-day free trial</a>.';
       el.style.color = 'var(--danger)';
       _styleDrawnLayers(false); // polygon goes red
       return;
@@ -3870,11 +3872,11 @@ function openAuth(mode, context) {
 }
 // Hero copy per trigger context. [kicker, title, subline]
 const UPGRADE_COPY = {
-  buildings:   ['Pro Feature', 'Unlock Buildings Export',        'IFC · DXF · Full 3D terrain viewer'],
-  size_limit:  ['Pro',         'Go bigger than 250 m',           'Sites up to 2 × 2 km · all LiDAR sources'],
-  spacing:     ['Pro',         'Tighter than 12 m spacing',      '3 m and 6 m precision · all LiDAR sources'],
-  points:      ['Pro',         'More detail than the free cap',  'Up to 50,000 points per site'],
-  session:     ['Pro',         'You’re on the free tier',   'Bigger sites · all LiDAR · saved projects · every format']
+  buildings:   ['14-day free trial', 'Unlock Buildings Export',        'IFC · DXF · Full 3D terrain viewer'],
+  size_limit:  ['14-day free trial', 'Go bigger than 250 m',           'Sites up to 2 × 2 km · all LiDAR sources'],
+  spacing:     ['14-day free trial', 'Tighter than 12 m spacing',      '3 m and 6 m precision · all LiDAR sources'],
+  points:      ['14-day free trial', 'More detail than the free cap',  'Up to 50,000 points per site'],
+  session:     ['14-day free trial', 'Go beyond the free tier',        'Bigger sites · all LiDAR · saved projects · every format']
 };
 function openUpgrade(context) {
   const ctx = UPGRADE_COPY[context] ? context : 'buildings';
@@ -4360,7 +4362,7 @@ async function startCheckout(plan) {
     else throw new Error(data.error || 'Failed to create checkout');
   } catch (err) {
     track('checkout_failed', { plan, message: err.message });
-    if (btn) { btn.textContent = 'Get Pro →'; btn.disabled = false; }
+    if (btn) { btn.textContent = 'Start 14-day free trial →'; btn.disabled = false; }
     alert('Checkout error: ' + err.message);
   }
 }
@@ -4377,7 +4379,7 @@ async function confirmSeatCheckout() {
     else throw new Error(data.error || 'Failed to create checkout');
   } catch (err) {
     track('checkout_failed', { plan: 'company', seats, message: err.message });
-    if (btn) { btn.textContent = 'Get Company →'; btn.disabled = false; }
+    if (btn) { btn.textContent = 'Start free trial →'; btn.disabled = false; }
     alert('Checkout error: ' + err.message);
   }
 }
@@ -4626,10 +4628,10 @@ async function checkDailyLimit() {
   if (_currentUser) {
     const today = new Date().toISOString().slice(0, 10);
     const { count } = await _sb.from('generations').select('*', { count: 'exact', head: true }).eq('user_id', _currentUser.id).gte('created_at', today + 'T00:00:00Z');
-    if (count >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'server' }); const _e = new Error('Free tier limit reached — ' + FREE_DAILY_LIMIT + ' generations per day. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.'); _e._gateHit = true; throw _e; }
+    if (count >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'server' }); const _e = new Error('Free tier limit reached — ' + FREE_DAILY_LIMIT + ' generations per day. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for unlimited generations.'); _e._gateHit = true; throw _e; }
   } else {
     const used = getGenerationsToday();
-    if (used >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'local' }); const _e = new Error('Free tier limit reached. <a href="#" onclick="openAuth()" style="color:var(--accent)">Sign in</a> or <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for unlimited generations.'); _e._gateHit = true; throw _e; }
+    if (used >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'local' }); const _e = new Error('Free tier limit reached. <a href="#" onclick="openAuth()" style="color:var(--accent)">Sign in</a> or <a href="#pricing" style="color:var(--accent)">start a free trial</a> for unlimited generations.'); _e._gateHit = true; throw _e; }
   }
 }
 
@@ -5023,8 +5025,8 @@ async function convert() {
     const _isPro = isPro();
     const plan = _currentProfile?.plan || 'anon';
     if (!_isPro) {
-      if (siteW>FREE_MAX_M||siteH>FREE_MAX_M) { track('size_limit_hit', { area_m2: Math.round(siteW*siteH), site_w_m: Math.round(siteW), site_h_m: Math.round(siteH), plan }); const _e = new Error('Free tier is limited to 250 × 250m sites. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for sites up to 2 × 2km.'); _e._gateHit = true; _e._gateKind = 'size_limit'; throw _e; }
-      if (selectedSpacing<FREE_MAX_SPACING) { track('spacing_gate_hit', { spacing: selectedSpacing, min: FREE_MAX_SPACING, plan }); const _e = new Error('Free tier supports 12m spacing only. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for 3m and 6m precision.'); _e._gateHit = true; _e._gateKind = 'spacing'; throw _e; }
+      if (siteW>FREE_MAX_M||siteH>FREE_MAX_M) { track('size_limit_hit', { area_m2: Math.round(siteW*siteH), site_w_m: Math.round(siteW), site_h_m: Math.round(siteH), plan }); const _e = new Error('Free tier is limited to 250 × 250m sites. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for sites up to 2 × 2km.'); _e._gateHit = true; _e._gateKind = 'size_limit'; throw _e; }
+      if (selectedSpacing<FREE_MAX_SPACING) { track('spacing_gate_hit', { spacing: selectedSpacing, min: FREE_MAX_SPACING, plan }); const _e = new Error('Free tier supports 12m spacing only. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for 3m and 6m precision.'); _e._gateHit = true; _e._gateKind = 'spacing'; throw _e; }
     }
     window._effectiveSpacing = selectedSpacing;
     await checkDailyLimit();
@@ -5033,7 +5035,7 @@ async function convert() {
     const grid = generateGrid(polygonLatLngs, effSpacing, isNatural);
     if (grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
     const POINT_CAP = _isPro ? 50000 : 2000;
-    if (grid.length>POINT_CAP) { track('point_cap_hit', { point_count: grid.length, cap: POINT_CAP, plan }); const _e = new Error(grid.length.toLocaleString()+' points exceeds the '+(_isPro?'limit of '+POINT_CAP.toLocaleString():'free limit of 2,000. <a href="#pricing" style="color:var(--accent)">Upgrade to Pro</a> for larger areas.')); _e._gateHit = true; if (!_isPro) _e._gateKind = 'points'; throw _e; }
+    if (grid.length>POINT_CAP) { track('point_cap_hit', { point_count: grid.length, cap: POINT_CAP, plan }); const _e = new Error(grid.length.toLocaleString()+' points exceeds the '+(_isPro?'limit of '+POINT_CAP.toLocaleString():'free limit of 2,000. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for larger areas.')); _e._gateHit = true; if (!_isPro) _e._gateKind = 'points'; throw _e; }
     const estSecs = Math.ceil(grid.length/50*0.6);
     setProgress(0.1,'Extracting data…',grid.length.toLocaleString()+' points — est. '+estSecs+'s');
     _hideHighDemandBanner();
@@ -5455,19 +5457,19 @@ function _fpRender() {
   const locked = _fpLocked(_fpSel);
   const L = _FP_LABEL[_fpSel] || 'file';
   if (locked) {
-    btn.innerHTML = 'Unlock ' + L + ' with Pro &rarr;';
+    btn.innerHTML = 'Start free trial for ' + L + ' &rarr;';
   } else {
     btn.innerHTML = '&#x2193; Download ' + L;
   }
   if (note) {
     if (pro) note.textContent = '';
-    else if (locked) note.textContent = 'DXF and IFC are Pro now. Upgrade for every format, unlimited generations and all data sources.';
-    else if ((_fpSel === 'dxf' || _fpSel === 'ifc') && cd) note.textContent = L + ' is free right now — ' + cd + '. Upgrade to keep it after that.';
+    else if (locked) note.textContent = 'DXF and IFC are Pro. Start a 14-day free trial for every format, unlimited generations and all data sources.';
+    else if ((_fpSel === 'dxf' || _fpSel === 'ifc') && cd) note.textContent = L + ' is free right now — ' + cd + '. Start a free trial to keep it after that.';
     else if (cd) note.textContent = 'DXF and IFC are free for everyone — ' + cd + '.';
     else note.textContent = '';
   }
   if (seepro) {
-    seepro.innerHTML = (!pro && !locked) ? 'or <a id="fp-seepro-link">upgrade to Pro</a> for every format, always' : '';
+    seepro.innerHTML = (!pro && !locked) ? 'or <a id="fp-seepro-link">start a free trial</a> for every format, always' : '';
   }
 }
 function _fpSelect(fmt) {
@@ -6400,9 +6402,9 @@ function _showBuildingsUpgradePrompt() {
     if (wrap) wrap.appendChild(uPrompt);
   }
   const isLoggedIn = !!window._currentUser;
-  uPrompt.innerHTML = '🔒 <strong style="color:var(--text)">Buildings download</strong> is a Pro feature — view in the 3D viewer for free, or upgrade to export IFC / DXF.<br>'
+  uPrompt.innerHTML = '🔒 <strong style="color:var(--text)">Buildings download</strong> is a Pro feature — view in the 3D viewer for free, or start a 14-day free trial to export IFC / DXF.<br>'
     + '<button onclick="_buildingsUpgradeCta()" style="margin-top:8px;background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:7px 0;border-radius:5px;font-family:\'DM Mono\',monospace;font-size:11px;cursor:pointer;letter-spacing:.06em;width:100%;text-align:center;">'
-    + (isLoggedIn ? 'Upgrade to Pro →' : 'Sign in / Upgrade →')
+    + (isLoggedIn ? 'Start 14-day free trial →' : 'Sign in to start free trial →')
     + '</button>';
   uPrompt.style.display = 'block';
 }
@@ -6500,7 +6502,7 @@ function updateElevationSourceBanner(source, _pro) {
   title.style.color=colours.text;
   title.textContent=tier==='lidar'?'High-resolution LiDAR data':tier==='high'?'High-res satellite data (10m)':tier==='mid'?'Medium-resolution satellite data (30m)':'Low-resolution satellite data (90m)';
   detail.textContent=resText+' · source: '+source;
-  if(upgrade){upgrade.style.display=upgradeMsg?'block':'none';if(upgradeMsg)upgrade.innerHTML='⚠ '+upgradeMsg+' <a href="#pricing" style="color:var(--accent)">Upgrade to Pro →</a>';}
+  if(upgrade){upgrade.style.display=upgradeMsg?'block':'none';if(upgradeMsg)upgrade.innerHTML='⚠ '+upgradeMsg+' <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial →</a>';}
 }
 
 // ── Part 6: Pro 3D Terrain Viewer ─────────────────────────────────────────
@@ -7942,7 +7944,7 @@ async function openHistory() {
 
   if (locked)    locked.style.display   = isPro() ? 'none' : '';
   var cta = document.getElementById('history-locked-cta');
-  if (cta) cta.textContent = _currentUser ? 'Upgrade to Pro →' : 'Sign up to save projects →';
+  if (cta) cta.textContent = _currentUser ? 'Start 14-day free trial →' : 'Sign up to save projects →';
   if (legend)    legend.style.display   = isPro() ? ''     : 'none';
   // Show scope toggle only for company plan
   if (scopeBar)  scopeBar.style.display = isCompany ? '' : 'none';
