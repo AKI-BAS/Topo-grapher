@@ -245,6 +245,11 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .bar-fill-red{background:linear-gradient(90deg,#3a1010,var(--red));}
 .bar-fill-purple{background:linear-gradient(90deg,#2a1a3a,var(--purple));}
 .bar-value{width:40px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);flex-shrink:0;}
+/* Stacked variant: full-width wrapping label above the bar (used for long labels like email subjects) */
+.bar-chart-h.stacked{gap:9px;}
+.bar-chart-h.stacked .bar-srow{display:flex;flex-direction:column;gap:3px;}
+.bar-chart-h.stacked .bar-slabel{font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mid);line-height:1.35;white-space:normal;word-break:break-word;}
+.bar-chart-h.stacked .bar-sbar{display:flex;align-items:center;gap:8px;}
 
 /* ── SVG charts ────────────────────────────────────────────── */
 .chart-area{height:160px;position:relative;overflow:hidden;}
@@ -2273,7 +2278,7 @@ async function loadPaywallFunnel(){
         const ctx=grp('upsell_popup_shown','context');
         const src=grp('pro_cta_clicked','source');
         const K="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;";
-        const list=(rows,cls)=>{const mx=Math.max(1,...rows.map(r=>r[1]));return`<div class="bar-chart-h">${rows.map(r=>barRow(esc(r[0]),r[1],mx,cls)).join('')}</div>`;};
+        const list=(rows,cls)=>{const mx=Math.max(1,...rows.map(r=>r[1]));return`<div class="bar-chart-h stacked">${rows.map(r=>{const p=Math.max(2,r[1]/mx*100);return`<div class="bar-srow"><div class="bar-slabel">${esc(r[0])}</div><div class="bar-sbar"><div class="bar-track"><div class="bar-fill ${cls}" style="width:${p}%"></div></div><div class="bar-value">${r[1]}</div></div></div>`;}).join('')}</div>`;};
         let h=`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">`;
         h+=`<div style="${K}margin-bottom:6px;">Popup shown, by trigger</div>`;
         h+= ctx.length?list(ctx,'bar-fill-amber'):`<div class="mono" style="color:var(--muted);font-size:11px;">none yet</div>`;
