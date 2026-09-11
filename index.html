@@ -8411,6 +8411,7 @@ document.addEventListener('DOMContentLoaded', function() {
   initPresence();
   if (window.location.search.includes('upgraded=true')) {
     track('subscription_created', { source: 'checkout_success_redirect' });
+    history.replaceState(null, '', window.location.pathname); // strip ?upgraded=true so a reload/revisit can't re-fire this
   }
   setTimeout(function() { initAuth(); }, 0);
 // Demo terrain starts as soon as Three.js is ready — retry until it loads
