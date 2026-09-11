@@ -978,6 +978,7 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
   border-radius:4px; cursor:pointer; transition:all .15s; min-width:0;
 }
 .acc-chip:hover { border-color:var(--accent-md); }
+.acc-chip.disabled { opacity:.35; cursor:not-allowed; pointer-events:none; }
 .acc-chip.selected { background:var(--accent-dk); border-color:var(--accent-md); }
 .acc-chip-val { font-size:14px; font-weight:500; color:var(--text); line-height:1; }
 .acc-chip.selected .acc-chip-val { color:var(--accent); }
@@ -1543,7 +1544,7 @@ function declineCookies() {
 
   <!-- Add-ons -->
   <div class="addon-section-label">// Large Site Add-on &mdash; Pro &amp; Company</div>
-  <div style="font-size:13px;color:var(--text-mid);line-height:1.6;margin:-4px 0 14px;max-width:560px;">For masterplans, landscape architecture, and infrastructure projects beyond 2&times;2km. Charged per generation &mdash; not per user.</div>
+  <div style="font-size:13px;color:var(--text-mid);line-height:1.6;margin:-4px 0 14px;max-width:560px;">For masterplans, landscape architecture, and infrastructure projects beyond 10km&sup2;. Charged per generation &mdash; not per user.</div>
   <div class="addon-grid" style="grid-template-columns:repeat(2,1fr);">
 
     <!-- Large site: up to 5 km² -->
@@ -1557,11 +1558,11 @@ function declineCookies() {
         <div class="tier-hero-fade"></div>
         <div class="tier-hero-label">
           <div class="tier-name">Large Site</div>
-          <div class="tier-price">&pound;5<span class="tier-per"> / generation</span></div>
+          <div class="tier-price">&pound;15<span class="tier-per"> / generation</span></div>
         </div>
       </div>
       <ul class="tier-features">
-        <li class="feat-ok">Up to 5 km²</li>
+        <li class="feat-ok">10 – 20 km²</li>
         <li class="feat-ok">Pro &amp; Company only</li>
         <li class="feat-ok">Charged at generation — not monthly</li>
       </ul>
@@ -1579,13 +1580,13 @@ function declineCookies() {
         <div class="tier-hero-fade"></div>
         <div class="tier-hero-label">
           <div class="tier-name">Extra Large Site</div>
-          <div class="tier-price">&pound;15<span class="tier-per"> / generation</span></div>
+          <div class="tier-price">&pound;15+<span class="tier-per"> / generation</span></div>
         </div>
       </div>
       <ul class="tier-features">
-        <li class="feat-ok">Up to 20 km²</li>
+        <li class="feat-ok">Above 20 km²</li>
         <li class="feat-ok">Pro &amp; Company only</li>
-        <li class="feat-ok">Above 20 km² — <a href="mailto:hello@topo-grapher.com" style="color:var(--accent);">contact us</a></li>
+        <li class="feat-ok">Above 100 km² — <a href="mailto:hello@topo-grapher.com" style="color:var(--accent);">contact us</a></li>
       </ul>
       <button class="tier-cta" onclick="track('addon_info_clicked',{addon:'large-site-l'});document.getElementById('map').scrollIntoView({behavior:'smooth'});">Start generating &rarr;</button>
     </div>
@@ -3006,9 +3007,18 @@ function updateConvertBtn() {
   btn.disabled = !(hasName && hasPoly && areaOk);
 }
 
+// Large Site Add-on price — the ONE place this formula lives, shared by the
+// warning banner, the modal, and the actual charge in convert() so the price
+// shown can never drift from the price charged.
+function _addonCostGBP(km) {
+  if (km > 20) return parseFloat((15 + (km - 20) * 0.90).toFixed(2));
+  if (km > 5) return 15;
+  return 5;
+}
 function checkDrawnAreaWarning() {
-  if (!polygonLatLngs) return;
+  if (!polygonLatLngs) { updateSpacingAvailability(0); return; }
   var areaKm2 = getBboxAreaKm2(polygonLatLngs);
+  updateSpacingAvailability(areaKm2);
   // Data-res flag updates whenever the polygon changes
   _showDataResFlag(polygonLatLngs);
   // Polygon goes red if over the limit
@@ -3018,8 +3028,8 @@ function checkDrawnAreaWarning() {
   if (areaKm2 > 100) {
     el.innerHTML = '\u26a0 Site is ' + areaKm2.toFixed(1) + ' km\u00b2 \u2014 exceeds the 100 km\u00b2 maximum. Redraw a smaller area.';
     el.style.color = 'var(--danger)';
-  } else if (areaKm2 > 4) {
-    var genCost = areaKm2 > 20 ? '\u00a3' + (15 + (areaKm2 - 20) * 0.90).toFixed(2) : areaKm2 > 5 ? '\u00a315' : '\u00a35';
+  } else if (areaKm2 > 10) {
+    var genCost = '\u00a3' + _addonCostGBP(areaKm2).toFixed(2);
     el.textContent = '\u26a0 ' + areaKm2.toFixed(1) + ' km\u00b2 \u2014 large site add-on applies (' + genCost + ' / generation).';
     el.style.color = 'var(--warning,#e2a255)';
     // Show addon prompt once per drawing session for Pro users
@@ -3042,22 +3052,14 @@ function openLargeSiteAddon(areaKm2) {
   var areaEl = document.getElementById('large-site-area-text');
   if (areaEl) areaEl.textContent = km.toFixed(1) + ' km\u00b2';
 
-  // Compute the cost using the same formula as user-index.html
-  var cost;
-  if (km > 20) {
-    cost = parseFloat((15 + (km - 20) * 0.90).toFixed(2));
-  } else if (km > 5) {
-    cost = 15;
-  } else {
-    cost = 5;
-  }
+  // Compute the cost — shared with checkDrawnAreaWarning() and the actual charge in convert()
+  var cost = _addonCostGBP(km);
 
-  // Highlight the applicable tier row
-  var sm = document.getElementById('lsa-tier-sm');
+  // Highlight the applicable tier row — nothing under 10 km² ever reaches this modal,
+  // so there are only two real brackets: 10–20 km² flat, and above 20 km² scaling.
   var lg = document.getElementById('lsa-tier-lg');
   var xl = document.getElementById('lsa-tier-xl');
-  if (sm) sm.classList.toggle('active', km <= 5);
-  if (lg) lg.classList.toggle('active', km > 5 && km <= 20);
+  if (lg) lg.classList.toggle('active', km <= 20);
   if (xl) {
     xl.style.display = km > 20 ? '' : 'none';
     xl.classList.toggle('active', km > 20);
@@ -3138,6 +3140,33 @@ function updateDensityPreview() {
   var labelEl = document.getElementById('density-label');
   labelEl.textContent = cfg.label;
   labelEl.style.color = cfg.hi ? 'var(--accent)' : 'var(--text-soft)';
+}
+// Grey out spacing chips that would exceed the applicable point cap for the drawn area —
+// stops the user from picking a combination that's guaranteed to be rejected (or, for
+// large sites, charged) at generate time. Mirrors the caps enforced in convert():
+// 50,000 points for a normal Pro site, 500,000 for the large-site add-on (>4 km²).
+function _maxAreaKm2ForSpacing(spacingM, capPoints) {
+  return (capPoints * spacingM * spacingM) / 1e6;
+}
+function updateSpacingAvailability(areaKm2) {
+  var isP = isPro();
+  var cap = isP ? (areaKm2 > 10 ? 500000 : 75000) : 2000;
+  [3, 6, 12, 20].forEach(function(s) {
+    var chip = document.getElementById('acc-' + s);
+    if (!chip) return;
+    if (!chip.dataset.titleDefault) chip.dataset.titleDefault = chip.title;
+    var maxArea = _maxAreaKm2ForSpacing(s, cap);
+    var blocked = isP && areaKm2 > 0 && areaKm2 > maxArea;
+    chip.classList.toggle('disabled', blocked);
+    // applyProUI() sets inline opacity/pointer-events to unlock acc-3/acc-6 for Pro users,
+    // and inline styles beat the .disabled class above regardless of call order — so set
+    // the same properties inline here too, whichever ran last wins correctly.
+    if (blocked) { chip.style.opacity = '.35'; chip.style.pointerEvents = 'none'; }
+    else if (isP) { chip.style.opacity = '1'; chip.style.pointerEvents = 'auto'; }
+    chip.title = blocked
+      ? s + 'm — only available up to ' + maxArea.toFixed(1) + ' km² at this site size. Pick a larger spacing.'
+      : chip.dataset.titleDefault;
+  });
 }
 function setAccuracy(n) {
   _currentAccuracy = n;
@@ -3773,6 +3802,9 @@ async function handleSession(session) {
     applyProUI();
     setTimeout(restoreProMemory, 500);
   }
+  // Pro status just resolved — if a site was already drawn before auth finished loading,
+  // the spacing chips would have been evaluated with isPro() still false. Re-check now.
+  if (polygonLatLngs) checkDrawnAreaWarning();
   updatePresence();
   let resumeFmt = window._pendingDownloadFmt;
   let restoredFromStorage = false;
@@ -3875,7 +3907,7 @@ const UPGRADE_COPY = {
   buildings:   ['14-day free trial', 'Unlock Buildings Export',        'IFC · DXF · Full 3D terrain viewer'],
   size_limit:  ['14-day free trial', 'Go bigger than 250 m',           'Sites up to 2 × 2 km · all LiDAR sources'],
   spacing:     ['14-day free trial', 'Tighter than 12 m spacing',      '3 m and 6 m precision · all LiDAR sources'],
-  points:      ['14-day free trial', 'More detail than the free cap',  'Up to 50,000 points per site'],
+  points:      ['14-day free trial', 'More detail than the free cap',  'Up to 75,000 points per site'],
   session:     ['14-day free trial', 'Go beyond the free tier',        'Bigger sites · all LiDAR · saved projects · every format']
 };
 function openUpgrade(context) {
@@ -5024,6 +5056,8 @@ async function convert() {
     const siteH = (Math.max(...lats)-Math.min(...lats))*mpd.lat;
     const _isPro = isPro();
     const plan = _currentProfile?.plan || 'anon';
+    const areaKm2 = (siteW * siteH) / 1e6;
+    const isLargeSite = _isPro && areaKm2 > 10; // matches the Large Site Add-on threshold shown in the modal
     if (!_isPro) {
       if (siteW>FREE_MAX_M||siteH>FREE_MAX_M) { track('size_limit_hit', { area_m2: Math.round(siteW*siteH), site_w_m: Math.round(siteW), site_h_m: Math.round(siteH), plan }); const _e = new Error('Free tier is limited to 250 × 250m sites. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for sites up to 2 × 2km.'); _e._gateHit = true; _e._gateKind = 'size_limit'; throw _e; }
       if (selectedSpacing<FREE_MAX_SPACING) { track('spacing_gate_hit', { spacing: selectedSpacing, min: FREE_MAX_SPACING, plan }); const _e = new Error('Free tier supports 12m spacing only. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for 3m and 6m precision.'); _e._gateHit = true; _e._gateKind = 'spacing'; throw _e; }
@@ -5034,8 +5068,32 @@ async function convert() {
     const effSpacing = window._effectiveSpacing || selectedSpacing;
     const grid = generateGrid(polygonLatLngs, effSpacing, isNatural);
     if (grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
-    const POINT_CAP = _isPro ? 50000 : 2000;
-    if (grid.length>POINT_CAP) { track('point_cap_hit', { point_count: grid.length, cap: POINT_CAP, plan }); const _e = new Error(grid.length.toLocaleString()+' points exceeds the '+(_isPro?'limit of '+POINT_CAP.toLocaleString():'free limit of 2,000. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for larger areas.')); _e._gateHit = true; if (!_isPro) _e._gateKind = 'points'; throw _e; }
+    // Large-site add-on generations get a much higher point cap since they're paying per
+    // generation — but still a hard ceiling, not unlimited, to protect the browser (client-side
+    // mesh/IFC build) and the worker even when someone is willing to pay for more.
+    const ADDON_POINT_CAP = 500000;
+    const POINT_CAP = _isPro ? (isLargeSite ? ADDON_POINT_CAP : 75000) : 2000;
+    if (grid.length>POINT_CAP) { track('point_cap_hit', { point_count: grid.length, cap: POINT_CAP, plan, large_site: isLargeSite }); const _e = new Error(grid.length.toLocaleString()+' points exceeds the '+(_isPro?'limit of '+POINT_CAP.toLocaleString()+(isLargeSite?' for this generation. Try a larger spacing.':''):'free limit of 2,000. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for larger areas.')); _e._gateHit = true; if (!_isPro) _e._gateKind = 'points'; throw _e; }
+    // Charge the large-site add-on now — grid size is already confirmed within the cap above,
+    // so this is the last checkpoint before the real (costly) work starts.
+    if (isLargeSite) {
+      const addonCost = _addonCostGBP(areaKm2);
+      const addonPence = Math.round(addonCost * 100);
+      setProgress(0.05, 'Charging add-on…', '£' + addonCost.toFixed(2) + ' for this ' + areaKm2.toFixed(1) + ' km² generation');
+      try {
+        const chargeRes = await fetch(WEBHOOK_WORKER + '/charge-addon', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: _currentUser.email, amountPence: addonPence, description: 'Large site add-on — ' + areaKm2.toFixed(1) + ' km²' })
+        });
+        const chargeData = await chargeRes.json().catch(function(){ return {}; });
+        if (!chargeRes.ok || chargeData.error) throw new Error(chargeData.error || ('HTTP ' + chargeRes.status));
+      } catch (chargeErr) {
+        track('addon_charge_failed', { areaKm2: parseFloat(areaKm2.toFixed(2)), amountPence: addonPence, reason: chargeErr.message, plan });
+        const _e = new Error('Could not charge the large-site add-on (' + chargeErr.message + '). Check your payment method in Settings and try again.'); _e._gateHit = true; throw _e;
+      }
+      window._lastAddonChargePence = addonPence;
+      track('addon_charged', { areaKm2: parseFloat(areaKm2.toFixed(2)), amountPence: addonPence, plan });
+    }
     const estSecs = Math.ceil(grid.length/50*0.6);
     setProgress(0.1,'Extracting data…',grid.length.toLocaleString()+' points — est. '+estSecs+'s');
     _hideHighDemandBanner();
@@ -9069,14 +9127,10 @@ closeCoordDrawer();
     <button class="upgrade-hero-close" onclick="closeLargeSiteAddon(); track('upsell_popup_dismissed', {context:'large_site'});" style="position:absolute;top:14px;right:14px;">&#x2715;</button>
     <div class="large-site-badge">Large Site Add-on</div>
     <h3 id="large-site-area-text">— km²</h3>
-    <p>This site exceeds 2&times;2km — a per-generation charge applies. Charged at generation time, not monthly.</p>
+    <p>This site exceeds 10km&sup2; — a per-generation charge applies. Charged at generation time, not monthly.</p>
     <div class="large-site-tiers">
-      <div class="large-site-tier" id="lsa-tier-sm">
-        <span>Up to 5 km²</span>
-        <span class="tier-price-tag">&pound;5 / generation</span>
-      </div>
       <div class="large-site-tier" id="lsa-tier-lg">
-        <span>5 – 20 km²</span>
+        <span>10 – 20 km²</span>
         <span class="tier-price-tag">&pound;15 / generation</span>
       </div>
       <div class="large-site-tier" id="lsa-tier-xl" style="display:none;">
