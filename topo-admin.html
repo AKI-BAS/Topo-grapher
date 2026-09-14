@@ -925,7 +925,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
         </div>
         <!-- Body -->
         <div>
-          <div class="blast-label">Email body — plain text. Aki's voice. Paragraphs separated by blank lines. Use **text** for bold, and paste bare URLs (https://…) to make them clickable links.</div>
+          <div class="blast-label">Email body — plain text. Aki's voice. Paragraphs separated by blank lines. Use **text** for bold, paste a bare URL (https://…) for a plain link, or [Button text](https://…) for a styled button.</div>
           <textarea class="blast-textarea" id="blast-body" placeholder="Hey —&#10;&#10;Write your message here…"></textarea>
         </div>
         <!-- Dry-run recipient preview -->
@@ -4070,15 +4070,29 @@ function _syncAudienceLock() {
 }
 
 // Escape a paragraph for safe HTML, then apply the tiny bit of formatting the
-// blast textarea supports: **bold** and bare http(s) URLs become real links —
-// the textarea itself is plain text, so this is the only way either shows up
-// in the sent email.
+// blast textarea supports: [Button text](https://...) becomes a real styled
+// button, **bold** becomes bold, and bare http(s) URLs become plain links —
+// the textarea itself is plain text, so this is the only way any of it shows
+// up in the sent email.
 function blastEscapeAndLinkify(p) {
-  const esc = p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Buttons first, on the raw text, so the label and URL can each be escaped
+  // correctly on their own — swapped for placeholders so the button HTML
+  // survives the whole-paragraph escaping pass below untouched.
+  const buttons = [];
+  const withPlaceholders = p.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, href) => {
+    const safeLabel = label.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safeHref = href.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    buttons.push(`<a href="${safeHref}" style="display:inline-block;background:#5a8e3a;color:#ffffff;padding:13px 28px;text-decoration:none;border-radius:4px;font-family:'Courier New',monospace;font-size:13px;font-weight:700;letter-spacing:0.05em;">${safeLabel}</a>`);
+    return ` BTN${buttons.length - 1} `;
+  });
+
+  const esc = withPlaceholders.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const bold = esc.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   const linked = bold.replace(/(https?:\/\/[^\s]+?)([.,;:!?)\]]*)(?=\s|$)/g,
     (_, url, trail) => `<a href="${url}" style="color:#4a7a2a;text-decoration:underline;">${url}</a>${trail}`);
-  return linked.replace(/\n/g,'<br>');
+  const withBreaks = linked.replace(/\n/g,'<br>');
+
+  return withBreaks.replace(/ BTN(\d+) /g, (_, i) => buttons[Number(i)]);
 }
 
 // Build the full email HTML exactly as the worker does
