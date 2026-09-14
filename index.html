@@ -3908,7 +3908,8 @@ const UPGRADE_COPY = {
   size_limit:  ['14-day free trial', 'Go bigger than 250 m',           'Sites up to 2 × 2 km · all LiDAR sources'],
   spacing:     ['14-day free trial', 'Tighter than 12 m spacing',      '3 m and 6 m precision · all LiDAR sources'],
   points:      ['14-day free trial', 'More detail than the free cap',  'Up to 75,000 points per site'],
-  session:     ['14-day free trial', 'Go beyond the free tier',        'Bigger sites · all LiDAR · saved projects · every format']
+  session:     ['14-day free trial', 'Go beyond the free tier',        'Bigger sites · all LiDAR · saved projects · every format'],
+  email:       ['14-day free trial', 'Go beyond the free tier',        'Bigger sites · all LiDAR · saved projects · every format']
 };
 function openUpgrade(context) {
   const ctx = UPGRADE_COPY[context] ? context : 'buildings';
@@ -8470,6 +8471,14 @@ document.addEventListener('DOMContentLoaded', function() {
   if (window.location.search.includes('upgraded=true')) {
     track('subscription_created', { source: 'checkout_success_redirect' });
     history.replaceState(null, '', window.location.pathname); // strip ?upgraded=true so a reload/revisit can't re-fire this
+  }
+  // Direct link into the upgrade modal (e.g. an email CTA) — ?openupgrade=<context>.
+  // Attribution (utm_* etc.) is already captured above via captureFirstTouch()
+  // before this strips the query string, so nothing is lost by dropping it here.
+  var _openUpgradeCtx = new URLSearchParams(window.location.search).get('openupgrade');
+  if (_openUpgradeCtx) {
+    history.replaceState(null, '', window.location.pathname + window.location.hash);
+    setTimeout(function() { openUpgrade(_openUpgradeCtx); }, 300);
   }
   setTimeout(function() { initAuth(); }, 0);
 // Demo terrain starts as soon as Three.js is ready — retry until it loads
