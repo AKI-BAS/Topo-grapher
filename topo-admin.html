@@ -3230,7 +3230,7 @@ async function loadFeed(){
     const badgeCls=who==='anon'?'badge-low':who==='free'?'badge-mid':who==='pro'?'badge-lidar':'badge-good';
     const badgeLabel=who==='anon'?'Guest':'User — '+who;
     const whoBadge=`<span class="badge badge-sm ${badgeCls}" title="${who==='anon'?'No user_id — anonymous/guest generation':'Signed-in user, plan: '+who}">${badgeLabel}</span>`;
-    const meta=`${r.point_count?r.point_count.toLocaleString()+'pts':'—'} · ${r.resolution_m!=null?r.resolution_m+'m':'??'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}${cName?' · '+esc(cName):''}`;
+    const meta=`${r.point_count?r.point_count.toLocaleString()+'pts':'—'} · ${r.resolution_m!=null?r.resolution_m+'m':'-'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}${cName?' · '+esc(cName):''}`;
     const loc=(r.centroid_lat!=null&&r.centroid_lon!=null)?{lat:+r.centroid_lat,lon:+r.centroid_lon,name:r.project_name||''}:null;
     // Retry group key: same identity (user_id, else anon_id) + same draw spot
     // (centroid rounded to ~4dp, ~11m tolerance), so repeated attempts at the
