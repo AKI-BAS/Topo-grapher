@@ -94,12 +94,12 @@
     {
       "@type": "Question",
       "name": "Where does the elevation data come from?",
-      "acceptedAnswer": { "@type": "Answer", "text": "From national open elevation programmes such as USGS 3DEP (US), IGN RGE ALTI (France), Kartverket (Norway), DHM/Terraen via Datafordeler (Denmark), EA LiDAR Composite (England), swissALTI3D (Switzerland), AHN via PDOK (Netherlands), ACT LiDAR (Luxembourg), Geoscience Australia DEM_LiDAR, DHMV II (Geo Vlaanderen, Flanders) and others, plus Copernicus, EU-DTM, ArcticDEM and SRTM for continental and global coverage." }
+      "acceptedAnswer": { "@type": "Answer", "text": "From national open elevation programmes such as USGS 3DEP (US), IGN RGE ALTI (France), Kartverket (Norway), DHM/Terraen via Datafordeler (Denmark), EA LiDAR Composite (England), swissALTI3D (Switzerland), AHN via PDOK (Netherlands), ACT LiDAR (Luxembourg), Geoscience Australia DEM_LiDAR, DHMV II (Geo Vlaanderen, Flanders) and others, plus GEDTM30 (OpenGeoHub), EU-DTM, ArcticDEM and SRTM for continental and global coverage." }
     },
     {
       "@type": "Question",
       "name": "What if my country is not listed?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Global fallbacks (Copernicus GLO-30 at 30m and SRTM at 90m) cover anywhere on land, so you can always generate terrain even where high-resolution national data is not published." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Global fallbacks (GEDTM30 at 30m and Open-Meteo/SRTM at 90m) cover anywhere on land, so you can always generate terrain even where high-resolution national data is not published." }
     }
   ]
 }
@@ -208,26 +208,27 @@
       <tr><td>Italy</td><td>TINITALY</td><td>10m</td><td>&plusmn;3m</td></tr>
       <tr><td colspan="4"><b>Continental &amp; global fallbacks</b></td></tr>
       <tr><td>Iceland</td><td>ArcticDEM</td><td>10m</td><td>&plusmn;1&ndash;4m</td></tr>
-      <tr><td>Europe (other)</td><td>EU-DTM / Copernicus GLO-30</td><td>30m</td><td>&plusmn;1&ndash;3m</td></tr>
-      <tr><td>Global (fallback)</td><td>Open-Meteo / SRTM</td><td>90m</td><td>&plusmn;16m (90%)</td></tr>
+      <tr><td>Europe (other)</td><td>EU-DTM / GEDTM30</td><td>30m</td><td>&plusmn;1&ndash;3m</td></tr>
+      <tr><td>Global (fallback)</td><td>GEDTM30 (OpenGeoHub) / Open-Meteo</td><td>30m</td><td>bare-earth primary, &plusmn;16m backup</td></tr>
       <tr><td colspan="4"><b>Coming soon</b></td></tr>
       <tr><td>Japan</td><td>GSI DEM</td><td>5&ndash;10m</td><td>&plusmn;1m</td></tr>
     </tbody>
   </table>
   <p class="note">Resolution shown is the best available source for that region. US resolution varies by 3DEP coverage tier; Australia's 5m is limited to populated areas covered by Geoscience Australia's DEM_LiDAR programme; Belgium's 1m is Flanders-only via Geo Vlaanderen DHMV II &mdash; outside those areas the global fallback applies.</p>
+  <p class="note">Global fallback terrain: GEDTM30 by Ho, Y., Grohmann, C.H., Lindsay, J., Reuter, H.I., Parente, L., Witjes, M., Hengl, T. (OpenGeoHub, 2025), licensed <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY 4.0</a>. <a href="https://doi.org/10.7717/peerj.19673" target="_blank" rel="noopener">doi.org/10.7717/peerj.19673</a></p>
 
   <a class="cta" href="https://topo-grapher.com/">Check coverage for your site -></a>
 
   <h2>Frequently asked questions</h2>
   <div class="faq">
     <h3>What resolution elevation data can I get for my country?</h3>
-    <p>It depends on the open data each country publishes. Denmark offers 0.4m; Scotland, the Netherlands, Luxembourg and Switzerland 0.5m; England, Norway, Estonia, France, Germany, Belgium (Flanders) and Canada 1m; the US 1&ndash;10m depending on 3DEP tier; Finland 2m; Czech Republic, Spain and Australia (populated areas) 5m; Italy and Iceland 10m; the rest of Europe 30m; and everywhere else falls back to 90m global coverage.</p>
+    <p>It depends on the open data each country publishes. Denmark offers 0.4m; Scotland, the Netherlands, Luxembourg and Switzerland 0.5m; England, Norway, Estonia, France, Germany, Belgium (Flanders) and Canada 1m; the US 1&ndash;10m depending on 3DEP tier; Finland 2m; Czech Republic, Spain and Australia (populated areas) 5m; Italy and Iceland 10m; the rest of Europe 30m; and everywhere else gets GEDTM30's 30m global bare-earth coverage (falling back to 90m only if that's unavailable).</p>
 
     <h3>Where does the elevation data come from?</h3>
-    <p>From national open elevation programmes &mdash; USGS 3DEP (US), IGN RGE ALTI (France), Kartverket (Norway), DHM/Terr&aelig;n via Datafordeler (Denmark), EA LiDAR Composite (England), swissALTI3D (Switzerland), AHN via PDOK (Netherlands), ACT LiDAR (Luxembourg), Geoscience Australia DEM_LiDAR, DHMV II (Geo Vlaanderen, Flanders), and others &mdash; plus Copernicus, EU-DTM, ArcticDEM and SRTM for continental and global coverage.</p>
+    <p>From national open elevation programmes &mdash; USGS 3DEP (US), IGN RGE ALTI (France), Kartverket (Norway), DHM/Terr&aelig;n via Datafordeler (Denmark), EA LiDAR Composite (England), swissALTI3D (Switzerland), AHN via PDOK (Netherlands), ACT LiDAR (Luxembourg), Geoscience Australia DEM_LiDAR, DHMV II (Geo Vlaanderen, Flanders), and others &mdash; plus GEDTM30 (OpenGeoHub), EU-DTM, ArcticDEM and SRTM for continental and global coverage.</p>
 
     <h3>What if my country isn't listed?</h3>
-    <p>Global fallbacks (Copernicus GLO-30 at 30m and SRTM at 90m) cover anywhere on land, so you can always generate terrain even where high-resolution national data isn't published.</p>
+    <p>Global fallbacks (GEDTM30 at 30m and Open-Meteo/SRTM at 90m) cover anywhere on land, so you can always generate terrain even where high-resolution national data isn't published.</p>
   </div>
 </main>
 

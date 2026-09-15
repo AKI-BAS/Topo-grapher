@@ -2265,15 +2265,15 @@ function declineCookies() {
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇪🇺 Europe (other)</td>
-            <td style="padding:9px 14px;color:var(--text-mid);">EU_DTM / GLO-30</td>
+            <td style="padding:9px 14px;color:var(--text-mid);">EU_DTM / GEDTM30</td>
             <td style="padding:9px 14px;"><span style="color:var(--text-mid);background:var(--bg-input);border:1px solid var(--border-md);padding:2px 7px;border-radius:2px;font-size:10px;">30m</span></td>
             <td style="padding:9px 14px;color:var(--text-soft);">±1–3m</td>
           </tr>
           <tr>
             <td style="padding:9px 14px;color:var(--text);font-weight:500;">🌍 Global (fallback)</td>
-            <td style="padding:9px 14px;color:var(--text-mid);">Copernicus GLO-30 → Open-Meteo</td>
+            <td style="padding:9px 14px;color:var(--text-mid);">GEDTM30 (OpenGeoHub) → Open-Meteo</td>
             <td style="padding:9px 14px;"><span style="color:var(--text-mid);background:var(--bg-input);border:1px solid var(--border-md);padding:2px 7px;border-radius:2px;font-size:10px;">30m</span></td>
-            <td style="padding:9px 14px;color:var(--text-soft);">±4m primary, ±16m backup</td>
+            <td style="padding:9px 14px;color:var(--text-soft);">bare-earth primary, ±16m backup</td>
           </tr>
           <!-- Coming soon -->
           <tr style="background:var(--bg-input);border-bottom:1px solid var(--border);border-top:1px solid var(--border);">
@@ -2289,6 +2289,7 @@ function declineCookies() {
       </table>
     </div>
     <p style="font-size:11px;color:var(--text-soft);line-height:1.6;">Elevation data is sourced from open public datasets under their respective licences; the best available source is selected automatically based on your drawn boundary. Building footprints are &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color:var(--text-mid);">OpenStreetMap</a> contributors, available under the Open Database Licence (ODbL).</p>
+    <p style="font-size:10px;color:var(--text-soft);line-height:1.6;">Global fallback terrain: GEDTM30 by Ho, Y., Grohmann, C.H., Lindsay, J., Reuter, H.I., Parente, L., Witjes, M., Hengl, T. (OpenGeoHub, 2025), licensed <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" style="color:var(--text-soft);text-decoration:underline;">CC-BY 4.0</a>. <a href="https://doi.org/10.7717/peerj.19673" target="_blank" rel="noopener" style="color:var(--text-soft);text-decoration:underline;">doi.org/10.7717/peerj.19673</a></p>
     <a class="guide-cta" href="elevation-data-coverage.html">Full coverage &amp; resolution by country</a>
   </div>
   <div style="padding:14px 30px;border-top:1px solid var(--border);flex-shrink:0;display:flex;justify-content:flex-end;">
@@ -2329,7 +2330,7 @@ function declineCookies() {
 
       <div style="border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:20px;">
         <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;">My country isn't listed — will it still work?</div>
-        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Yes. Anywhere not covered by a national dataset falls back to Copernicus GLO-30 (30m global) and then Open-Meteo/SRTM (90m). The tool works globally — just expect lower resolution outside our high-accuracy regions.</div>
+        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Yes. Anywhere not covered by a national dataset falls back to GEDTM30 (30m global bare-earth) and then Open-Meteo/SRTM (90m). The tool works globally — just expect lower resolution outside our high-accuracy regions.</div>
       </div>
 
       <div style="border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:20px;">
@@ -2745,7 +2746,7 @@ var REGION_DATA = [
   [49.0, 14.1,  54.9, 24.2, 'Poland',         30,  'lo'],
   [45.7, 16.1,  48.6, 22.9, 'Hungary',        30,  'lo'],
   // Australia country-wide fallback: outside GA LiDAR footprint we
-  // serve COP30 30m via OpenTopo.
+  // serve GEDTM30 30m (OpenGeoHub).
   [-43.5, 112.9, -9.8, 153.7, 'Australia',    30,  'lo'],
 ];
 
@@ -2849,7 +2850,7 @@ function _showDataResFlag(poly) {
   if (info.quality === 'lo' && info.res === 90) {
     flag.innerHTML = icon + ' Limited data in this region \u2014 only 90m Open-Meteo available. Expect \u00b116m vertical accuracy.';
   } else if (info.quality === 'lo') {
-    flag.innerHTML = icon + ' ' + info.name + ' \u2014 ' + resLabel + ' Copernicus GLO-30 data. Start a free trial for best resolution.';
+    flag.innerHTML = icon + ' ' + info.name + ' \u2014 ' + resLabel + ' GEDTM30 data. Start a free trial for best resolution.';
   } else {
     flag.innerHTML = icon + ' ' + info.name + ' \u2014 best available: ' + resLabel + '. Start a free trial for full resolution.';
   }
@@ -4984,7 +4985,7 @@ function _maybeShowLowDataPopup(poly) {
     var overlay = document.createElement('div');
     overlay.className = 'auth-overlay show';
     overlay.style.zIndex = 10000;
-    var resLabel = info.res >= 90 ? '90m Open-Meteo' : info.res + 'm Copernicus GLO-30';
+    var resLabel = info.res >= 90 ? '90m Open-Meteo' : info.res + 'm GEDTM30';
     overlay.innerHTML =
       '<div class="auth-modal" style="max-width:440px;text-align:center;">' +
         '<button class="auth-close" type="button" aria-label="Close">×</button>' +
@@ -6536,6 +6537,7 @@ function updateElevationSourceBanner(source, _pro) {
   let tier,resText,upgradeMsg='';
   // Fallback markers checked FIRST so degraded runs report the truth.
   if (s.includes('open-meteo')||s==='')                 {tier='low';resText='90m · Open-Meteo DEM';upgradeMsg=!_pro?'This is coarse satellite data. Pro unlocks LiDAR (0.4–1m) for 20+ countries.':'';}
+  else if (s.includes('gedtm'))                         {tier='mid';resText='30m · GEDTM30 (OpenGeoHub)';upgradeMsg=!_pro?'Pro users get national LiDAR (0.4–1m) where available.':'';}
   else if (s.includes('eu_dtm')||s.includes('cop30')||s.includes('srtm')||s.includes('30m')) {tier='mid';resText='30m · satellite DEM';upgradeMsg=!_pro?'Pro users get national LiDAR (0.4–1m) where available.':'';}
   // Vlaanderen check BEFORE Danish (both contain 'dhm').
   else if (s.includes('vlaanderen')||s.includes('dhmv')){tier='lidar';resText='1m · DHMV II Flanders';}
@@ -6651,7 +6653,8 @@ function buildingSourceType(src) {
       s.includes('hessen') || s.includes('norway') || s.includes('kartverket') ||
       s.includes('swissalti') || s.includes('england') || s.includes('ea lidar') ||
       s.includes('srsp') || s.includes('scotland') ||
-      s.includes('nrcan') || s.includes('cdem')) return 'dtm';
+      s.includes('nrcan') || s.includes('cdem') ||
+      s.includes('gedtm')) return 'dtm'; // GEDTM30 is bare-earth (ML-stripped of buildings/vegetation)
   return 'unknown'; // USGS 3DEP, opentopodata, etc.
 }
 
