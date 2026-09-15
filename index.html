@@ -1930,7 +1930,31 @@ function declineCookies() {
               <button class="tier-cta" onclick="closeSettings();track('pro_cta_clicked',{source:'settings'});startCheckout('pro')">Start 14-day free trial →</button>
             </div>
             <div id="settings-pro-info" style="display:none;">
-              <p style="font-size:13px;color:var(--text-mid);line-height:1.65;">You have an active Pro subscription.<br>To manage billing contact <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
+              <p style="font-size:13px;color:var(--text-mid);line-height:1.65;margin-bottom:10px;">You have an active Pro subscription.</p>
+              <div id="cancel-sub-prompt">
+                <button onclick="openCancelReason()" style="background:none;border:none;color:var(--danger,#e25555);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;padding:0;letter-spacing:.06em;">Cancel subscription</button>
+              </div>
+              <div id="cancel-sub-form" style="display:none;margin-top:10px;">
+                <div class="auth-field">
+                  <label>Why are you cancelling? (optional)</label>
+                  <select id="cancel-reason-select" style="width:100%;background:var(--bg-card);border:1px solid var(--border-md);border-radius:5px;padding:9px 10px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text);outline:none;box-sizing:border-box;margin-bottom:8px;">
+                    <option value="">Prefer not to say</option>
+                    <option value="Project finished / no longer needed">Project finished / no longer needed</option>
+                    <option value="Too expensive">Too expensive</option>
+                    <option value="Missing a feature I need">Missing a feature I need</option>
+                    <option value="Data accuracy/coverage for my area">Data accuracy/coverage for my area</option>
+                    <option value="Switching to another tool">Switching to another tool</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  <textarea id="cancel-reason-detail" placeholder="Anything else? (optional)" style="width:100%;min-height:56px;background:var(--bg-card);border:1px solid var(--border-md);border-radius:5px;padding:9px 10px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text);outline:none;box-sizing:border-box;resize:vertical;"></textarea>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button class="auth-submit" onclick="confirmCancelSubscription()" style="background:var(--danger,#e25555);border-color:var(--danger,#e25555);">Confirm cancellation</button>
+                  <button onclick="closeCancelReason()" style="background:none;border:1px solid var(--border-md);color:var(--text-soft);border-radius:5px;padding:0 14px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Never mind</button>
+                </div>
+                <div class="auth-error" id="cancel-sub-msg" style="min-height:16px;margin-top:6px;"></div>
+              </div>
+              <p style="font-size:11px;color:var(--text-soft);margin-top:10px;line-height:1.5;">Billing issue instead? Email <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
             </div>
             <div id="settings-company-sub-info" style="display:none;">
               <p style="font-size:13px;color:var(--text-mid);line-height:1.65;">Company plan. Billing managed by your organisation admin.</p>
@@ -4347,6 +4371,47 @@ async function changePassword() {
   msgEl.textContent = '✓ Password updated successfully.';
   document.getElementById('new-password').value = '';
   document.getElementById('confirm-password').value = '';
+}
+
+// ── Self-serve subscription cancellation ───────────────────────────────────
+function openCancelReason() {
+  const prompt = document.getElementById('cancel-sub-prompt');
+  const form = document.getElementById('cancel-sub-form');
+  if (prompt) prompt.style.display = 'none';
+  if (form) form.style.display = 'block';
+}
+function closeCancelReason() {
+  const prompt = document.getElementById('cancel-sub-prompt');
+  const form = document.getElementById('cancel-sub-form');
+  if (form) form.style.display = 'none';
+  if (prompt) prompt.style.display = 'block';
+  const msgEl = document.getElementById('cancel-sub-msg');
+  if (msgEl) msgEl.textContent = '';
+}
+async function confirmCancelSubscription() {
+  const selectEl = document.getElementById('cancel-reason-select');
+  const detailEl = document.getElementById('cancel-reason-detail');
+  const msgEl = document.getElementById('cancel-sub-msg');
+  if (!msgEl) return;
+  const picked = (selectEl?.value || '').trim();
+  const detail = (detailEl?.value || '').trim();
+  const reason = [picked, detail].filter(Boolean).join(' — ') || 'not given';
+  if (!confirm("Cancel your subscription? You'll keep Pro access until the end of your current billing period.")) return;
+  msgEl.style.color = 'var(--text-mid)'; msgEl.textContent = 'Cancelling…';
+  try {
+    const auth = await getAuthHeader();
+    const res = await fetch(WEBHOOK_WORKER + '/cancel-subscription', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': auth },
+      body: JSON.stringify({ reason })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'HTTP ' + res.status);
+    const until = data.cancel_at ? new Date(data.cancel_at * 1000).toLocaleDateString() : 'the end of your billing period';
+    document.getElementById('cancel-sub-form').innerHTML = `<p style="font-size:13px;color:var(--text-mid);line-height:1.65;">✓ Cancelled — you'll keep Pro access until <strong style="color:var(--text);">${until}</strong>. Sorry to see you go.</p>`;
+  } catch (err) {
+    msgEl.style.color = 'var(--danger,#e25555)';
+    msgEl.textContent = 'Error: ' + (err.message || 'unknown');
+  }
 }
 
 // ── Seat helpers ──────────────────────────────────────────────────────────
