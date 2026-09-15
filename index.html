@@ -1957,7 +1957,7 @@ function declineCookies() {
               <p style="font-size:11px;color:var(--text-soft);margin-top:10px;line-height:1.5;">Billing issue instead? Email <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
             </div>
             <div id="settings-company-sub-info" style="display:none;">
-              <p style="font-size:13px;color:var(--text-mid);line-height:1.65;">Company plan. Billing managed by your organisation admin.</p>
+              <p id="settings-company-sub-text" style="font-size:13px;color:var(--text-mid);line-height:1.65;">Company plan. Billing managed by your organisation admin.</p>
             </div>
           </div>
         </div>
@@ -4178,6 +4178,12 @@ function openSettings() {
   show('settings-free-cta',         plan === 'free' && !isOrphanFree);
   show('settings-pro-info',         plan === 'pro');
   show('settings-company-sub-info', plan === 'company');
+  const companySubText = document.getElementById('settings-company-sub-text');
+  if (companySubText) {
+    companySubText.innerHTML = isAdmin
+      ? 'To cancel your Company subscription, email <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a> — cancelling affects every seat on your team, so we handle it directly rather than a self-serve button.'
+      : 'Company plan. Billing managed by your organisation admin.';
+  }
 
   // Company blocks
   show('settings-company-info',        plan === 'company' && isAdmin);

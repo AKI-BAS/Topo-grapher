@@ -987,6 +987,17 @@ body::before{content:'';position:fixed;inset:0;background-image:
     </div>
   </div>
 
+  <!-- ═══ CANCELLATIONS DETAIL MODAL ═══ -->
+  <div id="cancellations-modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9700;display:none;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeCancellationsModal()">
+    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:8px;width:min(820px,96vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.6);">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent);letter-spacing:.06em;text-transform:uppercase;">Cancellations</span>
+        <button onclick="closeCancellationsModal()" style="background:none;border:1px solid var(--border);color:var(--muted);width:26px;height:26px;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;">×</button>
+      </div>
+      <div id="cancellations-modal-body" style="flex:1;overflow:auto;padding:16px 18px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text-mid);"></div>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2366,13 +2377,75 @@ async function loadConvChurn(){
     const maxR=Math.max(1,...reasons.map(r=>r.cancellations));
     body.innerHTML=`<div class="kpi-grid">
       <div class="kpi" style="--kpi-color:var(--purple)"><div class="kpi-label">Free → Pro conversion</div><div class="kpi-value" style="color:var(--purple)">${conv}%</div><div class="kpi-delta">${proUsers||0} of ${totalUsers||0} users</div></div>
-      <div class="kpi" style="--kpi-color:var(--red)"><div class="kpi-label">Cancellations logged</div><div class="kpi-value" style="color:var(--red)">${totalCancellations}</div><div class="kpi-delta">from subscription_cancelled events</div></div>
+      <div class="kpi" style="--kpi-color:var(--red)">
+        <div class="kpi-label">Cancellations logged</div>
+        <div class="kpi-value" style="color:var(--red)">${totalCancellations}</div>
+        <div class="kpi-delta">from subscription_cancelled events</div>
+        ${totalCancellations?`<button onclick="openCancellationsModal()" style="margin-top:8px;background:none;border:1px solid var(--border-md);color:var(--red);border-radius:4px;padding:4px 10px;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;letter-spacing:.04em;">View details →</button>`:''}
+      </div>
     </div>
     <div style="margin-top:14px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">Cancellation reasons</div>
     ${reasons.length?`<div class="bar-chart-h">${reasons.map(r=>barRow(esc(r.reason),r.cancellations,maxR,'bar-fill-red')).join('')}</div>`:'<div class="mono" style="color:var(--muted);font-size:11px;">No cancellations logged yet</div>'}`;
   }catch(err){
     _analyticsNoData(body,'convchurn');
   }
+}
+
+// ── Cancellations detail modal: who, why, and how much they'd used ─────
+async function openCancellationsModal(){
+  const overlay=document.getElementById('cancellations-modal-overlay');
+  const body=document.getElementById('cancellations-modal-body');
+  if(!overlay||!body)return;
+  overlay.style.display='flex';
+  body.innerHTML='<div class="mono" style="color:var(--muted);">Loading…</div>';
+  try{
+    const evR=await _sb.from('events').select('created_at,user_id,properties')
+      .eq('event','subscription_cancelled').eq('is_test',false)
+      .order('created_at',{ascending:false}).limit(500);
+    if(evR.error)throw evR.error;
+    const rows=evR.data||[];
+    if(!rows.length){ body.innerHTML='<div class="mono" style="color:var(--muted);">No cancellations logged yet.</div>'; return; }
+
+    const ids=[...new Set(rows.map(r=>r.user_id).filter(Boolean))];
+    const [profR,genR]=await Promise.all([
+      ids.length?_sb.from('profiles').select('id,email').in('id',ids):Promise.resolve({data:[]}),
+      ids.length?_sb.from('v_generations_per_user').select('user_id,generation_count').in('user_id',ids):Promise.resolve({data:[]}),
+    ]);
+    const emailById={}; (profR.data||[]).forEach(p=>{emailById[p.id]=p.email;});
+    const gensById={}; (genR.data||[]).forEach(g=>{gensById[g.user_id]=g.generation_count;});
+
+    const trs=rows.map(r=>{
+      const email=r.user_id?(emailById[r.user_id]||'(deleted account)'):'(no account)';
+      const gens=r.user_id!=null?(gensById[r.user_id]??0):'—';
+      const reason=esc((r.properties||{}).reason||'not given');
+      const plan=esc((r.properties||{}).plan||'—');
+      const when=new Date(r.created_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
+      return `<tr>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap;">${when}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border);">${esc(email)}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border);">${plan}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;">${gens}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border);">${reason}</td>
+      </tr>`;
+    }).join('');
+
+    body.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:11px;">
+      <thead><tr style="text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-size:9px;">
+        <th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border-md);">Cancelled</th>
+        <th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border-md);">Email</th>
+        <th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border-md);">Plan</th>
+        <th style="text-align:right;padding:6px 10px;border-bottom:1px solid var(--border-md);">Generations</th>
+        <th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border-md);">Reason</th>
+      </tr></thead>
+      <tbody>${trs}</tbody>
+    </table>`;
+  }catch(err){
+    body.innerHTML='<div class="mono" style="color:var(--red);">Failed to load: '+esc(err.message||'unknown error')+'</div>';
+  }
+}
+function closeCancellationsModal(){
+  const overlay=document.getElementById('cancellations-modal-overlay');
+  if(overlay)overlay.style.display='none';
 }
 
 // ── Usage patterns: generations/user, days between, projects/account ──
