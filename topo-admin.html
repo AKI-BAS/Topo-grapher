@@ -1402,16 +1402,22 @@ async function loadKPIs(){
   const{data:resAll}=await _sb.from('generations').select('resolution_m').eq('is_test',false).not('resolution_m','is',null).limit(10000);
   const avgRes=resAll&&resAll.length?Math.round(resAll.reduce((s,r)=>s+r.resolution_m,0)/resAll.length*10)/10:null;
   const weekDelta=prevWeekGens>0?Math.round((weekGens-prevWeekGens)/prevWeekGens*100):0;
-  const{data:compProf}=await _sb.from('profiles').select('seat_count').eq('plan','company').eq('is_company_admin',true).eq('is_admin',false);
-  const compSeats=(compProf||[]).reduce((s,p)=>s+(p.seat_count||0),0);
-  const mrr=(proCount||0)*39.99+compSeats*29.99;
+  // MRR must only count subscriptions that have actually converted past their
+  // trial and are being billed. A 'trialing' status means £0 has ever been
+  // charged, and never will be if it's also cancelling, so it isn't revenue
+  // yet even though the account still shows plan='pro' while access lasts.
+  const PAYING_STATUSES=['active','active_cancelling'];
+  const{count:payingProCount}=await _sb.from('profiles').select('*',{count:'exact',head:true}).eq('plan','pro').eq('is_admin',false).in('subscription_status',PAYING_STATUSES);
+  const{data:compProf}=await _sb.from('profiles').select('seat_count,subscription_status').eq('plan','company').eq('is_company_admin',true).eq('is_admin',false);
+  const payingCompSeats=(compProf||[]).filter(p=>PAYING_STATUSES.includes(p.subscription_status)).reduce((s,p)=>s+(p.seat_count||0),0);
+  const mrr=(payingProCount||0)*39.99+payingCompSeats*29.99;
 
   const kpiHost=document.getElementById('kpi-grid-host')||document.getElementById('body-kpis');
   kpiHost.innerHTML=`<div class="kpi-grid">
-    <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">MRR</div><div class="kpi-value" style="color:var(--accent)">£${mrr.toFixed(0)}</div><div class="kpi-delta">${proCount||0} Pro + ${compSeats} seats</div></div>
+    <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">MRR</div><div class="kpi-value" style="color:var(--accent)">£${mrr.toFixed(0)}</div><div class="kpi-delta">${payingProCount||0} paying Pro + ${payingCompSeats} seats</div></div>
     <div class="kpi" style="--kpi-color:var(--blue)"><div class="kpi-label">Gens / week</div><div class="kpi-value" style="color:var(--blue)">${weekGens||0}</div><div class="kpi-delta ${weekDelta>=0?'delta-up':'delta-down'}">${weekDelta>=0?'↑':'↓'} ${Math.abs(weekDelta)}% vs prev</div></div>
     <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">Active users</div><div class="kpi-value">${activeUsers}</div><div class="kpi-delta">${totalUsers||0} total signups</div></div>
-    <div class="kpi" style="--kpi-color:var(--purple)"><div class="kpi-label">Pro subs</div><div class="kpi-value" style="color:var(--purple)">${proCount||0}</div><div class="kpi-delta">${totalUsers?Math.round((proCount||0)/totalUsers*100):0}% conversion</div></div>
+    <div class="kpi" style="--kpi-color:var(--purple)"><div class="kpi-label">Pro subs</div><div class="kpi-value" style="color:var(--purple)">${proCount||0}</div><div class="kpi-delta">incl. trials · ${totalUsers?Math.round((proCount||0)/totalUsers*100):0}% conversion</div></div>
     <div class="kpi" style="--kpi-color:${avgRes&&avgRes>15?'var(--amber)':'var(--accent)'}"><div class="kpi-label">Avg resolution</div><div class="kpi-value">${avgRes?avgRes+'m':'—'}</div><div class="kpi-delta">${avgRes&&avgRes>30?'↓ needs more LiDAR':'data quality'}</div></div>
     <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">Total gens</div><div class="kpi-value">${(totalGens||0).toLocaleString()}</div><div class="kpi-delta">all time</div></div>
   </div>`;
