@@ -811,7 +811,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
         <span><span class="heatmap-legend-dot" style="background:#4EA0D9"></span>LiDAR ≤2m (dedicated)</span>
         <span><span class="heatmap-legend-dot" style="background:#9ABA6A"></span>5–10m (dedicated)</span>
         <span><span class="heatmap-legend-dot" style="background:#E0A050"></span>Regional 30m (EU_DTM)</span>
-        <span><span class="heatmap-legend-dot" style="background:#555"></span>COP30 global only (no dedicated source)</span>
+        <span><span class="heatmap-legend-dot" style="background:#555"></span>GEDTM30 global only (no dedicated source)</span>
         <span><span class="heatmap-legend-dot" style="background:#7BC8F6"></span>Scotland — SRSP (self-hosted, distinct from GPXZ)</span>
         <span style="opacity:.7;">◨ striped = partial coverage</span>
       </div>
@@ -1492,7 +1492,7 @@ async function _ensureCoverageLayer(){
       const iso2=hit?hit.iso2:'';const flagImg=iso2?`<img src="https://flagcdn.com/16x12/${iso2.toLowerCase()}.png" width="16" height="12" style="vertical-align:middle;margin-right:6px;border-radius:1px;">`:'';
       let html=`<div style="font-family:DM Mono,monospace;font-size:11px;line-height:1.7;min-width:170px;"><div style="font-weight:600;margin-bottom:4px;">${flagImg}${name}</div>`;
       if(hit){html+=`<div><span style="color:${hit.color};">■</span> ${hit.res} · ${hit.source}</div>`;if(hit.partial)html+=`<div style="color:#E0A050;font-size:10px;margin-top:3px;">⚠ ${hit.partial}</div>`;}
-      else{html+=`<div style="opacity:.7;">COP30 30m global fallback only</div><div style="opacity:.5;font-size:10px;margin-top:3px;">Candidate for dedicated source</div>`;}
+      else{html+=`<div style="opacity:.7;">GEDTM30 30m global fallback only</div><div style="opacity:.5;font-size:10px;margin-top:3px;">Candidate for dedicated source</div>`;}
       html+=`<div style="margin-top:6px;"><button onclick="_openCoverageEdit('${feat.id}')" style="font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--accent);cursor:pointer;">✎ Edit</button></div>`;
       html+=`</div>`;lyr.bindPopup(html);
       lyr.on('mouseover',()=>lyr.setStyle({weight:2,fillOpacity:Math.min((lyr.options.fillOpacity||.4)+.2,.7)}));
@@ -1544,7 +1544,7 @@ function _updateMapLegend(){
     '<span><span class="heatmap-legend-dot" style="background:#9ABA6A"></span>5–10m</span>',
     '<span><span class="heatmap-legend-dot" style="background:#E0A050"></span>EU_DTM 30m</span>',
     '<span><span class="heatmap-legend-dot" style="background:#7BC8F6"></span>Scotland SRSP</span>',
-    '<span><span class="heatmap-legend-dot" style="background:#555"></span>COP30 only</span>');}
+    '<span><span class="heatmap-legend-dot" style="background:#555"></span>GEDTM30 only</span>');}
   el.innerHTML=parts.join('');
 }
 
@@ -1570,7 +1570,7 @@ async function loadHeatmap(){
 
 // ── Coverage Map (data availability by country) ───────────────
 // Blue: dedicated LiDAR ≤2m. Green: dedicated 5–10m. Orange: regional 30m (EU_DTM).
-// Gray: only COP30 global fallback.
+// Gray: only GEDTM30 global fallback.
 //
 // Per-country data lives in Supabase `coverage_countries` (admin-editable —
 // click any country on the map, on either coverage view, and hit ✎ Edit).
@@ -1765,7 +1765,7 @@ function _renderCoverageLayer(){
         html += `<div><span style="color:${hit.color};">■</span> ${hit.res} — ${hit.source}</div>`;
         if (hit.partial) html += `<div style="color:#E0A050;font-size:10px;margin-top:3px;">⚠ ${hit.partial}</div>`;
       } else {
-        html += `<div style="opacity:.7;">COP30 30m global fallback only</div>
+        html += `<div style="opacity:.7;">GEDTM30 30m global fallback only</div>
                  <div style="opacity:.5;font-size:10px;margin-top:3px;">Candidate for dedicated source</div>`;
       }
       html += `<div style="margin-top:6px;"><button onclick="_openCoverageEdit('${iso3}')" style="font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--accent);cursor:pointer;">✎ Edit</button></div>`;
@@ -1786,7 +1786,7 @@ function _renderCoverageLayer(){
 
   // Update subtitle with counts (Scotland tracked separately, not in the counts)
   const sub = document.getElementById('coverage-modal-sub');
-  if (sub) sub.textContent = `${counts.lidar} LiDAR · ${counts.mid} mid-res · ${counts.regional30} EU_DTM · ${counts.none} COP30-only · +Scotland SRSP`;
+  if (sub) sub.textContent = `${counts.lidar} LiDAR · ${counts.mid} mid-res · ${counts.regional30} EU_DTM · ${counts.none} GEDTM30-only · +Scotland SRSP`;
 }
 
 // Simplified Scotland outline (mainland + Outer Hebrides + Orkney + Shetland).
