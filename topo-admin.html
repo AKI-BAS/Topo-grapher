@@ -1853,9 +1853,13 @@ function _renderScotlandOverlay(){
 
 // ── Revenue ───────────────────────────────────────────────────
 async function loadRevenue(){
-  const{count:proCount}=await _sb.from('profiles').select('*',{count:'exact',head:true}).eq('plan','pro').eq('is_admin',false);
-  const{data:compProf}=await _sb.from('profiles').select('seat_count').eq('plan','company').eq('is_company_admin',true).eq('is_admin',false);
-  const compSeats=(compProf||[]).reduce((s,p)=>s+(p.seat_count||0),0);
+  // Same rule as the KPI tile: only 'active'/'active_cancelling' subscriptions
+  // have actually been charged. A 'trialing' plan='pro' row is £0 of real
+  // revenue, whether or not it's also scheduled to cancel.
+  const PAYING_STATUSES=['active','active_cancelling'];
+  const{count:proCount}=await _sb.from('profiles').select('*',{count:'exact',head:true}).eq('plan','pro').eq('is_admin',false).in('subscription_status',PAYING_STATUSES);
+  const{data:compProf}=await _sb.from('profiles').select('seat_count,subscription_status').eq('plan','company').eq('is_company_admin',true).eq('is_admin',false);
+  const compSeats=(compProf||[]).filter(p=>PAYING_STATUSES.includes(p.subscription_status)).reduce((s,p)=>s+(p.seat_count||0),0);
   const proMRR=(proCount||0)*39.99,compMRR=compSeats*29.99,totalMRR=proMRR+compMRR;
   const{data:addons}=await _sb.from('generations').select('addon_charged_pence,project_name,area_km2,created_at').eq('is_test',false).gt('addon_charged_pence',0).order('created_at',{ascending:false}).limit(20);
   const totalAddon=(addons||[]).reduce((s,r)=>s+(r.addon_charged_pence||0),0);
