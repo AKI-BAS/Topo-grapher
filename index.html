@@ -793,7 +793,12 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 .auth-error { font-size:12px; color:var(--danger); margin-top:10px; min-height:16px; }
 .auth-close { position:absolute; top:16px; right:20px; background:none; border:1px solid var(--border-md); border-radius:5px; color:var(--text-soft); font-size:13px; cursor:pointer; width:26px; height:26px; display:flex; align-items:center; justify-content:center; transition:background .15s,color .15s; }
 .auth-close:hover { background:var(--bg-input); color:var(--text); }
-.auth-divider { text-align:center; font-size:11px; color:var(--text-soft); margin:16px 0; }
+.auth-divider { display:flex; align-items:center; gap:10px; font-size:11px; color:var(--text-soft); margin:16px 0; letter-spacing:.06em; text-transform:uppercase; }
+.auth-divider::before, .auth-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+/* Google button follows Google's light-button branding (white, official G) so it reads in both themes. */
+.auth-google { width:100%; display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; color:#1f1f1f; border:1px solid #dadce0; border-radius:5px; padding:11px 12px; font-family:'DM Mono',monospace; font-size:13px; cursor:pointer; transition:background .15s, box-shadow .15s; }
+.auth-google:hover { background:#f8f9fa; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+.auth-google:disabled { opacity:.7; cursor:default; box-shadow:none; }
 
 /* ── Library tabs ────────────────────────────────────────────────────────── */
 .lib-tab { background:var(--bg-input); border:none; color:var(--text-soft); padding:7px 16px; font-family:'DM Mono',monospace; font-size:11px; cursor:pointer; letter-spacing:.06em; transition:all .15s; }
@@ -834,8 +839,6 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 .upgrade-plan ul    { list-style:none; padding:0; margin:0 0 16px; font-size:11px; color:var(--text-mid); line-height:2; }
 .upgrade-plan ul li::before { content:'✓ '; color:var(--accent); }
 .upgrade-plan-cta   { width:100%; padding:11px 0; border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; font-weight:700; cursor:pointer; letter-spacing:.04em; text-transform:uppercase; transition:opacity .15s; border:none; }
-.auth-google { width:100%; background:var(--bg-input); border:1px solid var(--border-md); color:var(--text); padding:11px; border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; letter-spacing:.04em; margin-bottom:4px; transition:border-color .15s; }
-.auth-google:hover { border-color:var(--accent-md); }
 
 /* ── Format picker modal (Pro-visibility rollout) ───────────────────────── */
 .fp-modal { position:relative; background:var(--bg-card); border:1px solid var(--border-md); border-radius:12px; overflow:hidden; width:100%; max-width:min(520px,94vw); max-height:min(88vh,660px); display:flex; flex-direction:column; }
@@ -1779,6 +1782,16 @@ function declineCookies() {
         <button class="auth-tab active" id="tab-signin" onclick="switchTab('signin')">Sign in</button>
         <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Create account</button>
       </div>
+      <button type="button" class="auth-google" id="auth-google-btn" onclick="signInWithGoogle()">
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        <span id="auth-google-label">Continue with Google</span>
+      </button>
+      <div class="auth-divider">or use email</div>
       <div id="auth-form-signin">
         <div class="auth-field"><label>Email</label><input type="email" id="signin-email" placeholder="your@email.com"/></div>
         <div class="auth-field"><label>Password</label><input type="password" id="signin-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitAuth('signin')"/></div>
@@ -3895,6 +3908,17 @@ async function handleSession(session) {
     track('download_resumed_after_auth', { format: resumeFmt, from_storage: restoredFromStorage });
     setTimeout(handleDownload, 400);
   }
+  // Returning from Google: record the completed sign-in once, and a sign-up if the account
+  // was created moments ago (this is the only place a Google signup becomes visible to the
+  // funnel, since there is no form submit to hang signup_completed on).
+  try {
+    if (sessionStorage.getItem('topo_oauth_google')) {
+      sessionStorage.removeItem('topo_oauth_google');
+      const createdMs = session.user && session.user.created_at ? new Date(session.user.created_at).getTime() : 0;
+      track('signin_completed', { method: 'google' });
+      if (createdMs && (Date.now() - createdMs) < 120000) track('signup_completed', Object.assign({ method: 'google' }, getFirstTouch()));
+    }
+  } catch(e) {}
   // A session exists, so the email is confirmed: retire the pay-before-confirm banner.
   try { localStorage.removeItem('topo_confirm_pending'); } catch(e) {}
   _hideConfirmBanner();
@@ -4109,6 +4133,52 @@ async function submitAuth(type) {
       restore();
     } catch(e) { showErr(_authErrMsg(e.message || '')); }
   }
+}
+// ── Google sign-in ────────────────────────────────────────────────────────
+// Full-page OAuth redirect. Anything the user was in the middle of (a queued checkout in
+// localStorage, a pending download in localStorage) survives the round trip and is picked
+// up by handleSession() when they come back, exactly like the email-confirm flow.
+// Google returns verified emails, so there is no inbox step.
+async function signInWithGoogle() {
+  const btn = document.getElementById('auth-google-btn');
+  const label = document.getElementById('auth-google-label');
+  const signupShown = document.getElementById('auth-form-signup').style.display !== 'none';
+  const errEl = document.getElementById(signupShown ? 'signup-error' : 'signin-error');
+  if (errEl) { errEl.textContent = ''; errEl.style.color = 'var(--danger,#e25555)'; }
+  if (btn && btn.disabled) return;
+  track('oauth_started', { provider: 'google', context: _peekPendingCheckout() ? 'checkout' : 'auth' });
+  try { sessionStorage.setItem('topo_oauth_google', String(Date.now())); } catch(e) {}
+  if (btn) btn.disabled = true;
+  if (label) label.textContent = 'Opening Google…';
+  try {
+    const { error } = await _withTimeout(
+      _sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + window.location.pathname } }), 12000
+    );
+    if (error) throw error;
+    // The browser is navigating to Google now; leave the button disabled.
+  } catch(e) {
+    try { sessionStorage.removeItem('topo_oauth_google'); } catch(e2) {}
+    track('oauth_failed', { provider: 'google', reason: ((e && e.message) || 'unknown').slice(0, 80) });
+    if (btn) btn.disabled = false;
+    if (label) label.textContent = 'Continue with Google';
+    if (errEl) errEl.textContent = 'Could not open Google sign-in. Please try again or use email.';
+  }
+}
+// Back from Google after the user cancelled or Google/Supabase refused: say so instead of
+// silently dropping them on the homepage. Supabase reports this in the hash or the query.
+function _handleOAuthReturnError() {
+  let started = null;
+  try { started = sessionStorage.getItem('topo_oauth_google'); } catch(e) {}
+  const raw = (window.location.hash || '').replace(/^#/, '') + '&' + (window.location.search || '').replace(/^\?/, '');
+  const params = new URLSearchParams(raw);
+  const desc = params.get('error_description') || params.get('error');
+  if (!desc || !started) return;
+  try { sessionStorage.removeItem('topo_oauth_google'); } catch(e) {}
+  track('oauth_failed', { provider: 'google', reason: String(desc).slice(0, 80), stage: 'return' });
+  history.replaceState(null, '', window.location.pathname);
+  openAuth('signin');
+  const se = document.getElementById('signin-error');
+  if (se) se.textContent = 'Google sign-in was cancelled or did not complete. Try again, or use email.';
 }
 // A checkout the signup/sign-in wall interrupted. Peek reads without consuming.
 function _peekPendingCheckout() {
@@ -8762,6 +8832,7 @@ document.addEventListener('DOMContentLoaded', function() {
     _markConfirmPaid(); // paid before confirming the email: surface the "confirm your email" banner
   }
   _showConfirmBanner(); // no-op unless a pay-before-confirm trial is still waiting on email confirmation
+  _handleOAuthReturnError(); // Google sign-in cancelled/failed: reopen the modal with a message
   // Direct link into the upgrade modal (e.g. an email CTA) — ?openupgrade=<context>.
   // Attribution (utm_* etc.) is already captured above via captureFirstTouch()
   // before this strips the query string, so nothing is lost by dropping it here.
