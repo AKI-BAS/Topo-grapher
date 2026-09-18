@@ -741,6 +741,43 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 /* Auth overlay & modal */
 .auth-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:9000; align-items:center; justify-content:center; padding:20px; box-sizing:border-box; }
 .auth-overlay.show { display:flex; }
+/* Checkout hand-off overlay: shown on every startCheckout() so the user always sees
+   progress, whichever button (or the post-signup auto-resume) triggered it. */
+#checkout-overlay { z-index:9500; }
+.checkout-overlay-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 28px 30px 24px; width: min(360px, 92vw); text-align: center;
+  box-shadow: 0 8px 40px rgba(0,0,0,.45); font-family: 'DM Mono', monospace;
+}
+.checkout-spinner {
+  width: 26px; height: 26px; margin: 0 auto 14px; border-radius: 50%;
+  border: 2px solid var(--border-md); border-top-color: var(--accent);
+  animation: checkout-spin .8s linear infinite;
+}
+@keyframes checkout-spin { to { transform: rotate(360deg); } }
+.checkout-overlay-msg { font-size: 13px; color: var(--text); line-height: 1.5; }
+.checkout-overlay-sub { font-size: 11px; color: var(--text-soft); margin-top: 6px; line-height: 1.5; }
+.checkout-overlay-err { font-size: 12px; color: var(--danger,#e25555); line-height: 1.5; margin-top: 10px; }
+/* "Confirm your email" banner: shown after a trial was paid for before the email was confirmed. */
+#confirm-banner {
+  display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+  z-index: 8500; width: min(600px, calc(100vw - 24px)); box-sizing: border-box;
+  align-items: center; gap: 12px; padding: 12px 14px;
+  background: var(--bg-card); border: 1px solid var(--accent-md); border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.45); font-family: 'DM Mono', monospace;
+}
+#confirm-banner-text { flex: 1; font-size: 12px; line-height: 1.5; color: var(--text); }
+#confirm-banner button {
+  background: var(--bg-input); border: 1px solid var(--border-md); color: var(--text-mid);
+  border-radius: 5px; padding: 7px 10px; cursor: pointer; white-space: nowrap;
+  font-family: 'DM Mono', monospace; font-size: 11px;
+}
+#confirm-banner button:disabled { opacity: .6; cursor: default; }
+.checkout-overlay-close {
+  margin-top: 16px; width: 100%; background: var(--bg-input); border: 1px solid var(--border-md);
+  color: var(--text-mid); padding: 10px; border-radius: 5px; cursor: pointer;
+  font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: .04em;
+}
 .auth-modal { position:relative; background:var(--bg-card); border:1px solid var(--border-md); border-radius:10px; padding:32px; width:100%; max-width:400px; }
 .auth-modal h2 { font-family:'DM Mono',monospace; font-size:22px; font-weight:500; color:var(--text); margin-bottom:6px; }
 .auth-modal p { font-size:13px; color:var(--text-soft); margin-bottom:24px; line-height:1.6; }
@@ -3858,21 +3895,32 @@ async function handleSession(session) {
     track('download_resumed_after_auth', { format: resumeFmt, from_storage: restoredFromStorage });
     setTimeout(handleDownload, 400);
   }
-  let resumePlan = window._pendingCheckoutPlan;
-  if (!resumePlan) {
+  // A session exists, so the email is confirmed: retire the pay-before-confirm banner.
+  try { localStorage.removeItem('topo_confirm_pending'); } catch(e) {}
+  _hideConfirmBanner();
+  // Resume a checkout the signup/sign-in wall interrupted. localStorage is the single
+  // source of truth and is consumed read-then-remove, and a per-page flag blocks repeat
+  // handleSession() runs. Before this, the in-memory plan let the original tab AND the
+  // email-confirm tab both resume, firing two Stripe sessions.
+  if (!window._checkoutResumeDone) {
+    let resumePlan = null, lsFailed = false;
     try {
       const raw = localStorage.getItem('topo_pending_checkout');
       if (raw) {
+        localStorage.removeItem('topo_pending_checkout');
         const p = JSON.parse(raw);
         if (p && p.plan && (Date.now() - (p.ts || 0)) < 3600000) resumePlan = p.plan;
       }
-    } catch(e) {}
-  }
-  if (resumePlan) {
+    } catch(e) { lsFailed = true; }
+    if (!resumePlan && lsFailed) resumePlan = window._pendingCheckoutPlan || null;
     window._pendingCheckoutPlan = null;
-    try { localStorage.removeItem('topo_pending_checkout'); } catch(e) {}
-    track('checkout_resumed_after_auth', { plan: resumePlan });
-    setTimeout(() => startCheckout(resumePlan), 500);
+    if (resumePlan) {
+      window._checkoutResumeDone = true;
+      track('checkout_resumed_after_auth', { plan: resumePlan });
+      const _msg = 'Account ready. Taking you to secure checkout…';
+      _showCheckoutOverlay(_msg);
+      setTimeout(() => startCheckout(resumePlan, { message: _msg }), 500);
+    }
   }
 }
 
@@ -3921,6 +3969,10 @@ function openAuth(mode, context) {
     if (titleEl) titleEl.textContent = 'Sign up to finish your download';
     if (subEl) subEl.innerHTML = 'Your site is ready — create a free account to save it and download the file. No card, no charge.<br><span style="display:block;margin-top:10px;font-size:12px;color:var(--accent);">✓ Remember to confirm your email so your download can finish.</span>';
     switchTab('signup'); track('signup_prompt_shown', { context: 'download' });
+  } else if (context === 'checkout') {
+    if (titleEl) titleEl.textContent = 'Create your account to start your trial';
+    if (subEl) subEl.textContent = '14 days free. Next step is secure card entry on Stripe, and you can confirm your email afterwards.';
+    switchTab('signup'); track('signup_prompt_shown', { context: 'checkout' });
   } else {
     if (titleEl) titleEl.textContent = 'Sign in';
     if (subEl) subEl.textContent = 'Access your projects and Pro features.';
@@ -4021,15 +4073,102 @@ async function submitAuth(type) {
     track('signup_started', { method: 'email' });
     if (password.length < 8) { showErr('Password must be at least 8 characters.'); return; }
     try {
-      const { error } = await _withTimeout(
+      const { data, error } = await _withTimeout(
         _sb.auth.signUp({ email, password, options: { emailRedirectTo: window.location.href } }), 12000
       );
       if (error) { showErr(_authErrMsg(error.message)); return; }
+      const pendingPlan = _peekPendingCheckout();
+      // With confirmation on, signUp for an already-registered email returns no error and a
+      // user with an empty identities list. Never open a checkout against someone else's
+      // account: send them to sign in instead (the pending checkout stays queued for that).
+      const alreadyRegistered = !!(data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0);
+      if (pendingPlan && alreadyRegistered) {
+        restore();
+        switchTab('signin');
+        const si = document.getElementById('signin-email'); if (si) si.value = email;
+        const se = document.getElementById('signin-error');
+        if (se) { se.style.color = 'var(--accent)'; se.textContent = 'You already have an account with this email. Sign in to start your trial.'; }
+        return;
+      }
+      track('signup_completed', Object.assign({ method: 'email' }, getFirstTouch()));
+      // Signed up from a "Start free trial" click and still waiting on email confirmation:
+      // don't strand them in the inbox. Go straight to Stripe with the typed email and let
+      // them confirm afterwards. The profile row already exists (created at signUp), so the
+      // webhook can attach the plan by email. Consume the pending flag first so the
+      // email-confirm tab can't resume a second checkout later.
+      if (pendingPlan && !(data && data.session)) {
+        _consumePendingCheckout();
+        try { localStorage.setItem('topo_confirm_pending', JSON.stringify({ email, ts: Date.now() })); } catch(e) {}
+        track('signup_checkout_direct', { plan: pendingPlan });
+        restore(); closeAuth();
+        startCheckout(pendingPlan, { email, message: 'Account created. Taking you to secure checkout…', sub: 'Continuing as ' + email, hold: 1800 });
+        return;
+      }
       errEl.style.color = 'var(--accent)';
       errEl.textContent = 'Check your email to confirm your account.';
-      track('signup_completed', Object.assign({ method: 'email' }, getFirstTouch()));
       restore();
     } catch(e) { showErr(_authErrMsg(e.message || '')); }
+  }
+}
+// A checkout the signup/sign-in wall interrupted. Peek reads without consuming.
+function _peekPendingCheckout() {
+  try {
+    const raw = localStorage.getItem('topo_pending_checkout');
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && p.plan && (Date.now() - (p.ts || 0)) < 3600000) return p.plan;
+    }
+  } catch(e) {}
+  return window._pendingCheckoutPlan || null;
+}
+function _consumePendingCheckout() {
+  window._pendingCheckoutPlan = null;
+  try { localStorage.removeItem('topo_pending_checkout'); } catch(e) {}
+}
+// Banner shown after paying before confirming the email, until they sign in.
+function _confirmPendingInfo() {
+  try {
+    const raw = localStorage.getItem('topo_confirm_pending');
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (p && p.email && (Date.now() - (p.ts || 0)) < 14 * 86400000) return p;
+    localStorage.removeItem('topo_confirm_pending');
+  } catch(e) {}
+  return null;
+}
+// Called on the Stripe success redirect: only now is "your trial has started" true.
+function _markConfirmPaid() {
+  const info = _confirmPendingInfo(); if (!info) return;
+  try { localStorage.setItem('topo_confirm_pending', JSON.stringify(Object.assign({}, info, { paid: true }))); } catch(e) {}
+}
+function _showConfirmBanner() {
+  const info = _confirmPendingInfo();
+  const el = document.getElementById('confirm-banner');
+  if (!info || !info.paid || !el) return;
+  document.getElementById('confirm-banner-text').textContent =
+    'Your trial has started. Confirm your email (' + info.email + ') to unlock Pro. Check your inbox and spam folder.';
+  el.style.display = 'flex';
+}
+function _hideConfirmBanner() {
+  const el = document.getElementById('confirm-banner'); if (el) el.style.display = 'none';
+}
+function _dismissConfirmBanner() {
+  try { localStorage.removeItem('topo_confirm_pending'); } catch(e) {}
+  _hideConfirmBanner();
+}
+async function _resendConfirmEmail() {
+  const info = _confirmPendingInfo(); if (!info) return;
+  const b = document.getElementById('confirm-banner-resend');
+  const t = document.getElementById('confirm-banner-text');
+  if (b) { b.disabled = true; b.textContent = 'Sending…'; }
+  try {
+    const { error } = await _withTimeout(_sb.auth.resend({ type: 'signup', email: info.email, options: { emailRedirectTo: window.location.origin } }), 12000);
+    if (error) throw error;
+    if (t) t.textContent = 'Confirmation email sent to ' + info.email + '. Check your inbox and spam folder.';
+    if (b) b.textContent = 'Sent';
+  } catch(e) {
+    if (t) t.textContent = _authErrMsg((e && e.message) || '') + ' (' + info.email + ')';
+    if (b) { b.disabled = false; b.textContent = 'Resend email'; }
   }
 }
 async function signOut() {
@@ -4448,44 +4587,119 @@ const STRIPE_PRICE_PRO     = 'price_1TWu8s3tgjRssKt3hHTUXxAq';
 const STRIPE_PRICE_COMPANY = 'price_1TWu6A3tgjRssKt3h8AAYnC5';
 const WEBHOOK_WORKER       = 'https://odd-king-7b02.svanur300.workers.dev';
 
-async function startCheckout(plan) {
-  if (!_currentUser) {
+// ── Checkout hand-off ─────────────────────────────────────────────────────
+// Every entry point (pricing card, modals, nav, format picker, post-signup resume)
+// funnels through startCheckout()/confirmSeatCheckout(). The clicked button is often
+// gone by the time the session call is in flight (modals close first), so progress is
+// shown in a page-level overlay instead of on a button the user may not be looking at.
+let _checkoutInFlight = false;
+function _showCheckoutOverlay(msg, sub) {
+  const ov = document.getElementById('checkout-overlay'); if (!ov) return;
+  document.getElementById('checkout-spinner').style.display = '';
+  document.getElementById('checkout-overlay-msg').textContent = msg || 'Taking you to secure checkout…';
+  const subEl = document.getElementById('checkout-overlay-sub');
+  subEl.textContent = sub || "You'll be redirected to Stripe in a moment.";
+  subEl.style.display = '';
+  document.getElementById('checkout-overlay-err').style.display = 'none';
+  document.getElementById('checkout-overlay-close').style.display = 'none';
+  ov.classList.add('show');
+}
+function _hideCheckoutOverlay() {
+  const ov = document.getElementById('checkout-overlay'); if (ov) ov.classList.remove('show');
+}
+function _showCheckoutError(msg) {
+  const ov = document.getElementById('checkout-overlay'); if (!ov) { alert(msg); return; }
+  document.getElementById('checkout-spinner').style.display = 'none';
+  document.getElementById('checkout-overlay-msg').textContent = "We couldn't start checkout";
+  document.getElementById('checkout-overlay-sub').style.display = 'none';
+  const errEl = document.getElementById('checkout-overlay-err');
+  errEl.textContent = msg; errEl.style.display = '';
+  document.getElementById('checkout-overlay-close').style.display = '';
+  ov.classList.add('show');
+}
+function _checkoutErrMsg(err) {
+  return (err && (err.name === 'TimeoutError' || err.name === 'AbortError'))
+    ? 'Checkout is taking longer than expected. Please check your connection and try again.'
+    : 'Checkout error: ' + ((err && err.message) || 'unknown error');
+}
+async function _createCheckoutSession(payload) {
+  const res = await fetch(WEBHOOK_WORKER + '/create-checkout', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload), signal: AbortSignal.timeout(15000)
+  });
+  const data = await res.json();
+  if (!data.url) throw new Error(data.error || 'Failed to create checkout');
+  return data.url;
+}
+// The analytics insert is a plain fetch with no keepalive, so give it a beat to leave
+// the browser before the page navigates away to Stripe.
+function _goToCheckout(url, holdMs) { setTimeout(function() { window.location.href = url; }, holdMs || 300); }
+// Browser Back from Stripe can restore this page from bfcache mid-"Loading…": reset it.
+window.addEventListener('pageshow', function(e) {
+  if (!e.persisted) return;
+  _checkoutInFlight = false;
+  _hideCheckoutOverlay();
+  [['checkout-btn-pro', 'Start 14-day free trial →'], ['checkout-btn-company', 'Start free trial →']].forEach(function(p) {
+    const b = document.getElementById(p[0]);
+    if (b && b.disabled) { b.disabled = false; b.textContent = p[1]; }
+  });
+});
+
+async function startCheckout(plan, opts) {
+  // Signed-in users use their account email. opts.email is only passed right after a
+  // signup that is still awaiting email confirmation (pay-before-confirm path).
+  const email = _currentUser ? _currentUser.email : ((opts && opts.email) || null);
+  if (!email) {
     track('checkout_gated', { plan });
     window._pendingCheckoutPlan = plan;
     try { localStorage.setItem('topo_pending_checkout', JSON.stringify({ plan, ts: Date.now() })); } catch(e) {}
-    openAuth('signup');
+    openAuth('signup', 'checkout');
     return;
   }
-  track('checkout_started', { plan });
+  if (_checkoutInFlight) return; // re-entrancy guard: a second click/resume while one is in flight is ignored
+  _checkoutInFlight = true;
+  track('checkout_clicked', { plan }); // intent; checkout_started now fires only once a session exists
+  _showCheckoutOverlay(opts && opts.message, opts && opts.sub);
   const priceId = plan === 'company' ? STRIPE_PRICE_COMPANY : STRIPE_PRICE_PRO;
   const btn = document.getElementById('checkout-btn-' + plan);
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
   try {
-    const res = await fetch(WEBHOOK_WORKER + '/create-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ priceId, email: _currentUser.email, plan, successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com#pricing' }) });
-    const data = await res.json();
-    if (data.url) { window.location.href = data.url; }
-    else throw new Error(data.error || 'Failed to create checkout');
+    const url = await _createCheckoutSession({ priceId, email, plan, successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com#pricing' });
+    track('checkout_started', { plan });
+    _goToCheckout(url, opts && opts.hold); // _checkoutInFlight stays true: the page is navigating away
   } catch (err) {
-    track('checkout_failed', { plan, message: err.message });
+    track('checkout_failed', { plan, message: err.name === 'TimeoutError' ? 'timeout' : err.message });
+    _checkoutInFlight = false;
     if (btn) { btn.textContent = 'Start 14-day free trial →'; btn.disabled = false; }
-    alert('Checkout error: ' + err.message);
+    let msg = _checkoutErrMsg(err);
+    if (!_currentUser && opts && opts.email) {
+      // Pay-before-confirm path: the account exists but Stripe never opened, so drop the
+      // "trial started" marker and tell them what to do next.
+      try { localStorage.removeItem('topo_confirm_pending'); } catch(e) {}
+      msg += (/[.!?]$/.test(msg) ? ' ' : '. ') + 'Your account was created: confirm the email we sent, then sign in and start your trial again.';
+    }
+    _showCheckoutError(msg);
   }
 }
 async function confirmSeatCheckout() {
   const seats = Math.max(2, parseInt(document.getElementById('seat-count-input').value) || 2);
   document.getElementById('seat-picker-overlay').classList.remove('show');
   if (!_currentUser) { openAuth(); return; }
+  if (_checkoutInFlight) return;
+  _checkoutInFlight = true;
+  track('checkout_clicked', { plan: 'company', seats });
+  _showCheckoutOverlay();
   const btn = document.getElementById('checkout-btn-company');
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
   try {
-    const res = await fetch(WEBHOOK_WORKER + '/create-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ priceId: STRIPE_PRICE_COMPANY, email: _currentUser.email, plan: 'company', quantity: seats, companyName: (document.getElementById('seat-picker-company-name')?.value || '').trim(), successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com#pricing' }) });
-    const data = await res.json();
-    if (data.url) { window.location.href = data.url; }
-    else throw new Error(data.error || 'Failed to create checkout');
+    const url = await _createCheckoutSession({ priceId: STRIPE_PRICE_COMPANY, email: _currentUser.email, plan: 'company', quantity: seats, companyName: (document.getElementById('seat-picker-company-name')?.value || '').trim(), successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com#pricing' });
+    track('checkout_started', { plan: 'company', seats });
+    _goToCheckout(url);
   } catch (err) {
-    track('checkout_failed', { plan: 'company', seats, message: err.message });
+    track('checkout_failed', { plan: 'company', seats, message: err.name === 'TimeoutError' ? 'timeout' : err.message });
+    _checkoutInFlight = false;
     if (btn) { btn.textContent = 'Start free trial →'; btn.disabled = false; }
-    alert('Checkout error: ' + err.message);
+    _showCheckoutError(_checkoutErrMsg(err));
   }
 }
 async function confirmSeatChange() {
@@ -8545,7 +8759,9 @@ document.addEventListener('DOMContentLoaded', function() {
   if (window.location.search.includes('upgraded=true')) {
     track('subscription_created', { source: 'checkout_success_redirect' });
     history.replaceState(null, '', window.location.pathname); // strip ?upgraded=true so a reload/revisit can't re-fire this
+    _markConfirmPaid(); // paid before confirming the email: surface the "confirm your email" banner
   }
+  _showConfirmBanner(); // no-op unless a pay-before-confirm trial is still waiting on email confirmation
   // Direct link into the upgrade modal (e.g. an email CTA) — ?openupgrade=<context>.
   // Attribution (utm_* etc.) is already captured above via captureFirstTouch()
   // before this strips the query string, so nothing is lost by dropping it here.
@@ -9201,6 +9417,24 @@ closeCoordDrawer();
     <div style="padding:12px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
       <button onclick="closeSiteColumnsInfo()" style="background:#FF8C00;color:#1a0800;border:none;padding:10px 24px;border-radius:5px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;font-weight:600;transition:opacity .15s;" onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'">Got it, start placing &#x2192;</button>
     </div>
+  </div>
+</div>
+
+<!-- ═══ CONFIRM-EMAIL BANNER (trial paid before email confirmation) ═══ -->
+<div id="confirm-banner" role="status">
+  <span id="confirm-banner-text"></span>
+  <button id="confirm-banner-resend" onclick="_resendConfirmEmail()">Resend email</button>
+  <button aria-label="Dismiss" onclick="_dismissConfirmBanner()">&#x2715;</button>
+</div>
+
+<!-- ═══ CHECKOUT HAND-OFF OVERLAY ═══ -->
+<div class="auth-overlay" id="checkout-overlay" role="status" aria-live="polite">
+  <div class="checkout-overlay-card">
+    <div class="checkout-spinner" id="checkout-spinner"></div>
+    <div class="checkout-overlay-msg" id="checkout-overlay-msg">Taking you to secure checkout…</div>
+    <div class="checkout-overlay-sub" id="checkout-overlay-sub">You'll be redirected to Stripe in a moment.</div>
+    <div class="checkout-overlay-err" id="checkout-overlay-err" style="display:none;"></div>
+    <button class="checkout-overlay-close" id="checkout-overlay-close" style="display:none;" onclick="_hideCheckoutOverlay()">Close</button>
   </div>
 </div>
 
