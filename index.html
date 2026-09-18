@@ -773,6 +773,12 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
   font-family: 'DM Mono', monospace; font-size: 11px;
 }
 #confirm-banner button:disabled { opacity: .6; cursor: default; }
+.checkout-overlay-continue {
+  margin-top: 16px; width: 100%; background: var(--green); color: #EFE3D8;
+  border: 1px solid var(--green-lt); padding: 11px; border-radius: 5px; cursor: pointer;
+  font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+}
+.checkout-overlay-continue + .checkout-overlay-close { margin-top: 8px; }
 .checkout-overlay-close {
   margin-top: 16px; width: 100%; background: var(--bg-input); border: 1px solid var(--border-md);
   color: var(--text-mid); padding: 10px; border-radius: 5px; cursor: pointer;
@@ -4671,11 +4677,38 @@ function _showCheckoutOverlay(msg, sub) {
   subEl.textContent = sub || "You'll be redirected to Stripe in a moment.";
   subEl.style.display = '';
   document.getElementById('checkout-overlay-err').style.display = 'none';
-  document.getElementById('checkout-overlay-close').style.display = 'none';
+  document.getElementById('checkout-overlay-continue').style.display = 'none';
+  const closeBtn = document.getElementById('checkout-overlay-close');
+  closeBtn.style.display = 'none'; closeBtn.textContent = 'Close';
   ov.classList.add('show');
 }
 function _hideCheckoutOverlay() {
   const ov = document.getElementById('checkout-overlay'); if (ov) ov.classList.remove('show');
+}
+// Close button (error and no-trial states): hide and free the re-entrancy guard.
+function _closeCheckoutOverlay() {
+  _hideCheckoutOverlay();
+  _checkoutInFlight = false;
+}
+// What a subscription costs from day one, shown when the free trial has already been used.
+const CHECKOUT_PRICE_TEXT = { pro: '£39.99 per month', company: '£29.99 per seat per month' };
+// The worker says this email already had its one free trial. Never send someone to a
+// page that bills them today without saying so first: show the price and let them choose.
+function _showNoTrialConfirm(plan, url, resetBtn) {
+  const ov = document.getElementById('checkout-overlay'); if (!ov) { _goToCheckout(url); return; }
+  document.getElementById('checkout-spinner').style.display = 'none';
+  document.getElementById('checkout-overlay-msg').textContent = 'Your free trial has already been used';
+  const subEl = document.getElementById('checkout-overlay-sub');
+  subEl.textContent = 'Subscribing starts today at ' + (CHECKOUT_PRICE_TEXT[plan] || CHECKOUT_PRICE_TEXT.pro) + '. You can cancel any time.';
+  subEl.style.display = '';
+  document.getElementById('checkout-overlay-err').style.display = 'none';
+  const cont = document.getElementById('checkout-overlay-continue');
+  cont.style.display = '';
+  cont.onclick = function() { _showCheckoutOverlay(); _goToCheckout(url); };
+  const closeBtn = document.getElementById('checkout-overlay-close');
+  closeBtn.textContent = 'Not now'; closeBtn.style.display = '';
+  if (resetBtn) resetBtn();
+  ov.classList.add('show');
 }
 function _showCheckoutError(msg) {
   const ov = document.getElementById('checkout-overlay'); if (!ov) { alert(msg); return; }
@@ -4684,7 +4717,9 @@ function _showCheckoutError(msg) {
   document.getElementById('checkout-overlay-sub').style.display = 'none';
   const errEl = document.getElementById('checkout-overlay-err');
   errEl.textContent = msg; errEl.style.display = '';
-  document.getElementById('checkout-overlay-close').style.display = '';
+  document.getElementById('checkout-overlay-continue').style.display = 'none';
+  const closeBtn = document.getElementById('checkout-overlay-close');
+  closeBtn.textContent = 'Close'; closeBtn.style.display = '';
   ov.classList.add('show');
 }
 function _checkoutErrMsg(err) {
@@ -4699,7 +4734,9 @@ async function _createCheckoutSession(payload) {
   });
   const data = await res.json();
   if (!data.url) throw new Error(data.error || 'Failed to create checkout');
-  return data.url;
+  // trial === false means this email already used its one free trial (worker-side check).
+  // An older worker omits the field, which reads as "trial granted" (undefined !== false).
+  return { url: data.url, trial: data.trial };
 }
 // The analytics insert is a plain fetch with no keepalive, so give it a beat to leave
 // the browser before the page navigates away to Stripe.
@@ -4734,9 +4771,14 @@ async function startCheckout(plan, opts) {
   const btn = document.getElementById('checkout-btn-' + plan);
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
   try {
-    const url = await _createCheckoutSession({ priceId, email, plan, successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com#pricing' });
-    track('checkout_started', { plan });
-    _goToCheckout(url, opts && opts.hold); // _checkoutInFlight stays true: the page is navigating away
+    const session = await _createCheckoutSession({ priceId, email, plan, successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com#pricing' });
+    track('checkout_started', session.trial === false ? { plan, trial: false } : { plan });
+    if (session.trial === false) {
+      track('trial_already_used', { plan });
+      _showNoTrialConfirm(plan, session.url, function() { if (btn) { btn.textContent = 'Start 14-day free trial →'; btn.disabled = false; } });
+    } else {
+      _goToCheckout(session.url, opts && opts.hold); // _checkoutInFlight stays true: the page is navigating away
+    }
   } catch (err) {
     track('checkout_failed', { plan, message: err.name === 'TimeoutError' ? 'timeout' : err.message });
     _checkoutInFlight = false;
@@ -4762,9 +4804,14 @@ async function confirmSeatCheckout() {
   const btn = document.getElementById('checkout-btn-company');
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
   try {
-    const url = await _createCheckoutSession({ priceId: STRIPE_PRICE_COMPANY, email: _currentUser.email, plan: 'company', quantity: seats, companyName: (document.getElementById('seat-picker-company-name')?.value || '').trim(), successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com#pricing' });
-    track('checkout_started', { plan: 'company', seats });
-    _goToCheckout(url);
+    const session = await _createCheckoutSession({ priceId: STRIPE_PRICE_COMPANY, email: _currentUser.email, plan: 'company', quantity: seats, companyName: (document.getElementById('seat-picker-company-name')?.value || '').trim(), successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com#pricing' });
+    track('checkout_started', session.trial === false ? { plan: 'company', seats, trial: false } : { plan: 'company', seats });
+    if (session.trial === false) {
+      track('trial_already_used', { plan: 'company', seats });
+      _showNoTrialConfirm('company', session.url, function() { if (btn) { btn.textContent = 'Start free trial →'; btn.disabled = false; } });
+    } else {
+      _goToCheckout(session.url);
+    }
   } catch (err) {
     track('checkout_failed', { plan: 'company', seats, message: err.name === 'TimeoutError' ? 'timeout' : err.message });
     _checkoutInFlight = false;
@@ -9505,7 +9552,8 @@ closeCoordDrawer();
     <div class="checkout-overlay-msg" id="checkout-overlay-msg">Taking you to secure checkout…</div>
     <div class="checkout-overlay-sub" id="checkout-overlay-sub">You'll be redirected to Stripe in a moment.</div>
     <div class="checkout-overlay-err" id="checkout-overlay-err" style="display:none;"></div>
-    <button class="checkout-overlay-close" id="checkout-overlay-close" style="display:none;" onclick="_hideCheckoutOverlay()">Close</button>
+    <button class="checkout-overlay-continue" id="checkout-overlay-continue" style="display:none;">Continue to checkout</button>
+    <button class="checkout-overlay-close" id="checkout-overlay-close" style="display:none;" onclick="_closeCheckoutOverlay()">Close</button>
   </div>
 </div>
 
