@@ -2820,7 +2820,17 @@ var REGION_DATA = [
   // 6.7-18.5) fully contains both. Without these, Ljubljana/Zagreb sites
   // are hinted "10m Italy" then fall through to EU_DTM 30m.
   [45.4, 13.4,  46.9, 16.6, 'Slovenia',       30,  'lo'],
-  [42.4, 13.5,  46.55, 19.45, 'Croatia',      30,  'lo'],
+  // Croatia's coast angles sharply east south of Istria (Zadar 15.2°E,
+  // Split 16.4°E) — a single box using Istria's western tip (13.5°E) as
+  // the edge for the FULL latitude range down to 42.4°N swallowed a huge
+  // stretch of Italy's real Adriatic coast (Rimini, Ancona, Pescara) and
+  // labeled it "Croatia". Split by latitude so the west edge only reaches
+  // that far west where Croatia actually does (Istria/Kvarner, north of
+  // 44.6°N); south of that, the edge moves to 15.0°E. Known remaining
+  // miss: Trieste (Italy, 13.78°E) still falls in the Slovenia box above —
+  // same category of accepted border imprecision as elsewhere in this list.
+  [44.6, 13.8,  46.55, 19.45, 'Croatia',      30,  'lo'], // Istria/Kvarner
+  [42.4, 15.0,  44.6,  19.45, 'Croatia',      30,  'lo'], // Dalmatian coast
   [36.4,  6.7,  47.1, 18.5, 'Italy',         10,   'hi'],
   [36.0, 25.0,  42.0, 26.5, 'Greece',         30,  'lo'],
   [49.0, 14.1,  54.9, 24.2, 'Poland',         30,  'lo'],
@@ -6946,6 +6956,7 @@ function updateElevationSourceBanner(source, _pro) {
   else if (s.includes('dhm')||s.includes('denmark'))    {tier='lidar';resText='0.4m · Danish DHM LiDAR';}
   else if (s.includes('kartverket'))                    {tier='lidar';resText='1m · Kartverket DTM1 Norway';}
   else if (s.includes('estonia')||s.includes('maaamet')){tier='lidar';resText='1m · Maaamet DTM Estonia';}
+  else if (s.includes('nls')||s.includes('finland'))    {tier='lidar';resText='2m · NLS Finland LiDAR';}
   else if (s.includes('czech')||s.includes('cuzk')||s.includes('dmr4g')){tier='lidar';resText='5m · ČÚZK DMR4G Czech Republic';}
   else if (s.includes('nrcan')||s.includes('hrdem')||s.includes('canada')){tier='lidar';resText='1m · NRCan HRDEM Canada';}
   else if (s.includes('ga-australia')||s.includes('ga-5m')){tier='lidar';resText='5m · Geoscience Australia LiDAR';}
@@ -6959,6 +6970,7 @@ function updateElevationSourceBanner(source, _pro) {
   else if (s.includes('ea-lidar'))                      {tier='lidar';resText='1m · EA LiDAR England';}
   else if (s.includes('srsp-scotland'))                 {tier='lidar';resText=(s.includes('-50cm')?'50cm':'1m')+' · SRSP LiDAR Scotland';}
   else if (s.includes('arcticdem'))                     {tier='high'; resText='10m · ArcticDEM Iceland';}
+  else if (s.includes('tinitaly'))                      {tier='high'; resText='10m · TINITALY Italy';}
   else {tier='low';resText='90m · Open-Meteo DEM';upgradeMsg=!_pro?'This is coarse satellite data. Pro unlocks LiDAR (0.4–1m) for 20+ countries.':'';}
   const colours={lidar:{bg:isDark?'#0e1f2e':'#dce9f5',border:'#2878c8',text:isDark?'#6aa8da':'#0a3661'},high:{bg:isDark?'#1a2e14':'#eaf3de',border:'#639922',text:isDark?'#9aba6a':'#27500a'},mid:{bg:isDark?'#2a2410':'#faeeda',border:'#ba7517',text:isDark?'#ef9f27':'#633806'},low:{bg:isDark?'#2a1a10':'#faece7',border:'#d85a30',text:isDark?'#f09975':'#4a1b0c'}}[tier];
   banner.style.display='block'; banner.style.background=colours.bg; banner.style.borderColor=colours.border;
@@ -7056,7 +7068,10 @@ function buildingSourceType(src) {
       s.includes('swissalti') || s.includes('england') || s.includes('ea lidar') ||
       s.includes('srsp') || s.includes('scotland') ||
       s.includes('nrcan') || s.includes('cdem') ||
-      s.includes('gedtm')) return 'dtm'; // GEDTM30 is bare-earth (ML-stripped of buildings/vegetation)
+      s.includes('gedtm') ||
+      s.includes('tinitaly') ||
+      s.includes('nls') || s.includes('finland') ||
+      s.includes('ga-australia')) return 'dtm'; // GEDTM30/TINITALY/NLS/GA are bare-earth (ML-stripped / surveyed without buildings)
   return 'unknown'; // USGS 3DEP, opentopodata, etc.
 }
 
