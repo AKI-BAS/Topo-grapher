@@ -3897,6 +3897,7 @@ async function handleSession(session) {
   // the spacing chips would have been evaluated with isPro() still false. Re-check now.
   if (polygonLatLngs) checkDrawnAreaWarning();
   updatePresence();
+  try { _syncDlBtn(); } catch(e) {} // refresh the format dropdown's Pro-lock labels now that plan is known
   let resumeFmt = window._pendingDownloadFmt;
   let restoredFromStorage = false;
   if (!resumeFmt || !window._cleanOutMetric?.length) {
@@ -3970,6 +3971,7 @@ function handleSignOut() {
   const footerSub = document.getElementById('footer-sub');
   if (footerSub) footerSub.innerHTML = 'Terrain Intelligence for BIM &nbsp;·&nbsp; Free Beta';
   updatePresence();
+  try { _syncDlBtn(); } catch(e) {} // re-lock the format dropdown labels now that plan is unknown/free again
 }
 
 function updateNavUI() {
@@ -5806,6 +5808,21 @@ function handleDownload() {
   if (!window._cleanOutMetric?.length) return;
   const fmt = document.getElementById('format-select')?.value || 'csv';
   track('download_attempted', { format: fmt });
+  // Authoritative Pro gate for DXF/IFC — this is the function that actually
+  // builds and serves the file, reachable directly (bypassing the format
+  // picker's own _fpLocked() check) whenever the picker doesn't open: empty
+  // _cleanOutMetric at click time, FEATURE_FORMAT_PICKER off, or the
+  // documented ?picker=0 kill switch. Without this check here, all three
+  // paths served DXF/IFC to non-Pro users for free — confirmed happening in
+  // production (Supabase: format_selected 'dxf' from plan:'anon' users
+  // repeatedly after the 2026-09-19 cutoff, while format_locked_clicked had
+  // never fired even once). Mirrors downloadBuildings()'s own gate below.
+  if ((fmt === 'dxf' || fmt === 'ifc') && _fpLocked(fmt)) {
+    try { track('format_locked_clicked', { format: fmt, plan: _currentProfile?.plan || 'anon', via: 'direct' }); } catch (e) {}
+    try { track('pro_cta_clicked', { source: 'download_direct' }); } catch (e) {}
+    startCheckout('pro');
+    return;
+  }
   if (!_currentUser) {
     track('download_gated', { format: fmt });
     window._pendingDownloadFmt = fmt;
@@ -5844,6 +5861,18 @@ function handleDownload() {
 function _syncDlBtn() {
   const fmt = document.getElementById('format-select')?.value || 'csv';
   const btn = document.getElementById('download-btn');
+  // Reflect the Pro gate directly on the dropdown options, not just the
+  // picker/button — so it's visible before the user even tries to download.
+  // Native <option> only supports plain text (no color/HTML), so this is a
+  // text suffix rather than a styled badge; matches the existing lock
+  // treatment on the buildings button below.
+  const sel = document.getElementById('format-select');
+  if (sel && typeof _fpLocked === 'function') {
+    ['ifc', 'dxf'].forEach(function (v) {
+      const opt = sel.querySelector('option[value="' + v + '"]');
+      if (opt) opt.textContent = v.toUpperCase() + (_fpLocked(v) ? ' 🔒 Pro' : '');
+    });
+  }
   // With the picker on, the button opens the format chooser, so keep its label neutral.
   if (btn && typeof _fpPickerOn === 'function' && _fpPickerOn()) { btn.innerHTML = '&#x2193; Download'; }
   else if (btn) btn.innerHTML = fmt === 'ifc' ? '&#x2193; Download IFC'
@@ -8903,6 +8932,7 @@ document.addEventListener('DOMContentLoaded', function() {
     history.replaceState(null, '', window.location.pathname + window.location.hash);
     setTimeout(function() { openUpgrade(_openUpgradeCtx); }, 300);
   }
+  try { _syncDlBtn(); } catch(e) {} // default format dropdown to locked labels before auth resolves; handleSession/handleSignOut refresh it once plan is known
   setTimeout(function() { initAuth(); }, 0);
 // Demo terrain starts as soon as Three.js is ready — retry until it loads
   (function _tryDemo() {
