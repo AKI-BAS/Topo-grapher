@@ -3525,7 +3525,7 @@ async function loadExportFormats(){
     const dlTot=Object.values(dl).reduce((a,b)=>a+b,0);
     const lockTot=Object.values(locked).reduce((a,b)=>a+b,0);
     const shown=cnt('format_picker_shown');
-    const proCta=rows.filter(r=>r.event==='pro_cta_clicked'&&String((r.properties||{}).source||'')==='format_picker').length;
+    const proCta=rows.filter(r=>r.event==='pro_cta_clicked'&&['format_picker','download_direct'].includes(String((r.properties||{}).source||''))).length;
     const checkout=cnt('checkout_started');
     const subs=cnt('subscription_created');
     const badge=document.getElementById('badge-formats'); if(badge) badge.textContent=periodLabel();

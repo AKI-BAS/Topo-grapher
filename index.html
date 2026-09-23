@@ -5807,7 +5807,6 @@ function downloadCSV(fmt) {
 function handleDownload() {
   if (!window._cleanOutMetric?.length) return;
   const fmt = document.getElementById('format-select')?.value || 'csv';
-  track('download_attempted', { format: fmt });
   // Authoritative Pro gate for DXF/IFC — this is the function that actually
   // builds and serves the file, reachable directly (bypassing the format
   // picker's own _fpLocked() check) whenever the picker doesn't open: empty
@@ -5817,12 +5816,16 @@ function handleDownload() {
   // production (Supabase: format_selected 'dxf' from plan:'anon' users
   // repeatedly after the 2026-09-19 cutoff, while format_locked_clicked had
   // never fired even once). Mirrors downloadBuildings()'s own gate below.
+  // Checked BEFORE download_attempted fires (and returns before it, same as
+  // the picker's own locked path) so the admin dashboard's "Downloaded, by
+  // format" chart doesn't count blocked attempts as real downloads.
   if ((fmt === 'dxf' || fmt === 'ifc') && _fpLocked(fmt)) {
     try { track('format_locked_clicked', { format: fmt, plan: _currentProfile?.plan || 'anon', via: 'direct' }); } catch (e) {}
     try { track('pro_cta_clicked', { source: 'download_direct' }); } catch (e) {}
     startCheckout('pro');
     return;
   }
+  track('download_attempted', { format: fmt });
   if (!_currentUser) {
     track('download_gated', { format: fmt });
     window._pendingDownloadFmt = fmt;
