@@ -2567,9 +2567,19 @@ var PREVIEW_PARTIAL_KM2 = 25;
     maxBoundsViscosity: 1.0, minZoom: 3
   });
 
+  // Place-name labels overlaid on satellite/Iceland imagery. Was CARTO's free
+  // voyager_only_labels tiles; CARTO started requiring an API key (2026-09-29, no code
+  // change on our side caused this, confirmed by pulling the tile directly: it now returns
+  // a 200 OK PNG that just says "API KEY REQUIRED", opaque, which blanked the whole map).
+  // Replaced with Esri's Reference/World_Boundaries_and_Places layer: the standard
+  // no-key labels overlay for World_Imagery, same vendor/endpoint family as the satellite
+  // tiles below, so it needs no new attribution string and no account.
+  var labelsOverlay = function() {
+    return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { attribution: '\u00a9 Esri', maxZoom: 19, opacity: 1.0, noWrap: true });
+  };
   var baseSatellite = L.layerGroup([
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '\u00a9 Esri', maxZoom: 19, noWrap: true }),
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 19, opacity: 1.0, noWrap: true })
+    labelsOverlay()
   ]);
   var baseStreets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '\u00a9 OSM', maxZoom: 19, noWrap: true });
   var baseLMI = L.layerGroup([
@@ -2577,7 +2587,7 @@ var PREVIEW_PARTIAL_KM2 = 25;
       layers: 'LMI_Kort', format: 'image/png', version: '1.1.1',
       transparent: true, attribution: '\u00a9 LMI', maxZoom: 19, noWrap: true
     }),
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 19, opacity: 1.0, noWrap: true })
+    labelsOverlay()
   ]);
 
   window._basemaps = { satellite: baseSatellite, streets: baseStreets, lmi: baseLMI };
@@ -2937,12 +2947,16 @@ function _showDataResFlag(poly) {
   }
   flag.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;margin-top:3px;padding:4px 10px;border-radius:4px;background:' + bg + ';color:' + color + ';border:1px solid ' + color + ';font-family:\'DM Mono\',monospace;';
   var resLabel = info.res < 1 ? (info.res * 100).toFixed(0) + 'cm' : info.res + 'm';
+  // Never pitch a trial to someone who already has Pro (found 2026-09-29: a Pro user saw
+  // "Start a free trial for best resolution" here). For 'lo' regions this was doubly wrong,
+  // since no better source exists there at any plan, Pro included, so the CTA was a false promise.
+  var trialPitch = isPro() ? '' : (' Start a free trial for ' + (info.quality === 'lo' ? 'best' : 'full') + ' resolution.');
   if (info.quality === 'lo' && info.res === 90) {
     flag.innerHTML = icon + ' Limited data in this region \u2014 only 90m Open-Meteo available. Expect \u00b116m vertical accuracy.';
   } else if (info.quality === 'lo') {
-    flag.innerHTML = icon + ' ' + info.name + ' \u2014 ' + resLabel + ' GEDTM30 data. Start a free trial for best resolution.';
+    flag.innerHTML = icon + ' ' + info.name + ' \u2014 ' + resLabel + ' GEDTM30 data.' + trialPitch;
   } else {
-    flag.innerHTML = icon + ' ' + info.name + ' \u2014 best available: ' + resLabel + '. Start a free trial for full resolution.';
+    flag.innerHTML = icon + ' ' + info.name + ' \u2014 best available: ' + resLabel + '.' + trialPitch;
   }
 }
 
