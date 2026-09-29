@@ -7058,6 +7058,7 @@ function showWireframe(points, minZ, maxZ) {
   if (_terrain3dState) {
     _terrain3dState.disposed = true;
     if (_terrain3dState.animFrame) cancelAnimationFrame(_terrain3dState.animFrame);
+    if (_terrain3dState.io) _terrain3dState.io.disconnect();
     _terrain3dState.renderer.dispose();
     _terrain3dState = null;
   }
@@ -8363,13 +8364,21 @@ const meshMat = new THREE.MeshBasicMaterial({
   syncVisuals();
 
   // ── Animate ──────────────────────────────────────────────────────
-  const state={renderer,scene,camera,terrainMesh,wireMesh,contourGroup,grid:groundGrid,buildingGroup,buildingEdgeGroup,animFrame:null,disposed:false};
+  const state={renderer,scene,camera,terrainMesh,wireMesh,contourGroup,grid:groundGrid,buildingGroup,buildingEdgeGroup,animFrame:null,disposed:false,paused:false};
   _terrain3dState=state;
+
+  // Unlike the two decorative demo previews (which already have this), this real viewer used to
+  // render at full frame rate forever once generated, even scrolled off-screen, competing with
+  // every later click for the main thread (found 2026-09-29, elevated INP). Same fix as those:
+  // pause rendering (not the rAF chain itself, just the expensive render() call) while the
+  // canvas isn't actually visible.
+  state.io = new IntersectionObserver(function(es) { state.paused = !es[0].isIntersecting; }, { threshold: 0.01 });
+  state.io.observe(canvas);
 
   function animate(){
     if(state.disposed) return;
     state.animFrame=requestAnimationFrame(animate);
-    if (document.hidden) return;   // keep loop alive, skip render work in background tabs
+    if (document.hidden || state.paused) return;   // keep loop alive, skip render work when hidden or off-screen
     const idle=(Date.now()-lastInteract)/1000;
     if(autoRot){rotY+=0.001;}
     else if(idle>60&&!idleDrift){idleDrift=true;}
