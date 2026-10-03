@@ -5129,6 +5129,7 @@ function showProgress(v) {
 function showResult(v) { const rc = document.getElementById('result-card'); if (rc) rc.classList.toggle('show', v); }
 function cancelGeneration() {
   window._cancelled = true; window._isGenerating = false; showProgress(false);
+  _convertActiveId = 0;
   _hideHighDemandBanner();
   const cb = document.getElementById('convert-btn'); if (cb) cb.disabled = false;
   if (_currentGenerationId) {
@@ -5456,7 +5457,20 @@ function _hideHighDemandBanner() {
 }
 
 // ── Convert ───────────────────────────────────────────────────────────────
+// Re-entrancy guard. The button is only disabled a couple of awaits into the real work, so
+// rapid repeat clicks (seen in the data as sub-second repeats) each ran a full generation,
+// which also meant a repeated large-site add-on charge. One run at a time; cancelGeneration()
+// releases the lock so Cancel then Generate still works while the old request winds down.
+// The run id stops a cancelled run's finally from releasing a newer run's lock.
+let _convertRunId = 0, _convertActiveId = 0;
 async function convert() {
+  if (_convertActiveId) return;
+  const id = ++_convertRunId;
+  _convertActiveId = id;
+  try { await _convertImpl(); }
+  finally { if (_convertActiveId === id) _convertActiveId = 0; }
+}
+async function _convertImpl() {
   hideError(); showResult(false);
   track('generation_started', { spacing: selectedSpacing, plan: _currentProfile?.plan || 'anon' });
   await startGeneration();
