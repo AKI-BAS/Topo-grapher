@@ -5249,7 +5249,7 @@ async function tryWorkerSingle(pts, onProgress) {
   if (d.elevation.length !== pts.length) throw new Error('worker-post-length: got ' + d.elevation.length + ' expected ' + pts.length);
   if (looksLikeFailure(d.elevation)) throw new Error('worker-post returned zeros');
   if (onProgress) onProgress(1, '1/1 batches');
-  return { elevations: d.elevation, source: d.source || 'worker (single POST)', degraded: !!d.degraded, region: d.region || null, duration_ms: typeof d.duration_ms === 'number' ? d.duration_ms : null };
+  return { elevations: d.elevation, source: d.source || 'worker (single POST)', degraded: !!d.degraded, region: d.region || null, duration_ms: typeof d.duration_ms === 'number' ? d.duration_ms : null, diag: d.diag || null };
 }
 
 async function tryWorkerProxy(pts, onProgress) {
@@ -5257,6 +5257,7 @@ async function tryWorkerProxy(pts, onProgress) {
   const e = new Array(pts.length);
   let workerSource = null;
   let workerDegraded = false;
+  let workerDiag = null;
   let workerRegion = null;
   let workerDurationMax = 0;
   const batches = [];
@@ -5276,6 +5277,7 @@ async function tryWorkerProxy(pts, onProgress) {
         d.elevation.forEach((v,j)=>{ e[batch.offset+j]=v; });
         if (d.source && !workerSource) workerSource = d.source;
         if (d.degraded) workerDegraded = true;
+        if (d.diag && !workerDiag) workerDiag = d.diag;
         if (d.region && !workerRegion) workerRegion = d.region;
         if (typeof d.duration_ms === 'number' && d.duration_ms > workerDurationMax) workerDurationMax = d.duration_ms;
       });
@@ -5286,7 +5288,7 @@ async function tryWorkerProxy(pts, onProgress) {
     if (w+PARALLEL < batches.length) await sleep(300);
   }
   if (looksLikeFailure(e)) throw new Error('proxy returned zeros');
-  return { elevations: e, source: workerSource || 'worker (7-parallel GET)', degraded: workerDegraded, region: workerRegion, duration_ms: workerDurationMax || null };
+  return { elevations: e, source: workerSource || 'worker (7-parallel GET)', degraded: workerDegraded, region: workerRegion, duration_ms: workerDurationMax || null, diag: workerDiag };
 }
 
 async function tryOpenMeteo(pts) {
@@ -5359,12 +5361,12 @@ async function fetchElevations(pts, onP) {
     if (USE_SINGLE_POST) {
       onP(0,'Fetching elevation data…',pts.length+' points · single request');
       const result=await tryWorkerSingle(pts,(frac,label)=>onP(frac*0.95,'Fetching elevation data…',label));
-      return {elevations:result.elevations,source:result.source,degraded:result.degraded,region:result.region,duration_ms:result.duration_ms};
+      return {elevations:result.elevations,source:result.source,degraded:result.degraded,region:result.region,duration_ms:result.duration_ms,diag:result.diag};
     } else {
       const totalBatches=Math.ceil(pts.length/200);
       onP(0,'Fetching elevation data…',pts.length+' points · '+totalBatches+' batches · ~'+Math.max(2,Math.ceil(totalBatches/7)*2)+'s');
       const result=await tryWorkerProxy(pts,(frac,label)=>onP(frac*0.95,'Fetching elevation data…',label));
-      return {elevations:result.elevations,source:result.source,degraded:result.degraded,region:result.region,duration_ms:result.duration_ms};
+      return {elevations:result.elevations,source:result.source,degraded:result.degraded,region:result.region,duration_ms:result.duration_ms,diag:result.diag};
     }
   }catch(e){
     throw new Error('Elevation fetch failed — '+e.message.slice(0,120));
@@ -5521,12 +5523,13 @@ async function _convertImpl() {
       _showHighDemandBanner('⏳ Lots of people generating right now — hang tight, your data will be here in a minute. No need to refresh.');
       try { track('high_demand_slow_shown', {}); } catch(_){}
     }, SLOW_MS);
-    let elevations, source, degraded, region, workerMs;
+    let elevations, source, degraded, region, workerMs, upstreamDiag;
     const _wallT0 = Date.now();
     try {
       const _r = await fetchElevations(grid,(f,l,s)=>setProgress(0.1+f*0.78,null,s));
       elevations = _r.elevations; source = _r.source; degraded = !!_r.degraded;
       region = _r.region || null; workerMs = _r.duration_ms || null;
+      upstreamDiag = _r.diag || null; // raw upstream error text: logged for admin analysis, never rendered
     } finally {
       clearTimeout(_slowTimer);
     }
@@ -5539,6 +5542,7 @@ async function _convertImpl() {
         region: region,
         source: source,
         degraded: degraded,
+        diag: upstreamDiag || null,
         worker_ms: workerMs,
         wall_ms: wallMs,
         points: grid.length
