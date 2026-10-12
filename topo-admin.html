@@ -127,7 +127,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
 @media(max-width:1000px){.page-quad{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-rows:minmax(320px,auto);}}
 .page-triple{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:clamp(12px,1.4vw,26px);}
 .page-triple .sec-body{overflow-y:auto;}
-/* Funnels page: Paywall Funnel is the 2nd of 3 sections, alone in column 2 —
+/* Funnels page: Paywall Funnel is the 2nd of 3 sections, alone in column 2 -
    span both rows so it uses the full column height instead of leaving the
    lower cell empty while its own content has to scroll. */
 #page-funnels #sec-paywallfunnel{grid-row:1/3;}
@@ -284,7 +284,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .coverage-modal-legend{display:flex;gap:16px;padding:10px 16px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);flex-wrap:wrap;flex-shrink:0;}
 @media(max-width:768px){.coverage-modal{padding:8px;}.coverage-modal-inner{max-height:100%;}.coverage-modal-sub{display:none;}}
 
-/* Coverage country edit panel — shared by both coverage views (topbar modal + heatmap overlay) */
+/* Coverage country edit panel, shared by both coverage views (topbar modal + heatmap overlay) */
 .cov-edit-panel{position:fixed;top:0;right:0;height:100%;width:300px;max-width:90vw;background:var(--surface);border-left:1px solid var(--border);z-index:10001;display:flex;flex-direction:column;padding:18px 16px;gap:8px;box-shadow:-8px 0 24px rgba(0,0,0,.35);transform:translateX(100%);transition:transform .18s ease;}
 .cov-edit-panel.open{transform:translateX(0);}
 .cov-edit-panel label{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:8px;}
@@ -302,7 +302,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .cov-edit-close:hover{color:var(--text);}
 
 /* ── Monitor / health page ─────────────────────────────────── */
-/* mon-shell just wraps the main content grid — the sticky panel is
+/* mon-shell just wraps the main content grid, the sticky panel is
    position:fixed so it escapes the 1100px .sec cap and floats to the
    right edge of the viewport. */
 .mon-shell{display:block;}
@@ -491,7 +491,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
 @media(max-width:768px){
   body{overflow:hidden auto;}
   .page,.dock{display:none!important;}
-  /* Restore original clean topbar — period picker + blast button moved off-topbar */
+  /* Restore original clean topbar, period picker + blast button moved off-topbar */
   .topbar{padding:0 12px;gap:8px;}
   .topbar-slash,.topbar-page,.topbar-time,.live-badge,
   .layout-btn,.period-picker,.blast-topbar-btn{display:none!important;}
@@ -548,7 +548,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
   .mob-period-fab{display:flex!important;}
   /* ── Pages FAB: visible on mobile, bottom-LEFT ── */
   .mob-page-fab{display:flex!important;}
-  /* Hide the horizontal tab strip on mobile — the pages popover replaces it */
+  /* Hide the horizontal tab strip on mobile, the pages popover replaces it */
   .mob-tabs{display:none!important;}
   /* ── Period popover ── */
   .period-popover{display:none;position:fixed;bottom:70px;right:14px;z-index:8000;
@@ -586,7 +586,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
 }
 
 /* ══════════════════════════════════════════════════════════════
-   RESIZABLE MODAL — desktop only (mobile overrides with !important above)
+   RESIZABLE MODAL, desktop only (mobile overrides with !important above)
    CSS resize:both lets user drag bottom-right corner to resize.
    ══════════════════════════════════════════════════════════════ */
 .resizable-modal{
@@ -629,7 +629,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .mob-page-fab:hover{background:var(--surface2);}
 .mob-page-fab-lbl{font-size:16px;color:var(--accent);line-height:1;}
 
-/* ── Blast topbar button — always visible ── */
+/* ── Blast topbar button, always visible ── */
 .blast-topbar-btn{font-family:'DM Mono',monospace;font-size:10px;color:#9aba6a;background:none;border:1px solid var(--green-lt,#5A8E3A);padding:4px 10px;cursor:pointer;letter-spacing:.04em;transition:all .15s;border-radius:6px;white-space:nowrap;}
 .blast-topbar-btn:hover{background:var(--accent-dk);border-color:var(--accent2);}
 
@@ -769,7 +769,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
     <div class="topbar-right">
       <div class="live-badge"><div class="live-dot"></div>LIVE</div>
       <span class="topbar-time" id="clock">--:--:--</span>
-      <!-- Period picker — hidden on mobile via compact styles -->
+      <!-- Period picker, hidden on mobile via compact styles -->
       <div class="period-picker" id="period-picker">
         <button class="period-btn" data-period="1d"  onclick="setPeriod('1d')">1D</button>
         <button class="period-btn" data-period="7d"  onclick="setPeriod('7d')">7D</button>
@@ -785,7 +785,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
         <button class="theme-toggle-opt active" data-theme="dark" onclick="setAdminTheme('dark')">☾</button>
         <button class="theme-toggle-opt" data-theme="light" onclick="setAdminTheme('light')">☀</button>
       </div>
-      <!-- Email blast button — always visible, even on mobile -->
+      <!-- Email blast button, always visible, even on mobile -->
       <button class="blast-topbar-btn" onclick="openBlast()" title="Send email blast to users">✉ Blast</button>
       <button class="blast-topbar-btn" onclick="openCoverageMap()" title="Data coverage map by country" style="border-color:#4EA0D9;color:#4EA0D9;">◈ Coverage</button>
       <button class="logout-btn" onclick="doSignOut()">Sign out</button>
@@ -798,7 +798,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
   <!-- Dock -->
   <div class="dock" id="dock"></div>
 
-  <!-- Coverage map modal — opened via topbar ◈ Coverage button -->
+  <!-- Coverage map modal, opened via topbar ◈ Coverage button -->
   <div id="coverage-modal" class="coverage-modal" style="display:none;">
     <div class="coverage-modal-inner">
       <div class="coverage-modal-header">
@@ -812,13 +812,13 @@ body::before{content:'';position:fixed;inset:0;background-image:
         <span><span class="heatmap-legend-dot" style="background:#9ABA6A"></span>5–10m (dedicated)</span>
         <span><span class="heatmap-legend-dot" style="background:#E0A050"></span>Regional 30m (EU_DTM)</span>
         <span><span class="heatmap-legend-dot" style="background:#555"></span>GEDTM30 global only (no dedicated source)</span>
-        <span><span class="heatmap-legend-dot" style="background:#7BC8F6"></span>Scotland — SRSP (self-hosted, distinct from GPXZ)</span>
+        <span><span class="heatmap-legend-dot" style="background:#7BC8F6"></span>Scotland, SRSP (self-hosted, distinct from GPXZ)</span>
         <span style="opacity:.7;">◨ striped = partial coverage</span>
       </div>
     </div>
   </div>
 
-  <!-- Coverage country edit panel — opened by ✎ Edit inside a coverage-map popup -->
+  <!-- Coverage country edit panel, opened by ✎ Edit inside a coverage-map popup -->
   <div id="cov-edit-panel" class="cov-edit-panel">
     <button class="cov-edit-close" onclick="_closeCoverageEdit()" title="Close">×</button>
     <div class="cov-edit-title" id="cov-edit-title">Edit country</div>
@@ -863,7 +863,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
     <button class="period-pop-btn" data-period="all" onclick="setPeriod('all');togglePeriodPopover()">All time</button>
   </div>
 
-  <!-- ═══ MOBILE PAGES FAB + POPOVER (phone only) — replaces the horizontal tab strip ═══ -->
+  <!-- ═══ MOBILE PAGES FAB + POPOVER (phone only), replaces the horizontal tab strip ═══ -->
   <button class="mob-page-fab" id="mob-page-fab" onclick="togglePagesPopover()" aria-label="Choose page">
     <span class="mob-page-fab-lbl" id="mob-page-fab-lbl">◈</span>
   </button>
@@ -925,14 +925,14 @@ body::before{content:'';position:fixed;inset:0;background-image:
         </div>
         <!-- Body -->
         <div>
-          <div class="blast-label">Email body — plain text. Aki's voice. Paragraphs separated by blank lines. Use **text** for bold, paste a bare URL (https://…) for a plain link, or [Button text](https://…) for a styled button.</div>
-          <textarea class="blast-textarea" id="blast-body" placeholder="Hey —&#10;&#10;Write your message here…"></textarea>
+          <div class="blast-label">Email body: plain text. Aki's voice. Paragraphs separated by blank lines. Use **text** for bold, paste a bare URL (https://…) for a plain link, or [Button text](https://…) for a styled button.</div>
+          <textarea class="blast-textarea" id="blast-body" placeholder="Hey,&#10;&#10;Write your message here…"></textarea>
         </div>
         <!-- Dry-run recipient preview -->
         <div class="blast-preview-box" id="blast-dry-box" style="display:none;"></div>
         <!-- Double-confirm -->
         <div class="blast-confirm" id="blast-confirm">
-          <div class="blast-confirm-warn">⚠ You are about to send this email to <strong id="blast-confirm-n">—</strong> users. This cannot be undone.</div>
+          <div class="blast-confirm-warn">⚠ You are about to send this email to <strong id="blast-confirm-n">-</strong> users. This cannot be undone.</div>
           <div class="blast-confirm-actions">
             <button class="blast-btn blast-btn-abort" onclick="abortBlast()">← Cancel</button>
             <button class="blast-btn blast-btn-confirm" onclick="executeSend()">⚑ Yes, send now</button>
@@ -953,7 +953,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
         </div>
       </div>
       <div class="blast-footer">
-        <div class="blast-recipient-count" id="blast-recipient-count">Recipients: <span>—</span></div>
+        <div class="blast-recipient-count" id="blast-recipient-count">Recipients: <span>-</span></div>
         <div class="blast-footer-btns">
           <button class="blast-btn blast-btn-secondary" onclick="dryRunBlast()">👁 Check recipients</button>
           <button class="blast-btn blast-btn-secondary" onclick="previewBlastEmail()">📧 Preview email</button>
@@ -967,7 +967,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
   <div class="blast-preview-overlay" id="blast-preview-overlay" onclick="if(event.target===this)closeBlastPreview()">
     <div class="blast-preview-frame-wrap resizable-modal">
       <div class="blast-preview-bar">
-        <span class="blast-preview-bar-title">Email preview — rendered as recipients will see it</span>
+        <span class="blast-preview-bar-title">Email preview: rendered as recipients will see it</span>
         <button class="blast-preview-bar-close" onclick="closeBlastPreview()">✕</button>
       </div>
       <iframe class="blast-preview-iframe" id="blast-preview-iframe" sandbox="allow-same-origin"></iframe>
@@ -1005,7 +1005,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Local config: keys live here so the tracked HTML stays git-safe.
      If the file is missing, the fallbacks below keep the page working. -->
-<script src="config.local.js" onerror="console.warn('config.local.js not found — using built-in fallbacks. Copy config.example.js to config.local.js to override.')"></script>
+<script src="config.local.js" onerror="console.warn('config.local.js not found, using built-in fallbacks. Copy config.example.js to config.local.js to override.')"></script>
 <script>
 // Fix for browser extensions hijacking fetch
 const _originalFetch = window.fetch;
@@ -1021,7 +1021,7 @@ const _sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 // ── Constants ─────────────────────────────────────────────────
 const CN={DK:'Denmark',IS:'Iceland',NO:'Norway',SE:'Sweden',FI:'Finland',GB:'United Kingdom',IE:'Ireland',NL:'Netherlands',BE:'Belgium',FR:'France',CH:'Switzerland',AT:'Austria',DE:'Germany',ES:'Spain',PT:'Portugal',IT:'Italy',GR:'Greece',PL:'Poland',CZ:'Czechia',US:'United States',CA:'Canada',JP:'Japan',NZ:'New Zealand',AU:'Australia',HR:'Croatia',HU:'Hungary',RO:'Romania',SK:'Slovakia',LT:'Lithuania',LV:'Latvia',EE:'Estonia',MX:'Mexico',SA:'Saudi Arabia',AE:'UAE',IL:'Israel',FO:'Faroe Islands',LU:'Luxembourg',BG:'Bulgaria'};
 const CF={};
-// Flag helper — returns inline <img> from flagcdn (works on Windows where emoji flags don't render)
+// Flag helper, returns inline <img> from flagcdn (works on Windows where emoji flags don't render)
 function flag(code){return code?`<img src="https://flagcdn.com/16x12/${code.toLowerCase()}.png" srcset="https://flagcdn.com/32x24/${code.toLowerCase()}.png 2x" width="16" height="12" alt="${code}" style="vertical-align:middle;border-radius:1px;" onerror="this.replaceWith(document.createTextNode('${code}'))">`:'';}
 // Populate CF with img tags for all known codes
 Object.keys(CN).forEach(c=>{CF[c]=flag(c);});
@@ -1190,7 +1190,7 @@ async function exportAllToExcel(){
   }
 }
 
-// ── Basemap (Stadia Maps — same visuals as CARTO positron/dark-matter, keyed) ──
+// ── Basemap (Stadia Maps, same visuals as CARTO positron/dark-matter, keyed) ──
 const STADIA_KEY = 'd245d462-0af7-4433-bb16-72e0b8285942';
 const stadiaTileUrl = theme => (theme === 'light'
   ? `https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png?api_key=${STADIA_KEY}`
@@ -1418,7 +1418,7 @@ async function loadKPIs(){
     <div class="kpi" style="--kpi-color:var(--blue)"><div class="kpi-label">Gens / week</div><div class="kpi-value" style="color:var(--blue)">${weekGens||0}</div><div class="kpi-delta ${weekDelta>=0?'delta-up':'delta-down'}">${weekDelta>=0?'↑':'↓'} ${Math.abs(weekDelta)}% vs prev</div></div>
     <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">Active users</div><div class="kpi-value">${activeUsers}</div><div class="kpi-delta">${totalUsers||0} total signups</div></div>
     <div class="kpi" style="--kpi-color:var(--purple)"><div class="kpi-label">Pro subs</div><div class="kpi-value" style="color:var(--purple)">${proCount||0}</div><div class="kpi-delta">incl. trials · ${totalUsers?Math.round((proCount||0)/totalUsers*100):0}% conversion</div></div>
-    <div class="kpi" style="--kpi-color:${avgRes&&avgRes>15?'var(--amber)':'var(--accent)'}"><div class="kpi-label">Avg resolution</div><div class="kpi-value">${avgRes?avgRes+'m':'—'}</div><div class="kpi-delta">${avgRes&&avgRes>30?'↓ needs more LiDAR':'data quality'}</div></div>
+    <div class="kpi" style="--kpi-color:${avgRes&&avgRes>15?'var(--amber)':'var(--accent)'}"><div class="kpi-label">Avg resolution</div><div class="kpi-value">${avgRes?avgRes+'m':'-'}</div><div class="kpi-delta">${avgRes&&avgRes>30?'↓ needs more LiDAR':'data quality'}</div></div>
     <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">Total gens</div><div class="kpi-value">${(totalGens||0).toLocaleString()}</div><div class="kpi-delta">all time</div></div>
   </div>`;
 }
@@ -1469,7 +1469,7 @@ function _populateHeatmap(data){
   if(_hmap._mg)_hmap.removeLayer(_hmap._mg);
   const mg=L.layerGroup();_hmap._mg=mg;
   _hmapBounds=[];
-  data.forEach(r=>{const lat=+r.centroid_lat,lon=+r.centroid_lon;if(!isFinite(lat)||!isFinite(lon))return;_hmapBounds.push([lat,lon]);const c=r.resolution_m==null?'#666':r.resolution_m<=1?'#4EA0D9':r.resolution_m<=10?'#9ABA6A':r.resolution_m<=30?'#E0A050':'#E25555';mg.addLayer(L.circleMarker([lat,lon],{radius:6,fillColor:c,color:c,weight:1,opacity:.8,fillOpacity:.5}).bindPopup(`<div style="font-family:DM Mono,monospace;font-size:11px;line-height:1.7;"><strong>${esc(r.project_name||'—')}</strong><br>${CF[r.country_code]||''} ${CN[r.country_code]||r.country_code||'??'}<br>${r.resolution_m!=null?r.resolution_m+'m':'Unknown'}<br><span style="opacity:.6">${ago(r.created_at)}</span></div>`));});
+  data.forEach(r=>{const lat=+r.centroid_lat,lon=+r.centroid_lon;if(!isFinite(lat)||!isFinite(lon))return;_hmapBounds.push([lat,lon]);const c=r.resolution_m==null?'#666':r.resolution_m<=1?'#4EA0D9':r.resolution_m<=10?'#9ABA6A':r.resolution_m<=30?'#E0A050':'#E25555';mg.addLayer(L.circleMarker([lat,lon],{radius:6,fillColor:c,color:c,weight:1,opacity:.8,fillOpacity:.5}).bindPopup(`<div style="font-family:DM Mono,monospace;font-size:11px;line-height:1.7;"><strong>${esc(r.project_name||'-')}</strong><br>${CF[r.country_code]||''} ${CN[r.country_code]||r.country_code||'??'}<br>${r.resolution_m!=null?r.resolution_m+'m':'Unknown'}<br><span style="opacity:.6">${ago(r.created_at)}</span></div>`));});
   if(_mapLayers.gens)mg.addTo(_hmap);
   if(_mapLayers.gens&&_hmapBounds.length)_hmap.fitBounds(_hmapBounds,{padding:[20,20],maxZoom:6});
   setTimeout(()=>_hmap.invalidateSize(),400);
@@ -1514,7 +1514,7 @@ function _removeCoverageLayer(){
 
 function toggleMapLayer(which){
   _mapLayers[which]=!_mapLayers[which];
-  // Never leave the map fully blank — keep at least one layer on
+  // Never leave the map fully blank, keep at least one layer on
   if(!_mapLayers.gens&&!_mapLayers.coverage)_mapLayers[which==='gens'?'coverage':'gens']=true;
   if(_hmap){
     if(_mapLayers.gens){if(_hmap._mg)_hmap._mg.addTo(_hmap);}else if(_hmap._mg)_hmap.removeLayer(_hmap._mg);
@@ -1572,7 +1572,7 @@ async function loadHeatmap(){
 // Blue: dedicated LiDAR ≤2m. Green: dedicated 5–10m. Orange: regional 30m (EU_DTM).
 // Gray: only GEDTM30 global fallback.
 //
-// Per-country data lives in Supabase `coverage_countries` (admin-editable —
+// Per-country data lives in Supabase `coverage_countries` (admin-editable -
 // click any country on the map, on either coverage view, and hit ✎ Edit).
 // Only the 3 tier colors/labels stay hardcoded here.
 const TIER_META = {
@@ -1582,7 +1582,7 @@ const TIER_META = {
 };
 
 // ISO2 -> ISO3 (world.geo.json keys on ISO3) + reverse, for flag icons only.
-// Not exhaustive — countries outside this list still work, they just show
+// Not exhaustive, countries outside this list still work, they just show
 // no flag in the popup.
 const ISO2_TO_ISO3 = {
   DK:'DNK',IS:'ISL',NO:'NOR',SE:'SWE',FI:'FIN',GB:'GBR',IE:'IRL',NL:'NLD',BE:'BEL',
@@ -1714,7 +1714,7 @@ async function _initCoverageMap(){
     });
     L.tileLayer(stadiaTileUrl(theme), { maxZoom:10, noWrap:true }).addTo(_cmap);
   } else {
-    // Theme may have changed since last open — swap tile layer
+    // Theme may have changed since last open, swap tile layer
     _cmap.eachLayer(l => { if (l._url && (l._url.includes('stadiamaps') || l._url.includes('carto'))) _cmap.removeLayer(l); });
     L.tileLayer(stadiaTileUrl(theme), { maxZoom:10, noWrap:true }).addTo(_cmap);
   }
@@ -1762,7 +1762,7 @@ function _renderCoverageLayer(){
       let html = `<div style="font-family:DM Mono,monospace;font-size:11px;line-height:1.7;min-width:180px;">
         <div style="font-weight:600;margin-bottom:4px;">${flagImg}${name}</div>`;
       if (hit){
-        html += `<div><span style="color:${hit.color};">■</span> ${hit.res} — ${hit.source}</div>`;
+        html += `<div><span style="color:${hit.color};">■</span> ${hit.res}, ${hit.source}</div>`;
         if (hit.partial) html += `<div style="color:#E0A050;font-size:10px;margin-top:3px;">⚠ ${hit.partial}</div>`;
       } else {
         html += `<div style="opacity:.7;">GEDTM30 30m global fallback only</div>
@@ -1780,7 +1780,7 @@ function _renderCoverageLayer(){
   layer.addTo(_cmap);
   _cmap._coverage = layer;
 
-  // Scotland overlay — SRSP LiDAR is a distinct dedicated source from GB GPXZ.
+  // Scotland overlay, SRSP LiDAR is a distinct dedicated source from GB GPXZ.
   // Drawn on top of GB so the visual layering shows the double-coverage story.
   _renderScotlandOverlay();
 
@@ -1790,7 +1790,7 @@ function _renderCoverageLayer(){
 }
 
 // Simplified Scotland outline (mainland + Outer Hebrides + Orkney + Shetland).
-// Not admin-accurate — sized for a data-coverage overview at zoom 3-6.
+// Not admin-accurate, sized for a data-coverage overview at zoom 3-6.
 // If you ever want it precise, swap with an admin-1 GeoJSON fetch.
 function _scotlandFeature(){
   return {
@@ -1840,7 +1840,7 @@ function _renderScotlandOverlay(){
         <div style="font-weight:600;margin-bottom:4px;">
           <img src="https://flagcdn.com/16x12/gb.png" width="16" height="12" style="vertical-align:middle;margin-right:6px;border-radius:1px;">Scotland
         </div>
-        <div><span style="color:#7BC8F6;">■</span> 0.5–1m — SRSP LiDAR</div>
+        <div><span style="color:#7BC8F6;">■</span> 0.5–1m, SRSP LiDAR</div>
         <div style="opacity:.7;font-size:10px;margin-top:3px;">Self-hosted, no API key, no rate limit</div>
         <div style="opacity:.5;font-size:10px;margin-top:2px;">Phase 3–6 (50cm) + Phase 1–2 (1m) + SNLP fallback</div>
         <div style="opacity:.4;font-size:10px;margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">Wraps GB GPXZ 1m (paid, 80/day)</div>
@@ -1877,7 +1877,7 @@ async function loadRevenue(){
     </div>
     <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">Addon charges</div>
     <div style="max-height:200px;overflow-y:auto;">
-      ${(addons||[]).length?addons.map(r=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px;"><span style="color:var(--text-mid);">${esc(r.project_name||'—')} · ${r.area_km2?r.area_km2.toFixed(1)+'km²':'—'}</span><span style="color:var(--purple);">£${(r.addon_charged_pence/100).toFixed(2)}</span></div>`).join(''):'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">No addon charges yet</div>'}
+      ${(addons||[]).length?addons.map(r=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px;"><span style="color:var(--text-mid);">${esc(r.project_name||'-')} · ${r.area_km2?r.area_km2.toFixed(1)+'km²':'-'}</span><span style="color:var(--purple);">£${(r.addon_charged_pence/100).toFixed(2)}</span></div>`).join(''):'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">No addon charges yet</div>'}
     </div>`;
 }
 
@@ -1891,7 +1891,7 @@ const TREND_METRICS=[
   {id:'pageviews',  label:'Page views', color:'#5DBFA8'},
   {id:'ctaclicks',  label:'CTA clicks', color:'#D97676'},
 ];
-// Events counted as "CTA clicks" — anything showing purchase/upsell intent
+// Events counted as "CTA clicks", anything showing purchase/upsell intent
 const CTA_EVENTS=['pro_cta_clicked','addon_info_clicked','checkout_started','checkout_gated','upsell_popup_shown','signup_prompt_shown'];
 let _trendMetric='generations';
 let _trendCache=null; // {labels,values,color} for redraws on resize and page show
@@ -2048,13 +2048,13 @@ async function loadFunnel(){
 // ── In-house analytics (events table) ───────────────────────────
 // All of these read from Supabase/02-analytics-events.sql views/functions.
 // Until that SQL is pushed (or before events accumulate), the RPCs/views
-// don't exist or return empty — every loader degrades to a "no data yet"
+// don't exist or return empty, every loader degrades to a "no data yet"
 // message instead of throwing, so this section is safe to ship ahead of
 // the migration.
 function _analyticsNoData(body, id, msg){
   const badge=document.getElementById('badge-'+id);
   if(badge)badge.textContent='no data';
-  body.innerHTML=`<div class="mono" style="color:var(--muted);font-size:11px;padding:20px 0;line-height:1.6;">${msg||'No analytics data yet — push Supabase/02-analytics-events.sql and let events accumulate.'}</div>`;
+  body.innerHTML=`<div class="mono" style="color:var(--muted);font-size:11px;padding:20px 0;line-height:1.6;">${msg||'No analytics data yet, push Supabase/02-analytics-events.sql and let events accumulate.'}</div>`;
 }
 
 // ── DAU / WAU / MAU + stickiness ────────────────────────────────
@@ -2078,7 +2078,7 @@ async function loadDauWauMau(){
       <div class="kpi" style="--kpi-color:var(--purple)"><div class="kpi-label">MAU</div><div class="kpi-value" style="color:var(--purple)">${m.toLocaleString()}</div><div class="kpi-delta">last 30d</div></div>
       <div class="kpi" style="--kpi-color:${sticky>=20?'var(--accent)':'var(--amber)'}"><div class="kpi-label">Stickiness</div><div class="kpi-value">${sticky}%</div><div class="kpi-delta">DAU ÷ MAU</div></div>
     </div>
-    <div style="margin-top:14px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">Daily active — last 30 days</div>
+    <div style="margin-top:14px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">Daily active, last 30 days</div>
     <div class="chart-area" id="dauwaumau-chart"></div>`;
     const rows=seriesR.data||[];
     const labels=rows.map(r=>String(r.day).slice(5));
@@ -2112,7 +2112,7 @@ async function loadRetention(){
       html+=`<tr><td>${cw}</td><td>${size}</td>`;
       for(let wk=0;wk<=maxWeek;wk++){
         const active=cellMap[cw+'|'+wk];
-        if(active==null){html+='<td>—</td>';continue;}
+        if(active==null){html+='<td>-</td>';continue;}
         const pct=size>0?Math.round(active/size*100):0;
         const alpha=Math.max(.1,pct/100);
         html+=`<td style="background:rgba(154,186,106,${alpha});color:${pct>50?'#0E120C':'var(--text)'}">${pct}%</td>`;
@@ -2149,14 +2149,14 @@ async function loadGenRetention(){
       html+=`<tr><td>${cw}</td><td>${size}</td>`;
       for(let wk=0;wk<=maxWeek;wk++){
         const active=cellMap[cw+'|'+wk];
-        if(active==null){html+='<td>—</td>';continue;}
+        if(active==null){html+='<td>-</td>';continue;}
         const pct=size>0?Math.round(active/size*100):0;
         const alpha=Math.max(.1,pct/100);
         html+=`<td style="background:rgba(154,186,106,${alpha});color:${pct>50?'#0E120C':'var(--text)'}">${pct}%</td>`;
       }
       html+='</tr>';
     });
-    html+='</tbody></table><div style="font-size:10px;color:var(--muted);margin-top:8px;padding:0 4px;">Retention keyed to completing a generation (not just visiting). Compare with the "Any" table above — a big gap between them means people return but don\'t re-generate.</div></div>';
+    html+='</tbody></table><div style="font-size:10px;color:var(--muted);margin-top:8px;padding:0 4px;">Retention keyed to completing a generation (not just visiting). Compare with the "Any" table above, a big gap between them means people return but don\'t re-generate.</div></div>';
     body.innerHTML=html;
   }catch(err){
     _analyticsNoData(body,'genretention');
@@ -2314,11 +2314,11 @@ async function loadPaywallFunnel(){
         if(checkoutFailed.length){
           const recent=checkoutFailed.slice(-5).reverse();
           h+=`<div style="margin-top:6px;font-family:'DM Mono',monospace;font-size:10px;color:var(--red);line-height:1.6;">`+
-             recent.map(r=>ago(r.created_at)+' — '+esc((r.properties||{}).message||'unknown error')).join('<br>')+
+             recent.map(r=>ago(r.created_at)+': '+esc((r.properties||{}).message||'unknown error')).join('<br>')+
              `</div>`;
         }
         // Email blasts: opens/clicks per send (grouped by subject), from the
-        // Resend webhook — shows whether a specific email's links got used.
+        // Resend webhook, shows whether a specific email's links got used.
         const emailOpened=bd.filter(r=>r.event==='email_opened');
         const emailClicked=bd.filter(r=>r.event==='email_clicked');
         if(emailOpened.length||emailClicked.length){
@@ -2426,9 +2426,9 @@ async function openCancellationsModal(){
 
     const trs=rows.map(r=>{
       const email=r.user_id?(emailById[r.user_id]||'(deleted account)'):'(no account)';
-      const gens=r.user_id!=null?(gensById[r.user_id]??0):'—';
+      const gens=r.user_id!=null?(gensById[r.user_id]??0):'-';
       const reason=esc((r.properties||{}).reason||'not given');
-      const plan=esc((r.properties||{}).plan||'—');
+      const plan=esc((r.properties||{}).plan||'-');
       const when=new Date(r.created_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
       return `<tr>
         <td style="padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap;">${when}</td>
@@ -2466,7 +2466,7 @@ async function loadUsageStats(){
     const summaryR=await _sb.from('v_usage_summary').select('*').single();
     if(summaryR.error)throw summaryR.error;
     const s=summaryR.data||{};
-    // Optional: only present if the `projects` table exists — degrades quietly.
+    // Optional: only present if the `projects` table exists, degrades quietly.
     let avgProjects=null;
     try{
       const pR=await _sb.from('v_avg_projects_per_account').select('*').single();
@@ -2474,9 +2474,9 @@ async function loadUsageStats(){
     }catch(e){}
     document.getElementById('badge-usagestats').textContent='All time';
     body.innerHTML=`<div class="kpi-grid">
-      <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">Avg generations / user</div><div class="kpi-value" style="color:var(--accent)">${s.avg_generations_per_user??'—'}</div><div class="kpi-delta">across signed-in users</div></div>
-      <div class="kpi" style="--kpi-color:var(--blue)"><div class="kpi-label">Avg days between gens</div><div class="kpi-value" style="color:var(--blue)">${s.avg_days_between_generations??'—'}</div><div class="kpi-delta">return cadence</div></div>
-      <div class="kpi" style="--kpi-color:var(--purple)"><div class="kpi-label">Avg projects / account</div><div class="kpi-value" style="color:var(--purple)">${avgProjects??'—'}</div><div class="kpi-delta">${avgProjects==null?'requires projects table':'saved/shared library'}</div></div>
+      <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">Avg generations / user</div><div class="kpi-value" style="color:var(--accent)">${s.avg_generations_per_user??'-'}</div><div class="kpi-delta">across signed-in users</div></div>
+      <div class="kpi" style="--kpi-color:var(--blue)"><div class="kpi-label">Avg days between gens</div><div class="kpi-value" style="color:var(--blue)">${s.avg_days_between_generations??'-'}</div><div class="kpi-delta">return cadence</div></div>
+      <div class="kpi" style="--kpi-color:var(--purple)"><div class="kpi-label">Avg projects / account</div><div class="kpi-value" style="color:var(--purple)">${avgProjects??'-'}</div><div class="kpi-delta">${avgProjects==null?'requires projects table':'saved/shared library'}</div></div>
     </div>`;
   }catch(err){
     _analyticsNoData(body,'usagestats');
@@ -2506,7 +2506,7 @@ function _pingHost(url,timeoutMs=5000){
 }
 
 // Monitor tab has two views sharing one panel (toggle, not a second smushed
-// column) — System Health and Gate Bypass Watch. Each loader renders the
+// column), System Health and Gate Bypass Watch. Each loader renders the
 // toggle bar itself so switching views is just calling the other loader.
 let _monitorView='health';
 function monitorToggleHtml(active){
@@ -2543,10 +2543,10 @@ async function loadMonitor(){
     _pingHost(MON_NOTIFY_WORKER),
     _sb.from('generations').select('created_at').order('created_at',{ascending:false}).limit(1),
     _sb.from('generations').select('status,user_id').gte('created_at',dayAgo).limit(10000),
-    // status='started' only — 'blocked' (free-tier gate hits) is a distinct terminal
+    // status='started' only, 'blocked' (free-tier gate hits) is a distinct terminal
     // status and correctly never matches here, so gate hits never inflate this alert.
     _sb.from('generations').select('*',{count:'exact',head:true}).eq('status','started').lt('created_at',hourAgo),
-    // status='failed' only — 'blocked' rows are gate hits, not errors, and are
+    // status='failed' only, 'blocked' rows are gate hits, not errors, and are
     // intentionally excluded from both this list and the fail-rate math below.
     _sb.from('generations').select('created_at,error_stage,error_detail,country_code').eq('status','failed').order('created_at',{ascending:false}).limit(12),
     _sb.from('profiles').select('email').eq('is_admin',true),
@@ -2557,7 +2557,7 @@ async function loadMonitor(){
     _sb.from('health_checks').select('region,ok,latency_ms,error,checked_at').gte('checked_at',hourAgo).order('checked_at',{ascending:false}).limit(500),
     _sb.from('events').select('created_at,anon_id,user_id,properties').eq('event','js_error').gte('created_at',dayAgo).order('created_at',{ascending:false}).limit(100),
     _sb.from('events').select('created_at,properties').eq('event','upstream_timing').gte('created_at',hourAgo).order('created_at',{ascending:false}).limit(2000),
-    // Gate-type breakdown for the "Blocked" panel — sourced from events, not the
+    // Gate-type breakdown for the "Blocked" panel, sourced from events, not the
     // generations table, since blockGeneration() itself writes no error_stage/detail
     // (it isn't an error). size_limit_hit/spacing_gate_hit/point_cap_hit are new
     // events and will read 0 here until the instrumented index.html deploys.
@@ -2574,7 +2574,7 @@ async function loadMonitor(){
   const failed24=rows.filter(r=>r.status==='failed').length;
   const completed24=rows.filter(r=>r.status==='completed'||r.status===null).length;
   // 'blocked' (free-tier gate hits) deliberately excluded from both completed24
-  // and failed24 above, and therefore from attempts24/failRate24 too — a gate
+  // and failed24 above, and therefore from attempts24/failRate24 too, a gate
   // hit is neither a completed attempt nor an error.
   const blocked24=rows.filter(r=>r.status==='blocked').length;
   const attempts24=completed24+failed24;
@@ -2626,7 +2626,7 @@ async function loadMonitor(){
     if(!r.ok) failCountByRegion[r.region]=(failCountByRegion[r.region]||0)+1;
   });
   // Split region probes from border sentinels. Sentinel rows come from the
-  // same table but have region names prefixed with "sentinel:" — they probe
+  // same table but have region names prefixed with "sentinel:", they probe
   // the real generation endpoint and assert the routed data source. A
   // sentinel failure means our own routing regressed, not that upstream is
   // down, so we alert on it separately (and more loudly).
@@ -2640,7 +2640,7 @@ async function loadMonitor(){
   const newestCheck=hcRows.length?hcRows[0].checked_at:null;
   const cronStale=newestCheck ? (Date.now()-new Date(newestCheck).getTime())>15*60*1000 : true;
 
-  // Upstream response times — per-region avg/p95/degrade-rate over last hour.
+  // Upstream response times, per-region avg/p95/degrade-rate over last hour.
   // Fed by the frontend `upstream_timing` event (fired after every generation
   // in convert()). Answers "which national data source is choking under load?"
   // without needing worker-side telemetry infra. Also detects sustained
@@ -2703,28 +2703,28 @@ async function loadMonitor(){
   if(disposableCount>0) alerts.push(['warn',`${disposableCount} account${disposableCount>1?'s':''} using disposable email domains`]);
   if(gens7dTotal>=20&&Math.abs(anonShareDelta)>=30) alerts.push(['warn',`Anon share ${anonShareDelta>0?'jumped':'dropped'} ${Math.abs(anonShareDelta)}pt vs 7d avg (${anonShare24}% vs ${anonShare7d}%)`]);
   if(cronStale && hcRows.length===0) alerts.push(['warn','Health-cron worker: no checks in last hour (worker may be down or not deployed)']);
-  else if(cronStale) alerts.push(['warn',`Health-cron: last check ${ago(newestCheck)} — worker may have stopped`]);
+  else if(cronStale) alerts.push(['warn',`Health-cron: last check ${ago(newestCheck)}, worker may have stopped`]);
   if(regionsDown.length>=3) alerts.push(['crit',`${regionsDown.length} regional data sources are DOWN: ${regionsDown.slice(0,4).join(', ')}${regionsDown.length>4?'…':''}`]);
   else if(regionsDown.length>0) alerts.push(['warn',`Regional source down: ${regionsDown.join(', ')}`]);
   // Sentinel failures = a routing regression (wrong source returned). Louder
   // than a plain "down" because a user in Boston is silently getting 90m
-  // data — the endpoint is up, the answer is wrong.
+  // data, the endpoint is up, the answer is wrong.
   if(sentinelsDown.length>0){
     const names=sentinelsDown.map(k=>k.replace(/^sentinel:/,''));
     alerts.push([sentinelsDown.length>=2?'crit':'warn',
       `Routing regression at ${sentinelsDown.length} sentinel${sentinelsDown.length>1?'s':''}: ${names.slice(0,4).join(', ')}${names.length>4?'…':''} (wrong data source returned)`]);
   }
-  if(jsErr24>=50) alerts.push(['crit',`${jsErr24} client JS errors in 24h across ${jsErrUniqueUsers} sessions — likely a shipped bug`]);
+  if(jsErr24>=50) alerts.push(['crit',`${jsErr24} client JS errors in 24h across ${jsErrUniqueUsers} sessions, likely a shipped bug`]);
   else if(jsErr24>=10) alerts.push(['warn',`${jsErr24} client JS errors in 24h (${jsErrUniqueUsers} sessions)`]);
   if(utSlow.length>0){
     const names=utSlow.map(s=>`${s.region} (p95 ${(s.p95Ms/1000).toFixed(1)}s)`);
     alerts.push([utSlow.some(s=>s.p95Ms>15000)?'crit':'warn',
-      `Upstream slow in ${utSlow.length} region${utSlow.length>1?'s':''}: ${names.slice(0,3).join(', ')}${names.length>3?'…':''} — users are waiting; consider adding a queue`]);
+      `Upstream slow in ${utSlow.length} region${utSlow.length>1?'s':''}: ${names.slice(0,3).join(', ')}${names.length>3?'…':''}, users are waiting; consider adding a queue`]);
   }
   if(utDeg.length>0){
     const names=utDeg.map(s=>`${s.region} (${Math.round(s.degRate*100)}%)`);
     alerts.push([utDeg.some(s=>s.degRate>=0.4)?'crit':'warn',
-      `Upstream degraded (fell back to lower tier) in ${utDeg.length} region${utDeg.length>1?'s':''}: ${names.slice(0,3).join(', ')}${names.length>3?'…':''} — national source may be down or throttling`]);
+      `Upstream degraded (fell back to lower tier) in ${utDeg.length} region${utDeg.length>1?'s':''}: ${names.slice(0,3).join(', ')}${names.length>3?'…':''}, national source may be down or throttling`]);
   }
   const worstLevel=alerts.some(a=>a[0]==='crit')?'crit':alerts.some(a=>a[0]==='warn')?'warn':'ok';
   if(badge)badge.textContent=worstLevel==='ok'?'all nominal':worstLevel==='warn'?alerts.length+' warning'+(alerts.length>1?'s':''):alerts.filter(a=>a[0]==='crit').length+' critical';
@@ -2737,11 +2737,11 @@ async function loadMonitor(){
   const statusRow=(label,ok,val,idle)=>`<div class="mon-row"><span class="mon-dot ${idle?'idle':ok?'ok':'crit'}"></span><div class="mon-label">${label}</div><div class="mon-val">${val}</div></div>`;
 
   const failsHtml=(fails.data||[]).length
-    ? fails.data.map(f=>`<div class="mon-fail-row"><span class="mon-fail-stage">${esc(f.error_stage||'unknown')}</span><span class="mon-fail-detail">${esc((f.error_detail||'—').slice(0,90))}${f.country_code?' · '+f.country_code:''}</span><span class="mon-fail-time">${ago(f.created_at)}</span></div>`).join('')
+    ? fails.data.map(f=>`<div class="mon-fail-row"><span class="mon-fail-stage">${esc(f.error_stage||'unknown')}</span><span class="mon-fail-detail">${esc((f.error_detail||'-').slice(0,90))}${f.country_code?' · '+f.country_code:''}</span><span class="mon-fail-time">${ago(f.created_at)}</span></div>`).join('')
     : '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No failures recorded. Clean run</div>';
 
   const adminsHtml=(admins.data||[]).length
-    ? admins.data.map(a=>`<div class="mon-row"><span class="mon-dot ok"></span><div class="mon-label">${esc(a.email||'—')}</div><div class="mon-val">admin</div></div>`).join('')
+    ? admins.data.map(a=>`<div class="mon-row"><span class="mon-dot ok"></span><div class="mon-label">${esc(a.email||'-')}</div><div class="mon-val">admin</div></div>`).join('')
     : '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">No admin accounts found</div>';
 
   body.innerHTML=monitorToggleHtml('health')+`
@@ -2765,7 +2765,7 @@ async function loadMonitor(){
         ${statusRow('Failed (24h)',failed24===0,failed24+' · '+failRate24.toFixed(0)+'%')}
         ${statusRow('Blocked (24h)',true,blocked24.toString(),blocked24===0)}
         ${statusRow('Stuck in "started"',stuckCount===0,stuckCount.toString(),stuckCount===0)}
-        ${statusRow('Anonymous share (24h)',true,gens24>0?Math.round(anon24/gens24*100)+'%':'—',gens24===0)}
+        ${statusRow('Anonymous share (24h)',true,gens24>0?Math.round(anon24/gens24*100)+'%':'-',gens24===0)}
       </div>
       <div class="mon-block">
         <div class="mon-block-title">Recent failures</div>
@@ -2777,7 +2777,7 @@ async function loadMonitor(){
           ? '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No gate-hit events in the last 24h</div>'
           : Object.entries(gateBreakdown).map(([k,n])=>`<div class="mon-row"><span class="mon-dot ${n>0?'ok':'idle'}"></span><div class="mon-label">${GATE_EVENT_LABELS[k]}</div><div class="mon-val">${n}</div></div>`).join('')
         }
-        <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:8px;">From live event tracking, not the generations table — size cap / spacing / point cap will read 0 until the instrumented index.html deploys. Daily cap (free_limit_hit) is already live.</div>
+        <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:8px;">From live event tracking, not the generations table, size cap / spacing / point cap will read 0 until the instrumented index.html deploys. Daily cap (free_limit_hit) is already live.</div>
       </div>
       <div class="mon-block">
         <div class="mon-block-title">Access &amp; config</div>
@@ -2852,14 +2852,14 @@ async function loadMonitor(){
 // Two signals, both read from `events` (generations has no anon_id column):
 //  1. Free daily-limit gate: generation_completed events with no user_id,
 //     bucketed by anon_id + day. FREE_DAILY_LIMIT (3, mirrors index.html) is
-//     enforced client-side — a bucket over that means the gate didn't hold.
+//     enforced client-side, a bucket over that means the gate didn't hold.
 //  2. Download-requires-signup gate: download_attempted always fires
 //     immediately followed by download_gated for guests (see handleDownload()
 //     in index.html). attempted > gated for an anon_id/day means a download
 //     slipped through ungated.
 // Degrades gracefully if `events`/anon_id/user_id aren't there yet. No IP is
 // captured currently, so this can't tell multiple people behind one anon_id
-// apart from one person clearing localStorage — noted in the panel footer.
+// apart from one person clearing localStorage, noted in the panel footer.
 async function loadGateWatch(){
   const badge=document.getElementById('badge-monitor');
   const body=document.getElementById('body-monitor');
@@ -2883,7 +2883,7 @@ async function loadGateWatch(){
 
   if(queryError){
     if(badge) badge.textContent='no data';
-    body.innerHTML=monitorToggleHtml('gatewatch')+`<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">events table (or anon_id/user_id columns) not available yet — ${esc(queryError.message||'query failed')}</div>`;
+    body.innerHTML=monitorToggleHtml('gatewatch')+`<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">events table (or anon_id/user_id columns) not available yet, ${esc(queryError.message||'query failed')}</div>`;
     return;
   }
 
@@ -2945,7 +2945,7 @@ async function loadGateWatch(){
 
 // ── Funnels: size cap → signup → generation, download gate → signup →
 // generation, coverage-gap dead-end rate by region. All three read the
-// funnel_* RPCs added to Supabase for this — see the audit report for the
+// funnel_* RPCs added to Supabase for this, see the audit report for the
 // SQL. Shares the Monitor toggle/body/badge with System Health and Gate
 // Bypass Watch, same pattern as loadGateWatch().
 async function loadFunnels(){
@@ -2973,7 +2973,7 @@ async function loadFunnels(){
 
   if(queryError){
     if(badge) badge.textContent='no data';
-    body.innerHTML=monitorToggleHtml('funnels')+`<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">Funnel RPCs not available yet — ${esc(queryError.message||'query failed')}</div>`;
+    body.innerHTML=monitorToggleHtml('funnels')+`<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">Funnel RPCs not available yet, ${esc(queryError.message||'query failed')}</div>`;
     return;
   }
 
@@ -2991,12 +2991,12 @@ async function loadFunnels(){
   };
 
   const regionRowsHtml = coverageRows.length
-    ? coverageRows.slice(0,15).map(r=>`<div class="mon-row"><span class="mon-dot ${(r.dead_end_pct||0)>=50?'warn':'ok'}"></span><div class="mon-label">${esc(r.region||'unknown')}</div><div class="mon-val">${r.shown_count} shown · ${r.continued_count} continued · ${r.dead_end_pct!=null?r.dead_end_pct+'%':'—'} dead-end</div></div>`).join('')
+    ? coverageRows.slice(0,15).map(r=>`<div class="mon-row"><span class="mon-dot ${(r.dead_end_pct||0)>=50?'warn':'ok'}"></span><div class="mon-label">${esc(r.region||'unknown')}</div><div class="mon-val">${r.shown_count} shown · ${r.continued_count} continued · ${r.dead_end_pct!=null?r.dead_end_pct+'%':'-'} dead-end</div></div>`).join('')
     : '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No low-data-popup activity for this period</div>';
 
   body.innerHTML=monitorToggleHtml('funnels')+`
     <div class="mon-block-title" style="border:none;margin-bottom:6px;">Size cap → signup → generation</div>
-    <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:10px;">Stage 1 (size_limit_hit) reads 0 until the instrumented index.html deploys — it's a brand-new event.</div>
+    <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:10px;">Stage 1 (size_limit_hit) reads 0 until the instrumented index.html deploys, it's a brand-new event.</div>
     ${stageRowsHtml(sizeCapRows)}
     <div class="mon-block-title" style="margin-top:22px;margin-bottom:6px;">Download gate → signup → generation</div>
     ${stageRowsHtml(downloadRows)}
@@ -3085,7 +3085,7 @@ async function runSpeedTest(){
       metrics: SPEED_METRICS.map(m=>{
         const a = audits[m.id]||{};
         return { id:m.id, label:m.label, desc:m.desc, cls:!!m.cls,
-                 display: a.displayValue||'—', score: (a.score==null?0.5:a.score) };
+                 display: a.displayValue||'-', score: (a.score==null?0.5:a.score) };
       }),
       error: null,
     };
@@ -3224,27 +3224,27 @@ async function loadFeed(){
     else if(r.status==='started') type='started';
     else if(r.status==='blocked') type='blocked';
     else type=(r.user_plan==='pro'||r.user_plan==='company')?'pro':'gen';
-    const label=r.project_name?esc(r.project_name):(type==='started'?'<em style="color:var(--muted);font-style:normal;">in progress…</em>':type==='fail'?'<em style="color:var(--red);font-style:normal;">failed attempt</em>':type==='blocked'?'<em style="color:var(--amber);font-style:normal;">free-tier gate</em>':'—');
+    const label=r.project_name?esc(r.project_name):(type==='started'?'<em style="color:var(--muted);font-style:normal;">in progress…</em>':type==='fail'?'<em style="color:var(--red);font-style:normal;">failed attempt</em>':type==='blocked'?'<em style="color:var(--amber);font-style:normal;">free-tier gate</em>':'-');
     const cName=CN[r.country_code]||r.country_code||'';
-    // Guest/user badge — who a generation came from, at a glance (Guest = no user_id, i.e. anon_id-only session)
+    // Guest/user badge, who a generation came from, at a glance (Guest = no user_id, i.e. anon_id-only session)
     const badgeCls=who==='anon'?'badge-low':who==='free'?'badge-mid':who==='pro'?'badge-lidar':'badge-good';
-    const badgeLabel=who==='anon'?'Guest':'User — '+who;
-    const whoBadge=`<span class="badge badge-sm ${badgeCls}" title="${who==='anon'?'No user_id — anonymous/guest generation':'Signed-in user, plan: '+who}">${badgeLabel}</span>`;
-    const meta=`${r.point_count?r.point_count.toLocaleString()+'pts':'—'} · ${r.resolution_m!=null?r.resolution_m+'m':'-'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}${cName?' · '+esc(cName):''}`;
+    const badgeLabel=who==='anon'?'Guest':'User: '+who;
+    const whoBadge=`<span class="badge badge-sm ${badgeCls}" title="${who==='anon'?'No user_id, anonymous/guest generation':'Signed-in user, plan: '+who}">${badgeLabel}</span>`;
+    const meta=`${r.point_count?r.point_count.toLocaleString()+'pts':'-'} · ${r.resolution_m!=null?r.resolution_m+'m':'-'}${r.area_km2?' · '+r.area_km2.toFixed(2)+'km²':''}${cName?' · '+esc(cName):''}`;
     const loc=(r.centroid_lat!=null&&r.centroid_lon!=null)?{lat:+r.centroid_lat,lon:+r.centroid_lon,name:r.project_name||''}:null;
     // Retry group key: same identity (user_id, else anon_id) + same draw spot
     // (centroid rounded to ~4dp, ~11m tolerance), so repeated attempts at the
     // same site by the same person can collapse into one entry regardless of
     // which status each attempt ended in. No centroid or no identity → never
     // grouped (safer than merging under an empty-string key). Deliberately
-    // NOT keyed on error_stage/error_detail — a retry sequence can legitimately
+    // NOT keyed on error_stage/error_detail, a retry sequence can legitimately
     // hit a different gate each time (spacing gate, then daily cap, say) and
     // should still collapse as one story.
     const identity=r.user_id||r.anon_id||null;
     const centroidKey=(r.centroid_lat!=null&&r.centroid_lon!=null)?(+r.centroid_lat).toFixed(4)+','+(+r.centroid_lon).toFixed(4):null;
     const groupKey=(identity&&centroidKey)?'g|'+identity+'|'+centroidKey:null;
     const isFriction=type==='fail'||type==='started'||type==='blocked';
-    items.push({type,time:r.created_at,dl:type==='fail'||type==='started'||type==='blocked'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,badge:whoBadge,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?' — '+esc(r.error_detail):''}`:null,loc,groupKey,isFriction,count:1});
+    items.push({type,time:r.created_at,dl:type==='fail'||type==='started'||type==='blocked'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,badge:whoBadge,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?': '+esc(r.error_detail):''}`:null,loc,groupKey,isFriction,count:1});
   });
   (signups||[]).forEach(r=>items.push({type:r.plan!=='free'?'upgrade':'signup',time:r.created_at,dl:null,main:`New ${r.plan!=='free'?r.plan+' subscriber':'signup'} · ${esc((r.email||'').split('@')[0])}`,meta:r.plan!=='free'?r.plan+' tier':'free tier',count:1}));
   items.sort((a,b)=>new Date(b.time)-new Date(a.time));
@@ -3253,7 +3253,7 @@ async function loadFeed(){
   // retry window (generalizes the old fail-only "rage click" collapse to any
   // mix of started/failed/blocked/completed rows). Collapses ONLY when the
   // resulting group contains at least one friction row (started/failed/
-  // blocked) — two independent 'completed' rows at the same spot (e.g. two
+  // blocked), two independent 'completed' rows at the same spot (e.g. two
   // deliberate exports) must never merge into each other. Items are already
   // sorted newest-first, so the representative kept per group is always the
   // latest row, its status is the group's final outcome, matching the
@@ -3343,7 +3343,7 @@ async function _loadEnrichedProfiles(){
 
 function _scoreBadge(score){
   const level = score>=15?'hot':score>=6?'warm':score>0?'cool':'cold';
-  const map = {hot:{c:'var(--red)',bg:'rgba(226,85,85,.15)',l:'HOT'},warm:{c:'var(--amber)',bg:'var(--amber-dk)',l:'WARM'},cool:{c:'var(--blue)',bg:'var(--blue-dk)',l:'COOL'},cold:{c:'var(--muted)',bg:'var(--surface2)',l:'—'}};
+  const map = {hot:{c:'var(--red)',bg:'rgba(226,85,85,.15)',l:'HOT'},warm:{c:'var(--amber)',bg:'var(--amber-dk)',l:'WARM'},cool:{c:'var(--blue)',bg:'var(--blue-dk)',l:'COOL'},cold:{c:'var(--muted)',bg:'var(--surface2)',l:'-'}};
   const m=map[level];
   return `<span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;background:${m.bg};color:${m.c};border:1px solid ${m.c}40;font-family:'DM Mono',monospace;">${m.l} · ${score}</span>`;
 }
@@ -3357,7 +3357,7 @@ async function loadSignups(){
   document.getElementById('badge-signups').textContent=enriched.length+' users';
   body.innerHTML=`<div style="display:flex;flex-direction:column;gap:0;max-height:100%;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;">
     ${rows.map(u=>{
-      const email=esc(u.email||'—');
+      const email=esc(u.email||'-');
       const plan=u.plan||'free';
       const isAdmin=u.is_company_admin?'<span style="font-family:DM Mono,monospace;font-size:8px;color:var(--amber);margin-left:4px;">ADMIN</span>':'';
       return`<div onclick="showSignupDetail('${esc(u.id)}')" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(30,36,24,.5);cursor:pointer;" onmouseover="this.style.background='rgba(154,186,106,.05)'" onmouseout="this.style.background='transparent'">
@@ -3389,7 +3389,7 @@ async function loadHotLeads(){
     ${leads.map(u=>`<div onclick="showSignupDetail('${esc(u.id)}')" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(30,36,24,.5);cursor:pointer;" onmouseover="this.style.background='rgba(226,85,85,.06)'" onmouseout="this.style.background='transparent'">
       <div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;border:1px solid rgba(226,85,85,.35);color:var(--red);background:rgba(226,85,85,.12);border-radius:4px;flex-shrink:0;">⚑</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(u.email||'—')}</div>
+        <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(u.email||'-')}</div>
         <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);margin-top:1px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
           ${_scoreBadge(u.score)}
           <span>${u.gens} gen · ${u.gated} gated · ${u.upsell} paywall</span>
@@ -3450,14 +3450,14 @@ function showSignupDetail(userId){
   }
   const plan=p.plan||'free';
   const topCountries = Object.entries(p.countries||{}).sort((a,b)=>b[1]-a[1]).slice(0,3);
-  const countryList = topCountries.length?topCountries.map(([c,n])=>`${CF[c]||''} ${CN[c]||c} <span style="opacity:.6">×${n}</span>`).join(' · '):'—';
+  const countryList = topCountries.length?topCountries.map(([c,n])=>`${CF[c]||''} ${CN[c]||c} <span style="opacity:.6">×${n}</span>`).join(' · '):'-';
   const domain = (p.email||'').split('@')[1]||'';
   const daysSinceSignup = Math.floor((Date.now()-new Date(p.created_at).getTime())/86400000);
   const daysSinceLastGen = p.lastGen?Math.floor((Date.now()-new Date(p.lastGen).getTime())/86400000):null;
   modal.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:10px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:22px;font-family:'DM Mono',monospace;color:var(--text);">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px;">
       <div style="flex:1;min-width:0;">
-        <div style="font-size:15px;font-weight:500;color:var(--text);word-break:break-all;">${esc(p.email||'—')}</div>
+        <div style="font-size:15px;font-weight:500;color:var(--text);word-break:break-all;">${esc(p.email||'-')}</div>
         <div style="font-size:10px;color:var(--muted);margin-top:4px;">${esc(domain)}${p.is_company_admin?' · <span style="color:var(--amber);">COMPANY ADMIN</span>':''}</div>
       </div>
       <button onclick="document.getElementById('signup-detail-modal').style.display='none'" style="background:none;border:1px solid var(--border);color:var(--muted);padding:4px 10px;cursor:pointer;border-radius:4px;font-family:inherit;font-size:12px;">✕</button>
@@ -3647,7 +3647,7 @@ async function loadBlogStats(){
   const{data,error}=await (ps?q.gte('created_at',ps):q);
   const body=document.getElementById('body-blogstats');
   if(!body)return;
-  if(error){body.innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">'+(/blog_events/.test(error.message)?'blog_events table not found yet — run the SQL first':esc(error.message))+'</div>';return;}
+  if(error){body.innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">'+(/blog_events/.test(error.message)?'blog_events table not found yet, run the SQL first':esc(error.message))+'</div>';return;}
   if(!data||!data.length){const b=document.getElementById('badge-blogstats');if(b)b.textContent='0 events';body.innerHTML='<div class="mono" style="color:var(--muted);font-size:11px;">No reads logged for this period yet</div>';return;}
 
   const views=data.filter(r=>r.event_type==='view').length;
@@ -3702,7 +3702,7 @@ async function doLogin(){
   const{data,error}=await _sb.auth.signInWithPassword({email,password:pass});
   if(error){err.textContent=error.message;return;}
   const{data:isAdmin}=await _sb.rpc('is_current_user_admin');
-  if(!isAdmin){err.textContent='Access denied — not an admin account.';await _sb.auth.signOut();return;}
+  if(!isAdmin){err.textContent='Access denied: not an admin account.';await _sb.auth.signOut();return;}
   showDashboard(data.session);
 }
 async function checkSession(){
@@ -3741,7 +3741,7 @@ function initPages() {
 // Counts visitors on the main site in real time (anonymous vs signed-in) and
 // flashes red the instant a live generation fails. Data arrives over Supabase
 // Realtime: presence for the counts, a broadcast event for failures. The admin
-// only observes — it never joins presence itself, so it isn't counted.
+// only observes, it never joins presence itself, so it isn't counted.
 let _presenceChannel = null;
 let _liveFailTimer = null;
 
@@ -3832,7 +3832,7 @@ async function loadAll(){
 // MOBILE LAYOUT SYSTEM
 // Activates when viewport ≤ 768 px. Replaces the floating-window
 // canvas with a scrollable tab interface. All data loaders are
-// shared — they still write to the same body-* IDs, which now
+// shared, they still write to the same body-* IDs, which now
 // live inside .mob-panel divs instead of .win-body divs.
 // ══════════════════════════════════════════════════════════════
 
@@ -4026,36 +4026,36 @@ const NOTIFY_WORKER = 'https://topo-notify.svanur300.workers.dev';
 
 const BLAST_TEMPLATES = {
   update: {
-    subject: 'New in Topo-grapher — [feature / country]',
-    body: `Hey —
+    subject: 'New in Topo-grapher: [feature / country]',
+    body: `Hey,
 
 I just shipped something I think you'll find useful.
 
-[Describe the new feature or country in 2–3 sentences. Be specific — e.g. "France LiDAR is now live at 1m resolution via IGN RGE ALTI. Covers the whole country and it's already on your account."]
+[Describe the new feature or country in 2–3 sentences. Be specific, e.g. "France LiDAR is now live at 1m resolution via IGN RGE ALTI. Covers the whole country and it's already on your account."]
 
 To try it, go to topo-grapher.com, search for a site in [country/area], and generate as usual.
 
-As always, if you need a specific dataset you can't find, just reply here — I read everything.`
+As always, if you need a specific dataset you can't find, just reply here. I read everything.`
   },
   promo: {
     subject: 'A note on Topo-grapher pricing',
-    body: `Hey —
+    body: `Hey,
 
-I want to give you a heads up about [describe the change — e.g. "a limited early-adopter offer" or "a pricing update"].
+I want to give you a heads up about [describe the change, e.g. "a limited early-adopter offer" or "a pricing update"].
 
 [2–3 sentences explaining what's changing and what it means for you.]
 
-If you've been thinking about upgrading, now is a good time — [specific reason or offer].
+If you've been thinking about upgrading, now is a good time: [specific reason or offer].
 
 Any questions, just reply here.`
   },
   maintenance: {
-    subject: 'Topo-grapher — brief maintenance window',
-    body: `Hey —
+    subject: 'Topo-grapher: brief maintenance window',
+    body: `Hey,
 
 Quick heads up: topo-grapher.com will be briefly offline for maintenance on [date] between approximately [time] and [time] UTC.
 
-[Describe what's happening — e.g. "I'm migrating the elevation workers to a faster infrastructure setup."]
+[Describe what's happening, e.g. "I'm migrating the elevation workers to a faster infrastructure setup."]
 
 All existing data and account details will be completely unaffected. If you need terrain data urgently during that window, email aki@topo-grapher.com and I'll sort something out.
 
@@ -4063,11 +4063,11 @@ Apologies for any inconvenience.`
   },
 blank: {
     subject: '',
-    body: `Hey —\n\n`
+    body: `Hey,\n\n`
   },
   blog_post: {
     subject: 'New post: [title]',
-    body: `Hey —\n\nI just published a new post on the Topo-grapher blog:\n\n[Post title here]\nhttps://topographer-com.ghost.io/[post-slug]/\n\n[1–2 sentences on what it covers and why it's useful.]\n\nHope you find it useful.`
+    body: `Hey,\n\nI just published a new post on the Topo-grapher blog:\n\n[Post title here]\nhttps://topographer-com.ghost.io/[post-slug]/\n\n[1–2 sentences on what it covers and why it's useful.]\n\nHope you find it useful.`
   }
 };
 
@@ -4154,12 +4154,12 @@ function _syncAudienceLock() {
 
 // Escape a paragraph for safe HTML, then apply the tiny bit of formatting the
 // blast textarea supports: [Button text](https://...) becomes a real styled
-// button, **bold** becomes bold, and bare http(s) URLs become plain links —
+// button, **bold** becomes bold, and bare http(s) URLs become plain links -
 // the textarea itself is plain text, so this is the only way any of it shows
 // up in the sent email.
 function blastEscapeAndLinkify(p) {
   // Buttons first, on the raw text, so the label and URL can each be escaped
-  // correctly on their own — swapped for placeholders so the button HTML
+  // correctly on their own, swapped for placeholders so the button HTML
   // survives the whole-paragraph escaping pass below untouched.
   const buttons = [];
   const withPlaceholders = p.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, href) => {
@@ -4213,7 +4213,7 @@ function buildBlastPreviewHtml(subject, bodyText) {
       <tr><td style="padding:8px 40px 36px 40px;background-color:#ffffff;" bgcolor="#ffffff">
         ${bodyHtml}
         <p style="margin:28px 0 4px 0;font-size:14px;line-height:1.85;color:#2a2a28;">Have a great day!</p>
-        <p style="margin:0;font-size:14px;color:#4a7a2a;font-weight:700;letter-spacing:0.04em;">— Aki</p>
+        <p style="margin:0;font-size:14px;color:#4a7a2a;font-weight:700;letter-spacing:0.04em;">Aki</p>
       </td></tr>
       <tr><td style="padding:0 40px 28px 40px;background-color:#f8f6f2;border-top:1px solid #b8d48a;" bgcolor="#f8f6f2">
         <div style="height:1px;background:#ddd8cc;margin-bottom:16px;margin-top:16px;"></div>
@@ -4303,7 +4303,7 @@ async function _updateBlastRecipientCount() {
   }
   const {data:{session}} = await _sb.auth.getSession();
   if (!session) {
-    el.innerHTML = 'Recipients: <span style="color:var(--muted)">—</span>';
+    el.innerHTML = 'Recipients: <span style="color:var(--muted)">-</span>';
     return;
   }
   el.innerHTML = 'Recipients: <span>counting…</span>';
@@ -4360,7 +4360,7 @@ function previewBlastEmail() {
   }
   const html = buildBlastPreviewHtml(subject, body);
   const iframe = document.getElementById('blast-preview-iframe');
-  // Write HTML into iframe srcdoc — no new window, works on mobile
+  // Write HTML into iframe srcdoc, no new window, works on mobile
   iframe.srcdoc = html;
   iframe.style.height = '520px';
   document.getElementById('blast-preview-overlay').classList.add('show');
@@ -4510,7 +4510,7 @@ function copyFailedList() {
   }
 }
 
-// ── Mobile blast panel — renders the compose form inside the mob-panel ────
+// ── Mobile blast panel, renders the compose form inside the mob-panel ────
 function renderMobileBlastPanel() {
   const el = document.getElementById('body-blast');
   if (!el) return;
@@ -4559,10 +4559,10 @@ function renderMobileBlastPanel() {
       <!-- Body -->
       <div>
         <div class="blast-label">Body</div>
-        <textarea class="blast-textarea" id="blast-body" style="margin-top:5px;min-height:180px;" placeholder="Hey —&#10;&#10;Write your message here…">${(document.getElementById('blast-body')||{value:''}).value.replace(/</g,'&lt;')}</textarea>
+        <textarea class="blast-textarea" id="blast-body" style="margin-top:5px;min-height:180px;" placeholder="Hey,&#10;&#10;Write your message here…">${(document.getElementById('blast-body')||{value:''}).value.replace(/</g,'&lt;')}</textarea>
       </div>
       <!-- Recipient count -->
-      <div class="blast-recipient-count" id="blast-recipient-count" style="padding:8px 0;">Recipients: <span>—</span></div>
+      <div class="blast-recipient-count" id="blast-recipient-count" style="padding:8px 0;">Recipients: <span>-</span></div>
       <!-- Actions -->
       <div style="display:flex;flex-direction:column;gap:8px;">
         <button class="blast-btn blast-btn-secondary" style="width:100%;border:1px solid var(--border2);" onclick="dryRunBlast()">👁 Check recipients</button>
@@ -4573,7 +4573,7 @@ function renderMobileBlastPanel() {
       <div class="blast-preview-box" id="blast-dry-box" style="display:none;"></div>
       <!-- Confirm -->
       <div class="blast-confirm" id="blast-confirm">
-        <div class="blast-confirm-warn">⚠ Send to <strong id="blast-confirm-n">—</strong> users. Cannot be undone.</div>
+        <div class="blast-confirm-warn">⚠ Send to <strong id="blast-confirm-n">-</strong> users. Cannot be undone.</div>
         <div class="blast-confirm-actions">
           <button class="blast-btn blast-btn-abort" style="border:1px solid var(--border2);" onclick="abortBlast()">← Cancel</button>
           <button class="blast-btn blast-btn-confirm" style="border:1px solid var(--amber);" onclick="executeSend()">⚑ Yes, send</button>
