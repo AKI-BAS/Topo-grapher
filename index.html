@@ -88,7 +88,7 @@
         "name": "Free",
         "price": "0",
         "priceCurrency": "GBP",
-        "description": "3 generations/day, up to 250m x 250m, 12m spacing, no account needed"
+        "description": "3 generations/day, up to 500m x 500m, 12m spacing, no account needed"
       },
       {
         "@type": "Offer",
@@ -1409,6 +1409,7 @@ function declineCookies() {
       </div>
       <div class="origin-box" id="origin-info" style="display:none;font-size:12px;padding:10px 12px;"></div>
       <div id="elevation-quality-warn" style="display:none;margin-bottom:10px;padding:9px 12px;border-radius:6px;font-size:11px;line-height:1.6;"></div>
+      <div id="degraded-note" role="status" style="display:none;margin-bottom:10px;padding:9px 12px;border-radius:6px;border:1px solid #e0a050;background:rgba(224,160,80,0.12);color:var(--text);font-size:11px;line-height:1.6;"></div>
       <div id="elevation-source-banner" style="display:none;margin-bottom:12px;padding:10px 12px;border-radius:6px;border:1px solid var(--border-md);background:var(--bg-input);font-size:11px;color:var(--text-mid);line-height:1.5;">
         <div id="esb-title" style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:2px;"></div>
         <div id="esb-detail" style="font-size:11px;color:var(--text-soft);"></div>
@@ -1508,11 +1509,11 @@ function declineCookies() {
       </div>
       <ul class="tier-features">
         <li class="feat-ok">3 generations per day</li>
-        <li class="feat-ok">Up to 250 &times; 250m per site</li>
+        <li class="feat-ok">Up to 500 &times; 500m per site</li>
         <li class="feat-ok">12&ndash;20m elevation precision</li>
         <li class="feat-ok">CSV export for Revit, SketchUp, Rhino &amp; more</li>
         <li class="feat-no">3m &amp; 6m precision</li>
-        <li class="feat-no">Sites up to 2 &times; 2km</li>
+        <li class="feat-no">Sites up to 1.6 &times; 1.6km (6m spacing)</li>
         <li class="feat-no">Project history &amp; saved sites</li>
         <li class="feat-no">1m LiDAR elevation</li>
       </ul>
@@ -1539,7 +1540,7 @@ function declineCookies() {
       <ul class="tier-features">
         <li class="feat-ok">Everything in Free</li>
         <li class="feat-ok">3m, 6m, 12m, 20m spacing</li>
-        <li class="feat-ok">Sites up to 2 &times; 2km</li>
+        <li class="feat-ok">Sites up to 1.6 &times; 1.6km (6m spacing)</li>
         <li class="feat-ok">Project history &amp; saved sites</li>
         <li class="feat-ok">LiDAR elevation where available</li>
         <li class="feat-ok">3D terrain preview</li>
@@ -1982,7 +1983,7 @@ function declineCookies() {
           <div style="padding:16px;background:var(--bg-input);border-radius:6px;border:1px solid var(--border);">
             <div style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">Subscription</div>
             <div id="settings-free-cta" style="display:none;">
-              <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;line-height:1.65;">Start a 14-day free trial for 3m precision, LiDAR accuracy, and sites up to 4 km². Cancel anytime.</p>
+              <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;line-height:1.65;">Start a 14-day free trial for 3m precision, LiDAR accuracy, and sites up to 1.6 × 1.6 km. Cancel anytime.</p>
               <button class="tier-cta" onclick="closeSettings();track('pro_cta_clicked',{source:'settings'});startCheckout('pro')">Start 14-day free trial →</button>
             </div>
             <div id="settings-pro-info" style="display:none;">
@@ -2400,7 +2401,7 @@ function declineCookies() {
 
       <div style="border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:20px;">
         <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;">What's the biggest site I can generate?</div>
-        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Free accounts: up to 1 km². Pro: up to 4 km² included, with large-site add-ons up to 100 km² available. Company plans: same as Pro with shared access across your team.</div>
+        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Free: up to 500 &times; 500 m at 12m spacing. Pro: up to 1.6 &times; 1.6 km at 6m, or 800 &times; 800 m at full 3m detail. Bigger sites are available with a per-generation large-site add-on. Company plans: same as Pro with shared access across your team.</div>
       </div>
 
       <div style="border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:20px;">
@@ -2978,13 +2979,13 @@ function updateHint() {
     _styleDrawnLayers(false); // polygon goes red
     return;
   }
-  // Free-tier size check \u2014 250 \u00d7 250 m
+  // Free-tier size check \u2014 500 \u00d7 500 m (keep in step with FREE_MAX_M in convert())
   if (!isPro()) {
     var mpd2 = metresPerDeg((Math.min(...polygonLatLngs.map(p=>p.lat))+Math.max(...polygonLatLngs.map(p=>p.lat)))/2);
     var sW = (Math.max(...polygonLatLngs.map(p=>p.lng))-Math.min(...polygonLatLngs.map(p=>p.lng)))*mpd2.lon;
     var sH = (Math.max(...polygonLatLngs.map(p=>p.lat))-Math.min(...polygonLatLngs.map(p=>p.lat)))*mpd2.lat;
-    if (sW > 250 || sH > 250) {
-      el.innerHTML = '\u26a0 Site is too large for the free tier (max 250 \xd7 250 m). Redraw a smaller area or <a href="#pricing" style="color:var(--accent)">start a 14-day free trial</a>.';
+    if (sW > 500 || sH > 500) {
+      el.innerHTML = '\u26a0 Site is too large for the free tier (max 500 \xd7 500 m). Redraw a smaller area or <a href="#pricing" style="color:var(--accent)">start a 14-day free trial</a>.';
       el.style.color = 'var(--danger)';
       _styleDrawnLayers(false); // polygon goes red
       return;
@@ -3249,7 +3250,7 @@ function updateDensityPreview() {
 // Grey out spacing chips that would exceed the applicable point cap for the drawn area —
 // stops the user from picking a combination that's guaranteed to be rejected (or, for
 // large sites, charged) at generate time. Mirrors the caps enforced in convert():
-// 50,000 points for a normal Pro site, 500,000 for the large-site add-on (>4 km²).
+// 75,000 points for a normal Pro site, 500,000 for the large-site add-on (>10 km²).
 function _maxAreaKm2ForSpacing(spacingM, capPoints) {
   return (capPoints * spacingM * spacingM) / 1e6;
 }
@@ -4038,7 +4039,7 @@ function openAuth(mode, context) {
 // Hero copy per trigger context. [kicker, title, subline]
 const UPGRADE_COPY = {
   buildings:   ['14-day free trial', 'Unlock Buildings Export',        'IFC · DXF · Full 3D terrain viewer'],
-  size_limit:  ['14-day free trial', 'Go bigger than 250 m',           'Sites up to 2 × 2 km · all LiDAR sources'],
+  size_limit:  ['14-day free trial', 'Go bigger than 500 m',           'Sites up to 1.6 × 1.6 km · all LiDAR sources'],
   spacing:     ['14-day free trial', 'Tighter than 12 m spacing',      '3 m and 6 m precision · all LiDAR sources'],
   points:      ['14-day free trial', 'More detail than the free cap',  'Up to 75,000 points per site'],
   session:     ['14-day free trial', 'Go beyond the free tier',        'Bigger sites · all LiDAR · saved projects · every format'],
@@ -5470,7 +5471,7 @@ async function _convertImpl() {
   document.getElementById('convert-btn').disabled = true;
   showProgress(true); setProgress(0.02,'Preparing…','Setting up coordinate grid');
   try {
-    const FREE_MAX_M = 250, FREE_MAX_SPACING = 12;
+    const FREE_MAX_M = 500, FREE_MAX_SPACING = 12;
     const lats = polygonLatLngs.map(p=>p.lat), lons = polygonLatLngs.map(p=>p.lng);
     const mpd = metresPerDeg((Math.min(...lats)+Math.max(...lats))/2);
     const siteW = (Math.max(...lons)-Math.min(...lons))*mpd.lon;
@@ -5480,7 +5481,7 @@ async function _convertImpl() {
     const areaKm2 = (siteW * siteH) / 1e6;
     const isLargeSite = _isPro && areaKm2 > 10; // matches the Large Site Add-on threshold shown in the modal
     if (!_isPro) {
-      if (siteW>FREE_MAX_M||siteH>FREE_MAX_M) { track('size_limit_hit', { area_m2: Math.round(siteW*siteH), site_w_m: Math.round(siteW), site_h_m: Math.round(siteH), plan }); const _e = new Error('Free tier is limited to 250 × 250m sites. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for sites up to 2 × 2km.'); _e._gateHit = true; _e._gateKind = 'size_limit'; throw _e; }
+      if (siteW>FREE_MAX_M||siteH>FREE_MAX_M) { track('size_limit_hit', { area_m2: Math.round(siteW*siteH), site_w_m: Math.round(siteW), site_h_m: Math.round(siteH), plan }); const _e = new Error('Free tier is limited to 500 × 500m sites. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for sites up to 1.6 × 1.6km.'); _e._gateHit = true; _e._gateKind = 'size_limit'; throw _e; }
       if (selectedSpacing<FREE_MAX_SPACING) { track('spacing_gate_hit', { spacing: selectedSpacing, min: FREE_MAX_SPACING, plan }); const _e = new Error('Free tier supports 12m spacing only. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for 3m and 6m precision.'); _e._gateHit = true; _e._gateKind = 'spacing'; throw _e; }
     }
     window._effectiveSpacing = selectedSpacing;
@@ -5668,7 +5669,7 @@ async function _convertImpl() {
     const areaM2=(Math.max(...out.map(p=>p.x))-Math.min(...out.map(p=>p.x)))*(Math.max(...out.map(p=>p.y))-Math.min(...out.map(p=>p.y)));
     logGeneration(projectName,cleanOut.length,selectedSpacing,areaM2,source||'unknown',csvData,polygonLatLngs?JSON.stringify(polygonLatLngs):null);
     saveProMemory(projectName,selectedSpacing,csvData,source||'unknown');
-    updateElevationSourceBanner(source||'unknown',_isPro);
+    updateElevationSourceBanner(source||'unknown',_isPro,degraded);
     // Stats
     const alts=cleanOut.map(p=>p.z).filter(z=>z!==0&&isFinite(z)&&!isNaN(z));
     const xs=cleanOut.map(p=>p.x),ys=cleanOut.map(p=>p.y);
@@ -5680,7 +5681,7 @@ async function _convertImpl() {
     document.getElementById('stat-dims').textContent=xR.toFixed(0)+'m × '+yR.toFixed(0)+'m';
     refreshResultStats();
     const oi=document.getElementById('origin-info');
-    if(oi){oi.style.display='block';oi.innerHTML='<strong>Local origin (0,0) · '+projectName+'</strong><br>UTM Easting: '+oE.toFixed(2)+' &nbsp;|&nbsp; Northing: '+oN.toFixed(2)+' &nbsp;|&nbsp; Zone: '+utm[0].zone+'<br>Elevation source: '+source+'<br><span style="opacity:.7;font-size:11px">Set Revit Survey Point to UTM coordinates above for georeferenced placement.</span>';}
+    if(oi){oi.style.display='block';oi.innerHTML='<strong>Local origin (0,0) · '+projectName+'</strong><br>UTM Easting: '+oE.toFixed(2)+' &nbsp;|&nbsp; Northing: '+oN.toFixed(2)+' &nbsp;|&nbsp; Zone: '+utm[0].zone+'<br>Elevation source: '+_userFacingSource(source)+'<br><span style="opacity:.7;font-size:11px">Set Revit Survey Point to UTM coordinates above for georeferenced placement.</span>';}
     const pb=document.getElementById('preview-body');
     if(pb){pb.innerHTML=out.slice(0,6).map(p=>'<tr><td>'+p.x+'</td><td>'+p.y+'</td><td>'+p.z+'</td></tr>').join('')+'<tr><td colspan="3" style="color:var(--text-soft);font-size:11px;padding-top:6px">… '+out.length.toLocaleString()+' total rows in CSV</td></tr>';}
     if (!isPro()){incrementGenerationsToday();updateLimitBadge();}
@@ -5691,6 +5692,7 @@ async function _convertImpl() {
       south: Math.min(...lats), west: Math.min(...lons),
       north: Math.max(...lats), east: Math.max(...lons),
       elevSource: source,
+      degraded: !!degraded,
       utmOrigin: { easting: oE, northing: oN }
     };
     window._isGenerating=false;
@@ -6975,7 +6977,18 @@ async function downloadBuildings() {
 }
 
 // ── Elevation source banner ───────────────────────────────────────────────
-function updateElevationSourceBanner(source, _pro) {
+// Raw upstream error text ("(US sources failed: USGS ImageServer HTTP 502)") is for the admin
+// side only (the worker sends it separately as `diag`). The current worker already strips it from
+// `source`; this is the safety net for a response from a worker that has not been updated yet, so
+// users only ever see that a higher-resolution source was unavailable.
+function _userFacingSource(s) {
+  s = String(s || '');
+  const m = s.match(/^(.*?)\s*\((?:[^()]*?)failed[:)]/);
+  if (!m) return s;
+  const thin = s.match(/\[thinned[^\]]*\]\s*$/);
+  return m[1] + ' (higher-resolution source unavailable)' + (thin ? ' ' + thin[0].trim() : '');
+}
+function updateElevationSourceBanner(source, _pro, degraded) {
   const banner=document.getElementById('elevation-source-banner'), title=document.getElementById('esb-title');
   const detail=document.getElementById('esb-detail'), upgrade=document.getElementById('esb-upgrade');
   if (!banner||!title||!detail) return;
@@ -7015,8 +7028,24 @@ function updateElevationSourceBanner(source, _pro) {
   banner.style.display='block'; banner.style.background=colours.bg; banner.style.borderColor=colours.border;
   title.style.color=colours.text;
   title.textContent=tier==='lidar'?'High-resolution LiDAR data':tier==='high'?'High-res satellite data (10m)':tier==='mid'?'Medium-resolution satellite data (30m)':'Low-resolution satellite data (90m)';
-  detail.textContent=resText+' · source: '+source;
+  detail.textContent=resText+' · source: '+_userFacingSource(source);
   if(upgrade){upgrade.style.display=upgradeMsg?'block':'none';if(upgradeMsg)upgrade.innerHTML='⚠ '+upgradeMsg+' <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial →</a>';}
+  // Persistent note on the result card. The "source was busy" banner lives inside the progress card
+  // and disappears about 400ms after the result appears, so a transient fallback used to read as
+  // "this is just the data here" (a US user cancelled citing poor coverage after one blip dropped a
+  // 1m site to 30m). Shown only when the worker says a source FAILED and the region should have
+  // high-resolution data, so ordinary low-resolution regions are never told something was unavailable.
+  const note=document.getElementById('degraded-note');
+  if(note){
+    let showNote=false, gotM=0;
+    if(degraded && typeof polygonLatLngs!=='undefined' && polygonLatLngs){
+      const info=getRegionInfo(polygonLatLngs);
+      gotM = tier==='low' ? 90 : tier==='mid' ? 30 : 0;
+      showNote = !!(info && info.quality==='hi' && gotM);
+    }
+    if(showNote){ note.textContent='⚠ High-resolution data was temporarily unavailable for this site, so this result uses '+gotM+'m data. Try again for full resolution.'; note.style.display='block'; }
+    else { note.style.display='none'; note.textContent=''; }
+  }
 }
 
 // ── Part 6: Pro 3D Terrain Viewer ─────────────────────────────────────────
@@ -8274,6 +8303,37 @@ const meshMat = new THREE.MeshBasicMaterial({
     }
   }
 
+  // BEGIN 3D usage tracking (seen + first real interaction, once each per generation)
+  // view_3d_shown = a frame of the real terrain was actually rendered with at least 25% of the
+  // canvas on screen: the denominator. A Pro viewer sitting below the fold that nobody scrolls to
+  // does not count. view_3d_interacted = the first genuine drag, wheel zoom or touch move on the
+  // scene: the real engagement signal. `state` is created per _initTerrain3D call, so both flags
+  // are per generation and per viewer; flipping Map/3D on the free view does not re-fire them.
+  // Handlers from earlier generations stay attached to the same canvas, so a disposed state is
+  // ignored here, otherwise one drag would log once per past generation.
+  const _vCtx = window._lastTerrainContext || {};
+  const _v3dProps = () => ({
+    plan: (_currentProfile && _currentProfile.plan) || 'anon',
+    viewer: bp,
+    degraded: !!_vCtx.degraded,
+    source: String(_vCtx.elevSource || '').split(/[\s(]/)[0].slice(0, 40),
+    points: points.length
+  });
+  let _shownLogged = false, _shownAt = 0, _interactLogged = false;
+  const _viewIsLive = () => { try { return !state.disposed; } catch (e) { return false; } };
+  const markShown = () => {
+    if (_shownLogged || !_viewIsLive()) return;
+    _shownLogged = true; _shownAt = Date.now();
+    try { track('view_3d_shown', _v3dProps()); } catch (e) {}
+  };
+  const markInteracted = (kind) => {
+    if (_interactLogged || !_viewIsLive()) return;
+    _interactLogged = true;
+    markShown(); // an interaction implies it was on screen, so interacted stays a subset of shown
+    try { track('view_3d_interacted', Object.assign(_v3dProps(), { kind: kind, secs_to_interact: Math.round((Date.now() - _shownAt) / 100) / 10 })); } catch (e) {}
+  };
+  // END 3D usage tracking
+
   // ── Camera / orbit ───────────────────────────────────────────────
   const DRX=1.02,DRY=1.571,DDS=200;  // DRY≈π/2: camera starts at south, North at back/top (matches map)
   let rotX=DRX,rotY=DRY,dist=DDS,panX=0,panY=0,autoRot=true;
@@ -8288,15 +8348,16 @@ const meshMat = new THREE.MeshBasicMaterial({
   window.addEventListener('mousemove',e=>{
     if(!dragging) return;
     const dx=e.clientX-prevMX,dy=e.clientY-prevMY;
+    if(Math.abs(dx)+Math.abs(dy)>=2) markInteracted(rightDrag?'pan':'rotate');
     if(rightDrag){panX-=dx*0.15;panY+=dy*0.15;}
     else{rotY+=dx*0.005;rotX+=dy*0.005;rotX=Math.max(0.1,Math.min(Math.PI/2-0.05,rotX));}
     prevMX=e.clientX;prevMY=e.clientY;
   });
-  canvas.addEventListener('wheel',e=>{e.preventDefault();autoRot=false;idleDrift=false;lastInteract=Date.now();dist+=e.deltaY*0.1;dist=Math.max(40,Math.min(400,dist));},{passive:false});
+  canvas.addEventListener('wheel',e=>{e.preventDefault();markInteracted('zoom');autoRot=false;idleDrift=false;lastInteract=Date.now();dist+=e.deltaY*0.1;dist=Math.max(40,Math.min(400,dist));},{passive:false});
 
   let tDist0=0,t2=false;
   canvas.addEventListener('touchstart',e=>{autoRot=false;idleDrift=false;lastInteract=Date.now();if(e.touches.length===1){dragging=true;rightDrag=false;prevMX=e.touches[0].clientX;prevMY=e.touches[0].clientY;}else if(e.touches.length===2){t2=true;const dx=e.touches[1].clientX-e.touches[0].clientX,dy=e.touches[1].clientY-e.touches[0].clientY;tDist0=Math.sqrt(dx*dx+dy*dy);}},{passive:true});
-  canvas.addEventListener('touchmove',e=>{e.preventDefault();if(e.touches.length===1&&dragging){const dx=e.touches[0].clientX-prevMX,dy=e.touches[0].clientY-prevMY;rotY+=dx*0.005;rotX+=dy*0.005;rotX=Math.max(0.1,Math.min(Math.PI/2-0.05,rotX));prevMX=e.touches[0].clientX;prevMY=e.touches[0].clientY;}else if(e.touches.length===2&&t2){const dx=e.touches[1].clientX-e.touches[0].clientX,dy=e.touches[1].clientY-e.touches[0].clientY;const d=Math.sqrt(dx*dx+dy*dy);dist*=tDist0/d;dist=Math.max(40,Math.min(400,dist));tDist0=d;}},{passive:false});
+  canvas.addEventListener('touchmove',e=>{e.preventDefault();markInteracted(e.touches.length===2?'pinch':'touch');if(e.touches.length===1&&dragging){const dx=e.touches[0].clientX-prevMX,dy=e.touches[0].clientY-prevMY;rotY+=dx*0.005;rotX+=dy*0.005;rotX=Math.max(0.1,Math.min(Math.PI/2-0.05,rotX));prevMX=e.touches[0].clientX;prevMY=e.touches[0].clientY;}else if(e.touches.length===2&&t2){const dx=e.touches[1].clientX-e.touches[0].clientX,dy=e.touches[1].clientY-e.touches[0].clientY;const d=Math.sqrt(dx*dx+dy*dy);dist*=tDist0/d;dist=Math.max(40,Math.min(400,dist));tDist0=d;}},{passive:false});
   canvas.addEventListener('touchend',()=>{dragging=false;t2=false;});
 
   // ── Theme sync ───────────────────────────────────────────────────
@@ -8365,7 +8426,9 @@ const meshMat = new THREE.MeshBasicMaterial({
   // every later click for the main thread (found 2026-09-29, elevated INP). Same fix as those:
   // pause rendering (not the rAF chain itself, just the expensive render() call) while the
   // canvas isn't actually visible.
-  state.io = new IntersectionObserver(function(es) { state.paused = !es[0].isIntersecting; }, { threshold: 0.01 });
+  // `ratio` feeds view_3d_shown: crossing 0.25 means a real share of the canvas is on screen.
+  state.ratio = 0;
+  state.io = new IntersectionObserver(function(es) { state.paused = !es[0].isIntersecting; state.ratio = es[0].intersectionRatio; }, { threshold: [0.01, 0.25] });
   state.io.observe(canvas);
 
   function animate(){
@@ -8381,6 +8444,7 @@ const meshMat = new THREE.MeshBasicMaterial({
     camera.position.z=panX+dist*Math.sin(rotX)*Math.sin(rotY);
     camera.lookAt(panX,0,panY);
     renderer.render(scene,camera);
+    if(!_shownLogged && state.ratio>=0.25) markShown(); // a frame really rendered, tab visible, canvas on screen
     // Compass: rotate needle so blue tip always points toward screen-North.
     // North = −Z in scene. Projected onto screen: screenX = cos(rotY), screenY_up = cos(rotX)·sin(rotY).
     // CSS clockwise angle from screen-top = atan2(cos(rotY), cos(rotX)·sin(rotY)).

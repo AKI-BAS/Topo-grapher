@@ -58,7 +58,7 @@
     "No installation, no GIS software"
   ],
   "offers": [
-    { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "GBP", "description": "3 generations/day, up to 250m x 250m, 12m spacing, no account needed" },
+    { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "GBP", "description": "3 generations/day, up to 500m x 500m, 12m spacing, no account needed" },
     { "@type": "Offer", "name": "Pro", "price": "39.99", "priceCurrency": "GBP", "description": "Larger sites, finer spacing, building footprints, all formats (per month)" },
     { "@type": "Offer", "name": "Company", "price": "29.99", "priceCurrency": "GBP", "description": "Per seat per month, 2+ seats" }
   ]
@@ -78,7 +78,7 @@
     { "@type": "HowToTool", "name": "Rhino 7 or later (Grasshopper optional)" }
   ],
   "step": [
-    { "@type": "HowToStep", "position": 1, "name": "Define your site", "text": "Open Topo-grapher and draw a polygon around your site on the map, or paste coordinates. The free tier covers up to 250m x 250m." },
+    { "@type": "HowToStep", "position": 1, "name": "Define your site", "text": "Open Topo-grapher and draw a polygon around your site on the map, or paste coordinates. The free tier covers up to 500m x 500m." },
     { "@type": "HowToStep", "position": 2, "name": "Generate the point cloud", "text": "Choose XYZ CSV as the output format and generate. Topo-grapher returns a delimited list of X, Y, Z points at the chosen spacing." },
     { "@type": "HowToStep", "position": 3, "name": "Import the points", "text": "In Rhino, use File then Import to bring in the XYZ CSV as points, or read the file with a Grasshopper File component and construct points parametrically." },
     { "@type": "HowToStep", "position": 4, "name": "Build the surface", "text": "Mesh the points with MeshPatch or a Delaunay mesh, or use Patch for a NURBS surface. In Grasshopper, feed the points into a Delaunay Mesh component." },
@@ -126,7 +126,7 @@
     {
       "@type": "Question",
       "name": "Is there a free way to get site topography for Rhino?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Topo-grapher's free tier allows 3 generations per day for sites up to 250m x 250m at 12m point spacing, with no account required." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Topo-grapher's free tier allows 3 generations per day for sites up to 500m x 500m at 12m point spacing, with no account required." }
     }
   ]
 }
@@ -218,7 +218,7 @@
 
   <h2>Step-by-step</h2>
   <ol class="steps">
-    <li><b>Define your site.</b> Draw a polygon around the site on the map in Topo-grapher, or paste coordinates. The free tier covers up to 250m &times; 250m.</li>
+    <li><b>Define your site.</b> Draw a polygon around the site on the map in Topo-grapher, or paste coordinates. The free tier covers up to 500m &times; 500m.</li>
     <li><b>Generate as XYZ CSV.</b> Pick XYZ CSV and generate. You get a delimited list of X, Y, Z points at your chosen spacing.</li>
     <li><b>Import the points.</b> In Rhino use <b>File &rarr; Import</b> for the CSV, or read it with a Grasshopper <b>File</b> component and construct points.</li>
     <li><b>Build the surface.</b> Run <b>MeshPatch</b> or a Delaunay mesh for a triangulated terrain, or <b>Patch</b> for a NURBS surface. In Grasshopper, feed points into a <b>Delaunay Mesh</b> component.</li>
@@ -263,7 +263,7 @@
     <p>It depends on the country's open data: 0.4m in Denmark, 1m across the UK, Sweden, Norway, France and parts of the US, 5-10m across most of Europe, and a 30m global fallback elsewhere.</p>
 
     <h3>Is there a free way to get site topography for Rhino?</h3>
-    <p>Yes. The free tier allows 3 generations per day for sites up to 250m &times; 250m at 12m spacing, with no account required.</p>
+    <p>Yes. The free tier allows 3 generations per day for sites up to 500m &times; 500m at 12m spacing, with no account required.</p>
   </div>
 
   <h2>Further reading</h2>
