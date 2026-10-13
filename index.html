@@ -5061,12 +5061,39 @@ function updateLimitBadge() {
     : remaining + ' of ' + FREE_DAILY_LIMIT + ' free';
   el.innerHTML = '<span class="limit-pips">' + pips + '</span><span>' + label + '</span>';
 }
+// The daily limit counts GENERATIONS (rows that reached status 'completed'), never attempts.
+// Until 2026-10-13 the server count had no status filter, so every started, size-blocked, failed
+// or cancelled attempt (and the current attempt's own 'started' row) used up the allowance: 14 of
+// 20 signed-in users who hit "3 generations per day" had completed ZERO. Two safeguards because
+// the `generations` trigger keeps only each user's latest 3 rows, which can hide completed rows
+// behind newer attempts: (1) Supabase/07-trim-keeps-last-3-completed.sql makes the trigger keep
+// the last 3 COMPLETED rows separately from attempts; (2) a per-user, per-day counter in this
+// browser is bumped only when a generation completes, and the larger of the two is enforced, so
+// the limit holds even before that SQL is run. A degraded (fallback) result still counts: the
+// user did receive a result.
+function _userGensKey() { return 'topo-ugens-' + _currentUser.id + '-' + new Date().toISOString().slice(0, 10); }
+function getUserGenerationsToday() {
+  try { return _currentUser ? (parseInt(localStorage.getItem(_userGensKey()) || '0', 10) || 0) : 0; } catch (e) { return 0; }
+}
+function incrementUserGenerationsToday() {
+  if (!_currentUser) return;
+  try {
+    const key = _userGensKey();
+    localStorage.setItem(key, getUserGenerationsToday() + 1);
+    Object.keys(localStorage).filter(k => k.startsWith('topo-ugens-') && k !== key).forEach(k => localStorage.removeItem(k));
+  } catch (e) { /* storage blocked: the server count still applies */ }
+}
 async function checkDailyLimit() {
   if (isPro()) return;
   if (_currentUser) {
     const today = new Date().toISOString().slice(0, 10);
-    const { count } = await _sb.from('generations').select('*', { count: 'exact', head: true }).eq('user_id', _currentUser.id).gte('created_at', today + 'T00:00:00Z');
-    if (count >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'server' }); const _e = new Error('Free tier limit reached — ' + FREE_DAILY_LIMIT + ' generations per day. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for unlimited generations.'); _e._gateHit = true; throw _e; }
+    // Fetch today's completed rows (at most a handful: the trigger bounds them) so degraded
+    // results can be left out of the count in JS: a fallback result does not use up one of the
+    // free generations, which is what makes "Try again" free.
+    const { data: _doneRows } = await _sb.from('generations').select('elevation_source').eq('user_id', _currentUser.id).eq('status', 'completed').gte('created_at', today + 'T00:00:00Z').limit(50);
+    const serverUsed = (_doneRows || []).filter(function (r) { return !_isDegradedSourceLabel(r.elevation_source); }).length;
+    const used = Math.max(serverUsed, getUserGenerationsToday());
+    if (used >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'server', used: used }); const _e = new Error('Free tier limit reached: ' + FREE_DAILY_LIMIT + ' generations per day. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for unlimited generations.'); _e._gateHit = true; throw _e; }
   } else {
     const used = getGenerationsToday();
     if (used >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'local' }); const _e = new Error('Free tier limit reached. <a href="#" onclick="openAuth()" style="color:var(--accent)">Sign in</a> or <a href="#pricing" style="color:var(--accent)">start a free trial</a> for unlimited generations.'); _e._gateHit = true; throw _e; }
@@ -5185,6 +5212,15 @@ function sourceResolutionMetres(source) {
   if (s.includes('arcticdem') || s.includes('10m')) return 10;
   return 0;
 }
+// Coarseness rank of a source label, used to pick the WORST batch when one site is served by
+// several parallel worker calls: 2 = 90m Open-Meteo, 1 = 30m global/satellite tiers, 0 = anything
+// better. Mirrors the tier mapping in updateElevationSourceBanner (primary token only).
+function _sourceCoarseRank(src) {
+  const t = String(src || '').toLowerCase().split(/[\s(]/)[0];
+  if (t.includes('open-meteo')) return 2;
+  if (t.includes('gedtm') || t.includes('eu_dtm') || t.includes('cop30') || t.includes('srtm') || t.includes('30m')) return 1;
+  return 0;
+}
 function idwSmoothElevations(pts, elevations, radiusM, power, k) {
   power = power || 2; k = k || 8;
   const n = pts.length;
@@ -5261,6 +5297,7 @@ async function tryWorkerProxy(pts, onProgress) {
   let workerDiag = null;
   let workerRegion = null;
   let workerDurationMax = 0;
+  const batchSources = []; // every batch's own source label, to detect a mixed-resolution result
   const batches = [];
   for (let i=0; i<pts.length; i+=CHUNK) { const b=pts.slice(i,i+CHUNK); batches.push({ offset:i, lats:b.map(p=>p.lat.toFixed(6)).join(','), lons:b.map(p=>p.lon.toFixed(6)).join(',') }); }
   let done = 0;
@@ -5277,6 +5314,7 @@ async function tryWorkerProxy(pts, onProgress) {
         if (!Array.isArray(d.elevation)) throw new Error('proxy-format');
         d.elevation.forEach((v,j)=>{ e[batch.offset+j]=v; });
         if (d.source && !workerSource) workerSource = d.source;
+        if (d.source) batchSources.push(d.source);
         if (d.degraded) workerDegraded = true;
         if (d.diag && !workerDiag) workerDiag = d.diag;
         if (d.region && !workerRegion) workerRegion = d.region;
@@ -5289,7 +5327,22 @@ async function tryWorkerProxy(pts, onProgress) {
     if (w+PARALLEL < batches.length) await sleep(300);
   }
   if (looksLikeFailure(e)) throw new Error('proxy returned zeros');
-  return { elevations: e, source: workerSource || 'worker (7-parallel GET)', degraded: workerDegraded, region: workerRegion, duration_ms: workerDurationMax || null, diag: workerDiag };
+  // Each 200-point batch is its own worker call, so one batch can fall back to a coarser tier
+  // while the rest return the premium source. The label used to be the FIRST batch's source, so
+  // a result that was partly 90m could read "USGS-3DEP-1m" (seen once, 2026-10-12, US site, 213
+  // points). When tiers differ, report the WORST one. `mixed` means "not all one tier"; it only
+  // counts as degraded if a batch actually flagged a failure (a site straddling two regions can
+  // legitimately mix tiers).
+  let mixed = false;
+  if (batchSources.length > 1) {
+    const ranks = batchSources.map(_sourceCoarseRank);
+    const worst = Math.max.apply(null, ranks);
+    if (Math.min.apply(null, ranks) !== worst) {
+      mixed = true;
+      workerSource = batchSources[ranks.indexOf(worst)];
+    }
+  }
+  return { elevations: e, source: workerSource || 'worker (7-parallel GET)', degraded: workerDegraded, region: workerRegion, duration_ms: workerDurationMax || null, diag: workerDiag, mixed: mixed };
 }
 
 async function tryOpenMeteo(pts) {
@@ -5367,7 +5420,7 @@ async function fetchElevations(pts, onP) {
       const totalBatches=Math.ceil(pts.length/200);
       onP(0,'Fetching elevation data…',pts.length+' points · '+totalBatches+' batches · ~'+Math.max(2,Math.ceil(totalBatches/7)*2)+'s');
       const result=await tryWorkerProxy(pts,(frac,label)=>onP(frac*0.95,'Fetching elevation data…',label));
-      return {elevations:result.elevations,source:result.source,degraded:result.degraded,region:result.region,duration_ms:result.duration_ms,diag:result.diag};
+      return {elevations:result.elevations,source:result.source,degraded:result.degraded,region:result.region,duration_ms:result.duration_ms,diag:result.diag,mixed:result.mixed};
     }
   }catch(e){
     throw new Error('Elevation fetch failed — '+e.message.slice(0,120));
@@ -5435,6 +5488,45 @@ function _hideHighDemandBanner() {
 }
 
 // ── Convert ───────────────────────────────────────────────────────────────
+// ── "Try again" after a degraded result: billing and allowance rules ──────────────────────
+// A degraded (fallback) result is not what the user should have got, so re-running the same site
+// must never cost them anything extra:
+//   1. Large-site add-on. /charge-addon runs BEFORE the elevation fetch, so a re-run would charge
+//      again. A successful charge is remembered as a credit for that exact site (user + spacing +
+//      polygon) for ADDON_CREDIT_TTL_MS, and a re-run of the same site skips the charge until a
+//      full-resolution result is delivered. This also covers a run that failed or was cancelled
+//      after the user had already paid.
+//   2. Daily allowance. A degraded result does not count as one of the free generations (see
+//      checkDailyLimit and the success path of _convertImpl), so retrying is free there too.
+// The credit lives in this browser only; the add-on charge itself has always been initiated
+// client-side, so this adds no new trust assumption.
+const ADDON_CREDIT_TTL_MS = 30 * 60 * 1000;
+function _siteSignature(poly, spacing, userId) {
+  const pts = (poly || []).map(function (p) {
+    const lon = p.lng !== undefined ? p.lng : p.lon;
+    return Number(p.lat).toFixed(5) + ',' + Number(lon).toFixed(5);
+  }).join(';');
+  return (userId || 'anon') + '|' + spacing + '|' + pts;
+}
+function _addonCreditCovers(credit, sig, now) {
+  return !!(credit && credit.sig === sig && now >= credit.at && (now - credit.at) < ADDON_CREDIT_TTL_MS);
+}
+// A source label that marks a degraded (fallback) result: the current wording, plus the older
+// "unavailable" / "sources failed" labels that rows logged before 2026-10-13 may carry.
+function _isDegradedSourceLabel(label) {
+  return /degraded|unavailable|sources failed|failed:/i.test(String(label || ''));
+}
+// Re-run the same site after a degraded result (the "Try again" button on the result note).
+// Billing is handled by the credit above, so this only has to run convert() once.
+function retryDegraded() {
+  if (_convertActiveId) return; // a run is already in progress
+  const btn = document.getElementById('degraded-retry-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Trying again…'; }
+  window._retryOfDegraded = true;
+  try { track('degraded_retry_clicked', { plan: (_currentProfile && _currentProfile.plan) || 'anon' }); } catch (e) {}
+  convert();
+}
+
 // Re-entrancy guard. The button is only disabled a couple of awaits into the real work, so
 // rapid repeat clicks (seen in the data as sub-second repeats) each ran a full generation,
 // which also meant a repeated large-site add-on charge. One run at a time; cancelGeneration()
@@ -5450,7 +5542,9 @@ async function convert() {
 }
 async function _convertImpl() {
   hideError(); showResult(false);
-  track('generation_started', { spacing: selectedSpacing, plan: _currentProfile?.plan || 'anon' });
+  const _isRetry = window._retryOfDegraded === true; // set by the "Try again" button only
+  window._retryOfDegraded = false;
+  track('generation_started', { spacing: selectedSpacing, plan: _currentProfile?.plan || 'anon', retry: _isRetry });
   await startGeneration();
   window._isGenerating = true; window._cancelled = false; window._lastAddonChargePence = 0;
   const nEl = document.getElementById('project-name');
@@ -5501,11 +5595,19 @@ async function _convertImpl() {
     if (isLargeSite) {
       const addonCost = _addonCostGBP(areaKm2);
       const addonPence = Math.round(addonCost * 100);
+      const _addonSig = _siteSignature(polygonLatLngs, selectedSpacing, _currentUser && _currentUser.id);
+      const _alreadyPaid = _addonCreditCovers(window._addonCredit, _addonSig, Date.now());
+      if (_alreadyPaid) {
+        // This exact site was already paid for and has not yet produced a full-resolution result
+        // (an earlier run failed, was cancelled, or came back degraded). Re-running it is free.
+        track('addon_not_recharged', { areaKm2: parseFloat(areaKm2.toFixed(2)), amountPence: window._addonCredit.pence, plan, retry: _isRetry });
+      }
+      if (!_alreadyPaid) {
       setProgress(0.05, 'Charging add-on…', '£' + addonCost.toFixed(2) + ' for this ' + areaKm2.toFixed(1) + ' km² generation');
       try {
         const chargeRes = await fetch(WEBHOOK_WORKER + '/charge-addon', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: _currentUser.email, amountPence: addonPence, description: 'Large site add-on — ' + areaKm2.toFixed(1) + ' km²' })
+          body: JSON.stringify({ email: _currentUser.email, amountPence: addonPence, description: 'Large site add-on: ' + areaKm2.toFixed(1) + ' km²' })
         });
         const chargeData = await chargeRes.json().catch(function(){ return {}; });
         if (!chargeRes.ok || chargeData.error) throw new Error(chargeData.error || ('HTTP ' + chargeRes.status));
@@ -5514,23 +5616,26 @@ async function _convertImpl() {
         const _e = new Error('Could not charge the large-site add-on (' + chargeErr.message + '). Check your payment method in Settings and try again.'); _e._gateHit = true; throw _e;
       }
       window._lastAddonChargePence = addonPence;
+      window._addonCredit = { sig: _addonSig, pence: addonPence, at: Date.now() };
       track('addon_charged', { areaKm2: parseFloat(areaKm2.toFixed(2)), amountPence: addonPence, plan });
+      }
     }
     const estSecs = Math.ceil(grid.length/50*0.6);
     setProgress(0.1,'Extracting data…',grid.length.toLocaleString()+' points — est. '+estSecs+'s');
     _hideHighDemandBanner();
     const SLOW_MS = 20000;
     const _slowTimer = setTimeout(function(){
-      _showHighDemandBanner('⏳ Lots of people generating right now — hang tight, your data will be here in a minute. No need to refresh.');
+      _showHighDemandBanner('⏳ Lots of people generating right now. Hang tight, your data will be here in a minute. No need to refresh.');
       try { track('high_demand_slow_shown', {}); } catch(_){}
     }, SLOW_MS);
-    let elevations, source, degraded, region, workerMs, upstreamDiag;
+    let elevations, source, degraded, region, workerMs, upstreamDiag, mixedTiers = false;
     const _wallT0 = Date.now();
     try {
       const _r = await fetchElevations(grid,(f,l,s)=>setProgress(0.1+f*0.78,null,s));
       elevations = _r.elevations; source = _r.source; degraded = !!_r.degraded;
       region = _r.region || null; workerMs = _r.duration_ms || null;
       upstreamDiag = _r.diag || null; // raw upstream error text: logged for admin analysis, never rendered
+      mixedTiers = !!_r.mixed;        // batches came back from different resolution tiers
     } finally {
       clearTimeout(_slowTimer);
     }
@@ -5544,6 +5649,8 @@ async function _convertImpl() {
         source: source,
         degraded: degraded,
         diag: upstreamDiag || null,
+        mixed: mixedTiers,
+        retry: _isRetry,
         worker_ms: workerMs,
         wall_ms: wallMs,
         points: grid.length
@@ -5551,7 +5658,7 @@ async function _convertImpl() {
     } catch(_){}
     if (window._cancelled) { _hideHighDemandBanner(); return; }
     if (degraded) {
-      _showHighDemandBanner('⚠ Our high-res source for this region was busy — we served <b>' + (source.split(' ')[0] || 'a fallback tier') + '</b> instead. Everything else is normal; try again in a minute for full resolution.');
+      _showHighDemandBanner('⚠ Temporarily degraded data: our high-resolution source for this region did not respond, so we served <b>' + (source.split(' ')[0] || 'a fallback tier') + '</b> instead. Everything else is normal. Try again in a minute for full resolution.');
       try { track('degraded_result_shown', { source: source, region: region }); } catch(_){}
     }
     // ── Drop NoData / ocean samples ─────────────────────────────────────
@@ -5669,7 +5776,7 @@ async function _convertImpl() {
     const areaM2=(Math.max(...out.map(p=>p.x))-Math.min(...out.map(p=>p.x)))*(Math.max(...out.map(p=>p.y))-Math.min(...out.map(p=>p.y)));
     logGeneration(projectName,cleanOut.length,selectedSpacing,areaM2,source||'unknown',csvData,polygonLatLngs?JSON.stringify(polygonLatLngs):null);
     saveProMemory(projectName,selectedSpacing,csvData,source||'unknown');
-    updateElevationSourceBanner(source||'unknown',_isPro,degraded);
+    updateElevationSourceBanner(source||'unknown',_isPro,degraded,mixedTiers);
     // Stats
     const alts=cleanOut.map(p=>p.z).filter(z=>z!==0&&isFinite(z)&&!isNaN(z));
     const xs=cleanOut.map(p=>p.x),ys=cleanOut.map(p=>p.y);
@@ -5684,7 +5791,11 @@ async function _convertImpl() {
     if(oi){oi.style.display='block';oi.innerHTML='<strong>Local origin (0,0) · '+projectName+'</strong><br>UTM Easting: '+oE.toFixed(2)+' &nbsp;|&nbsp; Northing: '+oN.toFixed(2)+' &nbsp;|&nbsp; Zone: '+utm[0].zone+'<br>Elevation source: '+_userFacingSource(source)+'<br><span style="opacity:.7;font-size:11px">Set Revit Survey Point to UTM coordinates above for georeferenced placement.</span>';}
     const pb=document.getElementById('preview-body');
     if(pb){pb.innerHTML=out.slice(0,6).map(p=>'<tr><td>'+p.x+'</td><td>'+p.y+'</td><td>'+p.z+'</td></tr>').join('')+'<tr><td colspan="3" style="color:var(--text-soft);font-size:11px;padding-top:6px">… '+out.length.toLocaleString()+' total rows in CSV</td></tr>';}
-    if (!isPro()){incrementGenerationsToday();updateLimitBadge();}
+    // A full-resolution result ends any add-on credit (the next run of this site is a new
+    // purchase). A degraded one keeps it, and does not use up a free generation, so "Try again"
+    // costs nothing either way.
+    if (!degraded) window._addonCredit = null;
+    if (!isPro() && !degraded){incrementGenerationsToday();incrementUserGenerationsToday();updateLimitBadge();}
     setSiteContourData(out);
     setProgress(1,'Done — terrain data ready.','');
     // Store bbox + elevation source for the buildings layer in the 3D viewer
@@ -6986,9 +7097,9 @@ function _userFacingSource(s) {
   const m = s.match(/^(.*?)\s*\((?:[^()]*?)failed[:)]/);
   if (!m) return s;
   const thin = s.match(/\[thinned[^\]]*\]\s*$/);
-  return m[1] + ' (higher-resolution source unavailable)' + (thin ? ' ' + thin[0].trim() : '');
+  return m[1] + ' (temporarily degraded data)' + (thin ? ' ' + thin[0].trim() : '');
 }
-function updateElevationSourceBanner(source, _pro, degraded) {
+function updateElevationSourceBanner(source, _pro, degraded, mixed) {
   const banner=document.getElementById('elevation-source-banner'), title=document.getElementById('esb-title');
   const detail=document.getElementById('esb-detail'), upgrade=document.getElementById('esb-upgrade');
   if (!banner||!title||!detail) return;
@@ -7037,13 +7148,40 @@ function updateElevationSourceBanner(source, _pro, degraded) {
   // high-resolution data, so ordinary low-resolution regions are never told something was unavailable.
   const note=document.getElementById('degraded-note');
   if(note){
-    let showNote=false, gotM=0;
+    let showNote=false, gotM=0, expM=0;
     if(degraded && typeof polygonLatLngs!=='undefined' && polygonLatLngs){
       const info=getRegionInfo(polygonLatLngs);
       gotM = tier==='low' ? 90 : tier==='mid' ? 30 : 0;
-      showNote = !!(info && info.quality==='hi' && gotM);
+      expM = info ? info.res : 0;
+      // A 'hi' region expects LiDAR-class data, so any 30m/90m result is a drop. Elsewhere only a
+      // result clearly coarser than the region's expected resolution counts (a 30m region that came
+      // back 90m). Before 2026-10-13 only 'hi' regions qualified, so the common failure (GEDTM30 in a
+      // global 30m region falling to 90m) never explained itself.
+      showNote = !!(info && gotM && (info.quality==='hi' || gotM > expM*1.5));
     }
-    if(showNote){ note.textContent='⚠ High-resolution data was temporarily unavailable for this site, so this result uses '+gotM+'m data. Try again for full resolution.'; note.style.display='block'; }
+    if(showNote){
+      const expLabel = expM > 0 && expM < 1 ? Math.round(expM*100)+'cm' : expM+'m';
+      // `mixed`: only some batches fell back, so say "part of" instead of claiming the whole site.
+      const noteBody = mixed
+        ? '⚠ Temporarily degraded data: the '+expLabel+' source did not respond for part of this site, so part of this result uses '+gotM+'m data.'
+        : '⚠ Temporarily degraded data: the '+expLabel+' source for this site did not respond, so this result uses '+gotM+'m data.';
+      // Say what a retry costs, so nobody hesitates: an add-on already paid for is not charged again,
+      // and a degraded result does not use up one of the free generations (see _addonCreditCovers).
+      const costNote = (window._addonCredit && window._addonCredit.pence > 0)
+        ? ' You will not be charged again for this site.'
+        : (!_pro ? ' This does not use one of your free generations.' : '');
+      note.textContent = '';
+      note.appendChild(document.createTextNode(noteBody + costNote + ' '));
+      const retryBtn = document.createElement('button');
+      retryBtn.id = 'degraded-retry-btn';
+      retryBtn.type = 'button';
+      retryBtn.textContent = 'Try again for full resolution';
+      retryBtn.style.cssText = "margin-top:6px;padding:5px 12px;border-radius:4px;border:1px solid #e0a050;background:transparent;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;";
+      retryBtn.onclick = retryDegraded;
+      note.appendChild(retryBtn);
+      note.style.display='block';
+      title.textContent='Temporarily degraded data ('+gotM+'m)';
+    }
     else { note.style.display='none'; note.textContent=''; }
   }
 }
