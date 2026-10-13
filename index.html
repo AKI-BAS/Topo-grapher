@@ -3871,6 +3871,13 @@ function broadcastGenFailure(stage, detail) {
 }
 
 // ── Auth init ─────────────────────────────────────────────────────────────
+// Fires the held subscription_created exactly once, after auth has had its chance to set
+// _currentUser (called from handleSession, the end of initAuth, and a 6 s timer).
+function _flushSubscriptionCreated() {
+  if (!window._subCreatedPending) return;
+  window._subCreatedPending = false;
+  track('subscription_created', { source: 'checkout_success_redirect', signed_in: !!_currentUser });
+}
 async function initAuth() {
   // Register listener FIRST — outside try/catch — so it always survives even
   // if the initial getSession() call fails or times out.
@@ -3895,6 +3902,7 @@ async function initAuth() {
     console.warn('Auth init error:', e.message);
     try { await _sb.auth.signOut(); } catch(e2) {}
   }
+  _flushSubscriptionCreated(); // no-op unless a ?upgraded=true return is still waiting on auth
 }
 
 async function handleSession(session) {
@@ -3911,6 +3919,7 @@ async function handleSession(session) {
     if (_currentProfile && _currentProfile.test_mode) localStorage.setItem('topo_test_mode', '1');
     else localStorage.removeItem('topo_test_mode');
   } catch(e) {}
+  _flushSubscriptionCreated(); // user_id and test_mode are known now
   updateNavUI();
   if (_currentProfile && (_currentProfile.plan === 'pro' || _currentProfile.plan === 'company')) {
     applyProUI();
@@ -6143,6 +6152,12 @@ function closeFormatPicker() {
   if (ov) ov.classList.remove('show');
   if (_fpTick) { clearInterval(_fpTick); _fpTick = null; }
 }
+// Picker closed without downloading or upgrading: log what was on screen, so a person who
+// looked at a locked Pro format and left is visible (format_locked_clicked only fires on Download).
+function _fpDismiss(how) {
+  try { track('format_picker_dismissed', { how, format: _fpSel, locked: _fpLocked(_fpSel), plan: _currentProfile?.plan || 'anon' }); } catch (e) {}
+  closeFormatPicker();
+}
 // The Download button in the footer — the one clear call to action.
 function _fpDl() {
   const fmt = _fpSel;
@@ -6153,7 +6168,7 @@ function _fpDl() {
     startCheckout('pro');
     return;
   }
-  try { track('format_selected', { format: fmt, via: 'picker', plan: _currentProfile?.plan || 'anon' }); } catch (e) {}
+  try { track('format_selected', { format: fmt, via: 'picker', plan: _currentProfile?.plan || 'anon', locked: false }); } catch (e) {}
   const dd = document.getElementById('format-select');
   if (dd) dd.value = fmt;
   closeFormatPicker();
@@ -6163,19 +6178,25 @@ function _fpDl() {
   const ov = document.getElementById('fp-overlay');
   if (!ov) return;
   ov.addEventListener('click', function (e) {
-    if (e.target === ov || (e.target.closest && e.target.closest('#fp-close'))) { closeFormatPicker(); return; }
+    if (e.target === ov || (e.target.closest && e.target.closest('#fp-close'))) { _fpDismiss(e.target === ov ? 'backdrop' : 'close_button'); return; }
     if (e.target.closest && e.target.closest('#fp-seepro-link')) {
       try { track('pro_cta_clicked', { source: 'format_picker' }); } catch (err) {}
       closeFormatPicker(); startCheckout('pro'); return;
     }
     if (e.target.closest && e.target.closest('#fp-dl')) { _fpDl(); return; }
     const card = e.target.closest && e.target.closest('.fp-card');
-    if (card) _fpSelect(card.getAttribute('data-fmt'));
+    if (card) {
+      const cf = card.getAttribute('data-fmt');
+      _fpSelect(cf);
+      // A person clicking a card (not the initial or recommender-driven selection):
+      // shows interest in a locked Pro format even if they never press Download.
+      try { track('format_card_clicked', { format: cf, locked: _fpLocked(cf), plan: _currentProfile?.plan || 'anon' }); } catch (err) {}
+    }
   });
   const soft = document.getElementById('fp-software');
   if (soft) soft.addEventListener('change', function () { _fpRecommend(true); });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && ov.classList.contains('show')) closeFormatPicker();
+    if (e.key === 'Escape' && ov.classList.contains('show')) _fpDismiss('escape');
   });
 })();
 // ── IFC / DXF helpers ──────────────────────────────────────────────────────
@@ -9144,7 +9165,10 @@ document.addEventListener('DOMContentLoaded', function() {
   track('page_open', _poPayload);
   initPresence();
   if (window.location.search.includes('upgraded=true')) {
-    track('subscription_created', { source: 'checkout_success_redirect' });
+    // Held until auth resolves so the row carries user_id (initAuth runs after this handler;
+    // firing here always logged user_id = null). 6 s fallback covers signed-out returns.
+    window._subCreatedPending = true;
+    setTimeout(_flushSubscriptionCreated, 6000);
     history.replaceState(null, '', window.location.pathname); // strip ?upgraded=true so a reload/revisit can't re-fire this
     _markConfirmPaid(); // paid before confirming the email: surface the "confirm your email" banner
   }
@@ -9179,7 +9203,9 @@ document.addEventListener('DOMContentLoaded', function() {
     _syncDlBtn();
     // Pro-visibility rollout, step 1: log every format switch (manual or via the
     // software recommender), so we can see whether anyone reaches for DXF/IFC.
-    try { track('format_selected', { format: fmtSel.value, plan: _currentProfile?.plan || 'anon' }); } catch (e) {}
+    // `locked` marks a Pro format picked by someone who cannot download it: still a
+    // "selected" event (baselines unchanged), but now separable from real usable picks.
+    try { track('format_selected', { format: fmtSel.value, plan: _currentProfile?.plan || 'anon', locked: _fpLocked(fmtSel.value) }); } catch (e) {}
   });
 
   // ── Floating ribbon avoids the footer ──
