@@ -27,17 +27,17 @@
   <!-- ═══════════════════════════════════════════════
        PRIMARY SEO
   ═══════════════════════════════════════════════ -->
-  <title>Topo-grapher — Topography Data for Revit, SketchUp & Rhino</title>
+  <title>Topo-grapher - Topography Data for Revit, SketchUp & Rhino</title>
   <meta name="description" content="Site topography and elevation point clouds for Revit, SketchUp, Rhino and ArchiCAD. Draw your site, download XYZ data instantly. No GIS needed.">
   <meta name="keywords" content="topography for Revit, site topography BIM, elevation data Revit, Autodesk topography, terrain data SketchUp, Rhino site topography, GIS elevation data architects, site analysis architecture, topo survey BIM, point cloud elevation, topographic data download, ArchiCAD terrain, site elevation architecture">
   <link rel="canonical" href="https://topo-grapher.com/">
 
   <!-- ═══════════════════════════════════════════════
-       OPEN GRAPH — LinkedIn / Slack / iMessage previews
+       OPEN GRAPH - LinkedIn / Slack / iMessage previews
   ═══════════════════════════════════════════════ -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://topo-grapher.com/">
-  <meta property="og:title" content="Topo-grapher — Topography Data for Revit, SketchUp & Rhino">
+  <meta property="og:title" content="Topo-grapher - Topography Data for Revit, SketchUp & Rhino">
   <meta property="og:description" content="Draw your site boundary and instantly download elevation point cloud data for BIM and design software. Used by architects, landscape architects and urban designers.">
   <meta property="og:image" content="https://topo-grapher.com/og-image.png">
   <meta property="og:image:width" content="1200">
@@ -50,12 +50,12 @@
   ═══════════════════════════════════════════════ -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://topo-grapher.com/">
-  <meta name="twitter:title" content="Topo-grapher — Topography Data for Revit, SketchUp & Rhino">
+  <meta name="twitter:title" content="Topo-grapher - Topography Data for Revit, SketchUp & Rhino">
   <meta name="twitter:description" content="Draw your site boundary and instantly download elevation point cloud data for BIM and design software. Used by architects, landscape architects and urban designers.">
   <meta name="twitter:image" content="https://topo-grapher.com/og-image.png">
 
   <!-- ═══════════════════════════════════════════════
-       STRUCTURED DATA — Google rich results
+       STRUCTURED DATA - Google rich results
   ═══════════════════════════════════════════════ -->
   <script type="application/ld+json">
   {
@@ -1143,8 +1143,8 @@ function declineCookies() {
             </div>
             <!-- Cursor readout -->
             <div id="cursor-coords" style="position:absolute;bottom:6px;left:6px;z-index:800;background:color-mix(in srgb, var(--bg-card) 82%, transparent);backdrop-filter:blur(6px);padding:4px 8px;border-radius:4px;font-size:10px;color:var(--text-mid);font-variant-numeric:tabular-nums;pointer-events:none;display:none;">
-              <span style="color:var(--text-soft)">Lat</span> <span id="cursor-lat">&mdash;</span>&nbsp;&nbsp;
-              <span style="color:var(--text-soft)">Lon</span> <span id="cursor-lon">&mdash;</span>
+              <span style="color:var(--text-soft)">Lat</span> <span id="cursor-lat">-</span>&nbsp;&nbsp;
+              <span style="color:var(--text-soft)">Lon</span> <span id="cursor-lon">-</span>
             </div>
           </div>
           <div id="terrain3d-container" style="width:100%;height:100%;background:var(--bg-input);position:relative;overflow:hidden;">
@@ -1224,22 +1224,22 @@ function declineCookies() {
       <!-- Accuracy chips -->
       <div class="ctrl-label" style="margin-bottom:8px;">Point density</div>
       <div class="acc-row" style="margin-bottom:12px;">
-        <div class="acc-chip acc-btn" id="acc-3" onclick="setAccuracy(3)" title="3m LiDAR — Pro">
+        <div class="acc-chip acc-btn" id="acc-3" onclick="setAccuracy(3)" title="3m LiDAR - Pro">
           <div class="acc-chip-val">3m</div>
           <div class="acc-chip-name">LiDAR</div>
           <div class="acc-chip-tier">Pro</div>
         </div>
-        <div class="acc-chip acc-btn" id="acc-6" onclick="setAccuracy(6)" title="6m Precise — Pro">
+        <div class="acc-chip acc-btn" id="acc-6" onclick="setAccuracy(6)" title="6m Precise - Pro">
           <div class="acc-chip-val">6m</div>
           <div class="acc-chip-name">Precise</div>
           <div class="acc-chip-tier">Pro</div>
         </div>
-        <div class="acc-chip acc-btn selected" id="acc-12" onclick="setAccuracy(12)" title="12m Site — Free">
+        <div class="acc-chip acc-btn selected" id="acc-12" onclick="setAccuracy(12)" title="12m Site - Free">
           <div class="acc-chip-val">12m</div>
           <div class="acc-chip-name">Site</div>
           <div class="acc-chip-tier">Free</div>
         </div>
-        <div class="acc-chip acc-btn" id="acc-20" onclick="setAccuracy(20)" title="20m Masterplan — Free">
+        <div class="acc-chip acc-btn" id="acc-20" onclick="setAccuracy(20)" title="20m Masterplan - Free">
           <div class="acc-chip-val">20m</div>
           <div class="acc-chip-name">Masterplan</div>
           <div class="acc-chip-tier">Free</div>
@@ -1287,7 +1287,7 @@ function declineCookies() {
            style="position:absolute;z-index:50;margin-top:4px;background:var(--bg-card);border:1px solid var(--border-md);border-radius:6px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.35);min-width:220px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mid);">
         <div style="color:var(--text-soft);font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;">I use</div>
         <select id="fmt-help-software" style="width:100%;padding:4px 6px;font-family:'DM Mono',monospace;font-size:11px;background:var(--bg-card);color:var(--text);border:1px solid var(--border-md);border-radius:4px;">
-          <option value="">— pick software —</option>
+          <option value="">- pick software -</option>
           <option value="revit" data-fmt="csv">Revit</option>
           <option value="sketchup" data-fmt="dxf">SketchUp</option>
           <option value="autocad" data-fmt="dxf">AutoCAD / Civil 3D</option>
@@ -1296,7 +1296,7 @@ function declineCookies() {
           <option value="vectorworks" data-fmt="ifc">Vectorworks</option>
           <option value="allplan" data-fmt="ifc">Allplan</option>
         </select>
-        <div id="fmt-help-hint" style="margin-top:8px;color:var(--text-soft);font-size:10px;line-height:1.5;">Pick your CAD/BIM tool — we'll set the right format.</div>
+        <div id="fmt-help-hint" style="margin-top:8px;color:var(--text-soft);font-size:10px;line-height:1.5;">Pick your CAD/BIM tool - we'll set the right format.</div>
       </div>
       <script>
       (function(){
@@ -1369,7 +1369,7 @@ function declineCookies() {
       <div class="density-preview" id="density-preview">
         <div class="density-dots mid" id="density-dots"></div>
         <div class="density-meta">
-          <div class="density-pts" id="density-pts">— pts</div>
+          <div class="density-pts" id="density-pts">- pts</div>
           <div class="density-detail" id="density-detail">Draw a site area to see estimate</div>
           <div class="density-label" id="density-label" style="color:var(--text-soft);">12m &middot; Site</div>
         </div>
@@ -1402,12 +1402,13 @@ function declineCookies() {
     <div class="ctrl-card" id="result-card" style="padding:16px;">
       <div class="ctrl-label">Result</div>
       <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:12px;">
-        <div class="stat-box"><div class="stat-n" id="stat-points">—</div><div class="stat-l">Points</div></div>
-        <div class="stat-box"><div class="stat-n" id="stat-spacing">—</div><div class="stat-l">Spacing</div></div>
-        <div class="stat-box"><div class="stat-n" id="stat-range">—</div><div class="stat-l" id="stat-range-label">Elev. range</div></div>
-        <div class="stat-box"><div class="stat-n" id="stat-area">—</div><div class="stat-l" id="stat-area-label">m²</div><div class="stat-s" id="stat-dims">—</div></div>
+        <div class="stat-box"><div class="stat-n" id="stat-points">-</div><div class="stat-l">Points</div></div>
+        <div class="stat-box"><div class="stat-n" id="stat-spacing">-</div><div class="stat-l">Spacing</div></div>
+        <div class="stat-box"><div class="stat-n" id="stat-range">-</div><div class="stat-l" id="stat-range-label">Elev. range</div></div>
+        <div class="stat-box"><div class="stat-n" id="stat-area">-</div><div class="stat-l" id="stat-area-label">m²</div><div class="stat-s" id="stat-dims">-</div></div>
       </div>
       <div class="origin-box" id="origin-info" style="display:none;font-size:12px;padding:10px 12px;"></div>
+      <button id="view-3d-btn" type="button" onclick="open3DFromResult()" style="display:none;margin:0 0 12px;padding:8px 14px;border-radius:5px;border:1px solid var(--accent-md);background:transparent;color:var(--accent);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.05em;cursor:pointer;">View in 3D</button>
       <div id="elevation-quality-warn" style="display:none;margin-bottom:10px;padding:9px 12px;border-radius:6px;font-size:11px;line-height:1.6;"></div>
       <div id="degraded-note" role="status" style="display:none;margin-bottom:10px;padding:9px 12px;border-radius:6px;border:1px solid #e0a050;background:rgba(224,160,80,0.12);color:var(--text);font-size:11px;line-height:1.6;"></div>
       <div id="elevation-source-banner" style="display:none;margin-bottom:12px;padding:10px 12px;border-radius:6px;border:1px solid var(--border-md);background:var(--bg-input);font-size:11px;color:var(--text-mid);line-height:1.5;">
@@ -1569,7 +1570,7 @@ function declineCookies() {
       </div>
       <ul class="tier-features">
         <li class="feat-ok">Everything in Pro</li>
-        <li class="feat-ok">Per-seat billing — pay for who you add</li>
+        <li class="feat-ok">Per-seat billing - pay for who you add</li>
         <li class="feat-ok">Scales from 2 to unlimited seats</li>
         <li class="feat-ok">Shared project library</li>
         <li class="feat-ok">Team admin panel</li>
@@ -1581,7 +1582,7 @@ function declineCookies() {
     </div>
 
   </div>
-  <div style="font-size:12px;color:var(--text-soft);text-align:center;margin:10px 0 0;">Cancel anytime. Full refund within 14 days if a paid feature isn't available for your site's location — see <a href="terms.html#refunds" style="color:var(--accent);">refund terms</a>.</div>
+  <div style="font-size:12px;color:var(--text-soft);text-align:center;margin:10px 0 0;">Cancel anytime. Full refund within 14 days if a paid feature isn't available for your site's location - see <a href="terms.html#refunds" style="color:var(--accent);">refund terms</a>.</div>
   <!-- Dot indicators — visible only on mobile -->
   <div class="tier-dots" id="tier-dots">
     <div class="tier-dot active"></div>
@@ -1590,8 +1591,8 @@ function declineCookies() {
   </div>
 
   <!-- Add-ons -->
-  <div class="addon-section-label">// Large Site Add-on &mdash; Pro &amp; Company</div>
-  <div style="font-size:13px;color:var(--text-mid);line-height:1.6;margin:-4px 0 14px;max-width:560px;">For masterplans, landscape architecture, and infrastructure projects beyond 10km&sup2;. Charged per generation &mdash; not per user.</div>
+  <div class="addon-section-label">// Large Site Add-on - Pro &amp; Company</div>
+  <div style="font-size:13px;color:var(--text-mid);line-height:1.6;margin:-4px 0 14px;max-width:560px;">For masterplans, landscape architecture, and infrastructure projects beyond 10km&sup2;. Charged per generation - not per user.</div>
   <div class="addon-grid" style="grid-template-columns:repeat(2,1fr);">
 
     <!-- Large site: up to 5 km² -->
@@ -1611,7 +1612,7 @@ function declineCookies() {
       <ul class="tier-features">
         <li class="feat-ok">10 – 20 km²</li>
         <li class="feat-ok">Pro &amp; Company only</li>
-        <li class="feat-ok">Charged at generation — not monthly</li>
+        <li class="feat-ok">Charged at generation - not monthly</li>
       </ul>
       <button class="tier-cta" onclick="track('addon_info_clicked',{addon:'large-site-s'});document.getElementById('map').scrollIntoView({behavior:'smooth'});">Start generating &rarr;</button>
     </div>
@@ -1633,7 +1634,7 @@ function declineCookies() {
       <ul class="tier-features">
         <li class="feat-ok">Above 20 km²</li>
         <li class="feat-ok">Pro &amp; Company only</li>
-        <li class="feat-ok">Above 100 km² — <a href="mailto:hello@topo-grapher.com" style="color:var(--accent);">contact us</a></li>
+        <li class="feat-ok">Above 100 km² - <a href="mailto:hello@topo-grapher.com" style="color:var(--accent);">contact us</a></li>
       </ul>
       <button class="tier-cta" onclick="track('addon_info_clicked',{addon:'large-site-l'});document.getElementById('map').scrollIntoView({behavior:'smooth'});">Start generating &rarr;</button>
     </div>
@@ -1689,7 +1690,7 @@ function declineCookies() {
       <div class="ig-step"><div class="ig-step-n">02</div><div class="ig-step-body"><div class="ig-step-title">Open the Massing &amp; Site tab</div><div class="ig-step-desc">In Revit, go to the <strong>Massing &amp; Site</strong> tab in the ribbon. Make sure you are in a 3D view or a site plan view.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">03</div><div class="ig-step-body"><div class="ig-step-title">Create Toposolid from Import</div><div class="ig-step-desc">Click <strong>Toposolid → Create from Import → Create from CSV</strong> and select your downloaded points file.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">04</div><div class="ig-step-body"><div class="ig-step-title">Set units to Metres</div><div class="ig-step-desc">When prompted for units, select <strong>Meter</strong>. All coordinates in the CSV are in metres relative to the UTM origin shown in the download filename.</div></div></div>
-      <div class="ig-step"><div class="ig-step-n">05</div><div class="ig-step-body"><div class="ig-step-title">Terrain created ✓</div><div class="ig-step-desc">Revit builds the Toposolid surface from your point cloud. Accuracy depends on your plan — up to <strong>0.4m vertical resolution</strong> on Pro with LiDAR data.</div></div></div>
+      <div class="ig-step"><div class="ig-step-n">05</div><div class="ig-step-body"><div class="ig-step-title">Terrain created ✓</div><div class="ig-step-desc">Revit builds the Toposolid surface from your point cloud. Accuracy depends on your plan - up to <strong>0.4m vertical resolution</strong> on Pro with LiDAR data.</div></div></div>
       <div class="ig-tip">💡 Keep point count under 20,000 for best Revit performance. Use 6m or 12m spacing for sites over 1km².</div>
 <a class="guide-cta" href="topography-for-revit.html">Read the full Revit guide</a>
     </div>
@@ -1709,7 +1710,7 @@ function declineCookies() {
       <div style="font-size:12px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:22px;">ArchiCAD 25 and later · Mesh tool</div>
       <div class="ig-step"><div class="ig-step-n">01</div><div class="ig-step-body"><div class="ig-step-title">Download the XYZ file</div><div class="ig-step-desc">Set the format selector to <strong>XYZ</strong>, then click <strong>↓ Download XYZ</strong> above. It is a headerless, space-delimited X&nbsp;Y&nbsp;Z point file in metres that ArchiCAD reads directly.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">02</div><div class="ig-step-body"><div class="ig-step-title">Open Site Plan, set units to Metres</div><div class="ig-step-desc">Switch to your <strong>Site Plan</strong> view. Set working units under <strong>Options → Project Preferences → Working Units → Metre</strong>.</div></div></div>
-      <div class="ig-step"><div class="ig-step-n">03</div><div class="ig-step-body"><div class="ig-step-title">Import survey data</div><div class="ig-step-desc">Go to <strong>File → Interoperability → Place Mesh from Surveyors Data</strong> and select your <strong>.xyz</strong> file. Set the unit and your Project Zero elevation when prompted — ArchiCAD creates the Mesh automatically.</div></div></div>
+      <div class="ig-step"><div class="ig-step-n">03</div><div class="ig-step-body"><div class="ig-step-title">Import survey data</div><div class="ig-step-desc">Go to <strong>File → Interoperability → Place Mesh from Surveyors Data</strong> and select your <strong>.xyz</strong> file. Set the unit and your Project Zero elevation when prompted - ArchiCAD creates the Mesh automatically.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">04</div><div class="ig-step-body"><div class="ig-step-title">Refine the mesh surface</div><div class="ig-step-desc">Select the new Mesh and use the <strong>Mesh tool</strong> to adjust ridge and valley lines for drainage accuracy.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">05</div><div class="ig-step-body"><div class="ig-step-title">Mesh terrain created ✓</div><div class="ig-step-desc">Topography placed at real-world elevation. LiDAR data gives you accurate drainage gradients even on very shallow slopes.</div></div></div>
 <a class="guide-cta" href="topography-for-archicad.html">Read the full ArchiCAD guide</a>
@@ -1717,12 +1718,12 @@ function declineCookies() {
     <!-- Rhino -->
     <div id="ig-rhino" class="ig-content" style="display:none;">
       <div style="font-size:12px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:22px;">Rhino 7/8 · Grasshopper compatible</div>
-      <div class="ig-step"><div class="ig-step-n">01</div><div class="ig-step-body"><div class="ig-step-title">Download your CSV</div><div class="ig-step-desc">Click <strong>↓ Download CSV</strong> above. Each row is <strong>X, Y, Z</strong> in metres. No headers to strip — clean plain text ready to import.</div></div></div>
+      <div class="ig-step"><div class="ig-step-n">01</div><div class="ig-step-body"><div class="ig-step-title">Download your CSV</div><div class="ig-step-desc">Click <strong>↓ Download CSV</strong> above. Each row is <strong>X, Y, Z</strong> in metres. No headers to strip - clean plain text ready to import.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">02</div><div class="ig-step-body"><div class="ig-step-title">Import as point cloud</div><div class="ig-step-desc">Use the Rhino command <code style="background:var(--bg-input);padding:2px 6px;border-radius:3px;font-size:12px;">_Import</code> and select your CSV. Set delimiter to <strong>comma</strong>, confirm XYZ column order.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">03</div><div class="ig-step-body"><div class="ig-step-title">Generate surface</div><div class="ig-step-desc">Select the point cloud and run <code style="background:var(--bg-input);padding:2px 6px;border-radius:3px;font-size:12px;">_Patch</code> or <code style="background:var(--bg-input);padding:2px 6px;border-radius:3px;font-size:12px;">_Drape</code> for a NURBS surface. In Grasshopper, use a <strong>Delaunay Mesh</strong> component for a precise TIN.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">04</div><div class="ig-step-body"><div class="ig-step-title">Grasshopper workflow</div><div class="ig-step-desc"><strong>Read File → Text Split → Construct Point → Delaunay Mesh</strong>. Gives you a parametric terrain mesh you can edit live and connect to your BIM model.</div></div></div>
       <div class="ig-step"><div class="ig-step-n">05</div><div class="ig-step-body"><div class="ig-step-title">Terrain surface ready ✓</div><div class="ig-step-desc">Export to Revit via <strong>Rhino.Inside</strong> or save as DWG/DXF. LiDAR accuracy is preserved through the entire pipeline.</div></div></div>
-      <div class="ig-tip">💡 Rhino handles very large point clouds well — no need to thin your CSV before importing. Use the full-resolution file.</div>
+      <div class="ig-tip">💡 Rhino handles very large point clouds well - no need to thin your CSV before importing. Use the full-resolution file.</div>
       <a class="guide-cta" href="topography-for-rhino.html">Read the full Rhino guide</a>
     </div>
   </div>
@@ -1901,7 +1902,7 @@ function declineCookies() {
       <div class="fp-rec">
         <label for="fp-software">I use</label>
         <select id="fp-software">
-          <option value="">&mdash; pick your tool &mdash;</option>
+          <option value="">- pick your tool -</option>
           <option value="revit" data-fmt="csv">Revit</option>
           <option value="sketchup" data-fmt="dxf">SketchUp</option>
           <option value="autocad" data-fmt="dxf">AutoCAD / Civil 3D</option>
@@ -1959,7 +1960,7 @@ function declineCookies() {
         <div style="margin-bottom:22px;padding:14px 16px;background:var(--bg-input);border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
           <div>
             <div style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px;">Signed in as</div>
-            <div style="font-size:14px;color:var(--text);" id="settings-email">—</div>
+            <div style="font-size:14px;color:var(--text);" id="settings-email">-</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:11px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;">Plan</span>
@@ -2027,11 +2028,11 @@ function declineCookies() {
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
             <div style="padding:10px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:5px;">
               <div style="font-size:10px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px;">Company</div>
-              <div style="font-size:13px;color:var(--text);" id="company-name-display">—</div>
+              <div style="font-size:13px;color:var(--text);" id="company-name-display">-</div>
             </div>
             <div style="padding:10px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:5px;">
               <div style="font-size:10px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px;">Seats used</div>
-              <div style="font-size:13px;color:var(--text);" id="company-seats-display">— / —</div>
+              <div style="font-size:13px;color:var(--text);" id="company-seats-display">- / -</div>
             </div>
           </div>
 
@@ -2039,7 +2040,7 @@ function declineCookies() {
           <div style="margin-bottom:14px;">
             <div style="font-size:10px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;">Team join code</div>
             <div style="display:flex;align-items:center;gap:8px;">
-              <div style="flex:1;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border-md);border-radius:5px;font-family:'DM Mono',monospace;font-size:15px;font-weight:500;color:var(--accent);letter-spacing:.1em;" id="company-code-display">—</div>
+              <div style="flex:1;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border-md);border-radius:5px;font-family:'DM Mono',monospace;font-size:15px;font-weight:500;color:var(--accent);letter-spacing:.1em;" id="company-code-display">-</div>
               <button onclick="copyJoinCode()" style="padding:10px 14px;background:var(--accent-dk);border:1px solid var(--accent-md);color:var(--accent);border-radius:5px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:.06em;white-space:nowrap;transition:all .15s;" onmouseover="this.style.background='var(--accent-md)'" onmouseout="this.style.background='var(--accent-dk)'">Copy</button>
               <button onclick="regenerateJoinCode()" style="padding:10px 14px;background:var(--bg-card);border:1px solid var(--border-md);color:var(--text-soft);border-radius:5px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:.06em;white-space:nowrap;transition:all .15s;" onmouseover="this.style.borderColor='var(--accent-md)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-soft)'">New code</button>
             </div>
@@ -2156,7 +2157,7 @@ function declineCookies() {
       <div style="flex-shrink:0;width:42px;height:42px;border-radius:50%;background:var(--accent-dk);border:1px solid var(--accent-md);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:var(--accent);">01</div>
       <div>
         <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:500;color:var(--text);margin-bottom:6px;">Draw your site</div>
-        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Click the <strong style="color:var(--text);">polygon tool</strong> in the map toolbar, then click around your site boundary on the map. Close the shape with a double-click or by clicking back on the first point. You can draw as many points as you need — curves, odd corners, nothing gets simplified.</div>
+        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Click the <strong style="color:var(--text);">polygon tool</strong> in the map toolbar, then click around your site boundary on the map. Close the shape with a double-click or by clicking back on the first point. You can draw as many points as you need - curves, odd corners, nothing gets simplified.</div>
         <div style="margin-top:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:12px;color:var(--text-soft);line-height:1.6;">💡 Zoom in first for tighter boundaries. Use the satellite layer to trace along actual site edges.</div>
       </div>
     </div>
@@ -2168,10 +2169,10 @@ function declineCookies() {
         <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:500;color:var(--text);margin-bottom:6px;">Choose point density</div>
         <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Select how close together your terrain points are spaced. <strong style="color:var(--text);">3m</strong> and <strong style="color:var(--text);">6m</strong> use LiDAR-grade data and are great for construction-level work. <strong style="color:var(--text);">12m</strong> is ideal for site feasibility and planning. <strong style="color:var(--text);">20m</strong> covers large masterplan territories quickly without massive file sizes.</div>
         <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;">
-          <span style="font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;background:var(--accent-dk);border:1px solid var(--accent-md);color:var(--accent);letter-spacing:.06em;">3m — LiDAR</span>
-          <span style="font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;background:var(--accent-dk);border:1px solid var(--accent-md);color:var(--accent);letter-spacing:.06em;">6m — Precise</span>
-          <span style="font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;background:var(--bg-input);border:1px solid var(--border-md);color:var(--text-mid);letter-spacing:.06em;">12m — Site</span>
-          <span style="font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;background:var(--bg-input);border:1px solid var(--border-md);color:var(--text-mid);letter-spacing:.06em;">20m — Masterplan</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;background:var(--accent-dk);border:1px solid var(--accent-md);color:var(--accent);letter-spacing:.06em;">3m - LiDAR</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;background:var(--accent-dk);border:1px solid var(--accent-md);color:var(--accent);letter-spacing:.06em;">6m - Precise</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;background:var(--bg-input);border:1px solid var(--border-md);color:var(--text-mid);letter-spacing:.06em;">12m - Site</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;background:var(--bg-input);border:1px solid var(--border-md);color:var(--text-mid);letter-spacing:.06em;">20m - Masterplan</span>
         </div>
       </div>
     </div>
@@ -2181,7 +2182,7 @@ function declineCookies() {
       <div style="flex-shrink:0;width:42px;height:42px;border-radius:50%;background:var(--accent-dk);border:1px solid var(--accent-md);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:var(--accent);">03</div>
       <div>
         <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:500;color:var(--text);margin-bottom:6px;">Set units &amp; distribution</div>
-        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Pick <strong style="color:var(--text);">Metres</strong> or <strong style="color:var(--text);">Feet</strong> — the CSV will use whichever you choose. Then pick how points are arranged. <strong style="color:var(--text);">Uniform grid</strong> gives you a perfectly regular mesh, great for Revit. <strong style="color:var(--text);">Natural scatter</strong> adds slight variation that helps SketchUp and Rhino generate smoother terrain surfaces on irregular sites.</div>
+        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Pick <strong style="color:var(--text);">Metres</strong> or <strong style="color:var(--text);">Feet</strong> - the CSV will use whichever you choose. Then pick how points are arranged. <strong style="color:var(--text);">Uniform grid</strong> gives you a perfectly regular mesh, great for Revit. <strong style="color:var(--text);">Natural scatter</strong> adds slight variation that helps SketchUp and Rhino generate smoother terrain surfaces on irregular sites.</div>
       </div>
     </div>
 
@@ -2190,12 +2191,12 @@ function declineCookies() {
       <div style="flex-shrink:0;width:42px;height:42px;border-radius:50%;background:var(--green);border:1px solid var(--green-lt);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:#EFE3D8;">04</div>
       <div>
         <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:500;color:var(--text);margin-bottom:6px;">Generate &amp; download</div>
-        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Hit the big <strong style="color:var(--text);">Generate terrain</strong> button. Processing takes 5–30 seconds depending on site size and density. When it's done, download your CSV and import it straight into Revit, SketchUp, ArchiCAD, or Rhino — see the <em>BIM export</em> guide for step-by-step instructions for each package.</div>
+        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Hit the big <strong style="color:var(--text);">Generate terrain</strong> button. Processing takes 5–30 seconds depending on site size and density. When it's done, download your CSV and import it straight into Revit, SketchUp, ArchiCAD, or Rhino - see the <em>BIM export</em> guide for step-by-step instructions for each package.</div>
       </div>
     </div>
 
     <div style="border-top:1px solid var(--border);margin-top:28px;padding-top:20px;font-size:13px;color:var(--text-mid);line-height:1.75;">
-      Questions about what point density to use? <a href="mailto:aki@topo-grapher.com" style="color:var(--accent);text-decoration:none;">Drop us a line</a> — we'll tell you exactly what works for your project type.
+      Questions about what point density to use? <a href="mailto:aki@topo-grapher.com" style="color:var(--accent);text-decoration:none;">Drop us a line</a> - we'll tell you exactly what works for your project type.
     </div>
   </div>
   <div style="padding:14px 30px;border-top:1px solid var(--border);flex-shrink:0;display:flex;justify-content:flex-end;">
@@ -2278,7 +2279,7 @@ function declineCookies() {
             <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇱🇺 Luxembourg</td>
             <td style="padding:9px 14px;color:var(--text-mid);">ACT LiDAR 2024</td>
             <td style="padding:9px 14px;"><span style="color:var(--accent);background:var(--accent-dk);border:1px solid var(--accent-md);padding:2px 7px;border-radius:2px;font-size:10px;">0.5m</span></td>
-            <td style="padding:9px 14px;color:var(--text-soft);">—</td>
+            <td style="padding:9px 14px;color:var(--text-soft);">-</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:9px 14px;color:var(--text);font-weight:500;">🇫🇷 France</td>
@@ -2395,7 +2396,7 @@ function declineCookies() {
 
       <div style="border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:20px;">
         <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;">What format is the download?</div>
-        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">A plain CSV with X, Y, Z columns in metres (or feet if you selected that). No header row — just numbers, ready to import. The UTM origin coordinates are included in the filename so you can georeference your model.</div>
+        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">A plain CSV with X, Y, Z columns in metres (or feet if you selected that). No header row - just numbers, ready to import. The UTM origin coordinates are included in the filename so you can georeference your model.</div>
         <a class="guide-cta" href="learn/elevation-point-cloud.html" style="margin-top:10px;">What is a point cloud?</a>
       </div>
 
@@ -2410,8 +2411,8 @@ function declineCookies() {
       </div>
 
       <div style="border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:20px;">
-        <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;">My country isn't listed — will it still work?</div>
-        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Yes. Anywhere not covered by a national dataset falls back to GEDTM30 (30m global bare-earth) and then Open-Meteo/SRTM (90m). The tool works globally — just expect lower resolution outside our high-accuracy regions.</div>
+        <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;">My country isn't listed - will it still work?</div>
+        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Yes. Anywhere not covered by a national dataset falls back to GEDTM30 (30m global bare-earth) and then Open-Meteo/SRTM (90m). The tool works globally - just expect lower resolution outside our high-accuracy regions.</div>
       </div>
 
       <div style="border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:20px;">
@@ -2468,15 +2469,15 @@ function declineCookies() {
 
   <!-- Legend strip -->
   <div id="history-legend" style="display:none;padding:10px 28px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;gap:18px;flex-wrap:wrap;">
-    <span style="font-size:10px;color:var(--text-soft);letter-spacing:.06em;display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;"></span>Cached locally — all actions available</span>
-    <span style="font-size:10px;color:var(--text-soft);letter-spacing:.06em;display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--border-md);display:inline-block;"></span>Metadata only — regenerate to restore</span>
+    <span style="font-size:10px;color:var(--text-soft);letter-spacing:.06em;display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;"></span>Cached locally - all actions available</span>
+    <span style="font-size:10px;color:var(--text-soft);letter-spacing:.06em;display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--border-md);display:inline-block;"></span>Metadata only - regenerate to restore</span>
   </div>
 
   <!-- Pro-gated -->
   <div id="history-locked" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px;text-align:center;">
     <div style="font-size:36px;margin-bottom:20px;opacity:.4;">🔒</div>
     <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:500;color:var(--text);margin-bottom:10px;">Pro feature</div>
-    <div style="font-size:13px;color:var(--text-mid);line-height:1.75;max-width:300px;margin-bottom:24px;">Start a 14-day free trial to save your generated sites and return to them any time — re-view on the map, re-open 3D terrain, or re-download the CSV.</div>
+    <div style="font-size:13px;color:var(--text-mid);line-height:1.75;max-width:300px;margin-bottom:24px;">Start a 14-day free trial to save your generated sites and return to them any time - re-view on the map, re-open 3D terrain, or re-download the CSV.</div>
     <button id="history-locked-cta" onclick="_libraryGateCta()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:11px 24px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;transition:all .15s;" onmouseover="this.style.background='var(--green-lt)'" onmouseout="this.style.background='var(--green)'">Sign up to save projects →</button>
   </div>
 
@@ -2953,11 +2954,11 @@ function _showDataResFlag(poly) {
   // since no better source exists there at any plan, Pro included, so the CTA was a false promise.
   var trialPitch = isPro() ? '' : (' Start a free trial for ' + (info.quality === 'lo' ? 'best' : 'full') + ' resolution.');
   if (info.quality === 'lo' && info.res === 90) {
-    flag.innerHTML = icon + ' Limited data in this region \u2014 only 90m Open-Meteo available. Expect \u00b116m vertical accuracy.';
+    flag.innerHTML = icon + ' Limited data in this region - only 90m Open-Meteo available. Expect \u00b116m vertical accuracy.';
   } else if (info.quality === 'lo') {
-    flag.innerHTML = icon + ' ' + info.name + ' \u2014 ' + resLabel + ' GEDTM30 data.' + trialPitch;
+    flag.innerHTML = icon + ' ' + info.name + ' - ' + resLabel + ' GEDTM30 data.' + trialPitch;
   } else {
-    flag.innerHTML = icon + ' ' + info.name + ' \u2014 best available: ' + resLabel + '.' + trialPitch;
+    flag.innerHTML = icon + ' ' + info.name + ' - best available: ' + resLabel + '.' + trialPitch;
   }
 }
 
@@ -2974,7 +2975,7 @@ function updateHint() {
   var areaKm2 = getBboxAreaKm2(polygonLatLngs);
   _showDataResFlag(polygonLatLngs);
   if (areaKm2 > 100) {
-    el.innerHTML = '\u26a0 Site is ' + areaKm2.toFixed(1) + ' km\u00b2 \u2014 exceeds the 100 km\u00b2 maximum. Redraw a smaller area.';
+    el.innerHTML = '\u26a0 Site is ' + areaKm2.toFixed(1) + ' km\u00b2 - exceeds the 100 km\u00b2 maximum. Redraw a smaller area.';
     el.style.color = 'var(--danger)';
     _styleDrawnLayers(false); // polygon goes red
     return;
@@ -2993,18 +2994,18 @@ function updateHint() {
   }
   _styleDrawnLayers(true); // restore green
   if (areaKm2 > PREVIEW_PARTIAL_KM2) {
-    el.textContent = 'Area set: ' + areaKm2.toFixed(1) + ' km\u00b2 \u2014 too large for live preview. Click Generate when ready.';
+    el.textContent = 'Area set: ' + areaKm2.toFixed(1) + ' km\u00b2 - too large for live preview. Click Generate when ready.';
     el.style.color = 'var(--text-mid)';
     return;
   }
   var skipCount = areaKm2 > PREVIEW_FULL_KM2 && (selectedSpacing === 3 || selectedSpacing === 6);
   if (skipCount) {
-    el.textContent = 'Area set: ' + areaKm2.toFixed(2) + ' km\u00b2 \u2014 ' + selectedSpacing + 'm too dense to preview at this size. Switch to 12m or 20m.';
+    el.textContent = 'Area set: ' + areaKm2.toFixed(2) + ' km\u00b2 - ' + selectedSpacing + 'm too dense to preview at this size. Switch to 12m or 20m.';
     el.style.color = '';
     return;
   }
   var c = generateGrid(polygonLatLngs, selectedSpacing).length;
-  el.textContent = 'Area set: ' + areaKm2.toFixed(2) + ' km\u00b2 \u2014 ~' + c.toLocaleString() + ' points at ' + selectedSpacing + 'm. Adjust or click Generate.';
+  el.textContent = 'Area set: ' + areaKm2.toFixed(2) + ' km\u00b2 - ~' + c.toLocaleString() + ' points at ' + selectedSpacing + 'm. Adjust or click Generate.';
   el.style.color = '';
 }
 
@@ -3013,9 +3014,9 @@ function updatePtCounts() {
   [3,6,12,20].forEach(function(s) {
     var el = document.getElementById('pts-' + s);
     if (!el) return;
-    if (!polygonLatLngs) { el.textContent = '\u2014 pts'; el.style.color = ''; return; }
+    if (!polygonLatLngs) { el.textContent = '- pts'; el.style.color = ''; return; }
     var tooLarge = areaKm2 > PREVIEW_PARTIAL_KM2 || (areaKm2 > PREVIEW_FULL_KM2 && (s === 3 || s === 6));
-    if (tooLarge) { el.textContent = '\u2014 pts'; el.style.color = 'var(--text-soft)'; return; }
+    if (tooLarge) { el.textContent = '- pts'; el.style.color = 'var(--text-soft)'; return; }
     var c = generateGrid(polygonLatLngs, s).length;
     el.textContent = '~' + c.toLocaleString() + ' pts';
     el.style.color = c > 2000 ? 'var(--danger)' : '';
@@ -3132,11 +3133,11 @@ function checkDrawnAreaWarning() {
   var el = document.getElementById('map-hint');
   if (!el) return;
   if (areaKm2 > 100) {
-    el.innerHTML = '\u26a0 Site is ' + areaKm2.toFixed(1) + ' km\u00b2 \u2014 exceeds the 100 km\u00b2 maximum. Redraw a smaller area.';
+    el.innerHTML = '\u26a0 Site is ' + areaKm2.toFixed(1) + ' km\u00b2 - exceeds the 100 km\u00b2 maximum. Redraw a smaller area.';
     el.style.color = 'var(--danger)';
   } else if (areaKm2 > 10) {
     var genCost = '\u00a3' + _addonCostGBP(areaKm2).toFixed(2);
-    el.textContent = '\u26a0 ' + areaKm2.toFixed(1) + ' km\u00b2 \u2014 large site add-on applies (' + genCost + ' / generation).';
+    el.textContent = '\u26a0 ' + areaKm2.toFixed(1) + ' km\u00b2 - large site add-on applies (' + genCost + ' / generation).';
     el.style.color = 'var(--warning,#e2a255)';
     // Show addon prompt once per drawing session for Pro users
     if (isPro() && !window._largeSitePromptShown) {
@@ -3175,7 +3176,7 @@ function openLargeSiteAddon(areaKm2) {
 
   // Show the exact cost for this generation
   var costEl = document.getElementById('lsa-this-gen-cost');
-  if (costEl) costEl.textContent = 'This generation: \u00a3' + cost.toFixed(2) + ' \u2014 charged at generation time via your saved payment method.';
+  if (costEl) costEl.textContent = 'This generation: \u00a3' + cost.toFixed(2) + ' - charged at generation time via your saved payment method.';
 
   el.style.display = 'flex';
   el.style.background = 'rgba(0,0,0,0)';
@@ -3270,7 +3271,7 @@ function updateSpacingAvailability(areaKm2) {
     if (blocked) { chip.style.opacity = '.35'; chip.style.pointerEvents = 'none'; }
     else if (isP) { chip.style.opacity = '1'; chip.style.pointerEvents = 'auto'; }
     chip.title = blocked
-      ? s + 'm — only available up to ' + maxArea.toFixed(1) + ' km² at this site size. Pick a larger spacing.'
+      ? s + 'm - only available up to ' + maxArea.toFixed(1) + ' km² at this site size. Pick a larger spacing.'
       : chip.dataset.titleDefault;
   });
 }
@@ -3521,6 +3522,13 @@ function updateCoordPolygon(points) {
   checkDrawnAreaWarning();
 }
 
+// "View in 3D" on the result card: scrolls Pro users to the full-width viewer and opens the 3D
+// view for free users (who previously had to find the small Enlarge button).
+function open3DFromResult() {
+  try { track('view_3d_button_clicked', { plan: (_currentProfile && _currentProfile.plan) || 'anon', viewer: isPro() ? 'pro' : 'free' }); } catch (e) {}
+  swapView('3d');
+}
+
 // View swap (map <-> 3D)
 function swapView(target) {
   // Pro users: Enlarge scrolls to the full-width bottom viewer instead of swapping panels
@@ -3725,7 +3733,7 @@ function getAnonId() {
 const FIRST_TOUCH_KEY = 'topo_first_touch';
 function captureFirstTouch() {
   try {
-    if (localStorage.getItem(FIRST_TOUCH_KEY)) return null; // already captured — not the first touch
+    if (localStorage.getItem(FIRST_TOUCH_KEY)) return null; // already captured - not the first touch
     const params = new URLSearchParams(location.search);
     const touch = { referrer: document.referrer || null };
     ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'ref'].forEach(function(k) {
@@ -3930,7 +3938,7 @@ async function handleSession(session) {
           restoredFromStorage = true;
         }
       }
-    } catch(e) { /* corrupted or disabled — skip resume */ }
+    } catch(e) { /* corrupted or disabled - skip resume */ }
   }
   if (resumeFmt && window._cleanOutMetric?.length) {
     window._pendingDownloadFmt = null;
@@ -4024,7 +4032,7 @@ function openAuth(mode, context) {
   const subEl = document.getElementById('auth-subtitle');
   if (context === 'download') {
     if (titleEl) titleEl.textContent = 'Sign up to finish your download';
-    if (subEl) subEl.innerHTML = 'Your site is ready — create a free account to save it and download the file. No card, no charge.<br><span style="display:block;margin-top:10px;font-size:12px;color:var(--accent);">✓ Remember to confirm your email so your download can finish.</span>';
+    if (subEl) subEl.innerHTML = 'Your site is ready - create a free account to save it and download the file. No card, no charge.<br><span style="display:block;margin-top:10px;font-size:12px;color:var(--accent);">✓ Remember to confirm your email so your download can finish.</span>';
     switchTab('signup'); track('signup_prompt_shown', { context: 'download' });
   } else if (context === 'checkout') {
     if (titleEl) titleEl.textContent = 'Create your account to start your trial';
@@ -4078,15 +4086,15 @@ function _authErrMsg(raw) {
   if (m.includes('invalid login') || m.includes('invalid credentials') || m.includes('wrong password') || m.includes('incorrect'))
     return 'Incorrect email or password. Please try again.';
   if (m.includes('email not confirmed') || m.includes('not confirmed'))
-    return 'Email not yet confirmed — check your inbox for the confirmation link.';
+    return 'Email not yet confirmed - check your inbox for the confirmation link.';
   if (m.includes('already registered') || m.includes('already exists') || m.includes('user already'))
     return 'An account with this email already exists. Try signing in instead.';
   if (m.includes('rate limit') || m.includes('too many request'))
     return 'Too many attempts. Please wait a moment and try again.';
   if (m.includes('timeout'))
-    return 'Sign in timed out — check your internet connection and try again.';
+    return 'Sign in timed out - check your internet connection and try again.';
   if (m.includes('network') || m.includes('fetch') || m.includes('failed to fetch'))
-    return 'Connection error — check your internet and try again.';
+    return 'Connection error - check your internet and try again.';
   return raw;
 }
 
@@ -4423,7 +4431,7 @@ function openSettings() {
   const companySubText = document.getElementById('settings-company-sub-text');
   if (companySubText) {
     companySubText.innerHTML = isAdmin
-      ? 'To cancel your Company subscription, email <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a> — cancelling affects every seat on your team, so we handle it directly rather than a self-serve button.'
+      ? 'To cancel your Company subscription, email <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a> - cancelling affects every seat on your team, so we handle it directly rather than a self-serve button.'
       : 'Company plan. Billing managed by your organisation admin.';
   }
 
@@ -4438,7 +4446,7 @@ function openSettings() {
     const codeEl  = document.getElementById('company-code-display');
     const seatsEl = document.getElementById('company-seats-display');
     if (nameEl)  nameEl.textContent  = _currentProfile?.company_name      || 'Your company';
-    if (codeEl)  codeEl.textContent  = _currentProfile?.company_join_code || '—';
+    if (codeEl)  codeEl.textContent  = _currentProfile?.company_join_code || '-';
     if (seatsEl) seatsEl.textContent = (_currentProfile?.seats_used || 1) + ' / ' + (_currentProfile?.seat_count || 2) + ' seats used';
     const msgEl = document.getElementById('company-action-msg');
     if (msgEl) { msgEl.textContent = ''; msgEl.style.color = ''; }
@@ -4484,7 +4492,7 @@ async function toggleTestMode(checked) {
   if (_currentProfile) _currentProfile.test_mode = checked;
   try { checked ? localStorage.setItem('topo_test_mode', '1') : localStorage.removeItem('topo_test_mode'); } catch(e) {}
   if (msgEl) {
-    msgEl.textContent = checked ? 'On — your activity from now on is excluded from analytics.' : 'Off — your activity now logs normally.';
+    msgEl.textContent = checked ? 'On - your activity from now on is excluded from analytics.' : 'Off - your activity now logs normally.';
     msgEl.style.color = 'var(--text-soft)';
   }
 }
@@ -4507,7 +4515,7 @@ async function joinCompanyWithCode() {
     if (error) throw error;
     if (data?.error) {
       const friendly = {
-        invalid_code:       "That code isn't valid — check with your team admin.",
+        invalid_code:       "That code isn't valid - check with your team admin.",
         already_in_company: "You're already in a company. Sign out and back in if this seems wrong.",
         no_seats_available: "No seats available. Ask your admin to add more.",
       }[data.error] || data.error;
@@ -4533,7 +4541,7 @@ async function loadCompanyMembers() {
       .order('email', { ascending: true });
     if (error) throw error;
     if (!data || data.length === 0) {
-      listEl.innerHTML = '<div style="font-size:12px;color:var(--text-soft);font-style:italic;padding:6px 0;">No members yet — share your join code to add team members.</div>';
+      listEl.innerHTML = '<div style="font-size:12px;color:var(--text-soft);font-style:italic;padding:6px 0;">No members yet - share your join code to add team members.</div>';
       return;
     }
     listEl.innerHTML = data.map(m => {
@@ -4576,12 +4584,12 @@ async function copyJoinCode() {
   const msgEl  = document.getElementById('company-action-msg');
   if (!codeEl) return;
   const code = codeEl.textContent.trim();
-  if (!code || code === '—') return;
+  if (!code || code === '-') return;
   try {
     await navigator.clipboard.writeText(code);
     if (msgEl) { msgEl.style.color = 'var(--accent)'; msgEl.textContent = '✓ Code copied to clipboard'; setTimeout(()=>{msgEl.textContent='';},2000); }
   } catch(err) {
-    if (msgEl) { msgEl.style.color = 'var(--danger,#e25555)'; msgEl.textContent = 'Copy failed — select the code manually.'; }
+    if (msgEl) { msgEl.style.color = 'var(--danger,#e25555)'; msgEl.textContent = 'Copy failed - select the code manually.'; }
   }
 }
 
@@ -4643,7 +4651,7 @@ async function confirmCancelSubscription() {
   if (!msgEl) return;
   const picked = (selectEl?.value || '').trim();
   const detail = (detailEl?.value || '').trim();
-  const reason = [picked, detail].filter(Boolean).join(' — ') || 'not given';
+  const reason = [picked, detail].filter(Boolean).join(' - ') || 'not given';
   if (!confirm("Cancel your subscription? You'll keep Pro access until the end of your current billing period.")) return;
   msgEl.style.color = 'var(--text-mid)'; msgEl.textContent = 'Cancelling…';
   try {
@@ -4655,7 +4663,7 @@ async function confirmCancelSubscription() {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'HTTP ' + res.status);
     const until = data.cancel_at ? new Date(data.cancel_at * 1000).toLocaleDateString() : 'the end of your billing period';
-    document.getElementById('cancel-sub-form').innerHTML = `<p style="font-size:13px;color:var(--text-mid);line-height:1.65;">✓ Cancelled — you'll keep Pro access until <strong style="color:var(--text);">${until}</strong>. Sorry to see you go.</p>`;
+    document.getElementById('cancel-sub-form').innerHTML = `<p style="font-size:13px;color:var(--text-mid);line-height:1.65;">✓ Cancelled - you'll keep Pro access until <strong style="color:var(--text);">${until}</strong>. Sorry to see you go.</p>`;
   } catch (err) {
     msgEl.style.color = 'var(--danger,#e25555)';
     msgEl.textContent = 'Error: ' + (err.message || 'unknown');
@@ -4855,7 +4863,7 @@ async function confirmSeatChange() {
   const minAllowed  = parseInt(input.dataset.min) || 2;
   const currentSeats = _currentProfile?.seat_count || 2;
   if (!Number.isInteger(newQuantity) || newQuantity < minAllowed || newQuantity > 100) { msgEl.style.color = 'var(--danger,#e25555)'; msgEl.textContent = 'Seat count must be between ' + minAllowed + ' and 100.'; return; }
-  if (newQuantity === currentSeats) { msgEl.style.color = 'var(--text-mid)'; msgEl.textContent = 'No change — already at ' + currentSeats + ' seats.'; return; }
+  if (newQuantity === currentSeats) { msgEl.style.color = 'var(--text-mid)'; msgEl.textContent = 'No change - already at ' + currentSeats + ' seats.'; return; }
   msgEl.style.color = 'var(--text-mid)'; msgEl.textContent = 'Updating subscription…';
   btn.disabled = true; btn.style.opacity = '0.6';
   try {
@@ -4887,36 +4895,8 @@ function parseResolution(source) {
   if (s.includes('open-meteo')) return 90;
   return null;
 }
-async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csvRaw, polygonJson) {
-  if (!_currentUser) return;
-  try {
-    const safe = (pName || 'site').replace(/[^a-zA-Z0-9_\-]/g, '_');
-    // Centroid feeds a PostGIS trigger that fills country_code server-side.
-    const poly = polygonLatLngs || [];
-    const lats  = poly.map(p => p.lat !== undefined ? p.lat : p[0]);
-    const lons   = poly.map(p => p.lng !== undefined ? p.lng : p[1]);
-    const cLat   = lats.length ? (Math.min(...lats) + Math.max(...lats)) / 2 : null;
-    const cLon   = lons.length ? (Math.min(...lons) + Math.max(...lons)) / 2 : null;
-    await _sb.from('generations').insert({
-      user_id:           _currentUser.id,
-      project_name:      pName,
-      point_count:       pointCount,
-      spacing,
-      area_m2:           areaM2,
-      elevation_source:  elevSource,
-      csv_data:          isPro() ? (csvRaw || null) : null,
-      file_name:         safe + '_toposolid.csv',
-      polygon_geojson:   polygonJson || null,
-      resolution_m:      parseResolution(elevSource),
-      area_km2:          areaM2 ? parseFloat((areaM2 / 1000000).toFixed(4)) : null,
-      addon_charged_pence: window._lastAddonChargePence || 0,
-      user_plan:         _currentProfile?.plan || 'free',
-      centroid_lat:      cLat ? parseFloat(cLat.toFixed(6)) : null,
-      centroid_lon:      cLon ? parseFloat(cLon.toFixed(6)) : null,
-    });
-  } catch(e) { console.warn('logGeneration error:', e); }
-}
-
+// logGeneration() is defined further down, next to startGeneration(): it completes the 'started' row
+// (and falls back to a plain insert). An older insert-only copy used to sit here and was dead code.
 let _currentGenerationId = null;
 
 async function startGeneration() {
@@ -5183,7 +5163,7 @@ function refreshResultStats() {
   if (rangeLbl) rangeLbl.textContent = 'Elev. range (' + unit + ')'; if (areaLbl) areaLbl.textContent = imperial ? 'ft²' : 'm²';
   const alts = pts.map(p => p.z * mult).filter(z => z !== 0 && isFinite(z));
   const rangeEl = document.getElementById('stat-range');
-  if (rangeEl) rangeEl.textContent = alts.length ? (Math.min(...alts).toFixed(0) + '–' + Math.max(...alts).toFixed(0)) : '—';
+  if (rangeEl) rangeEl.textContent = alts.length ? (Math.min(...alts).toFixed(0) + '–' + Math.max(...alts).toFixed(0)) : '-';
   const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
   const xR = (Math.max(...xs) - Math.min(...xs)) * mult, yR = (Math.max(...ys) - Math.min(...ys)) * mult;
   const dimsEl = document.getElementById('stat-dims'); if (dimsEl) dimsEl.textContent = xR.toFixed(0) + unit + ' × ' + yR.toFixed(0) + unit;
@@ -5200,7 +5180,7 @@ function updateScatterDesc() {
   const val = getToggleValue('scatter-toggle');
   const desc = document.getElementById('scatter-desc');
   if (!desc) return;
-  desc.textContent = val === 'natural' ? 'Natural scatter — better terrain fidelity, reduces flat-plane artefacts' : 'Uniform grid — predictable, compatible with all BIM tools';
+  desc.textContent = val === 'natural' ? 'Natural scatter - better terrain fidelity, reduces flat-plane artefacts' : 'Uniform grid - predictable, compatible with all BIM tools';
 }
 
 // ── Source resolution + IDW smoothing ────────────────────────────────────
@@ -5423,7 +5403,7 @@ async function fetchElevations(pts, onP) {
       return {elevations:result.elevations,source:result.source,degraded:result.degraded,region:result.region,duration_ms:result.duration_ms,diag:result.diag,mixed:result.mixed};
     }
   }catch(e){
-    throw new Error('Elevation fetch failed — '+e.message.slice(0,120));
+    throw new Error('Elevation fetch failed - '+e.message.slice(0,120));
   }
 }
 
@@ -5450,7 +5430,7 @@ function _maybeShowLowDataPopup(poly) {
       '<div class="auth-modal" style="max-width:440px;text-align:center;">' +
         '<button class="auth-close" type="button" aria-label="Close">×</button>' +
         '<h2 style="text-align:center;">Limited data in ' + info.name + '</h2>' +
-        '<p style="text-align:center;">Sadly we don’t have amazing data in this location right now — the best we can serve here is ' + resLabel + '. Sign up and we’ll let you know when we get better data in your region! It might be sooner than you think.</p>' +
+        '<p style="text-align:center;">Sadly we don’t have amazing data in this location right now - the best we can serve here is ' + resLabel + '. Sign up and we’ll let you know when we get better data in your region! It might be sooner than you think.</p>' +
         '<button type="button" class="auth-submit" data-act="signup" style="margin-bottom:10px;">Notify me when it improves</button>' +
         '<button type="button" data-act="continue" style="width:100%;background:transparent;color:var(--text-mid);border:1px solid var(--border);padding:10px;border-radius:6px;font-family:\'DM Mono\',monospace;font-size:12px;cursor:pointer;">Generate anyway with ' + resLabel + '</button>' +
       '</div>';
@@ -5583,7 +5563,7 @@ async function _convertImpl() {
     const isNatural = getToggleValue('scatter-toggle') === 'natural';
     const effSpacing = window._effectiveSpacing || selectedSpacing;
     const grid = generateGrid(polygonLatLngs, effSpacing, isNatural);
-    if (grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing — try a smaller spacing or draw a larger area.');
+    if (grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing - try a smaller spacing or draw a larger area.');
     // Large-site add-on generations get a much higher point cap since they're paying per
     // generation — but still a hard ceiling, not unlimited, to protect the browser (client-side
     // mesh/IFC build) and the worker even when someone is willing to pay for more.
@@ -5621,7 +5601,7 @@ async function _convertImpl() {
       }
     }
     const estSecs = Math.ceil(grid.length/50*0.6);
-    setProgress(0.1,'Extracting data…',grid.length.toLocaleString()+' points — est. '+estSecs+'s');
+    setProgress(0.1,'Extracting data…',grid.length.toLocaleString()+' points - est. '+estSecs+'s');
     _hideHighDemandBanner();
     const SLOW_MS = 20000;
     const _slowTimer = setTimeout(function(){
@@ -5692,7 +5672,7 @@ async function _convertImpl() {
       }
     }
     if (grid.length === 0) {
-      throw new Error('No usable elevation samples in this area — it may be entirely ocean or outside our DEM coverage. Try moving or shrinking the polygon.');
+      throw new Error('No usable elevation samples in this area - it may be entirely ocean or outside our DEM coverage. Try moving or shrinking the polygon.');
     }
     setProgress(0.9,'Calculating coordinates…','');
     const utm = grid.map((p,i)=>({...latLonToUTM(p.lat,p.lon),alt:elevations[i]}));
@@ -5764,7 +5744,7 @@ async function _convertImpl() {
       }
     }
     window._cleanOutMetric=cleanOut;
-    window._origTerrainZ=cleanOut.map(p=>p.z); // snapshot for building base-Z calcs — saved before any DSM flatten
+    window._origTerrainZ=cleanOut.map(p=>p.z); // snapshot for building base-Z calcs - saved before any DSM flatten
     csvData='X,Y,Z\n'+cleanOut.map(p=>p.x+','+p.y+','+p.z).join('\n');
     // Data quality warning
     const zVals=cleanOut.map(p=>p.z).filter(z=>isFinite(z)&&z!==0);
@@ -5783,7 +5763,7 @@ async function _convertImpl() {
     const xR=Math.max(...xs)-Math.min(...xs),yR=Math.max(...ys)-Math.min(...ys);
     document.getElementById('stat-points').textContent=cleanOut.length.toLocaleString();
     document.getElementById('stat-spacing').textContent=selectedSpacing+'m';
-    document.getElementById('stat-range').textContent=alts.length?(Math.min(...alts).toFixed(0)+'–'+Math.max(...alts).toFixed(0)):'—';
+    document.getElementById('stat-range').textContent=alts.length?(Math.min(...alts).toFixed(0)+'–'+Math.max(...alts).toFixed(0)):'-';
     document.getElementById('stat-area').textContent=Math.round(xR*yR).toLocaleString();
     document.getElementById('stat-dims').textContent=xR.toFixed(0)+'m × '+yR.toFixed(0)+'m';
     refreshResultStats();
@@ -5797,7 +5777,7 @@ async function _convertImpl() {
     if (!degraded) window._addonCredit = null;
     if (!isPro() && !degraded){incrementGenerationsToday();incrementUserGenerationsToday();updateLimitBadge();}
     setSiteContourData(out);
-    setProgress(1,'Done — terrain data ready.','');
+    setProgress(1,'Done - terrain data ready.','');
     // Store bbox + elevation source for the buildings layer in the 3D viewer
     window._lastTerrainContext = {
       south: Math.min(...lats), west: Math.min(...lons),
@@ -5810,8 +5790,11 @@ async function _convertImpl() {
     // Once-per-session Pro reminder: after a free user's 2nd successful generation,
     // show the upgrade modal one time. Kill switch: ?nudge=0. Shares the
     // topo_upsell_seen flag with the gate-hit modal (a visitor sees Pro once, max).
+    // A degraded (fallback) result does not count toward this nudge and never triggers it: pitching
+    // a trial on top of a result that failed to deliver the resolution is wrong (a degraded run
+    // does not use a free generation either). Seen live 2026-10-13: the popup opened right after one.
     try {
-      if (!isPro()) {
+      if (!isPro() && !degraded) {
         const _sg = (parseInt(sessionStorage.getItem('topo_sess_gens')||'0',10) || 0) + 1;
         sessionStorage.setItem('topo_sess_gens', _sg);
         const _noNudge = new URLSearchParams(location.search).get('nudge') === '0';
@@ -5957,7 +5940,7 @@ function handleDownload() {
         spacing: window._effectiveSpacing || selectedSpacing,
         ts: Date.now()
       }));
-    } catch(e) { /* quota or disabled — resume-in-tab still works */ }
+    } catch(e) { /* quota or disabled - resume-in-tab still works */ }
     openAuth('signup', 'download');
     return;
   }
@@ -6088,8 +6071,8 @@ function _fpRender() {
   if (note) {
     if (pro) note.textContent = '';
     else if (locked) note.textContent = 'DXF and IFC are Pro. Start a 14-day free trial for every format, unlimited generations and all data sources.';
-    else if ((_fpSel === 'dxf' || _fpSel === 'ifc') && cd) note.textContent = L + ' is free right now — ' + cd + '. Start a free trial to keep it after that.';
-    else if (cd) note.textContent = 'DXF and IFC are free for everyone — ' + cd + '.';
+    else if ((_fpSel === 'dxf' || _fpSel === 'ifc') && cd) note.textContent = L + ' is free right now - ' + cd + '. Start a free trial to keep it after that.';
+    else if (cd) note.textContent = 'DXF and IFC are free for everyone - ' + cd + '.';
     else note.textContent = '';
   }
   if (seepro) {
@@ -6589,7 +6572,7 @@ function _roofTris(ring2D, roof, kind) {
 
 function _generateBuildingsIFC(data, name) {
   const tc = window._lastTerrainContext;
-  if (!tc) { alert('Generate terrain first — the buildings IFC needs the terrain coordinate origin.'); return null; }
+  if (!tc) { alert('Generate terrain first - the buildings IFC needs the terrain coordinate origin.'); return null; }
   const oE=tc.utmOrigin.easting, oN=tc.utmOrigin.northing;
   const srcType=buildingSourceType(tc.elevSource||'');
   const safe=(name||'Buildings').replace(/['\$]/g,'');
@@ -6745,7 +6728,7 @@ function _generateBuildingsIFC(data, name) {
 
 function _generateBuildingsDXF(data, name) {
   const tc = window._lastTerrainContext;
-  if (!tc) { alert('Generate terrain first — the buildings DXF needs the terrain coordinate origin.'); return null; }
+  if (!tc) { alert('Generate terrain first - the buildings DXF needs the terrain coordinate origin.'); return null; }
   const oE=tc.utmOrigin.easting, oN=tc.utmOrigin.northing;
   const srcType=buildingSourceType(tc.elevSource||'');
   const imp=exportUnits==='imperial';
@@ -6755,7 +6738,7 @@ function _generateBuildingsDXF(data, name) {
   const LYR_FP='TG-BLDG-FOOTPRINT', LYR_HT='TG-BLDG-HEIGHT', LYR_REF='TG-BLDG-MASS-REF';
   const txtH = imp ? 6 : 2;   // height-label text size, in export units
   const L=[
-    '999','Topo-grapher buildings — footprint linework for editable masses',
+    '999','Topo-grapher buildings - footprint linework for editable masses',
     '999','Revit: Massing & Site > In-Place Mass > Pick Lines (layer '+LYR_FP+') > Create Form; set the height from the '+LYR_HT+' label',
     '999','Freeze or delete layer '+LYR_REF+' once your masses are built',
     '0','SECTION','2','HEADER',
@@ -6910,7 +6893,7 @@ async function _fetchBuildingsData() {
     const raw = await resp.json();
     const buildings=[];
     for(const el of raw.elements){ const b=_buildingFromOsmEl(el); if(b) buildings.push(b); }
-    data={buildings,meta:{count:buildings.length,source:'osm (dev)',source_note:'Overpass API — dev mode'}};
+    data={buildings,meta:{count:buildings.length,source:'osm (dev)',source_note:'Overpass API - dev mode'}};
   } else {
     const token = await getAuthHeader();
     const url='https://buildings.svanur300.workers.dev/?south='+south+'&west='+west+'&north='+north+'&east='+east;
@@ -6918,7 +6901,7 @@ async function _fetchBuildingsData() {
     if(!resp.ok){
       let msg=''; try{const j=await resp.json();msg=j.error||'';} catch{try{msg=await resp.text();}catch{}}
       try { track('buildings_fetch_failed', { status: resp.status, detail: msg.slice(0,120), plan: _currentProfile?.plan || 'anon' }); } catch(_){}
-      throw new Error('Buildings worker HTTP '+resp.status+(msg?' — '+msg.slice(0,120):''));
+      throw new Error('Buildings worker HTTP '+resp.status+(msg?' - '+msg.slice(0,120):''));
     }
     data = await resp.json();
   }
@@ -7026,7 +7009,7 @@ function _showBuildingsUpgradePrompt() {
     if (wrap) wrap.appendChild(uPrompt);
   }
   const isLoggedIn = !!window._currentUser;
-  uPrompt.innerHTML = '🔒 <strong style="color:var(--text)">Buildings download</strong> is a Pro feature — view in the 3D viewer for free, or start a 14-day free trial to export IFC / DXF.<br>'
+  uPrompt.innerHTML = '🔒 <strong style="color:var(--text)">Buildings download</strong> is a Pro feature - view in the 3D viewer for free, or start a 14-day free trial to export IFC / DXF.<br>'
     + '<button onclick="_buildingsUpgradeCta()" style="margin-top:8px;background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:7px 0;border-radius:5px;font-family:\'DM Mono\',monospace;font-size:11px;cursor:pointer;letter-spacing:.06em;width:100%;text-align:center;">'
     + (isLoggedIn ? 'Start 14-day free trial →' : 'Sign in to start free trial →')
     + '</button>';
@@ -7135,6 +7118,8 @@ function updateElevationSourceBanner(source, _pro, degraded, mixed) {
   else if (s.includes('arcticdem'))                     {tier='high'; resText='10m · ArcticDEM Iceland';}
   else if (s.includes('tinitaly'))                      {tier='high'; resText='10m · TINITALY Italy';}
   else {tier='low';resText='90m · Open-Meteo DEM';upgradeMsg=!_pro?'This is coarse satellite data. Pro unlocks LiDAR (0.4–1m) for 20+ countries.':'';}
+  // A degraded result is a transient failure, not a plan limit, so never pitch Pro on it.
+  if (degraded) upgradeMsg = '';
   const colours={lidar:{bg:isDark?'#0e1f2e':'#dce9f5',border:'#2878c8',text:isDark?'#6aa8da':'#0a3661'},high:{bg:isDark?'#1a2e14':'#eaf3de',border:'#639922',text:isDark?'#9aba6a':'#27500a'},mid:{bg:isDark?'#2a2410':'#faeeda',border:'#ba7517',text:isDark?'#ef9f27':'#633806'},low:{bg:isDark?'#2a1a10':'#faece7',border:'#d85a30',text:isDark?'#f09975':'#4a1b0c'}}[tier];
   banner.style.display='block'; banner.style.background=colours.bg; banner.style.borderColor=colours.border;
   title.style.color=colours.text;
@@ -7213,12 +7198,16 @@ function showWireframe(points, minZ, maxZ) {
   }
   // Stop the Pro viewer demo if it was running before first generation
   if (window._proViewerDemoDispose) { window._proViewerDemoDispose(); }
+  // The terrain is ready: reveal the "View in 3D" button on the result card.
+  const _v3dBtn = document.getElementById('view-3d-btn');
+  if (_v3dBtn) _v3dBtn.style.display = 'inline-block';
 
   // Tear down any previous Pro renderer
   if (_terrain3dState) {
     _terrain3dState.disposed = true;
     if (_terrain3dState.animFrame) cancelAnimationFrame(_terrain3dState.animFrame);
     if (_terrain3dState.io) _terrain3dState.io.disconnect();
+    if (_terrain3dState.cleanup) _terrain3dState.cleanup(); // remove this viewer's listeners and compass
     _terrain3dState.renderer.dispose();
     _terrain3dState = null;
   }
@@ -7906,7 +7895,7 @@ const meshMat = new THREE.MeshBasicMaterial({
       const bMinY = Math.min(...ring.map(p=>p.y)), bMaxY = Math.max(...ring.map(p=>p.y));
       const cx = ring.reduce((s,p)=>s+p.x,0)/ring.length;
       const cy = ring.reduce((s,p)=>s+p.y,0)/ring.length;
-      const edgeTol = sp * 0.6; // 60 % of grid spacing — catches rooftop-level DSM cells
+      const edgeTol = sp * 0.6; // 60 % of grid spacing - catches rooftop-level DSM cells
                                 // that straddle the polygon boundary on a coarse grid
       for (let i = 0; i < copy.length; i++) {
         const p = copy[i];
@@ -7947,9 +7936,9 @@ const meshMat = new THREE.MeshBasicMaterial({
   //     FLAT_EXT … FLAT_EXT+TAPER_DIST m → linear blend groundZ→DSM
   //     beyond → not injected, natural terrain takes over
   function _computeGroundPts(buildings, uOrig) {
-    const GRID_STEP  = 2.0;  // metres — grid resolution (coarser = fewer points, still fine coverage)
-    const FLAT_EXT   = 4;    // 4 m flat apron — wide enough to escape 10 m DSM building-edge cells
-    const TAPER_DIST = 25;   // 25 m taper — wide taper prevents neighbour DSM peaks creating a "valley"
+    const GRID_STEP  = 2.0;  // metres - grid resolution (coarser = fewer points, still fine coverage)
+    const FLAT_EXT   = 4;    // 4 m flat apron - wide enough to escape 10 m DSM building-edge cells
+    const TAPER_DIST = 25;   // 25 m taper - wide taper prevents neighbour DSM peaks creating a "valley"
     //   around each building. For typical 15–20 m building spacing, tapers from adjacent buildings
     //   overlap, keeping the terrain between buildings near ground level.
     const pts = [];
@@ -8014,13 +8003,13 @@ const meshMat = new THREE.MeshBasicMaterial({
       try {
         const q   = '[out:json][timeout:30];(way["building"](' + south + ',' + west + ',' + north + ',' + east + '););out body geom;';
         const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q);
-        console.log('[Buildings] Dev mode — querying Overpass directly');
+        console.log('[Buildings] Dev mode - querying Overpass directly');
         const resp = await fetch(url);
         if (!resp.ok) { console.warn('[Buildings] Overpass returned', resp.status); return; }
         const raw = await resp.json();
         const buildings = [];
         for (const el of raw.elements) { const b = _buildingFromOsmEl(el); if (b) buildings.push(b); }
-        data = { buildings, meta: { count: buildings.length, source: 'osm (dev)', source_note: 'Direct Overpass — dev mode' } };
+        data = { buildings, meta: { count: buildings.length, source: 'osm (dev)', source_note: 'Direct Overpass - dev mode' } };
         console.log('[Buildings] Overpass returned', buildings.length, 'buildings');
       } catch(e) { console.error('[Buildings] Overpass error:', e); return; }
     } else if (isPro()) {
@@ -8040,20 +8029,20 @@ const meshMat = new THREE.MeshBasicMaterial({
       try {
         const q   = '[out:json][timeout:30];(way["building"](' + south + ',' + west + ',' + north + ',' + east + '););out body geom;';
         const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q);
-        console.log('[Buildings] Free tier — querying Overpass directly (view only)');
+        console.log('[Buildings] Free tier - querying Overpass directly (view only)');
         const resp = await fetch(url, { signal: AbortSignal.timeout(20000) });
         if (!resp.ok) { console.warn('[Buildings] Overpass returned', resp.status); return; }
         const raw = await resp.json();
         const buildings = [];
         for (const el of raw.elements) { const b = _buildingFromOsmEl(el); if (b) buildings.push(b); }
-        data = { buildings, meta: { count: buildings.length, source: 'osm (free)', source_note: 'Overpass — view only' } };
+        data = { buildings, meta: { count: buildings.length, source: 'osm (free)', source_note: 'Overpass - view only' } };
         console.log('[Buildings] Overpass returned', buildings.length, 'buildings');
       } catch(e) { console.error('[Buildings] Overpass error:', e); return; }
     }
 
     if (!data.buildings || !data.buildings.length) { console.warn('[Buildings] Empty buildings array'); return; }
     const srcType = buildingSourceType(elevSource);
-    console.log('[Buildings] Terrain scene bounds — X:', gMinX.toFixed(1), '→', gMaxX.toFixed(1), '| Z:', gMinZc.toFixed(1), '→', gMaxZc.toFixed(1), '| yScale:', (scale * zExag / (span / rangeZ || 1)).toFixed(4));
+    console.log('[Buildings] Terrain scene bounds - X:', gMinX.toFixed(1), '→', gMaxX.toFixed(1), '| Z:', gMinZc.toFixed(1), '→', gMaxZc.toFixed(1), '| yScale:', (scale * zExag / (span / rangeZ || 1)).toFixed(4));
 
     // ── Step 0: Pre-compute ground elevation for each building ────────
     let _logCnt = 0;
@@ -8074,7 +8063,7 @@ const meshMat = new THREE.MeshBasicMaterial({
       });
       console.log('[Buildings] Terrain polygon ring built:', _terrainPolyRing.length, 'vertices');
     } else {
-      console.log('[Buildings] polygonLatLngs not available — falling back to proximity noTerrain check');
+      console.log('[Buildings] polygonLatLngs not available - falling back to proximity noTerrain check');
     }
 
     // Floor estimation: sample elevGrid at points 2 m and 4 m OUTSIDE each polygon edge.
@@ -8151,7 +8140,7 @@ const meshMat = new THREE.MeshBasicMaterial({
       }
     }
     const _noBuildCount = data.buildings.filter(b => b._noTerrain).length;
-    console.log('[Buildings] Ground elevation computed for', data.buildings.length, 'buildings — srcType:', srcType,
+    console.log('[Buildings] Ground elevation computed for', data.buildings.length, 'buildings - srcType:', srcType,
       '| noTerrain (outside polygon):', _noBuildCount, '| will render:', data.buildings.length - _noBuildCount);
 
     // ── Step 1: Rebuild Delaunay mesh with flat terrain under building footprints ──
@@ -8185,7 +8174,7 @@ const meshMat = new THREE.MeshBasicMaterial({
       try { _placeBuilding(b, srcType, uOrig, _renderedCnt === 0); placed++; _renderedCnt++; }
       catch(e) { console.error('[Buildings] placeBuilding error:', e, b); placed++; }
     }
-    console.log('[Buildings] Rendered', _renderedCnt, '/', data.buildings.length, 'buildings (', data.buildings.length - _renderedCnt, 'outside polygon filtered) — srcType:', srcType);
+    console.log('[Buildings] Rendered', _renderedCnt, '/', data.buildings.length, 'buildings (', data.buildings.length - _renderedCnt, 'outside polygon filtered) - srcType:', srcType);
 
     // Update memory entry with flattened CSV so memory panel matches download button
     _updateMemoryWithFlattenedCsv();
@@ -8232,7 +8221,7 @@ const meshMat = new THREE.MeshBasicMaterial({
 
     if (logFirst) {
       const u0 = latLonToUTM(b.polygon[0][0], b.polygon[0][1]);
-      console.log('[Buildings] First building — lat/lon:', b.polygon[0],
+      console.log('[Buildings] First building - lat/lon:', b.polygon[0],
         '| lx/ly:', (u0.easting - uOrig.easting).toFixed(1), (u0.northing - uOrig.northing).toFixed(1),
         '| scene sx/sz/shy:', pts[0].sx.toFixed(2), pts[0].sz.toFixed(2), pts[0].shy.toFixed(2),
         '| centroid:', cenX.toFixed(2), cenZ.toFixed(2),
@@ -8284,7 +8273,7 @@ const meshMat = new THREE.MeshBasicMaterial({
     }
     const flatPadY   = (groundElev - minZ) * yScale;   // expected height after flat-pad injection
     const floorRefY  = terrainMeshY ?? flatPadY;        // actual terrain mesh height (or estimate)
-    const baseY      = floorRefY + liftScene;           // floor ABOVE terrain — prevents terrain mesh covering building floor
+    const baseY      = floorRefY + liftScene;           // floor ABOVE terrain - prevents terrain mesh covering building floor
 
     if (logFirst) {
       console.log('[Buildings] _placeBuilding first:',
@@ -8318,7 +8307,7 @@ const meshMat = new THREE.MeshBasicMaterial({
     const mat = new THREE.MeshStandardMaterial({
       color: _buildingColor(b.type), roughness: 0.6, metalness: 0.05,
       transparent: false,
-      depthWrite: true,   // transparent mesh must not write depth — prevents black patches on terrain below
+      depthWrite: true,   // transparent mesh must not write depth - prevents black patches on terrain below
     });
     const mesh = new THREE.Mesh(bldGeo, mat);
     mesh.renderOrder = 1;
@@ -8472,6 +8461,20 @@ const meshMat = new THREE.MeshBasicMaterial({
   };
   // END 3D usage tracking
 
+  // Every listener this viewer adds goes through _on so teardown can remove it. Before 2026-10-13
+  // each generation stacked another full set (mousedown, wheel, touch, window mouseup/mousemove,
+  // theme toggle) on the SAME canvas, plus another compass overlay, and nothing ever removed them.
+  const _cleanups = [];
+  const _on = (target, type, fn, opts) => {
+    target.addEventListener(type, fn, opts);
+    _cleanups.push(() => { try { target.removeEventListener(type, fn, opts); } catch (e) {} });
+  };
+
+  // Toolbar toggles are engagement too: the first one counts as the interaction (kind control_<name>)
+  // when the user has not dragged or zoomed yet.
+  [['solid', solidBtn], ['contours', contoursBtn], ['grid', gridBtn], ['wire', wireBtn], ['reset', resetBtn], ['buildings', buildingsBtn]]
+    .forEach(function (b) { if (b[1]) _on(b[1], 'click', function () { markInteracted('control_' + b[0]); }); });
+
   // ── Camera / orbit ───────────────────────────────────────────────
   const DRX=1.02,DRY=1.571,DDS=200;  // DRY≈π/2: camera starts at south, North at back/top (matches map)
   let rotX=DRX,rotY=DRY,dist=DDS,panX=0,panY=0,autoRot=true;
@@ -8480,10 +8483,10 @@ const meshMat = new THREE.MeshBasicMaterial({
 
   if(resetBtn) resetBtn.onclick=()=>{rotX=DRX;rotY=DRY;dist=DDS;panX=0;panY=0;autoRot=true;idleDrift=false;};
 
-  canvas.addEventListener('mousedown',e=>{dragging=true;rightDrag=e.button===2;autoRot=false;idleDrift=false;lastInteract=Date.now();prevMX=e.clientX;prevMY=e.clientY;});
-  canvas.addEventListener('contextmenu',e=>e.preventDefault());
-  window.addEventListener('mouseup',()=>{dragging=false;});
-  window.addEventListener('mousemove',e=>{
+  _on(canvas,'mousedown',e=>{dragging=true;rightDrag=e.button===2;autoRot=false;idleDrift=false;lastInteract=Date.now();prevMX=e.clientX;prevMY=e.clientY;});
+  _on(canvas,'contextmenu',e=>e.preventDefault());
+  _on(window,'mouseup',()=>{dragging=false;});
+  _on(window,'mousemove',e=>{
     if(!dragging) return;
     const dx=e.clientX-prevMX,dy=e.clientY-prevMY;
     if(Math.abs(dx)+Math.abs(dy)>=2) markInteracted(rightDrag?'pan':'rotate');
@@ -8491,16 +8494,16 @@ const meshMat = new THREE.MeshBasicMaterial({
     else{rotY+=dx*0.005;rotX+=dy*0.005;rotX=Math.max(0.1,Math.min(Math.PI/2-0.05,rotX));}
     prevMX=e.clientX;prevMY=e.clientY;
   });
-  canvas.addEventListener('wheel',e=>{e.preventDefault();markInteracted('zoom');autoRot=false;idleDrift=false;lastInteract=Date.now();dist+=e.deltaY*0.1;dist=Math.max(40,Math.min(400,dist));},{passive:false});
+  _on(canvas,'wheel',e=>{e.preventDefault();markInteracted('zoom');autoRot=false;idleDrift=false;lastInteract=Date.now();dist+=e.deltaY*0.1;dist=Math.max(40,Math.min(400,dist));},{passive:false});
 
   let tDist0=0,t2=false;
-  canvas.addEventListener('touchstart',e=>{autoRot=false;idleDrift=false;lastInteract=Date.now();if(e.touches.length===1){dragging=true;rightDrag=false;prevMX=e.touches[0].clientX;prevMY=e.touches[0].clientY;}else if(e.touches.length===2){t2=true;const dx=e.touches[1].clientX-e.touches[0].clientX,dy=e.touches[1].clientY-e.touches[0].clientY;tDist0=Math.sqrt(dx*dx+dy*dy);}},{passive:true});
-  canvas.addEventListener('touchmove',e=>{e.preventDefault();markInteracted(e.touches.length===2?'pinch':'touch');if(e.touches.length===1&&dragging){const dx=e.touches[0].clientX-prevMX,dy=e.touches[0].clientY-prevMY;rotY+=dx*0.005;rotX+=dy*0.005;rotX=Math.max(0.1,Math.min(Math.PI/2-0.05,rotX));prevMX=e.touches[0].clientX;prevMY=e.touches[0].clientY;}else if(e.touches.length===2&&t2){const dx=e.touches[1].clientX-e.touches[0].clientX,dy=e.touches[1].clientY-e.touches[0].clientY;const d=Math.sqrt(dx*dx+dy*dy);dist*=tDist0/d;dist=Math.max(40,Math.min(400,dist));tDist0=d;}},{passive:false});
-  canvas.addEventListener('touchend',()=>{dragging=false;t2=false;});
+  _on(canvas,'touchstart',e=>{autoRot=false;idleDrift=false;lastInteract=Date.now();if(e.touches.length===1){dragging=true;rightDrag=false;prevMX=e.touches[0].clientX;prevMY=e.touches[0].clientY;}else if(e.touches.length===2){t2=true;const dx=e.touches[1].clientX-e.touches[0].clientX,dy=e.touches[1].clientY-e.touches[0].clientY;tDist0=Math.sqrt(dx*dx+dy*dy);}},{passive:true});
+  _on(canvas,'touchmove',e=>{e.preventDefault();markInteracted(e.touches.length===2?'pinch':'touch');if(e.touches.length===1&&dragging){const dx=e.touches[0].clientX-prevMX,dy=e.touches[0].clientY-prevMY;rotY+=dx*0.005;rotX+=dy*0.005;rotX=Math.max(0.1,Math.min(Math.PI/2-0.05,rotX));prevMX=e.touches[0].clientX;prevMY=e.touches[0].clientY;}else if(e.touches.length===2&&t2){const dx=e.touches[1].clientX-e.touches[0].clientX,dy=e.touches[1].clientY-e.touches[0].clientY;const d=Math.sqrt(dx*dx+dy*dy);dist*=tDist0/d;dist=Math.max(40,Math.min(400,dist));tDist0=d;}},{passive:false});
+  _on(canvas,'touchend',()=>{dragging=false;t2=false;});
 
   // ── Theme sync ───────────────────────────────────────────────────
   const themeToggle=document.querySelector('[data-toggle="theme"]');
-  if(themeToggle) themeToggle.addEventListener('click',()=>setTimeout(()=>{
+  if(themeToggle) _on(themeToggle,'click',()=>setTimeout(()=>{
     const dk=isDark();
     renderer.setClearColor(getBgCol()); scene.fog.color.set(getBgCol());
     // Hemisphere light
@@ -8523,7 +8526,7 @@ const meshMat = new THREE.MeshBasicMaterial({
   // This small compass shows where North actually is in the current view.
   // Blue needle = North; rotate to match camera yaw.
   const compassEl = document.createElement('div');
-  compassEl.title = 'North indicator — drag to orbit';
+  compassEl.title = 'North indicator - drag to orbit';
   compassEl.style.cssText = 'position:absolute;bottom:50px;right:10px;width:44px;height:44px;pointer-events:none;z-index:3;opacity:0.88;';
   compassEl.innerHTML =
     '<svg viewBox="0 0 44 44" width="44" height="44">' +
@@ -8538,6 +8541,7 @@ const meshMat = new THREE.MeshBasicMaterial({
       '</g>' +
     '</svg>';
   wrap.appendChild(compassEl);
+  _cleanups.push(() => { try { compassEl.remove(); } catch (e) {} });
   const cNeedle = compassEl.querySelector('#' + bp + '-cneedle');
 
   // ── Fade-in UI once initialised ──────────────────────────────────
@@ -8558,6 +8562,7 @@ const meshMat = new THREE.MeshBasicMaterial({
   // ── Animate ──────────────────────────────────────────────────────
   const state={renderer,scene,camera,terrainMesh,wireMesh,contourGroup,grid:groundGrid,buildingGroup,buildingEdgeGroup,animFrame:null,disposed:false,paused:false};
   _terrain3dState=state;
+  state.cleanup = () => { _cleanups.forEach(f => f()); _cleanups.length = 0; };
 
   // Unlike the two decorative demo previews (which already have this), this real viewer used to
   // render at full frame rate forever once generated, even scrolled off-screen, competing with
@@ -8617,7 +8622,7 @@ const meshMat = new THREE.MeshBasicMaterial({
       // Hide the building meshes — user will turn them on explicitly
       if (!buildingsOn) { buildingGroup.visible = false; buildingEdgeGroup.visible = false; }
       try { _syncDlBtn(); } catch(_e) {}  // flip "Get Buildings" → "Download Buildings" now that data is cached
-      console.log('[Buildings] Auto-flatten complete — terrain is ready for export');
+      console.log('[Buildings] Auto-flatten complete - terrain is ready for export');
     } catch(e) {
       console.warn('[Buildings] Auto-flatten failed (non-fatal):', e);
     }
@@ -8760,7 +8765,7 @@ async function renderHistory() {
 
     // Meta
     var date = p.date ? new Date(p.date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : (p.local ? new Date(p.local.timestamp).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '');
-    var pts  = p.pointCount ? Number(p.pointCount).toLocaleString() : (p.local ? (p.local.pointCount||'—').toString() : '—');
+    var pts  = p.pointCount ? Number(p.pointCount).toLocaleString() : (p.local ? (p.local.pointCount||'-').toString() : '-');
     var src  = p.source.toLowerCase();
     var tier = src.includes('lidar') ? 'LiDAR' : src.includes('open-meteo') || src.includes('10m') ? '10m sat' : src.includes('30m') ? '30m sat' : src.includes('90m') ? '90m sat' : (p.spacing ? p.spacing + 'm' : '');
 
@@ -8790,7 +8795,7 @@ async function renderHistory() {
           + 'onclick="unshareProjectFromCompany(\'' + existingId + '\')" '
           + 'onmouseover="this.style.borderColor=\'var(--danger)\';this.style.color=\'var(--danger)\'" '
           + 'onmouseout="this.style.borderColor=\'var(--accent-md)\';this.style.color=\'var(--accent)\'" '
-          + 'title="In company library — click to remove">✓ Shared</button>';
+          + 'title="In company library - click to remove">✓ Shared</button>';
       } else if (hasPoly && lid !== null) {
         // Has cached polygon — can share
         shareBtn = '<button style="' + BTN_SHARE + '" '
@@ -8813,7 +8818,7 @@ async function renderHistory() {
         + dot
         + '<div style="flex:1;min-width:0;">'
           + '<div style="font-size:13px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;">' + safeName + '</div>'
-          + '<div style="font-size:11px;color:var(--text-soft);letter-spacing:.03em;">' + date + (tier ? ' · ' + tier : '') + (pts !== '—' ? ' · ' + pts + ' pts' : '') + '</div>'
+          + '<div style="font-size:11px;color:var(--text-soft);letter-spacing:.03em;">' + date + (tier ? ' · ' + tier : '') + (pts !== '-' ? ' · ' + pts + ' pts' : '') + '</div>'
         + '</div>'
       + '</div>'
       + '<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;">'
@@ -8901,7 +8906,7 @@ async function shareProjectToCompany(lid, name) {
   try { entries = JSON.parse(localStorage.getItem(MEMORY_KEY) || '[]'); } catch(e) {}
   var entry = entries.find(function(e) { return e.id === lid; });
   if (!entry || !entry.polygon || !entry.polygon.length) {
-    alert('No polygon data found for this project — try regenerating the site first.');
+    alert('No polygon data found for this project - try regenerating the site first.');
     return;
   }
 
@@ -9114,7 +9119,7 @@ async function sendFeedback() {
     const { error } = await _sb.from('notify_signups').insert({ email, plan: 'pro' });
     if (!error || error.code === '23505') {
       fetch(NOTIFY_WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'notify_signup', email }) }).catch(() => {});
-      if (successEl) { successEl.textContent = "✓ You're on the list — we'll ping you when Pro launches."; successEl.style.color = 'var(--accent)'; successEl.classList.add('show'); }
+      if (successEl) { successEl.textContent = "✓ You're on the list - we'll ping you when Pro launches."; successEl.style.color = 'var(--accent)'; successEl.classList.add('show'); }
     }
     return;
   }
@@ -9122,11 +9127,11 @@ async function sendFeedback() {
   if (!message) { if (successEl) { successEl.textContent = 'Please write a message.'; successEl.style.color = 'var(--danger)'; successEl.classList.add('show'); } return; }
   try {
     await fetch(NOTIFY_WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'feedback', topic, email, message }) });
-    if (successEl) { successEl.textContent = '✓ Message sent — thanks!'; successEl.style.color = 'var(--accent)'; successEl.classList.add('show'); }
+    if (successEl) { successEl.textContent = '✓ Message sent - thanks!'; successEl.style.color = 'var(--accent)'; successEl.classList.add('show'); }
     const msgEl = document.getElementById('fb-message');
     if (msgEl) msgEl.value = '';
   } catch (err) {
-    if (successEl) { successEl.textContent = 'Failed to send — try emailing aki@topo-grapher.com directly.'; successEl.style.color = 'var(--danger)'; successEl.classList.add('show'); }
+    if (successEl) { successEl.textContent = 'Failed to send - try emailing aki@topo-grapher.com directly.'; successEl.style.color = 'var(--danger)'; successEl.classList.add('show'); }
   }
 }
 
@@ -9530,7 +9535,7 @@ function toggleSiteColumnPinMode() {
   var mapEl = document.getElementById('map');
   var hint = document.getElementById('map-hint');
   if (window._pinningSiteColumn) {
-    if (btn) { btn.textContent = '✕ Click the map to place — click again to stop'; btn.style.background = 'rgba(255,140,0,0.22)'; }
+    if (btn) { btn.textContent = '✕ Click the map to place - click again to stop'; btn.style.background = 'rgba(255,140,0,0.22)'; }
     if (mapEl) mapEl.style.cursor = 'crosshair';
     if (hint) hint.textContent = 'Click anywhere on the map to drop an orange site column.';
   } else {
@@ -9646,7 +9651,7 @@ function _buildSiteColumnsIFC(cols, name) {
   var iXd2  = e('IFCDIRECTION((1.,0.,0.))');
 
   // Property set with instruction note
-  var iPropVal = e("IFCPROPERTYSINGLEVALUE('Description',$,IFCTEXT('TOPO-GRAPHER SITE COLUMN — Delete or hide after placing site perimeter in your BIM software'),$)");
+  var iPropVal = e("IFCPROPERTYSINGLEVALUE('Description',$,IFCTEXT('TOPO-GRAPHER SITE COLUMN - Delete or hide after placing site perimeter in your BIM software'),$)");
   var iPset    = e('IFCPROPERTYSET('+g()+',#'+iOwn+",'Pset_SiteColumnNote',$,(#"+iPropVal+'))');
 
   var colIds = [];
@@ -9828,8 +9833,8 @@ closeCoordDrawer();
   <div class="large-site-modal">
     <button class="upgrade-hero-close" onclick="closeLargeSiteAddon(); track('upsell_popup_dismissed', {context:'large_site'});" style="position:absolute;top:14px;right:14px;">&#x2715;</button>
     <div class="large-site-badge">Large Site Add-on</div>
-    <h3 id="large-site-area-text">— km²</h3>
-    <p>This site exceeds 10km&sup2; — a per-generation charge applies. Charged at generation time, not monthly.</p>
+    <h3 id="large-site-area-text">- km²</h3>
+    <p>This site exceeds 10km&sup2; - a per-generation charge applies. Charged at generation time, not monthly.</p>
     <div class="large-site-tiers">
       <div class="large-site-tier" id="lsa-tier-lg">
         <span>10 – 20 km²</span>

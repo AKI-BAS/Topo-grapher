@@ -2537,7 +2537,7 @@ async function loadMonitor(){
   const supaHealth=fetch(SUPABASE_URL+'/rest/v1/generations?select=id&limit=1',{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY},cache:'no-store'})
     .then(r=>({ok:r.ok,ms:Math.round(performance.now()-supaT0)})).catch(()=>({ok:false,ms:null}));
 
-  const [supa, elevPings, notifyPing, lastGen, win24, stuck, fails, admins, authFails24, signups24, gens7d, allProfiles, healthChecks, jsErrors, upstreamTimings, gateEvents24] = await Promise.all([
+  const [supa, elevPings, notifyPing, lastGen, win24, stuck, fails, admins, authFails24, signups24, gens7d, allProfiles, healthChecks, jsErrors, upstreamTimings, gateEvents24, weekEvents] = await Promise.all([
     supaHealth,
     Promise.all(MON_ELEVATION_WORKERS.map(w=>_pingHost('https://'+w+'.svanur300.workers.dev'))),
     _pingHost(MON_NOTIFY_WORKER),
@@ -2562,6 +2562,10 @@ async function loadMonitor(){
     // (it isn't an error). size_limit_hit/spacing_gate_hit/point_cap_hit are new
     // events and will read 0 here until the instrumented index.html deploys.
     _sb.from('events').select('event').eq('is_test',false).in('event',['size_limit_hit','spacing_gate_hit','free_limit_hit','point_cap_hit']).gte('created_at',dayAgo).limit(20000),
+    // 7-day reliability and engagement view (the hourly panel is too thin at current volume).
+    _sb.from('events').select('event,properties').eq('is_test',false)
+      .in('event',['upstream_timing','degraded_retry_clicked','addon_charged','addon_not_recharged','view_3d_shown','view_3d_interacted','view_3d_button_clicked'])
+      .gte('created_at',weekAgo).limit(5000),
   ]);
 
   // Reachability tallies
@@ -2674,6 +2678,29 @@ async function loadMonitor(){
   // degrade-rate > 15% is "we're routinely dropping to a lower tier".
   const utSlow=utStats.filter(s=>s.n>=5 && s.p95Ms>8000);
   const utDeg =utStats.filter(s=>s.n>=5 && s.degRate>=0.15);
+
+  // Last 7 days from events: how often degrades happen and why, whether the retries save results,
+  // whether "Try again" works and never double-charges, and who actually uses the 3D viewer.
+  const wk=(weekEvents&&weekEvents.data)||[];
+  const wkUp=wk.filter(r=>r.event==='upstream_timing').map(r=>r.properties||{});
+  const wkCount=n=>wk.filter(r=>r.event===n).length;
+  const diagHas=s=>wkUp.filter(p=>String(p.diag||'').indexOf(s)!==-1).length;
+  const wkReasonCounts={};
+  wkUp.filter(p=>p.degraded&&p.diag).forEach(p=>{
+    const k=String(p.diag).replace(/^.*?failed:\s*/,'').replace(/\[thinned.*$/,'').replace(/\b\d{4,}\b/g,'#').replace(/\s+\|.*$/,'').trim().slice(0,70);
+    wkReasonCounts[k]=(wkReasonCounts[k]||0)+1;
+  });
+  const wkReasons=Object.entries(wkReasonCounts).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const wkRetryRuns=wkUp.filter(p=>p.retry===true);
+  const wkStats={
+    n:wkUp.length, deg:wkUp.filter(p=>p.degraded).length, mixed:wkUp.filter(p=>p.mixed===true).length,
+    rangeSaved:diagHas('gedtm range ignored, recovered'), premiumSaved:diagHas('premium retry recovered'), premiumFailed:diagHas('premium retry failed'),
+    retryRuns:wkRetryRuns.length, retryWorked:wkRetryRuns.filter(p=>!p.degraded).length, retryClicks:wkCount('degraded_retry_clicked'),
+    addonCharged:wkCount('addon_charged'), addonNotRecharged:wkCount('addon_not_recharged'),
+    shown:wkCount('view_3d_shown'), interacted:wkCount('view_3d_interacted'), btn:wkCount('view_3d_button_clicked')
+  };
+  const wkRow=(label,val,dot)=>`<div class="mon-row"><span class="mon-dot ${dot||'ok'}"></span><div class="mon-label">${esc(label)}</div><div class="mon-val-wrap">${esc(val)}</div></div>`;
+  const wkDegPct=wkStats.n?Math.round(100*wkStats.deg/wkStats.n):0;
 
   // Client JS errors
   const jsErrRows=jsErrors.data||[];
@@ -2840,6 +2867,15 @@ async function loadMonitor(){
               return `<div class="mon-row"><span class="mon-dot ${dot}"></span><div class="mon-label">${esc(s.region)}</div><div class="mon-val-wrap">${esc(val)}</div></div>`;
             }).join('')
         }
+        ${wkStats.n===0 && !wkStats.shown && !wkStats.retryClicks ? '' : `
+          <div class="mon-block-title" style="margin-top:14px;">Last 7 days · from events</div>
+          ${wkRow('Degraded results', wkStats.deg+' of '+wkStats.n+' generations ('+wkDegPct+'%) · '+wkStats.mixed+' mixed', wkDegPct>=25?'crit':wkDegPct>=10?'warn':'ok')}
+          ${wkRow('Top reasons', wkReasons.length?wkReasons.map(r=>r[1]+'x '+r[0]).join(' | '):'none recorded', 'ok')}
+          ${wkRow('Retries that saved a result', 'range '+wkStats.rangeSaved+' · premium '+wkStats.premiumSaved+' · premium retry failed '+wkStats.premiumFailed, 'ok')}
+          ${wkRow('Try again', wkStats.retryClicks+' clicks · '+wkStats.retryRuns+' runs · '+wkStats.retryWorked+' came back full resolution', 'ok')}
+          ${wkRow('Add-on charges', wkStats.addonCharged+' charged · '+wkStats.addonNotRecharged+' not recharged (retry or repeat of a paid site)', 'ok')}
+          ${wkRow('3D viewer', wkStats.shown+' shown · '+wkStats.interacted+' interacted · '+wkStats.btn+' View in 3D clicks', 'ok')}
+        `}
         <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:8px;">Alert when p95 &gt; 8s OR degrade-rate &gt; 15% (needs ≥5 samples/hr). Slow region = candidate for a queue; degraded region = national source is failing over.</div>
       </div>
     </div>
