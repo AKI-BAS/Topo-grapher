@@ -2563,8 +2563,9 @@ async function loadMonitor(){
     // events and will read 0 here until the instrumented index.html deploys.
     _sb.from('events').select('event').eq('is_test',false).in('event',['size_limit_hit','spacing_gate_hit','free_limit_hit','point_cap_hit']).gte('created_at',dayAgo).limit(20000),
     // 7-day reliability and engagement view (the hourly panel is too thin at current volume).
-    _sb.from('events').select('event,properties').eq('is_test',false)
-      .in('event',['upstream_timing','degraded_retry_clicked','addon_charged','addon_not_recharged','view_3d_shown','view_3d_interacted','view_3d_button_clicked'])
+    _sb.from('events').select('event,properties,user_id').eq('is_test',false)
+      .in('event',['upstream_timing','degraded_retry_clicked','addon_charged','addon_not_recharged','view_3d_shown','view_3d_interacted','view_3d_button_clicked',
+        'format_picker_shown','format_selected','format_card_clicked','format_picker_dismissed','format_locked_clicked','subscription_created','subscription_confirmed'])
       .gte('created_at',weekAgo).limit(5000),
   ]);
 
@@ -2697,7 +2698,17 @@ async function loadMonitor(){
     rangeSaved:diagHas('gedtm range ignored, recovered'), premiumSaved:diagHas('premium retry recovered'), premiumFailed:diagHas('premium retry failed'),
     retryRuns:wkRetryRuns.length, retryWorked:wkRetryRuns.filter(p=>!p.degraded).length, retryClicks:wkCount('degraded_retry_clicked'),
     addonCharged:wkCount('addon_charged'), addonNotRecharged:wkCount('addon_not_recharged'),
-    shown:wkCount('view_3d_shown'), interacted:wkCount('view_3d_interacted'), btn:wkCount('view_3d_button_clicked')
+    shown:wkCount('view_3d_shown'), interacted:wkCount('view_3d_interacted'), btn:wkCount('view_3d_button_clicked'),
+    // Pro-format intent. `locked` is a property on format_selected / card / dismissed (absent on rows before the tracking fix).
+    pickerShown:wkCount('format_picker_shown'),
+    lockedPicks:wk.filter(r=>r.event==='format_selected'&&r.properties&&r.properties.locked===true).length,
+    lockedCards:wk.filter(r=>r.event==='format_card_clicked'&&r.properties&&r.properties.locked===true).length,
+    lockedDismissed:wk.filter(r=>r.event==='format_picker_dismissed'&&r.properties&&r.properties.locked===true).length,
+    pickerDismissed:wkCount('format_picker_dismissed'),
+    lockedDownload:wkCount('format_locked_clicked'),
+    subCreated:wkCount('subscription_created'),
+    subCreatedUid:wk.filter(r=>r.event==='subscription_created'&&r.user_id).length,
+    subConfirmed:wkCount('subscription_confirmed')
   };
   const wkRow=(label,val,dot)=>`<div class="mon-row"><span class="mon-dot ${dot||'ok'}"></span><div class="mon-label">${esc(label)}</div><div class="mon-val-wrap">${esc(val)}</div></div>`;
   const wkDegPct=wkStats.n?Math.round(100*wkStats.deg/wkStats.n):0;
@@ -2867,7 +2878,7 @@ async function loadMonitor(){
               return `<div class="mon-row"><span class="mon-dot ${dot}"></span><div class="mon-label">${esc(s.region)}</div><div class="mon-val-wrap">${esc(val)}</div></div>`;
             }).join('')
         }
-        ${wkStats.n===0 && !wkStats.shown && !wkStats.retryClicks ? '' : `
+        ${wkStats.n===0 && !wkStats.shown && !wkStats.retryClicks && !wkStats.pickerShown && !wkStats.subCreated && !wkStats.subConfirmed ? '' : `
           <div class="mon-block-title" style="margin-top:14px;">Last 7 days · from events</div>
           ${wkRow('Degraded results', wkStats.deg+' of '+wkStats.n+' generations ('+wkDegPct+'%) · '+wkStats.mixed+' mixed', wkDegPct>=25?'crit':wkDegPct>=10?'warn':'ok')}
           ${wkRow('Top reasons', wkReasons.length?wkReasons.map(r=>r[1]+'x '+r[0]).join(' | '):'none recorded', 'ok')}
@@ -2875,6 +2886,8 @@ async function loadMonitor(){
           ${wkRow('Try again', wkStats.retryClicks+' clicks · '+wkStats.retryRuns+' runs · '+wkStats.retryWorked+' came back full resolution', 'ok')}
           ${wkRow('Add-on charges', wkStats.addonCharged+' charged · '+wkStats.addonNotRecharged+' not recharged (retry or repeat of a paid site)', 'ok')}
           ${wkRow('3D viewer', wkStats.shown+' shown · '+wkStats.interacted+' interacted · '+wkStats.btn+' View in 3D clicks', 'ok')}
+          ${wkRow('Pro formats (DXF/IFC), non-Pro intent', wkStats.pickerShown+' picker opens · '+wkStats.lockedPicks+' locked picks · '+wkStats.lockedCards+' locked card clicks · '+wkStats.lockedDismissed+' of '+wkStats.pickerDismissed+' dismissals on a locked format · '+wkStats.lockedDownload+' pressed Download', 'ok')}
+          ${wkRow('Subscriptions', wkStats.subCreated+' created in browser ('+wkStats.subCreatedUid+' with user id) · '+wkStats.subConfirmed+' confirmed by Stripe webhook', 'ok')}
         `}
         <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:8px;">Alert when p95 &gt; 8s OR degrade-rate &gt; 15% (needs ≥5 samples/hr). Slow region = candidate for a queue; degraded region = national source is failing over.</div>
       </div>
