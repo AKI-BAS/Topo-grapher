@@ -1408,7 +1408,7 @@ function declineCookies() {
         <div class="stat-box"><div class="stat-n" id="stat-area">-</div><div class="stat-l" id="stat-area-label">m²</div><div class="stat-s" id="stat-dims">-</div></div>
       </div>
       <div class="origin-box" id="origin-info" style="display:none;font-size:12px;padding:10px 12px;"></div>
-      <button id="view-3d-btn" type="button" onclick="open3DFromResult()" style="display:none;margin:0 0 12px;padding:8px 14px;border-radius:5px;border:1px solid var(--accent-md);background:transparent;color:var(--accent);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.05em;cursor:pointer;">View in 3D</button>
+      <button id="view-3d-btn" class="btn-dl" type="button" onclick="open3DFromResult()" style="display:none;margin:0 0 12px;">View in 3D</button>
       <div id="elevation-quality-warn" style="display:none;margin-bottom:10px;padding:9px 12px;border-radius:6px;font-size:11px;line-height:1.6;"></div>
       <div id="degraded-note" role="status" style="display:none;margin-bottom:10px;padding:9px 12px;border-radius:6px;border:1px solid #e0a050;background:rgba(224,160,80,0.12);color:var(--text);font-size:11px;line-height:1.6;"></div>
       <div id="elevation-source-banner" style="display:none;margin-bottom:12px;padding:10px 12px;border-radius:6px;border:1px solid var(--border-md);background:var(--bg-input);font-size:11px;color:var(--text-mid);line-height:1.5;">
@@ -7200,7 +7200,7 @@ function showWireframe(points, minZ, maxZ) {
   if (window._proViewerDemoDispose) { window._proViewerDemoDispose(); }
   // The terrain is ready: reveal the "View in 3D" button on the result card.
   const _v3dBtn = document.getElementById('view-3d-btn');
-  if (_v3dBtn) _v3dBtn.style.display = 'inline-block';
+  if (_v3dBtn) _v3dBtn.style.display = 'block';
 
   // Tear down any previous Pro renderer
   if (_terrain3dState) {
