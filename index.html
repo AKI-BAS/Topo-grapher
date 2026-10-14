@@ -2057,6 +2057,11 @@ function declineCookies() {
               </div>
               <p style="font-size:11px;color:var(--text-soft);margin-top:10px;line-height:1.5;">Billing issue instead? Email <a href="mailto:aki@topo-grapher.com" style="color:var(--accent)">aki@topo-grapher.com</a>.</p>
             </div>
+            <div id="settings-billing-block" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+              <p id="settings-billing-text" style="font-size:12px;color:var(--text-mid);line-height:1.6;margin:0 0 10px;">Update your card, see invoices or manage your subscription.</p>
+              <button type="button" id="settings-billing-btn" onclick="openBillingPortal('settings')" style="background:transparent;border:1px solid var(--accent-md);color:var(--accent);border-radius:5px;padding:9px 14px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.04em;">Manage billing</button>
+              <div class="auth-error" id="settings-billing-msg" style="min-height:16px;margin-top:6px;"></div>
+            </div>
             <div id="settings-company-sub-info" style="display:none;">
               <p id="settings-company-sub-text" style="font-size:13px;color:var(--text-mid);line-height:1.65;">Company plan. Billing managed by your organisation admin.</p>
             </div>
@@ -4014,6 +4019,7 @@ async function handleSession(session) {
   // A session exists, so the email is confirmed: retire the pay-before-confirm banner.
   try { localStorage.removeItem('topo_confirm_pending'); } catch(e) {}
   _hideConfirmBanner();
+  try { _showPastDueBanner(); } catch (e) {}
   try { _spResumeAfterPayment(); } catch (e) {} // back from Stripe: restore the site they were previewing
   // Resume a checkout the signup/sign-in wall interrupted. localStorage is the single
   // source of truth and is consumed read-then-remove, and a per-page flag blocks repeat
@@ -5017,6 +5023,15 @@ function openSettings() {
   show('settings-free-cta',         plan === 'free' && !isOrphanFree);
   show('settings-pro-info',         plan === 'pro');
   show('settings-company-sub-info', plan === 'company');
+  {
+    const _hasCust = !!(_currentProfile && _currentProfile.stripe_customer_id);
+    const _st = (_currentProfile && _currentProfile.subscription_status) || '';
+    show('settings-billing-block', _hasCust && (plan !== 'company' || isAdmin));
+    const _bt = document.getElementById('settings-billing-text');
+    if (_bt) _bt.textContent = (_st === 'past_due' || _st === 'unpaid')
+      ? 'Your last payment did not go through. Update your card to keep your subscription active.'
+      : 'Update your card, see invoices or manage your subscription.';
+  }
   const companySubText = document.getElementById('settings-company-sub-text');
   if (companySubText) {
     companySubText.innerHTML = isAdmin
@@ -5257,6 +5272,53 @@ async function confirmCancelSubscription() {
     msgEl.style.color = 'var(--danger,#e25555)';
     msgEl.textContent = 'Error: ' + (err.message || 'unknown');
   }
+}
+
+// ── Billing portal and failed-payment banner ────────────────────────────────────────
+async function openBillingPortal(source) {
+  const msg = document.getElementById('settings-billing-msg');
+  const btn = document.getElementById('settings-billing-btn');
+  const bar = document.getElementById('pastdue-go');
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening...'; }
+  if (bar) { bar.disabled = true; bar.textContent = 'Opening...'; }
+  try { track('billing_portal_opened', { source: source || 'unknown', status: (_currentProfile && _currentProfile.subscription_status) || null }); } catch (e) {}
+  try {
+    const auth = await getAuthHeader();
+    const res = await fetch(WEBHOOK_WORKER + '/create-portal-session', { method: 'POST', headers: { 'Authorization': auth } });
+    const data = await res.json();
+    if (!res.ok || data.error || !data.url) throw new Error(data.error || 'HTTP ' + res.status);
+    window.location.href = data.url;
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Manage billing'; }
+    if (bar) { bar.disabled = false; bar.textContent = 'Update card'; }
+    if (msg) { msg.style.color = 'var(--danger,#e25555)'; msg.textContent = 'Could not open billing. Email aki@topo-grapher.com and we will sort it out.'; }
+    try { track('billing_portal_failed', { source: source || 'unknown', reason: String(err && err.message || err).slice(0, 80) }); } catch (e) {}
+  }
+}
+// Shown while a card payment is failing (Stripe is still retrying), above everything else.
+function _showPastDueBanner() {
+  const st = (_currentProfile && _currentProfile.subscription_status) || '';
+  const old = document.getElementById('pastdue-bar');
+  if (!(st === 'past_due' || st === 'unpaid')) { if (old) old.remove(); return; }
+  if (old) return;
+  try { if (sessionStorage.getItem('topo_pastdue_dismissed') === '1') return; } catch (e) {}
+  const bar = document.createElement('div');
+  bar.id = 'pastdue-bar';
+  bar.setAttribute('role', 'status');
+  bar.style.cssText = 'position:sticky;top:0;z-index:9000;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 16px;background:rgba(224,160,80,0.14);border-bottom:1px solid #e0a050;color:var(--text);font-size:13px;line-height:1.5;';
+  const msgSpan = document.createElement('span');
+  msgSpan.textContent = 'Your last payment did not go through, so your subscription is at risk. Update your card to keep Pro.';
+  const go = document.createElement('button');
+  go.type = 'button'; go.id = 'pastdue-go'; go.textContent = 'Update card';
+  go.style.cssText = "background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);border-radius:6px;padding:8px 14px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;";
+  go.onclick = function() { openBillingPortal('pastdue_banner'); };
+  const x = document.createElement('button');
+  x.type = 'button'; x.setAttribute('aria-label', 'Dismiss'); x.textContent = 'x';
+  x.style.cssText = 'background:transparent;border:none;color:var(--text-soft);font-size:16px;cursor:pointer;';
+  x.onclick = function() { try { sessionStorage.setItem('topo_pastdue_dismissed', '1'); } catch (e) {} bar.remove(); };
+  bar.appendChild(msgSpan); bar.appendChild(go); bar.appendChild(x);
+  document.body.insertBefore(bar, document.body.firstChild);
+  try { track('past_due_banner_shown', {}); } catch (e) {}
 }
 
 // ── Seat helpers ──────────────────────────────────────────────────────────
