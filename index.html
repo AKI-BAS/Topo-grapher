@@ -845,6 +845,23 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 .upgrade-plan ul    { list-style:none; padding:0; margin:0 0 16px; font-size:11px; color:var(--text-mid); line-height:2; }
 .upgrade-plan ul li::before { content:'✓ '; color:var(--accent); }
 .upgrade-plan-cta   { width:100%; padding:11px 0; border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; font-weight:700; cursor:pointer; letter-spacing:.04em; text-transform:uppercase; transition:opacity .15s; border:none; }
+/* ── Spacing preview inside the upgrade modal (their own site at 12 m vs 3 m) ── */
+#sp-preview { padding:2px 20px 16px; }
+.sp-eyebrow { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-soft); margin:0 0 10px; }
+.sp-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.sp-panel { border:1px solid var(--border-md); border-radius:8px; overflow:hidden; background:var(--bg-input); }
+.sp-panel canvas { display:block; width:100%; aspect-ratio:1/1; background:#0f1a12; }
+.sp-cap { display:flex; justify-content:space-between; align-items:center; gap:6px; padding:7px 10px; font-size:11px; color:var(--text-soft); }
+.sp-cap b { font-weight:500; color:var(--text); }
+.sp-tog { display:inline-flex; border:1px solid var(--border-md); border-radius:4px; overflow:hidden; }
+.sp-tog button { background:transparent; border:none; color:var(--text-soft); font-family:'DM Mono',monospace; font-size:10px; padding:3px 7px; cursor:pointer; }
+.sp-tog button.on { background:var(--accent-dk); color:var(--accent); }
+.sp-stats { display:flex; gap:8px; margin:10px 0 0; flex-wrap:wrap; }
+.sp-stat { flex:1; min-width:110px; background:var(--bg-input); border-radius:6px; padding:7px 10px; font-size:10px; color:var(--text-soft); }
+.sp-stat span { display:block; font-size:15px; color:var(--text); font-family:'Syne',sans-serif; font-weight:600; }
+.sp-line { font-size:12px; color:var(--text-mid); line-height:1.6; margin:10px 0 0; }
+.sp-foot { font-size:10px; color:var(--text-soft); margin:6px 0 0; }
+.sp-skel { display:flex; align-items:center; justify-content:center; aspect-ratio:1/1; font-size:11px; color:var(--text-soft); background:#0f1a12; }
 
 /* ── Format picker modal (Pro-visibility rollout) ───────────────────────── */
 .fp-modal { position:relative; background:var(--bg-card); border:1px solid var(--border-md); border-radius:12px; overflow:hidden; width:100%; max-width:min(520px,94vw); max-height:min(88vh,660px); display:flex; flex-direction:column; }
@@ -1224,12 +1241,12 @@ function declineCookies() {
       <!-- Accuracy chips -->
       <div class="ctrl-label" style="margin-bottom:8px;">Point density</div>
       <div class="acc-row" style="margin-bottom:12px;">
-        <div class="acc-chip acc-btn" id="acc-3" onclick="setAccuracy(3)" title="3m LiDAR - Pro">
+        <div class="acc-chip acc-btn" id="acc-3" onclick="setAccuracy(3);_spChipTap(3)" title="3m LiDAR - Pro">
           <div class="acc-chip-val">3m</div>
           <div class="acc-chip-name">LiDAR</div>
           <div class="acc-chip-tier">Pro</div>
         </div>
-        <div class="acc-chip acc-btn" id="acc-6" onclick="setAccuracy(6)" title="6m Precise - Pro">
+        <div class="acc-chip acc-btn" id="acc-6" onclick="setAccuracy(6);_spChipTap(6)" title="6m Precise - Pro">
           <div class="acc-chip-val">6m</div>
           <div class="acc-chip-name">Precise</div>
           <div class="acc-chip-tier">Pro</div>
@@ -1409,6 +1426,7 @@ function declineCookies() {
       </div>
       <div class="origin-box" id="origin-info" style="display:none;font-size:12px;padding:10px 12px;"></div>
       <button id="view-3d-btn" class="btn-dl" type="button" onclick="open3DFromResult()" style="display:none;margin:0 0 12px;">View in 3D</button>
+      <button id="spacing-result-btn" type="button" onclick="_spResultClick()" style="display:none;width:100%;margin:-4px 0 12px;padding:10px 14px;border-radius:6px;border:1px solid var(--accent-md);background:transparent;color:var(--accent);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.05em;cursor:pointer;">See this site at 3 m and 6 m</button>
       <div id="elevation-quality-warn" style="display:none;margin-bottom:10px;padding:9px 12px;border-radius:6px;font-size:11px;line-height:1.6;"></div>
       <div id="degraded-note" role="status" style="display:none;margin-bottom:10px;padding:9px 12px;border-radius:6px;border:1px solid #e0a050;background:rgba(224,160,80,0.12);color:var(--text);font-size:11px;line-height:1.6;"></div>
       <div id="elevation-source-banner" style="display:none;margin-bottom:12px;padding:10px 12px;border-radius:6px;border:1px solid var(--border-md);background:var(--bg-input);font-size:11px;color:var(--text-mid);line-height:1.5;">
@@ -1841,6 +1859,29 @@ function declineCookies() {
       <button class="upgrade-hero-close" onclick="closeUpgrade(); track('upsell_popup_dismissed', {context: window._upgradeCtx || 'buildings'});">&#x2715;</button>
     </div>
 
+    <!-- Their own site, rendered from real data at the free and the Pro spacing -->
+    <div id="sp-preview" style="display:none;">
+      <p class="sp-eyebrow" id="sp-eyebrow"></p>
+      <div class="sp-grid">
+        <div class="sp-panel">
+          <div id="sp-skel-a" class="sp-skel">Rendering your site&hellip;</div>
+          <canvas id="sp-cv-a" style="display:none;" role="img" aria-label="Your site at the free plan spacing"></canvas>
+          <div class="sp-cap"><b id="sp-cap-a"></b><span id="sp-sub-a"></span></div>
+        </div>
+        <div class="sp-panel">
+          <div id="sp-skel-b" class="sp-skel">Rendering your site&hellip;</div>
+          <canvas id="sp-cv-b" style="display:none;" role="img" aria-label="Your site at the Pro spacing"></canvas>
+          <div class="sp-cap"><b id="sp-cap-b"></b>
+            <span class="sp-tog" id="sp-tog" style="display:none;"><button type="button" data-k="2" onclick="_spToggle(2)">6 m</button><button type="button" data-k="1" class="on" onclick="_spToggle(1)">3 m</button></span>
+            <span id="sp-sub-b"></span>
+          </div>
+        </div>
+      </div>
+      <div class="sp-stats" id="sp-stats" style="display:none;"></div>
+      <p class="sp-line" id="sp-line"></p>
+      <p class="sp-foot" id="sp-foot"></p>
+    </div>
+
     <!-- Plan cards -->
     <div class="upgrade-plans">
 
@@ -1857,7 +1898,7 @@ function declineCookies() {
         </ul>
         <button class="upgrade-plan-cta" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);"
           onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"
-          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings'}); closeUpgrade(); startCheckout('pro');">Start free trial &rarr;</button>
+          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings'}); try{_spSaveResume();}catch(e){} closeUpgrade(); startCheckout('pro');">Start free trial &rarr;</button>
       </div>
 
       <!-- Company -->
@@ -3971,6 +4012,7 @@ async function handleSession(session) {
   // A session exists, so the email is confirmed: retire the pay-before-confirm banner.
   try { localStorage.removeItem('topo_confirm_pending'); } catch(e) {}
   _hideConfirmBanner();
+  try { _spResumeAfterPayment(); } catch (e) {} // back from Stripe: restore the site they were previewing
   // Resume a checkout the signup/sign-in wall interrupted. localStorage is the single
   // source of truth and is consumed read-then-remove, and a per-page flag blocks repeat
   // handleSession() runs. Before this, the in-memory plan let the original tab AND the
@@ -4057,7 +4099,9 @@ function openAuth(mode, context) {
 const UPGRADE_COPY = {
   buildings:   ['14-day free trial', 'Unlock Buildings Export',        'IFC · DXF · Full 3D terrain viewer'],
   size_limit:  ['14-day free trial', 'Go bigger than 500 m',           'Sites up to 1.6 × 1.6 km · all LiDAR sources'],
-  spacing:     ['14-day free trial', 'Tighter than 12 m spacing',      '3 m and 6 m precision · all LiDAR sources'],
+  spacing:     ['14-day free trial', 'Tighter than 12 m spacing',      '3 m and 6 m spacing, rendered from your own site'],
+  spacing_chip:   ['14-day free trial', 'Tighter than 12 m spacing',   '3 m and 6 m spacing, rendered from your own site'],
+  spacing_result: ['14-day free trial', 'Tighter than 12 m spacing',   '3 m and 6 m spacing, rendered from your own site'],
   points:      ['14-day free trial', 'More detail than the free cap',  'Up to 75,000 points per site'],
   session:     ['14-day free trial', 'Go beyond the free tier',        'Bigger sites · all LiDAR · saved projects · every format'],
   email:       ['14-day free trial', 'Go beyond the free tier',        'Bigger sites · all LiDAR · saved projects · every format']
@@ -4071,9 +4115,535 @@ function openUpgrade(context) {
   const s = document.getElementById('upgrade-hero-sub');    if (s) s.textContent = c[2];
   document.getElementById('upgrade-overlay').classList.add('show');
   track('upsell_popup_shown', { context: ctx });
+  try { _spOpen(ctx); } catch (e) { console.warn('spacing preview:', e); }
 }
 function closeUpgrade() {
   document.getElementById('upgrade-overlay').classList.remove('show');
+  try { _spStopLoop(); } catch (e) {}
+}
+
+// ── Spacing preview: the visitor's own site at the free vs the Pro spacing ──────────────────
+// One real elevation request for a centred crop (up to 120 m, a 3 m grid, at most 1,681 points,
+// 9 worker batches). The 12 m and 6 m panels are SUBSETS of that same fetch (every 4th / 2nd
+// node), so both panels come from identical data and the difference shown is only the sampling.
+// Render-only: nothing is exportable, nothing is logged as a generation, no add-on charge path.
+var _spState = { stride: 1, data: null, variant: null, ctx: null };
+function _spSig(poly) {
+  var la = poly.map(function(p){ return p.lat; }), lo = poly.map(function(p){ return p.lng; });
+  return [Math.min.apply(null,la), Math.max.apply(null,la), Math.min.apply(null,lo), Math.max.apply(null,lo)]
+    .map(function(v){ return v.toFixed(5); }).join('|');
+}
+function _spEls() {
+  var $ = function(id){ return document.getElementById(id); };
+  return { box:$('sp-preview'), eyebrow:$('sp-eyebrow'), cvA:$('sp-cv-a'), cvB:$('sp-cv-b'), skA:$('sp-skel-a'), skB:$('sp-skel-b'),
+    capA:$('sp-cap-a'), subA:$('sp-sub-a'), capB:$('sp-cap-b'), subB:$('sp-sub-b'), tog:$('sp-tog'), stats:$('sp-stats'),
+    line:$('sp-line'), foot:$('sp-foot'), hk:$('upgrade-hero-kicker'), ht:$('upgrade-hero-title'), hs:$('upgrade-hero-sub') };
+}
+function _spOpen(ctx) {
+  var e = _spEls();
+  if (!e.box) return;
+  var wanted = /^spacing/.test(ctx) && !isPro() && polygonLatLngs && polygonLatLngs.length >= 3;
+  e.box.style.display = wanted ? 'block' : 'none';
+  if (!wanted) return;
+  _spState.ctx = ctx;
+  var sig = _spSig(polygonLatLngs);
+  if (window._spCache && window._spCache.sig === sig && window._spCache.data) { _spShow(window._spCache.data, ctx, true); return; }
+  if (window._spCache && window._spCache.sig === sig && window._spCache.failed) { e.box.style.display = 'none'; return; }
+  e.skA.style.display = 'flex'; e.skB.style.display = 'flex'; e.cvA.style.display = 'none'; e.cvB.style.display = 'none';
+  e.eyebrow.textContent = 'Rendering your site from the same elevation data...';
+  e.stats.style.display = 'none'; e.line.textContent = ''; e.foot.textContent = ''; e.tog.style.display = 'none';
+  e.capA.textContent = ''; e.subA.textContent = ''; e.capB.textContent = ''; e.subB.textContent = '';
+  try { track('spacing_preview_requested', { context: ctx }); } catch (x) {}
+  _spLoad(polygonLatLngs, ctx).then(function(d) {
+    if (document.getElementById('upgrade-overlay').classList.contains('show')) _spShow(d, ctx, false);
+  }).catch(function() {
+    e.box.style.display = 'none'; // the plan cards below stand on their own
+  });
+}
+// One fetch per site per session, shared by every trigger. A degraded or unusable result is a
+// failure here: we never pitch from data we know came back wrong.
+function _spLoad(poly, ctx) {
+  var sig = _spSig(poly);
+  if (window._spCache && window._spCache.sig === sig) {
+    if (window._spCache.data) return Promise.resolve(window._spCache.data);
+    if (window._spCache.failed) return Promise.reject(new Error('cached failure'));
+    if (window._spCache.pending) return window._spCache.pending;
+  }
+  try { track('spacing_preview_requested', { context: ctx }); } catch (x) {}
+  var t0 = Date.now();
+  var p = _spFetch(poly).then(function(d) {
+    if (d.degraded) throw new Error('degraded');
+    d.ms = Date.now() - t0;
+    window._spCache = { sig: sig, data: d };
+    return d;
+  }).catch(function(err) {
+    window._spCache = { sig: sig, failed: true };
+    try { track('spacing_preview_failed', { context: ctx, reason: String(err && err.message || err).slice(0, 80), ms: Date.now() - t0 }); } catch (x) {}
+    throw err;
+  });
+  window._spCache = { sig: sig, pending: p };
+  return p;
+}
+// What kind of site this is, from what the data actually was (the number in the source label wins,
+// then the coarse-tier rank, then the region table for an unlabelled high-quality source).
+function _spClassify(d) {
+  var info = d.info || {};
+  var gotRes = d.res != null ? d.res : (d.rank >= 2 ? 90 : (d.rank === 1 ? 30 : ((info.quality === 'hi' && info.res > 0) ? info.res : null)));
+  var hiRes = !d.degraded && gotRes != null && gotRes <= 3;
+  var diff4 = _spDiff(d, 4);
+  return { gotRes: gotRes, hiRes: hiRes, diff4: diff4, variant: !hiRes ? 'coarse' : (diff4.max >= 0.3 ? 'lidar' : 'flat') };
+}
+async function _spFetch(poly) {
+  var la = poly.map(function(p){ return p.lat; }), lo = poly.map(function(p){ return p.lng; });
+  var minLa = Math.min.apply(null,la), maxLa = Math.max.apply(null,la), minLo = Math.min.apply(null,lo), maxLo = Math.max.apply(null,lo);
+  var cLat = (minLa + maxLa) / 2, cLon = (minLo + maxLo) / 2;
+  var mpd = metresPerDeg(cLat);
+  var wM = (maxLo - minLo) * mpd.lon, hM = (maxLa - minLa) * mpd.lat;
+  var S = Math.max(60, Math.min(120, Math.floor(Math.min(wM, hM) / 12) * 12)); // a multiple of 12 so the 12 m grid aligns
+  var n = S / 3 + 1;
+  var pts = [];
+  for (var j = 0; j < n; j++) for (var i = 0; i < n; i++) {
+    var x = (i - (n - 1) / 2) * 3, y = (j - (n - 1) / 2) * 3;
+    pts.push({ lat: cLat + y / mpd.lat, lon: cLon + x / mpd.lon });
+  }
+  var res = await Promise.race([
+    tryWorkerProxy(pts, null),
+    new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('timeout')); }, 18000); })
+  ]);
+  var z = res.elevations;
+  if (!z || z.length !== pts.length) throw new Error('shape');
+  var cleaned = _spClean(z, n);   // same rules convert() applies: zeros at altitude, isolated spikes
+  return { n: n, size: S, ctr: { lat: cLat, lon: cLon }, mpd: mpd, z: cleaned.z, bad: cleaned.bad, source: res.source, degraded: !!res.degraded, mixed: !!res.mixed,
+           rank: _sourceCoarseRank(res.source), res: _spSourceRes(res.source), info: getRegionInfo(poly) };
+}
+// Resolution in metres written into a source label ("EA-LiDAR-England-1m", "USGS-3DEP-10m"), or null.
+function _spSourceRes(label) {
+  var m = String(label || '').match(/(?:^|[^0-9.])(\d+(?:\.\d+)?)\s*m(?![a-z])/i);
+  return m ? parseFloat(m[1]) : null;
+}
+// Mirrors the generation pipeline: literal zeros are nodata when the site sits above 3 m, and a
+// sample is rejected when it differs from its neighbour median by more than max(10 m, 3 x IQR).
+// Rejected samples are refilled from valid neighbours so the preview grid stays complete. If more
+// than 10% of the crop is bad the preview is not shown at all (an honest "no preview" beats a wrong one).
+function _spClean(z, n) {
+  var total = z.length, bad = new Array(total).fill(false), i, j, k;
+  var live = [];
+  for (i = 0; i < total; i++) { if (typeof z[i] !== 'number' || !isFinite(z[i])) bad[i] = true; else if (z[i] !== 0) live.push(z[i]); }
+  live.sort(function(a, b){ return a - b; });
+  var med = live.length ? live[Math.floor(live.length / 2)] : 0;
+  var stripZeros = Math.abs(med) > 3;
+  for (i = 0; i < total; i++) if (stripZeros && z[i] === 0) bad[i] = true;
+  var nb = [];
+  for (j = 0; j < n; j++) for (i = 0; i < n; i++) {
+    var idx = j * n + i;
+    if (bad[idx]) continue;
+    nb.length = 0;
+    for (var dj = -1; dj <= 1; dj++) for (var di = -1; di <= 1; di++) {
+      if (!di && !dj) continue;
+      var ii = i + di, jj = j + dj;
+      if (ii < 0 || jj < 0 || ii >= n || jj >= n) continue;
+      var q = jj * n + ii;
+      if (!bad[q]) nb.push(z[q]);
+    }
+    if (nb.length < 3) continue;
+    nb.sort(function(a, b){ return a - b; });
+    var m = nb[Math.floor(nb.length / 2)], q1 = nb[Math.floor(nb.length * 0.25)], q3 = nb[Math.floor(nb.length * 0.75)];
+    if (Math.abs(z[idx] - m) > Math.max(10, 3 * (q3 - q1))) bad[idx] = true;
+  }
+  var nBad = 0; for (i = 0; i < total; i++) if (bad[i]) nBad++;
+  if (nBad / total > 0.10) throw new Error('nodata ' + Math.round(100 * nBad / total) + '%');
+  var out = z.slice(), pass = 0;
+  while (nBad > 0 && pass++ < 30) {
+    var fix = [];
+    for (j = 0; j < n; j++) for (i = 0; i < n; i++) {
+      var id = j * n + i;
+      if (!bad[id]) continue;
+      var s = 0, c = 0;
+      for (k = 0; k < 4; k++) {
+        var ni = i + (k === 0 ? 1 : k === 1 ? -1 : 0), nj = j + (k === 2 ? 1 : k === 3 ? -1 : 0);
+        if (ni < 0 || nj < 0 || ni >= n || nj >= n) continue;
+        var qq = nj * n + ni;
+        if (!bad[qq]) { s += out[qq]; c++; }
+      }
+      if (c) fix.push([id, s / c]);
+    }
+    if (!fix.length) break;
+    fix.forEach(function(f){ out[f[0]] = f[1]; bad[f[0]] = false; nBad--; });
+  }
+  if (nBad > 0) throw new Error('nodata unfilled');
+  var badCount = 0; for (i = 0; i < total; i++) if (z[i] !== out[i]) badCount++;
+  return { z: out, bad: badCount };
+}
+// Height difference between the 3 m surface and the surface a coarser grid would give
+// (bilinear between the retained nodes), over the whole crop.
+function _spDiff(d, k) {
+  if (k === 1) return { max: 0, rms: 0 };
+  var n = d.n, z = d.z, mx = 0, ss = 0, c = 0;
+  for (var j = 0; j < n; j++) for (var i = 0; i < n; i++) {
+    var i0 = Math.floor(i / k) * k, j0 = Math.floor(j / k) * k, i1 = Math.min(i0 + k, n - 1), j1 = Math.min(j0 + k, n - 1);
+    var fx = i1 === i0 ? 0 : (i - i0) / (i1 - i0), fy = j1 === j0 ? 0 : (j - j0) / (j1 - j0);
+    var a = z[j0*n+i0], b = z[j0*n+i1], cc = z[j1*n+i0], dd = z[j1*n+i1];
+    var zi = (a*(1-fx) + b*fx) * (1-fy) + (cc*(1-fx) + dd*fx) * fy;
+    var df = Math.abs(z[j*n+i] - zi);
+    if (df > mx) mx = df; ss += df*df; c++;
+  }
+  return { max: mx, rms: Math.sqrt(ss / c) };
+}
+function _spDraw(cv, d, k, mode, interval) {
+  var n = d.n, z = d.z, dpr = Math.min(window.devicePixelRatio || 1, 2), W = cv.clientWidth || 240;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(W * dpr);
+  var g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = '#0f1a12'; g.fillRect(0, 0, W, W);
+  var m = (n - 1) / k + 1, step = 3 * k;
+  var minZ = Infinity, maxZ = -Infinity;
+  for (var q = 0; q < z.length; q++) { if (z[q] < minZ) minZ = z[q]; if (z[q] > maxZ) maxZ = z[q]; }
+  var rng = Math.max(maxZ - minZ, 0.5);
+  var px = function(a){ return a / (m - 1) * W; };
+  var zAt = function(a, b){ return z[(b*k)*n + a*k]; };
+  var ramp = function(t){ t = Math.max(0, Math.min(1, t)); return [Math.round(30 + 124*t), Math.round(58 + 128*t), Math.round(40 + 66*t)]; };
+  if (mode === 'dots') {
+    for (var b = 0; b < m; b++) for (var a = 0; a < m; a++) {
+      var c = ramp((zAt(a, b) - minZ) / rng);
+      g.fillStyle = 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+      g.beginPath(); g.arc(px(a), W - px(b), Math.max(1.6, W / m / 5), 0, 6.2832); g.fill();
+    }
+    return;
+  }
+  var tris = [];
+  for (var b2 = 0; b2 < m - 1; b2++) for (var a2 = 0; a2 < m - 1; a2++) {
+    var A = { x: px(a2),   y: W - px(b2),   z: zAt(a2, b2),     mx: 0,    my: 0 };
+    var B = { x: px(a2+1), y: W - px(b2),   z: zAt(a2+1, b2),   mx: step, my: 0 };
+    var C = { x: px(a2+1), y: W - px(b2+1), z: zAt(a2+1, b2+1), mx: step, my: step };
+    var D = { x: px(a2),   y: W - px(b2+1), z: zAt(a2, b2+1),   mx: 0,    my: step };
+    tris.push([A, B, C], [A, C, D]);
+  }
+  if (mode === 'shaded') {
+    var L = [-0.5, 0.6, 0.62], ll = Math.sqrt(L[0]*L[0] + L[1]*L[1] + L[2]*L[2]);
+    tris.forEach(function(t) {
+      var e1 = [t[1].mx - t[0].mx, t[1].my - t[0].my, t[1].z - t[0].z], e2 = [t[2].mx - t[0].mx, t[2].my - t[0].my, t[2].z - t[0].z];
+      var nx = e1[1]*e2[2] - e1[2]*e2[1], ny = e1[2]*e2[0] - e1[0]*e2[2], nz = e1[0]*e2[1] - e1[1]*e2[0];
+      if (nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
+      var nl = Math.sqrt(nx*nx + ny*ny + nz*nz) || 1;
+      var s = (nx*L[0] + ny*L[1] + nz*L[2]) / (nl * ll);               // 0..1
+      var br = Math.max(0.3, Math.min(1.25, 0.35 + 1.3 * (s - 0.2)));
+      var c = ramp(((t[0].z + t[1].z + t[2].z) / 3 - minZ) / rng);
+      var col = 'rgb(' + Math.min(255, Math.round(c[0]*br)) + ',' + Math.min(255, Math.round(c[1]*br)) + ',' + Math.min(255, Math.round(c[2]*br)) + ')';
+      g.fillStyle = col; g.strokeStyle = col; g.lineWidth = 0.6;
+      g.beginPath(); g.moveTo(t[0].x, t[0].y); g.lineTo(t[1].x, t[1].y); g.lineTo(t[2].x, t[2].y); g.closePath(); g.fill(); g.stroke();
+    });
+  }
+  var segs = _triContourSegments(tris, minZ, maxZ, interval);
+  var idx = 0;
+  for (var s2 = 0; s2 < segs.length; s2 += 2) {
+    var lv = segs[s2].z, strong = Math.abs(Math.round(lv / interval) % 5) === 0;
+    var cc = ramp((lv - minZ) / rng);
+    g.strokeStyle = mode === 'shaded' ? 'rgba(255,255,255,' + (strong ? 0.6 : 0.32) + ')' : 'rgb(' + Math.min(255, cc[0] + 60) + ',' + Math.min(255, cc[1] + 50) + ',' + Math.min(255, cc[2] + 40) + ')';
+    g.lineWidth = strong ? 1.3 : 0.8;
+    g.beginPath(); g.moveTo(segs[s2].x, segs[s2].y); g.lineTo(segs[s2+1].x, segs[s2+1].y); g.stroke();
+    idx++;
+  }
+}
+// ── Tiny auto-rotating 3D views (three.js r128, already on the page) ────────────────────────
+// Both panels use the same camera angle, vertical scale and light, so the only visible
+// difference is how densely the same data was sampled. 2D fallback is _spDraw.
+function _spRange(d) {
+  var mn = Infinity, mx = -Infinity;
+  for (var q = 0; q < d.z.length; q++) { if (d.z[q] < mn) mn = d.z[q]; if (d.z[q] > mx) mx = d.z[q]; }
+  var rel = Math.max(mx - mn, 0.5);
+  // Lift gentle sites so the shape reads, never squash steep ones. Shown to the visitor as a note.
+  var ex = Math.max(1, Math.min(4, (d.size * 0.16) / rel));
+  return { min: mn, max: mx, mid: (mn + mx) / 2, ex: Math.round(ex * 10) / 10 };
+}
+function _spStopLoop() { if (_spState.raf) { cancelAnimationFrame(_spState.raf); _spState.raf = 0; } }
+function _spDispose() {
+  _spStopLoop();
+  (_spState.viewers || []).forEach(function(v) { try { v.dispose(); } catch (e) {} });
+  _spState.viewers = [];
+}
+function _spBuild(cv, d, k, opt, zr, iv) {
+  var T = window.THREE;
+  if (!T) return null;
+  var renderer;
+  try { renderer = new T.WebGLRenderer({ canvas: cv, antialias: true, alpha: false }); } catch (e) { return null; }
+  var px = cv.clientWidth || 240;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(px, px, false);
+  renderer.setClearColor(0x0f1a12, 1);
+  var scene = new T.Scene();
+  var cam = new T.PerspectiveCamera(30, 1, 1, 4000);
+  scene.add(new T.AmbientLight(0xffffff, 0.55));
+  var sun = new T.DirectionalLight(0xffffff, 0.95); sun.position.set(-1, 1.6, 0.8); scene.add(sun);
+  var n = d.n, z = d.z, m = (n - 1) / k + 1, step = 3 * k, S = d.size;
+  var pos = new Float32Array(m * m * 3), col = new Float32Array(m * m * 3);
+  var ramp = function(t) { t = Math.max(0, Math.min(1, t)); return [(30 + 124 * t) / 255, (58 + 128 * t) / 255, (40 + 66 * t) / 255]; };
+  var rng = Math.max(zr.max - zr.min, 0.5);
+  var vy = function(v) { return (v - zr.mid) * zr.ex; };
+  for (var b = 0; b < m; b++) for (var a = 0; a < m; a++) {
+    var o = (b * m + a) * 3, zv = z[(b * k) * n + a * k], c = ramp((zv - zr.min) / rng);
+    pos[o] = (a - (m - 1) / 2) * step; pos[o + 1] = vy(zv); pos[o + 2] = -(b - (m - 1) / 2) * step;
+    col[o] = c[0]; col[o + 1] = c[1]; col[o + 2] = c[2];
+  }
+  var objs = [];
+  if (opt.points) {
+    var pg = new T.BufferGeometry();
+    pg.setAttribute('position', new T.BufferAttribute(pos, 3)); pg.setAttribute('color', new T.BufferAttribute(col, 3));
+    var pm = new T.PointsMaterial({ size: Math.max(3, S / 28), vertexColors: true, sizeAttenuation: true });
+    objs.push(new T.Points(pg, pm));
+  } else {
+    var idx = [];
+    for (var bb = 0; bb < m - 1; bb++) for (var aa = 0; aa < m - 1; aa++) {
+      var i0 = bb * m + aa, i1 = i0 + 1, i2 = i0 + m, i3 = i2 + 1;
+      idx.push(i0, i2, i1, i1, i2, i3);
+    }
+    var g = new T.BufferGeometry();
+    g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('color', new T.BufferAttribute(col, 3));
+    g.setIndex(idx); g.computeVertexNormals();
+    objs.push(new T.Mesh(g, new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1, metalness: 0, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 })));
+    if (opt.wire && m <= 21) {   // a wireframe on the dense 3 m mesh is just visual noise
+      // Rows and columns of the real square grid (not triangle diagonals), plus a dot per sample.
+      var lp = [], ly = 0.25;
+      var at = function(a, b) { var o = (b * m + a) * 3; return [pos[o], pos[o + 1] + ly, pos[o + 2]]; };
+      for (var gb = 0; gb < m; gb++) for (var ga = 0; ga < m; ga++) {
+        if (ga + 1 < m) lp.push.apply(lp, at(ga, gb).concat(at(ga + 1, gb)));
+        if (gb + 1 < m) lp.push.apply(lp, at(ga, gb).concat(at(ga, gb + 1)));
+      }
+      var lg = new T.BufferGeometry(); lg.setAttribute('position', new T.BufferAttribute(new Float32Array(lp), 3));
+      objs.push(new T.LineSegments(lg, new T.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.28 })));
+      var dp = new Float32Array(m * m * 3);
+      for (var di = 0; di < m * m; di++) { dp[di * 3] = pos[di * 3]; dp[di * 3 + 1] = pos[di * 3 + 1] + ly * 2; dp[di * 3 + 2] = pos[di * 3 + 2]; }
+      var dg = new T.BufferGeometry(); dg.setAttribute('position', new T.BufferAttribute(dp, 3));
+      objs.push(new T.Points(dg, new T.PointsMaterial({ color: 0xffffff, size: Math.max(2.2, S / 45), sizeAttenuation: true })));
+    }
+    if (opt.contours) {
+      var tris = [];
+      for (var cb = 0; cb < m - 1; cb++) for (var ca = 0; ca < m - 1; ca++) {
+        var P = function(x, y) { return { x: (x - (m - 1) / 2) * step, y: -(y - (m - 1) / 2) * step, z: z[(y * k) * n + x * k] }; };
+        var A = P(ca, cb), B = P(ca + 1, cb), C = P(ca + 1, cb + 1), D = P(ca, cb + 1);
+        tris.push([A, B, C], [A, C, D]);
+      }
+      var segs = _triContourSegments(tris, zr.min, zr.max, iv), cp = new Float32Array(segs.length * 3);
+      for (var s = 0; s < segs.length; s++) { cp[s * 3] = segs[s].x; cp[s * 3 + 1] = vy(segs[s].z) + Math.max(0.4, S * 0.004); cp[s * 3 + 2] = -segs[s].y; }
+      var cg = new T.BufferGeometry(); cg.setAttribute('position', new T.BufferAttribute(cp, 3));
+      objs.push(new T.LineSegments(cg, new T.LineBasicMaterial({ color: 0xf2f7e6 })));
+    }
+  }
+  var group = new T.Group(); objs.forEach(function(o) { group.add(o); }); scene.add(group);
+  var relY = (zr.max - zr.min) * zr.ex;
+  var radius = Math.max(S * 2.15, relY * 3);
+  return {
+    render: function(t) {
+      var az = t * 0.35 + 0.6;
+      cam.position.set(Math.sin(az) * radius, radius * 0.8, Math.cos(az) * radius);
+      cam.lookAt(0, 0, 0);
+      renderer.render(scene, cam);
+    },
+    dispose: function() {
+      objs.forEach(function(o) { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      renderer.dispose();
+      try { renderer.forceContextLoss(); } catch (e) {}
+    }
+  };
+}
+// Build both panels as 3D. Returns false when WebGL or three.js is unavailable (caller then draws 2D).
+// A canvas that has held one kind of context cannot switch kinds, and a lost WebGL context cannot
+// be reused: swap in fresh canvases for every (re)build.
+function _spFreshCanvases() {
+  ['sp-cv-a', 'sp-cv-b'].forEach(function(id) {
+    var o = document.getElementById(id); if (!o || !o.parentNode) return;
+    var c = document.createElement('canvas');
+    c.id = id; c.setAttribute('role', 'img'); c.setAttribute('aria-label', o.getAttribute('aria-label') || '');
+    c.style.cssText = o.style.cssText; c.style.display = 'block';
+    o.parentNode.replaceChild(c, o);
+  });
+}
+function _spFallback2D(d, kL, kR, modeL, modeR, iv) {
+  _spDispose(); _spFreshCanvases();
+  var e = _spEls();
+  _spState.zr = _spRange(d);
+  _spDraw(e.cvA, d, kL, modeL, iv);
+  _spDraw(e.cvB, d, kR, modeR, iv);
+}
+function _spPair(d, kLeft, kRight, leftOpt, rightOpt, iv) {
+  _spDispose(); _spFreshCanvases();
+  var e = _spEls(), zr = _spRange(d);
+  _spState.zr = zr;
+  var L = _spBuild(e.cvA, d, kLeft, leftOpt, zr, iv);
+  if (!L) return false;
+  var R = _spBuild(e.cvB, d, kRight, rightOpt, zr, iv);
+  if (!R) { L.dispose(); return false; }
+  _spState.viewers = [L, R];
+  var still = false;
+  try { still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (x) {}
+  var t0 = performance.now();
+  var tick = function(now) {
+    var ov = document.getElementById('upgrade-overlay');
+    if (!ov || !ov.classList.contains('show')) { _spState.raf = 0; return; }   // modal closed: stop spinning
+    var t = still ? 0 : (now - t0) / 1000;
+    L.render(t); R.render(t);
+    _spState.raf = requestAnimationFrame(tick);
+  };
+  _spState.raf = requestAnimationFrame(tick);
+  return true;
+}
+function _spInterval(d) {
+  var mn = Infinity, mx = -Infinity;
+  for (var q = 0; q < d.z.length; q++) { if (d.z[q] < mn) mn = d.z[q]; if (d.z[q] > mx) mx = d.z[q]; }
+  var r = Math.max(mx - mn, 0.1), iv = _contourInterval(r);
+  while (r / iv < 6 && iv / 2 >= 0.1) iv /= 2;
+  return iv;
+}
+function _spShow(d, ctx, fromCache) {
+  var e = _spEls();
+  var info = d.info || {};
+  var cls = _spClassify(d);
+  var gotRes = cls.gotRes, hiRes = cls.hiRes, diff4 = cls.diff4, variant = cls.variant;
+  _spState.data = d; _spState.variant = variant; _spState.stride = 1;
+  // Only show the preview where it is genuinely convincing: real LiDAR (3 m or finer) whose detail the
+  // 12 m grid visibly loses. On 5 m, 30 m or gentle sites the 3 m result is not nicer (5 m data shows
+  // terracing), so the standard plan popup stands alone and we log why.
+  if (variant !== 'lidar') {
+    e.box.style.display = 'none';
+    try { track('spacing_preview_skipped', { context: ctx, variant: variant, res_m: gotRes, source: String(d.source || '').slice(0, 40),
+      max_diff_m: Math.round(diff4.max * 100) / 100 }); } catch (x) {}
+    return;
+  }
+  // The "1 point in N" headline is only meaningful when the source is much finer than the 3 m Pro grid.
+  var srcM = (hiRes && gotRes > 0 && gotRes <= 2) ? gotRes : null;
+  var nodes = function(k){ var q = (d.n - 1) / k + 1; return q * q; };
+  var fmt = function(v){ return Math.round(v).toLocaleString(); };
+  e.box.style.display = 'block';
+  e.skA.style.display = 'none'; e.skB.style.display = 'none'; e.cvA.style.display = 'block'; e.cvB.style.display = 'block';
+  var iv = _spInterval(d);
+  _spState.interval = iv;
+  var view = d.size + ' m view';
+  e.hk.textContent = '14-day free trial';
+  var kR = (_spState.tapped === 6) ? 2 : 1;                 // open on the spacing they tapped
+  var opts = variant === 'lidar' ? { wire: true } : { contours: true };
+  var mx1 = (Math.ceil(diff4.max * 10) / 10).toFixed(1);
+  if (variant === 'lidar') {
+    var srcTxt = srcM ? srcM + ' m LiDAR' : 'LiDAR';
+    e.ht.textContent = 'Your site, free vs Pro';
+    e.hs.textContent = srcM ? 'Same ' + srcTxt + '. Free keeps 1 point in ' + fmt(Math.pow(12 / srcM, 2)) + ', Pro keeps 1 in ' + fmt(Math.pow(3 / srcM, 2)) + '.' : 'Same LiDAR. Pro samples 16 times as densely.';
+    e.eyebrow.textContent = 'Your site from above, ' + view + ', same ' + srcTxt;
+    e.line.textContent = 'Ditches, walls and building pads sit between 12 m points. At 3 m they stay in your model.';
+  } else if (variant === 'flat') {
+    e.ht.textContent = 'Your ground is gentle, and 12 m already follows it';
+    e.hs.textContent = 'What Pro adds here is smoother contours and the export formats.';
+    e.eyebrow.textContent = 'Your site at 12 m and 3 m, same data (' + view + ')';
+    e.line.textContent = 'On this site the 12 m surface stays within ' + mx1 + ' m of the 3 m one, so we will not tell you it changes much. Pro gives you smoother contour lines and exports them as DXF and IFC, ready to drop into your model.';
+  } else {
+    e.ht.textContent = 'Same data, finer contour lines';
+    e.hs.textContent = 'Heights stay close, the lines get smoother, and Pro exports them as DXF and IFC.';
+    e.eyebrow.textContent = 'Your site at 12 m and 3 m, same ' + (gotRes ? gotRes + ' m ' : '') + 'data (' + view + ')';
+    e.line.textContent = (gotRes ? 'This site is on ' + gotRes + ' m elevation data' : 'This site is on coarse elevation data') +
+      ', so finer spacing mostly smooths the lines (heights differ by up to ' + mx1 + ' m here) and cannot add detail the source does not have. Pro exports them as DXF and IFC for Revit, Civil 3D and Rhino.';
+  }
+  if (!_spPair(d, 4, kR, opts, opts, iv)) _spFallback2D(d, 4, kR, variant === 'lidar' ? 'shaded' : 'contours', variant === 'lidar' ? 'shaded' : 'contours', iv);
+  e.capA.textContent = 'Your site, 12 m'; e.subA.textContent = 'free';
+  e.tog.style.display = 'inline-flex'; _spTogSet(kR);
+  e.foot.textContent = 'Same elevation data, same view. Preview only.';
+  if (_spState.zr && _spState.zr.ex > 1) e.foot.textContent += ' Heights x' + _spState.zr.ex.toFixed(1) + '.';
+  _spState.stride = kR; _spState.chosen = kR === 2 ? 6 : 3;
+  _spStats(d, kR);
+  try {
+    track('spacing_preview_rendered', { context: ctx, variant: variant, source: String(d.source || '').slice(0, 40), size_m: d.size,
+      max_diff_m: Math.round(diff4.max * 100) / 100, rms_diff_m: Math.round(diff4.rms * 100) / 100, ms: d.ms || null, cached: !!fromCache });
+  } catch (x) {}
+}
+function _spStats(d, k) {
+  var e = _spEls();
+  var nodes = function(s){ var q = (d.n - 1) / s + 1; return q * q; };
+  var fmt = function(v){ return Math.round(v).toLocaleString(); };
+  var dif = _spDiff(d, 4);
+  var sp = k === 1 ? 3 : 6;
+  var lid = _spState.variant === 'lidar';
+  e.stats.style.display = 'flex';
+  e.stats.innerHTML =
+    '<div class="sp-stat"><span>' + fmt(nodes(4)) + ' &rarr; ' + fmt(nodes(k)) + '</span>points, 12 m vs ' + sp + ' m</div>' +
+    '<div class="sp-stat"><span>' + (Math.round(dif.max * 10) / 10).toFixed(1) + ' m</span>' + (lid ? 'largest height missed at 12 m' : 'largest difference') + '</div>' +
+    '<div class="sp-stat"><span>' + (Math.round(dif.rms * 100) / 100).toFixed(2) + ' m</span>' + (lid ? 'average error at 12 m' : 'average difference') + '</div>';
+  e.subB.textContent = 'Pro';
+  e.capB.textContent = 'Your site, ' + sp + ' m';
+}
+function _spTogSet(k) {
+  var btns = document.querySelectorAll('#sp-tog button');
+  for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('on', Number(btns[i].getAttribute('data-k')) === k);
+}
+function _spToggle(k) {
+  var d = _spState.data; if (!d) return;
+  _spState.stride = k; _spState.chosen = k === 1 ? 3 : 6;
+  var tOpt = _spState.variant === 'lidar' ? { wire: true } : { contours: true };
+  var tMode = _spState.variant === 'lidar' ? 'shaded' : 'contours';
+  if (!_spPair(d, 4, k, tOpt, tOpt, _spState.interval)) _spFallback2D(d, 4, k, tMode, tMode, _spState.interval);
+  _spTogSet(k); _spStats(d, k);
+  try { track('spacing_preview_toggled', { spacing: _spState.chosen }); } catch (x) {}
+}
+// Remember the site and the spacing the visitor was looking at, so that after payment the same
+// site comes back ready to generate at that spacing (see _spResumeAfterPayment).
+// A free visitor taps the locked 3 m or 6 m chip: show them their own site at that spacing, once per
+// site per session (the gate-hit popup at generate time stays as it was).
+function _spChipTap(n) {
+  if (isPro() || !polygonLatLngs || polygonLatLngs.length < 3) return;
+  var sig = _spSig(polygonLatLngs);
+  if (window._spChipShownFor === sig) return;
+  window._spChipShownFor = sig;
+  try { track('spacing_chip_tapped', { spacing: n }); } catch (x) {}
+  // Load quietly first. Only interrupt the visitor when the preview will actually show something
+  // worth seeing (real LiDAR detail); on 30 m or gentle sites the chip simply stays selected.
+  _spLoad(polygonLatLngs, 'spacing_chip').then(function(d) {
+    if (isPro() || _spSig(polygonLatLngs || []) !== sig) return;
+    if (_spClassify(d).variant !== 'lidar') return;
+    if (document.getElementById('upgrade-overlay').classList.contains('show')) return;
+    _spState.tapped = n;
+    openUpgrade('spacing_chip');
+  }).catch(function() {});
+}
+function _spResultClick() {
+  _spState.tapped = null;
+  try { track('spacing_result_btn_clicked', {}); } catch (x) {}
+  openUpgrade('spacing_result');
+}
+function _spSaveResume() {
+  if (isPro() || !polygonLatLngs || polygonLatLngs.length < 3) return;
+  if (!/^spacing/.test(window._upgradeCtx || '')) return;
+  try {
+    localStorage.setItem('topo_resume_site', JSON.stringify({
+      poly: polygonLatLngs.map(function(p){ return [p.lat, p.lng]; }),
+      spacing: _spState.chosen || 3, ts: Date.now()
+    }));
+  } catch (e) {}
+}
+function _spResumeAfterPayment() {
+  if (!window._justUpgraded || window._spResumeDone) return;
+  window._spResumeDone = true;
+  var r = null;
+  try { r = JSON.parse(localStorage.getItem('topo_resume_site') || 'null'); localStorage.removeItem('topo_resume_site'); } catch (e) {}
+  if (!r || !Array.isArray(r.poly) || r.poly.length < 3 || (Date.now() - (r.ts || 0)) > 3 * 3600 * 1000) return;
+  try {
+    drawnItems.clearLayers();
+    var poly = L.polygon(r.poly, { color: '#9aba6a', fillColor: '#9aba6a', fillOpacity: 0.12, weight: 2 });
+    drawnItems.addLayer(poly);
+    polygonLatLngs = r.poly.map(function(ll){ return { lat: ll[0], lng: ll[1] }; });
+    map.fitBounds(poly.getBounds(), { padding: [50, 50] });
+    updateMapHint();
+    try { checkDrawnAreaWarning(); } catch (e2) {}
+    var sp = (r.spacing === 6) ? 6 : 3;
+    setAccuracy(sp);
+    var bar = document.createElement('div');
+    bar.id = 'resume-site-bar';
+    bar.style.cssText = 'position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;max-width:min(92vw,520px);background:var(--bg-card);border:1px solid var(--accent);border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:center;font-size:13px;color:var(--text);box-shadow:0 8px 28px rgba(0,0,0,.35);';
+    bar.innerHTML = '<span style="flex:1;line-height:1.5;">Welcome to Pro. Your site is back on the map, set to ' + sp + ' m spacing.</span>' +
+      '<button type="button" id="resume-site-go" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);border-radius:6px;padding:9px 14px;font-family:\'DM Mono\',monospace;font-size:12px;cursor:pointer;white-space:nowrap;">Generate at ' + sp + ' m</button>' +
+      '<button type="button" id="resume-site-x" aria-label="Dismiss" style="background:transparent;border:none;color:var(--text-soft);font-size:16px;cursor:pointer;">&#x2715;</button>';
+    document.body.appendChild(bar);
+    document.getElementById('resume-site-go').onclick = function() {
+      bar.remove();
+      try { track('resume_generate_clicked', { spacing: sp }); } catch (x) {}
+      var cb = document.getElementById('convert-btn'); if (cb) cb.click();
+    };
+    document.getElementById('resume-site-x').onclick = function(){ bar.remove(); };
+    track('upgrade_site_restored', { spacing: sp });
+  } catch (err) { console.warn('resume site failed:', err); }
 }
 
 function closeAuth() {
@@ -7104,6 +7674,7 @@ function _userFacingSource(s) {
   return m[1] + ' (temporarily degraded data)' + (thin ? ' ' + thin[0].trim() : '');
 }
 function updateElevationSourceBanner(source, _pro, degraded, mixed) {
+  window._lastElevSource = { source: source, degraded: !!degraded };   // read by the result-card 3 m preview button
   const banner=document.getElementById('elevation-source-banner'), title=document.getElementById('esb-title');
   const detail=document.getElementById('esb-detail'), upgrade=document.getElementById('esb-upgrade');
   if (!banner||!title||!detail) return;
@@ -7222,6 +7793,16 @@ function showWireframe(points, minZ, maxZ) {
   // The terrain is ready: reveal the "View in 3D" button on the result card.
   const _v3dBtn = document.getElementById('view-3d-btn');
   if (_v3dBtn) _v3dBtn.style.display = 'block';
+  const _spBtn = document.getElementById('spacing-result-btn');
+  // Offered only where the preview can show real detail: this result came from 3 m or finer data.
+  // On 30 m sites the button would open a popup with nothing to look at, so it stays hidden.
+  const _le = window._lastElevSource || {};
+  const _leRes = _spSourceRes(_le.source);
+  if (_spBtn) {
+    const _showSp = !isPro() && !_le.degraded && _leRes != null && _leRes <= 3 && polygonLatLngs && polygonLatLngs.length >= 3;
+    _spBtn.style.display = _showSp ? 'block' : 'none';
+    if (_showSp) _spBtn.textContent = 'Your site has ' + _leRes + ' m LiDAR. See it at 3 m and 6 m';
+  }
 
   // Tear down any previous Pro renderer
   if (_terrain3dState) {
@@ -9168,6 +9749,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Held until auth resolves so the row carries user_id (initAuth runs after this handler;
     // firing here always logged user_id = null). 6 s fallback covers signed-out returns.
     window._subCreatedPending = true;
+    window._justUpgraded = true; // _spResumeAfterPayment() reads this once auth is ready
     setTimeout(_flushSubscriptionCreated, 6000);
     history.replaceState(null, '', window.location.pathname); // strip ?upgraded=true so a reload/revisit can't re-fire this
     _markConfirmPaid(); // paid before confirming the email: surface the "confirm your email" banner
