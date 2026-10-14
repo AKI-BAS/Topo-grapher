@@ -2566,7 +2566,7 @@ async function loadMonitor(){
     _sb.from('events').select('event,properties,user_id').eq('is_test',false)
       .in('event',['upstream_timing','degraded_retry_clicked','addon_charged','addon_not_recharged','view_3d_shown','view_3d_interacted','view_3d_button_clicked',
         'format_picker_shown','format_selected','format_card_clicked','format_picker_dismissed','format_locked_clicked','subscription_created','subscription_confirmed',
-        'spacing_preview_requested','spacing_preview_rendered','spacing_preview_skipped','spacing_preview_failed','upsell_popup_shown','upsell_popup_dismissed','pro_cta_clicked','checkout_clicked','checkout_started','checkout_cancelled','spacing_preview_toggled','spacing_chip_tapped','spacing_result_btn_clicked','upgrade_site_restored','resume_generate_clicked'])
+        'spacing_preview_requested','spacing_preview_rendered','spacing_preview_skipped','spacing_preview_failed','upsell_popup_shown','upsell_popup_dismissed','pro_cta_clicked','checkout_clicked','checkout_started','checkout_cancelled','billing_portal_opened','billing_portal_failed','past_due_banner_shown','spacing_preview_toggled','spacing_chip_tapped','spacing_result_btn_clicked','upgrade_site_restored','resume_generate_clicked'])
       .gte('created_at',weekAgo).limit(5000),
   ]);
 
@@ -2716,6 +2716,9 @@ async function loadMonitor(){
     spCta:wk.filter(r=>r.event==='pro_cta_clicked'&&/^spacing/.test((r.properties&&r.properties.context)||'')).length,
     spCkClick:wk.filter(r=>r.event==='checkout_clicked'&&/^spacing/.test((r.properties&&r.properties.context)||'')).length,
     ckCancel:wkCount('checkout_cancelled'),
+    bpOpen:wkCount('billing_portal_opened'), bpFail:wkCount('billing_portal_failed'), pdBanner:wkCount('past_due_banner_shown'),
+    bpFromBanner:wk.filter(r=>r.event==='billing_portal_opened'&&r.properties&&r.properties.source==='pastdue_banner').length,
+    bpWhilePastDue:wk.filter(r=>r.event==='billing_portal_opened'&&r.properties&&(r.properties.status==='past_due'||r.properties.status==='unpaid')).length,
     ckCancelBack:wk.filter(r=>r.event==='checkout_cancelled'&&r.properties&&r.properties.via==='stripe_back_link').length,
     spCkStart:wk.filter(r=>r.event==='checkout_started'&&/^spacing/.test((r.properties&&r.properties.context)||'')).length,
     spDismissBy:(function(){var o={};wk.filter(r=>r.event==='upsell_popup_dismissed'&&/^spacing/.test((r.properties&&r.properties.context)||'')).forEach(r=>{var h=(r.properties&&r.properties.how)||'close_button';o[h]=(o[h]||0)+1;});return Object.entries(o).map(e=>e[1]+' '+e[0].replace('_',' ')).join(', ')||'none';})(),
@@ -2893,7 +2896,7 @@ async function loadMonitor(){
               return `<div class="mon-row"><span class="mon-dot ${dot}"></span><div class="mon-label">${esc(s.region)}</div><div class="mon-val-wrap">${esc(val)}</div></div>`;
             }).join('')
         }
-        ${wkStats.n===0 && !wkStats.shown && !wkStats.retryClicks && !wkStats.pickerShown && !wkStats.subCreated && !wkStats.subConfirmed && !wkStats.spReq && !wkStats.spShown && !wkStats.ckCancel ? '' : `
+        ${wkStats.n===0 && !wkStats.shown && !wkStats.retryClicks && !wkStats.pickerShown && !wkStats.subCreated && !wkStats.subConfirmed && !wkStats.spReq && !wkStats.spShown && !wkStats.ckCancel && !wkStats.bpOpen && !wkStats.pdBanner ? '' : `
           <div class="mon-block-title" style="margin-top:14px;">Last 7 days · from events</div>
           ${wkRow('Degraded results', wkStats.deg+' of '+wkStats.n+' generations ('+wkDegPct+'%) · '+wkStats.mixed+' mixed', wkDegPct>=25?'crit':wkDegPct>=10?'warn':'ok')}
           ${wkRow('Top reasons', wkReasons.length?wkReasons.map(r=>r[1]+'x '+r[0]).join(' | '):'none recorded', 'ok')}
@@ -2903,6 +2906,7 @@ async function loadMonitor(){
           ${wkRow('3D viewer', wkStats.shown+' shown · '+wkStats.interacted+' interacted · '+wkStats.btn+' View in 3D clicks', 'ok')}
           ${wkRow('Pro formats (DXF/IFC), non-Pro intent', wkStats.pickerShown+' picker opens · '+wkStats.lockedPicks+' locked picks · '+wkStats.lockedCards+' locked card clicks · '+wkStats.lockedDismissed+' of '+wkStats.pickerDismissed+' dismissals on a locked format · '+wkStats.lockedDownload+' pressed Download', 'ok')}
           ${wkRow('Spacing popup funnel', wkStats.spShown+' popups shown · '+wkStats.spLidar+' with 3D preview, '+wkStats.spSkip+' plain (not LiDAR) · '+wkStats.spCta+' trial clicks → '+wkStats.spCkClick+' checkout clicks → '+wkStats.spCkStart+' checkouts started · dismissed '+wkStats.spDismiss+' ('+wkStats.spDismissBy+')', 'ok')}
+          ${wkRow('Billing recovery', wkStats.pdBanner+' past-due banners shown · '+wkStats.bpOpen+' billing portal opens ('+wkStats.bpFromBanner+' from the banner, '+wkStats.bpWhilePastDue+' while past due) · '+wkStats.bpFail+' failed to open', wkStats.bpFail>0?'warn':'ok')}
           ${wkRow('Checkout abandons', wkStats.ckCancel+' came back without paying ('+wkStats.ckCancelBack+' via the Stripe back link, '+(wkStats.ckCancel-wkStats.ckCancelBack)+' via the browser Back button) against '+wkCount('checkout_started')+' checkouts started', 'ok')}
           ${wkRow('Spacing preview popup', wkStats.spReq+' opened ('+wkStats.spChip+' chip taps, '+wkStats.spBtn+' result button) · rendered '+wkStats.spLidar+' LiDAR, '+wkStats.spFlat+' flat, '+wkStats.spCoarse+' coarse · '+wkStats.spFail+' failed · '+wkStats.spToggle+' 6 m toggles · after payment: '+wkStats.spRestored+' restored, '+wkStats.spResumeGo+' generated', wkStats.spReq>0&&wkStats.spFail>wkStats.spReq*0.3?'warn':'ok')}
           ${wkRow('Subscriptions',wkStats.subCreated+' created in browser ('+wkStats.subCreatedUid+' with user id) · '+wkStats.subConfirmed+' confirmed by Stripe webhook', 'ok')}
