@@ -1856,7 +1856,7 @@ function declineCookies() {
         <h3 id="upgrade-hero-title">Unlock Buildings Export</h3>
         <p id="upgrade-hero-sub">IFC &nbsp;·&nbsp; DXF &nbsp;·&nbsp; Full 3D terrain viewer</p>
       </div>
-      <button class="upgrade-hero-close" onclick="closeUpgrade(); track('upsell_popup_dismissed', {context: window._upgradeCtx || 'buildings'});">&#x2715;</button>
+      <button class="upgrade-hero-close" onclick="_upgradeDismiss('close_button');">&#x2715;</button>
     </div>
 
     <!-- Their own site, rendered from real data at the free and the Pro spacing -->
@@ -1898,7 +1898,7 @@ function declineCookies() {
         </ul>
         <button class="upgrade-plan-cta" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);"
           onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"
-          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings'}); try{_spSaveResume();}catch(e){} closeUpgrade(); startCheckout('pro');">Start free trial &rarr;</button>
+          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings'}); try{_spSaveResume();}catch(e){} closeUpgrade(); startCheckout('pro', { context: window._upgradeCtx || 'buildings' });">Start free trial &rarr;</button>
       </div>
 
       <!-- Company -->
@@ -1915,7 +1915,7 @@ function declineCookies() {
         </ul>
         <button class="upgrade-plan-cta" style="background:var(--accent);color:var(--bg-card);"
           onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"
-          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings', plan:'company'}); closeUpgrade(); if(!_currentUser){openAuth();} else {document.getElementById('seat-picker-overlay').classList.add('show');updateSeatTotal();}">Start free trial &rarr;</button>
+          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings', plan:'company'}); window._companyCtx = window._upgradeCtx || 'buildings'; closeUpgrade(); if(!_currentUser){openAuth();} else {document.getElementById('seat-picker-overlay').classList.add('show');updateSeatTotal();}">Start free trial &rarr;</button>
       </div>
 
     </div>
@@ -4018,13 +4018,13 @@ async function handleSession(session) {
   // handleSession() runs. Before this, the in-memory plan let the original tab AND the
   // email-confirm tab both resume, firing two Stripe sessions.
   if (!window._checkoutResumeDone) {
-    let resumePlan = null, lsFailed = false;
+    let resumePlan = null, lsFailed = false, resumeCtx = null;
     try {
       const raw = localStorage.getItem('topo_pending_checkout');
       if (raw) {
         localStorage.removeItem('topo_pending_checkout');
         const p = JSON.parse(raw);
-        if (p && p.plan && (Date.now() - (p.ts || 0)) < 3600000) resumePlan = p.plan;
+        if (p && p.plan && (Date.now() - (p.ts || 0)) < 3600000) { resumePlan = p.plan; resumeCtx = p.ctx || null; }
       }
     } catch(e) { lsFailed = true; }
     if (!resumePlan && lsFailed) resumePlan = window._pendingCheckoutPlan || null;
@@ -4034,7 +4034,7 @@ async function handleSession(session) {
       track('checkout_resumed_after_auth', { plan: resumePlan });
       const _msg = 'Account ready. Taking you to secure checkout…';
       _showCheckoutOverlay(_msg);
-      setTimeout(() => startCheckout(resumePlan, { message: _msg }), 500);
+      setTimeout(() => startCheckout(resumePlan, { message: _msg, context: resumeCtx }), 500);
     }
   }
 }
@@ -4120,6 +4120,14 @@ function openUpgrade(context) {
 function closeUpgrade() {
   document.getElementById('upgrade-overlay').classList.remove('show');
   try { _spStopLoop(); } catch (e) {}
+}
+// Closing without choosing a plan: log how (close_button, backdrop, escape). Closing via a plan
+// button calls closeUpgrade() directly and is not a dismissal.
+function _upgradeDismiss(how) {
+  var ov = document.getElementById('upgrade-overlay');
+  var wasOpen = !!(ov && ov.classList.contains('show'));
+  closeUpgrade();
+  if (wasOpen) { try { track('upsell_popup_dismissed', { context: window._upgradeCtx || 'buildings', how: how }); } catch (e) {} }
 }
 
 // ── Spacing preview: the visitor's own site at the free vs the Pro spacing ──────────────────
@@ -5370,23 +5378,24 @@ async function startCheckout(plan, opts) {
   // Signed-in users use their account email. opts.email is only passed right after a
   // signup that is still awaiting email confirmation (pay-before-confirm path).
   const email = _currentUser ? _currentUser.email : ((opts && opts.email) || null);
+  const _ctx = (opts && opts.context) || null;   // which popup or button started this checkout
   if (!email) {
-    track('checkout_gated', { plan });
+    track('checkout_gated', _ctx ? { plan, context: _ctx } : { plan });
     window._pendingCheckoutPlan = plan;
-    try { localStorage.setItem('topo_pending_checkout', JSON.stringify({ plan, ts: Date.now() })); } catch(e) {}
+    try { localStorage.setItem('topo_pending_checkout', JSON.stringify({ plan, ts: Date.now(), ctx: _ctx })); } catch(e) {}
     openAuth('signup', 'checkout');
     return;
   }
   if (_checkoutInFlight) return; // re-entrancy guard: a second click/resume while one is in flight is ignored
   _checkoutInFlight = true;
-  track('checkout_clicked', { plan }); // intent; checkout_started now fires only once a session exists
+  track('checkout_clicked', _ctx ? { plan, context: _ctx } : { plan }); // intent; checkout_started now fires only once a session exists
   _showCheckoutOverlay(opts && opts.message, opts && opts.sub);
   const priceId = plan === 'company' ? STRIPE_PRICE_COMPANY : STRIPE_PRICE_PRO;
   const btn = document.getElementById('checkout-btn-' + plan);
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
   try {
     const session = await _createCheckoutSession({ priceId, email, plan, successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com#pricing' });
-    track('checkout_started', session.trial === false ? { plan, trial: false } : { plan });
+    track('checkout_started', Object.assign(session.trial === false ? { plan, trial: false } : { plan }, _ctx ? { context: _ctx } : {}));
     if (session.trial === false) {
       track('trial_already_used', { plan });
       _showNoTrialConfirm(plan, session.url, function() { if (btn) { btn.textContent = 'Start 14-day free trial →'; btn.disabled = false; } });
@@ -5413,13 +5422,13 @@ async function confirmSeatCheckout() {
   if (!_currentUser) { openAuth(); return; }
   if (_checkoutInFlight) return;
   _checkoutInFlight = true;
-  track('checkout_clicked', { plan: 'company', seats });
+  track('checkout_clicked', { plan: 'company', seats, context: window._companyCtx || null });
   _showCheckoutOverlay();
   const btn = document.getElementById('checkout-btn-company');
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
   try {
     const session = await _createCheckoutSession({ priceId: STRIPE_PRICE_COMPANY, email: _currentUser.email, plan: 'company', quantity: seats, companyName: (document.getElementById('seat-picker-company-name')?.value || '').trim(), successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com#pricing' });
-    track('checkout_started', session.trial === false ? { plan: 'company', seats, trial: false } : { plan: 'company', seats });
+    track('checkout_started', Object.assign(session.trial === false ? { plan: 'company', seats, trial: false } : { plan: 'company', seats }, window._companyCtx ? { context: window._companyCtx } : {}));
     if (session.trial === false) {
       track('trial_already_used', { plan: 'company', seats });
       _showNoTrialConfirm('company', session.url, function() { if (btn) { btn.textContent = 'Start free trial →'; btn.disabled = false; } });
@@ -10320,7 +10329,7 @@ document.getElementById('auth-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeAuth();
 });
 document.getElementById('upgrade-overlay').addEventListener('click', function(e) {
-  if (e.target === this) closeUpgrade();
+  if (e.target === this) _upgradeDismiss('backdrop');
 });
 document.getElementById('settings-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeSettings();
@@ -10336,7 +10345,7 @@ document.addEventListener('keydown', function(e) {
   closeHistory();
   closeAuth();
   closeSettings();
-  closeUpgrade();
+  _upgradeDismiss('escape');
   closeLargeSiteAddon();
 closeCoordDrawer();
   closeSiteColumnsInfo();
