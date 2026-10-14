@@ -844,6 +844,7 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 .upgrade-plan-per   { font-size:11px; color:var(--text-soft); margin:3px 0 14px; }
 .upgrade-plan ul    { list-style:none; padding:0; margin:0 0 16px; font-size:11px; color:var(--text-mid); line-height:2; }
 .upgrade-plan ul li::before { content:'✓ '; color:var(--accent); }
+.upgrade-plan-assure { font-size:10px; line-height:1.5; color:var(--text-soft); margin:8px 0 0; text-align:center; }
 .upgrade-plan-cta   { width:100%; padding:11px 0; border-radius:5px; font-family:'DM Mono',monospace; font-size:12px; font-weight:700; cursor:pointer; letter-spacing:.04em; text-transform:uppercase; transition:opacity .15s; border:none; }
 /* ── Spacing preview inside the upgrade modal (their own site at 12 m vs 3 m) ── */
 #sp-preview { padding:2px 20px 16px; }
@@ -1899,6 +1900,7 @@ function declineCookies() {
         <button class="upgrade-plan-cta" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);"
           onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"
           onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings'}); try{_spSaveResume();}catch(e){} closeUpgrade(); startCheckout('pro', { context: window._upgradeCtx || 'buildings' });">Start free trial &rarr;</button>
+        <p class="upgrade-plan-assure">New trials need a card and are not charged for 14 days. Cancel anytime in Settings.</p>
       </div>
 
       <!-- Company -->
@@ -5362,12 +5364,28 @@ async function _createCheckoutSession(payload) {
 }
 // The analytics insert is a plain fetch with no keepalive, so give it a beat to leave
 // the browser before the page navigates away to Stripe.
-function _goToCheckout(url, holdMs) { setTimeout(function() { window.location.href = url; }, holdMs || 300); }
+function _goToCheckout(url, holdMs) {
+  // Note the hand-off so a return without paying (Stripe's back link or the browser Back button)
+  // is logged as checkout_cancelled with where the visitor came from.
+  try { localStorage.setItem('topo_checkout_out', JSON.stringify({ ctx: window._lastCheckoutCtx || null, plan: window._lastCheckoutPlan || null, ts: Date.now() })); } catch (e) {}
+  setTimeout(function() { window.location.href = url; }, holdMs || 300);
+}
+// Called from every return path. via: stripe_back_link | browser_back
+function _logCheckoutCancelled(via) {
+  var o = null;
+  try { o = JSON.parse(localStorage.getItem('topo_checkout_out') || 'null'); localStorage.removeItem('topo_checkout_out'); } catch (e) {}
+  var fresh = o && (Date.now() - (o.ts || 0)) < 3 * 3600 * 1000;
+  try {
+    track('checkout_cancelled', { via: via, context: fresh ? o.ctx : null, plan: fresh ? o.plan : null,
+      seconds_away: fresh ? Math.round((Date.now() - o.ts) / 1000) : null, known: !!fresh });
+  } catch (e) {}
+}
 // Browser Back from Stripe can restore this page from bfcache mid-"Loading…": reset it.
 window.addEventListener('pageshow', function(e) {
   if (!e.persisted) return;
   _checkoutInFlight = false;
   _hideCheckoutOverlay();
+  try { if (localStorage.getItem('topo_checkout_out')) _logCheckoutCancelled('browser_back'); } catch (x) {}
   [['checkout-btn-pro', 'Start 14-day free trial →'], ['checkout-btn-company', 'Start free trial →']].forEach(function(p) {
     const b = document.getElementById(p[0]);
     if (b && b.disabled) { b.disabled = false; b.textContent = p[1]; }
@@ -5379,6 +5397,7 @@ async function startCheckout(plan, opts) {
   // signup that is still awaiting email confirmation (pay-before-confirm path).
   const email = _currentUser ? _currentUser.email : ((opts && opts.email) || null);
   const _ctx = (opts && opts.context) || null;   // which popup or button started this checkout
+  window._lastCheckoutCtx = _ctx; window._lastCheckoutPlan = plan;
   if (!email) {
     track('checkout_gated', _ctx ? { plan, context: _ctx } : { plan });
     window._pendingCheckoutPlan = plan;
@@ -5394,7 +5413,7 @@ async function startCheckout(plan, opts) {
   const btn = document.getElementById('checkout-btn-' + plan);
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
   try {
-    const session = await _createCheckoutSession({ priceId, email, plan, successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com#pricing' });
+    const session = await _createCheckoutSession({ priceId, email, plan, successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com?checkout=cancelled#pricing' });
     track('checkout_started', Object.assign(session.trial === false ? { plan, trial: false } : { plan }, _ctx ? { context: _ctx } : {}));
     if (session.trial === false) {
       track('trial_already_used', { plan });
@@ -5422,12 +5441,13 @@ async function confirmSeatCheckout() {
   if (!_currentUser) { openAuth(); return; }
   if (_checkoutInFlight) return;
   _checkoutInFlight = true;
+  window._lastCheckoutCtx = window._companyCtx || null; window._lastCheckoutPlan = 'company';
   track('checkout_clicked', { plan: 'company', seats, context: window._companyCtx || null });
   _showCheckoutOverlay();
   const btn = document.getElementById('checkout-btn-company');
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
   try {
-    const session = await _createCheckoutSession({ priceId: STRIPE_PRICE_COMPANY, email: _currentUser.email, plan: 'company', quantity: seats, companyName: (document.getElementById('seat-picker-company-name')?.value || '').trim(), successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com#pricing' });
+    const session = await _createCheckoutSession({ priceId: STRIPE_PRICE_COMPANY, email: _currentUser.email, plan: 'company', quantity: seats, companyName: (document.getElementById('seat-picker-company-name')?.value || '').trim(), successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com?checkout=cancelled#pricing' });
     track('checkout_started', Object.assign(session.trial === false ? { plan: 'company', seats, trial: false } : { plan: 'company', seats }, window._companyCtx ? { context: window._companyCtx } : {}));
     if (session.trial === false) {
       track('trial_already_used', { plan: 'company', seats });
@@ -9763,6 +9783,15 @@ document.addEventListener('DOMContentLoaded', function() {
     history.replaceState(null, '', window.location.pathname); // strip ?upgraded=true so a reload/revisit can't re-fire this
     _markConfirmPaid(); // paid before confirming the email: surface the "confirm your email" banner
   }
+  try {
+    var _qs = new URLSearchParams(window.location.search);
+    if (_qs.get('checkout') === 'cancelled') {
+      _logCheckoutCancelled('stripe_back_link');
+      history.replaceState(null, '', window.location.pathname + window.location.hash); // so a reload cannot log it twice
+    } else if (window.location.search.includes('upgraded=true')) {
+      localStorage.removeItem('topo_checkout_out'); // paid: not an abandon
+    }
+  } catch (e) {}
   _showConfirmBanner(); // no-op unless a pay-before-confirm trial is still waiting on email confirmation
   _handleOAuthReturnError(); // Google sign-in cancelled/failed: reopen the modal with a message
   // Direct link into the upgrade modal (e.g. an email CTA) — ?openupgrade=<context>.
