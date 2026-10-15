@@ -1017,6 +1017,8 @@ const SUPABASE_URL = _CFG.SUPABASE_URL || 'https://lkhdwgltwzaxslspxgcx.supabase
 const SUPABASE_KEY = _CFG.SUPABASE_KEY || '';
 if (!SUPABASE_KEY) console.error('SUPABASE_KEY missing. Set it in config.local.js (copy config.example.js).');
 const _sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+// Health-cron worker base URL (public, no secret). Enables "Run all now" on Monitor > Data Accuracy.
+const HEALTH_WORKER_URL = (_CFG.HEALTH_WORKER_URL || '').replace(/\/$/, '');
 
 // ── Constants ─────────────────────────────────────────────────
 const CN={DK:'Denmark',IS:'Iceland',NO:'Norway',SE:'Sweden',FI:'Finland',GB:'United Kingdom',IE:'Ireland',NL:'Netherlands',BE:'Belgium',FR:'France',CH:'Switzerland',AT:'Austria',DE:'Germany',ES:'Spain',PT:'Portugal',IT:'Italy',GR:'Greece',PL:'Poland',CZ:'Czechia',US:'United States',CA:'Canada',JP:'Japan',NZ:'New Zealand',AU:'Australia',HR:'Croatia',HU:'Hungary',RO:'Romania',SK:'Slovakia',LT:'Lithuania',LV:'Latvia',EE:'Estonia',MX:'Mexico',SA:'Saudi Arabia',AE:'UAE',IL:'Israel',FO:'Faroe Islands',LU:'Luxembourg',BG:'Bulgaria'};
@@ -2514,11 +2516,12 @@ function monitorToggleHtml(active){
     <button class="${active==='health'?'active':''}" onclick="setMonitorView('health')">System Health</button>
     <button class="${active==='gatewatch'?'active':''}" onclick="setMonitorView('gatewatch')">Gate Bypass Watch</button>
     <button class="${active==='funnels'?'active':''}" onclick="setMonitorView('funnels')">Funnels</button>
+    <button class="${active==='data'?'active':''}" onclick="setMonitorView('data')">Data Accuracy</button>
   </div>`;
 }
 function setMonitorView(v){
   _monitorView=v;
-  if(v==='health') loadMonitor(); else if(v==='gatewatch') loadGateWatch(); else loadFunnels();
+  if(v==='health') loadMonitor(); else if(v==='gatewatch') loadGateWatch(); else if(v==='data') loadDataAccuracy(); else loadFunnels();
 }
 
 async function loadMonitor(){
@@ -2537,7 +2540,7 @@ async function loadMonitor(){
   const supaHealth=fetch(SUPABASE_URL+'/rest/v1/generations?select=id&limit=1',{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY},cache:'no-store'})
     .then(r=>({ok:r.ok,ms:Math.round(performance.now()-supaT0)})).catch(()=>({ok:false,ms:null}));
 
-  const [supa, elevPings, notifyPing, lastGen, win24, stuck, fails, admins, authFails24, signups24, gens7d, allProfiles, healthChecks, jsErrors, upstreamTimings, gateEvents24, weekEvents, roleEvents] = await Promise.all([
+  const [supa, elevPings, notifyPing, lastGen, win24, stuck, fails, admins, authFails24, signups24, gens7d, allProfiles, healthChecks, jsErrors, upstreamTimings, gateEvents24, weekEvents, roleEvents, dataChecks24] = await Promise.all([
     supaHealth,
     Promise.all(MON_ELEVATION_WORKERS.map(w=>_pingHost('https://'+w+'.svanur300.workers.dev'))),
     _pingHost(MON_NOTIFY_WORKER),
@@ -2570,6 +2573,8 @@ async function loadMonitor(){
       .gte('created_at',weekAgo).limit(5000),
     // Who signs up: all-time answers to the one-question role prompt and the email links.
     _sb.from('events').select('event,properties,created_at').eq('is_test',false).in('event',['role_answered','role_prompt_shown','role_prompt_skipped']).limit(5000),
+    // Data-accuracy checks (health-cron 'data:*' rows), last 24h: alert when heights are wrong.
+    _sb.from('health_checks').select('region,ok,error,detail,checked_at').like('region','data:%').gte('checked_at',dayAgo).order('checked_at',{ascending:false}).limit(1000),
   ]);
 
   // Reachability tallies
@@ -2639,7 +2644,8 @@ async function loadMonitor(){
   // sentinel failure means our own routing regressed, not that upstream is
   // down, so we alert on it separately (and more loudly).
   const allKeys=Object.keys(latestByRegion).sort();
-  const regionKeys=allKeys.filter(k=>!k.startsWith('sentinel:'));
+  // 'data:' rows are the data-accuracy checks; they have their own view (Data Accuracy).
+  const regionKeys=allKeys.filter(k=>!k.startsWith('sentinel:')&&!k.startsWith('data:'));
   const sentinelKeys=allKeys.filter(k=>k.startsWith('sentinel:'));
   const regionsDown=regionKeys.filter(k=>!latestByRegion[k].ok);
   const regionsFlappy=regionKeys.filter(k=>(failCountByRegion[k]||0)>=2 && latestByRegion[k].ok); // recovering but flapped recently
@@ -2731,7 +2737,7 @@ async function loadMonitor(){
     spRestored:wkCount('upgrade_site_restored'), spResumeGo:wkCount('resume_generate_clicked')
   };
   const roleRows=(roleEvents&&roleEvents.data)||[];
-  const roleAns=roleRows.filter(r=>r.event==='role_answered');
+  const roleAns=roleRows.filter(r=>r.event==='role_answered'&&!(r.properties&&r.properties.source==='linked'));   // 'linked' repeats an earlier answer once the visitor signs in
   const roleCounts={};
   roleAns.forEach(r=>{const k=(r.properties&&r.properties.role)||'unknown';roleCounts[k]=(roleCounts[k]||0)+1;});
   const roleLabel=k=>({student:'Student',architect:'Architect',engineer:'Engineer',landscape_architect:'Landscape architect',surveyor:'Surveyor',contractor:'Contractor',planner:'Planner',hobbyist:'Hobby',other:'Other'}[k]||k);
@@ -2771,6 +2777,18 @@ async function loadMonitor(){
   if(gens7dTotal>=20&&Math.abs(anonShareDelta)>=30) alerts.push(['warn',`Anon share ${anonShareDelta>0?'jumped':'dropped'} ${Math.abs(anonShareDelta)}pt vs 7d avg (${anonShare24}% vs ${anonShare7d}%)`]);
   if(cronStale && hcRows.length===0) alerts.push(['warn','Health-cron worker: no checks in last hour (worker may be down or not deployed)']);
   else if(cronStale) alerts.push(['warn',`Health-cron: last check ${ago(newestCheck)}, worker may have stopped`]);
+  // Data accuracy: latest check per source in the last 24h. A fail means the worker returned
+  // wrong or inconsistent heights (see Monitor > Data Accuracy for the points and numbers).
+  {
+    const latestData={};
+    (dataChecks24.data||[]).forEach(r=>{ if(!latestData[r.region]) latestData[r.region]=r; });
+    const verdictOf=r=>(r.detail&&r.detail.verdict)||(r.ok?'pass':'fail');
+    const dFail=Object.keys(latestData).filter(k=>verdictOf(latestData[k])==='fail').map(k=>k.replace(/^data:/,''));
+    const dWarn=Object.keys(latestData).filter(k=>verdictOf(latestData[k])==='warn').map(k=>k.replace(/^data:/,''));
+    if(dFail.length) alerts.push(['crit',`Wrong elevation data detected for ${dFail.join(', ')} (Monitor > Data Accuracy)`]);
+    if(dWarn.length) alerts.push(['warn',`Data accuracy warnings for ${dWarn.join(', ')} (fallback source or moved known points)`]);
+    if(!(dataChecks24.data||[]).length && !cronStale) alerts.push(['warn','No data-accuracy checks in 24h: is the updated health-cron worker deployed?']);
+  }
   if(regionsDown.length>=3) alerts.push(['crit',`${regionsDown.length} regional data sources are DOWN: ${regionsDown.slice(0,4).join(', ')}${regionsDown.length>4?'…':''}`]);
   else if(regionsDown.length>0) alerts.push(['warn',`Regional source down: ${regionsDown.join(', ')}`]);
   // Sentinel failures = a routing regression (wrong source returned). Louder
@@ -3023,6 +3041,102 @@ async function loadGateWatch(){
       </div>
     </div>
     <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:16px;letter-spacing:.04em;">Grouped by anon_id + calendar day (UTC). No IP is captured yet, so this can't tell multiple people behind one anon_id apart from one person clearing localStorage. Signal 1 reads the generation_completed event (not the generations table, which has no anon_id column).</div>
+  `;
+}
+
+// ── Data Accuracy: are the worker's HEIGHTS right? ────────────
+// Reads the health-cron 'data:<source>' rows. Each row is one check of one source:
+//   known points  : 5 fixed points whose heights were verified independently on 2026-10-15
+//                   ('baseline' = recorded from the source's own API, not independently decoded)
+//   random check  : a fresh random cluster asked for whole, in two batches and singly; the
+//                   same spot must give the same height whichever way it is asked
+//   source        : the answer must come from that country's premium source
+// The cron checks one source per 5-minute cycle (all 18 roughly every 90 minutes).
+let _dataRunning=false;
+async function runAllDataChecks(btn){
+  if(!HEALTH_WORKER_URL){ alert('Set HEALTH_WORKER_URL in config.local.js to the health-cron worker URL (e.g. https://<name>.svanur300.workers.dev).'); return; }
+  if(_dataRunning) return;
+  _dataRunning=true; btn.disabled=true;
+  try{
+    const keys=await fetch(HEALTH_WORKER_URL+'/?data=list').then(r=>r.json());
+    const q=[...keys]; let done=0;
+    btn.textContent='Running 0/'+keys.length+'…';
+    // Two at a time: gentle on the national servers.
+    await Promise.all([0,1].map(async()=>{ while(q.length){ const k=q.shift();
+      try{ await fetch(HEALTH_WORKER_URL+'/?data='+encodeURIComponent(k)); }catch(e){}
+      done++; btn.textContent='Running '+done+'/'+keys.length+'…'; } }));
+  }catch(e){ alert('Run failed: '+(e.message||e)); }
+  _dataRunning=false;
+  loadDataAccuracy();
+}
+async function loadDataAccuracy(){
+  const badge=document.getElementById('badge-monitor');
+  const body=document.getElementById('body-monitor');
+  if(!body) return;
+  body.innerHTML=monitorToggleHtml('data')+'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">Loading…</div>';
+  const since=new Date(Date.now()-7*864e5).toISOString();
+  const {data,error}=await _sb.from('health_checks').select('region,ok,latency_ms,error,detail,checked_at')
+    .like('region','data:%').gte('checked_at',since).order('checked_at',{ascending:false}).limit(4000);
+  if(error){
+    if(badge) badge.textContent='no data';
+    body.innerHTML=monitorToggleHtml('data')+`<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">Could not read health_checks: ${esc(error.message||'query failed')}</div>`;
+    return;
+  }
+  const rows=data||[];
+  const verdictOf=r=>(r.detail&&r.detail.verdict)||(r.ok?'pass':'fail');
+  const dot=v=>v==='pass'?'ok':v==='warn'?'warn':'crit';
+  const m=v=>v==null?'–':(v<0.0005?'0.000':v.toFixed(3))+' m';
+  const bySrc={};
+  rows.forEach(r=>{ const k=r.region.replace(/^data:/,''); (bySrc[k]=bySrc[k]||[]).push(r); });
+  const keys=Object.keys(bySrc).sort((a,b)=>{ const o={fail:0,warn:1,pass:2}; return o[verdictOf(bySrc[a][0])]-o[verdictOf(bySrc[b][0])]||a.localeCompare(b); });
+  const counts={pass:0,warn:0,fail:0};
+  keys.forEach(k=>counts[verdictOf(bySrc[k][0])]++);
+  if(badge) badge.textContent=!keys.length?'no checks yet':counts.fail?counts.fail+' wrong':counts.warn?counts.warn+' warning'+(counts.warn>1?'s':''):'all correct';
+
+  const srcRow=k=>{
+    const list=bySrc[k], r=list[0], d=r.detail||{}, v=verdictOf(r), g=d.golden||{}, rnd=d.random||{};
+    const runs7=list.length, pass7=list.filter(x=>verdictOf(x)==='pass').length;
+    const hist=list.slice(0,24).reverse().map(x=>{ const xv=verdictOf(x); return `<span title="${esc(new Date(x.checked_at).toLocaleString())}: ${xv}${x.error?' · '+esc(x.error):''}" style="display:inline-block;width:6px;height:12px;margin-right:2px;border-radius:2px;background:${xv==='pass'?'var(--accent)':xv==='warn'?'var(--amber)':'var(--red)'};opacity:.85;"></span>`; }).join('');
+    const problems=(d.problems||[]).map(p=>`<div style="color:${p.level==='fail'?'var(--red)':'var(--amber)'};">${esc(p.level.toUpperCase())}: ${esc(p.msg)}</div>`).join('');
+    const goldTbl=(g.expected||[]).map((e,i)=>{ const got=g.got?g.got[i]:null; const pt=(g.pts||[])[i]||[]; const diff=got==null?null:Math.abs(got-e);
+      const td='padding:1px 16px 1px 0;';
+      return `<tr><td style="${td}">${pt.join(', ')}</td><td style="${td}">${e.toFixed(3)}</td><td style="${td}">${got==null?'–':got.toFixed(3)}</td><td style="${td}color:${diff!=null&&diff>0.05?'var(--red)':'inherit'}">${diff==null?'–':diff.toFixed(3)}</td></tr>`; }).join('');
+    return `<div class="mon-row" style="flex-wrap:wrap;">
+      <span class="mon-dot ${dot(v)}"></span>
+      <div class="mon-label">${esc(k)} <span class="mon-sub" style="display:inline;">${esc(d.expect||'')}</span>
+        <div class="mon-sub">known points ${m(g.max_diff)} (${esc(g.verified||'?')}) · random ${m(rnd.max_diff)} · ${esc(ago(r.checked_at))} · ${pass7}/${runs7} passed in 7d</div></div>
+      <div class="mon-val" style="white-space:nowrap;">${hist}</div>
+      <details style="flex-basis:100%;margin:6px 0 0 25px;font-family:DM Mono,monospace;font-size:10px;color:var(--text-mid);">
+        <summary style="cursor:pointer;color:var(--muted);">details</summary>
+        ${problems||'<div>No problems in the latest check.</div>'}
+        <div style="margin-top:6px;">Known points (${esc(g.verified||'?')}), answered by ${esc(g.source||'–')}:</div>
+        <table style="border-collapse:collapse;margin-top:2px;"><tr style="color:var(--muted);"><td style="padding-right:16px;">lat, lon</td><td style="padding-right:16px;">expected (m)</td><td style="padding-right:16px;">got (m)</td><td>|diff| (m)</td></tr>${goldTbl}</table>
+        <div style="margin-top:6px;">Random cluster near ${esc((rnd.anchor||[]).join(', '))}: ${(rnd.pts||[]).length} points, sources ${esc((rnd.sources||[]).join(' / ')||'–')}, max same-point difference ${m(rnd.max_diff)}</div>
+      </details>
+    </div>`;
+  };
+  const banner=!keys.length
+    ? `<div class="mon-alert warn"><span class="mon-dot warn"></span>No data-accuracy checks yet. Deploy the updated health-cron worker, or press Run all now.</div>`
+    : counts.fail
+      ? `<div class="mon-alert crit"><span class="mon-dot crit"></span>${counts.fail} source${counts.fail>1?'s':''} returned WRONG or inconsistent heights in the latest check</div>`
+      : counts.warn
+        ? `<div class="mon-alert warn"><span class="mon-dot warn"></span>${counts.warn} source${counts.warn>1?'s':''} with warnings (fallback source or known points moved), ${counts.pass} correct</div>`
+        : `<div class="mon-alert ok"><span class="mon-dot ok"></span>All ${counts.pass} sources returned correct, consistent heights in their latest check</div>`;
+  body.innerHTML=monitorToggleHtml('data')+`
+    <div class="mon-banner">${banner}</div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+      <button class="speed-strat" style="padding:5px 12px;font-family:DM Mono,monospace;font-size:10px;color:var(--accent);background:none;cursor:pointer;" onclick="runAllDataChecks(this)"${HEALTH_WORKER_URL?'':' title="Set HEALTH_WORKER_URL in config.local.js"'}>Run all now</button>
+    </div>
+    <div class="mon-block">
+      <div class="mon-block-title">Per source · latest check · last 24 checks (left = oldest)</div>
+      ${keys.map(srcRow).join('')||'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding:8px 0;">No rows yet.</div>'}
+    </div>
+    <div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:16px;letter-spacing:.04em;line-height:1.6;">
+      Pass: known points within 5 cm and the same random point within 10 cm however it is requested.
+      Warn: the answer came from a fallback source, or known points moved 5-50 cm (the source may have republished its data; re-baseline).
+      Fail: known points off by more than 50 cm, or the same point differs by more than 10 cm between requests.
+      Not covered: Scotland and Wales (GPXZ calls would use the paying users' daily quota) and Iceland (covered by the region probe).
+    </div>
   `;
 }
 
