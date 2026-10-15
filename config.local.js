@@ -26,4 +26,5 @@ window.TOPO_CONFIG = {
   // Google PageSpeed Insights key. Empty string = keyless mode (rate-limited).
   // Get a free key: https://developers.google.com/speed/docs/insights/v5/get-started
   PSI_API_KEY: 'AIzaSyCw87kPYxGrGtBeavK_GnsqgT2kNfKaDQc',
+  HEALTH_WORKER_URL: 'https://health-cron.svanur300.workers.dev', // Monitor > Data Accuracy > Run all now
 };
