@@ -4020,6 +4020,16 @@ async function handleSession(session) {
   try { localStorage.removeItem('topo_confirm_pending'); } catch(e) {}
   _hideConfirmBanner();
   try { _showPastDueBanner(); } catch (e) {}
+  try { _roleLinkToAccount(); } catch (e) {}
+  try {
+    const _created = _currentUser && _currentUser.created_at ? new Date(_currentUser.created_at).getTime() : 0;
+    const _plan = _currentProfile && _currentProfile.plan;
+    const _midFlow = !!(window._pendingDownloadFmt || (typeof _checkoutInFlight !== 'undefined' && _checkoutInFlight) ||
+      (function() { try { return !!localStorage.getItem('topo_pending_download') || !!localStorage.getItem('topo_pending_checkout'); } catch (e) { return false; } })());
+    if (_created && (Date.now() - _created) > 15 * 60 * 1000 && _plan === 'free' && !_midFlow) {
+      setTimeout(function() { _maybeAskRole('returning_visit'); }, 3500);
+    }
+  } catch (e) {}
   try { _spResumeAfterPayment(); } catch (e) {} // back from Stripe: restore the site they were previewing
   // Resume a checkout the signup/sign-in wall interrupted. localStorage is the single
   // source of truth and is consumed read-then-remove, and a per-page flag blocks repeat
@@ -5285,10 +5295,24 @@ var _ROLE_OPTIONS = [
 ];
 function _roleDone() { try { return !!localStorage.getItem('topo_role_done'); } catch (e) { return false; } }
 function _roleMarkDone(v) { try { localStorage.setItem('topo_role_done', v); } catch (e) {} }
-function _roleRemoveCard() { var c = document.getElementById('role-card'); if (c) c.remove(); }
+function _roleRemoveCard() { var o = document.getElementById('role-overlay'); if (o) o.remove(); var c = document.getElementById('role-card'); if (c) c.remove(); }
+function _roleSkip() {
+  _roleMarkDone('skipped');
+  try { track('role_prompt_skipped', {}); } catch (e) {}
+  _roleRemoveCard();
+}
+// Mention the thank-you offer only when this worker actually has the coupon configured.
+function _roleOfferLine(cb) {
+  try {
+    fetch(WEBHOOK_WORKER + '/offer-status', { signal: AbortSignal.timeout(4000) })
+      .then(function(r) { return r.json(); })
+      .then(function(d) { cb(d && d.survey_discount === true ? ' GBP 15 off your first month of Pro is applied automatically at checkout.' : ''); })
+      .catch(function() { cb(''); });
+  } catch (e) { cb(''); }
+}
 function _roleAnswer(role, source) {
   _roleMarkDone(role);
-  try { track('role_answered', { role: role, source: source }); } catch (e) {}
+  try { track('role_answered', { role: role, source: source, trigger: window._roleTrigger || null }); } catch (e) {}
   var c = document.getElementById('role-card');
   if (c) {
     c.innerHTML = '';
@@ -5296,40 +5320,75 @@ function _roleAnswer(role, source) {
     p.textContent = 'Thanks, that helps me build the right thing.';
     p.style.cssText = 'font-size:13px;line-height:1.5;padding:2px 0;';
     c.appendChild(p);
-    setTimeout(_roleRemoveCard, 2600);
+    _roleOfferLine(function(extra) { if (extra) p.textContent = 'Thanks, that helps me build the right thing.' + extra.replace('GBP 15', '\u00a315'); });
+    setTimeout(_roleRemoveCard, 5200);
   }
+}
+// Answered earlier in this browser (prompt, or an email link opened while signed out): once the
+// visitor is signed in, record it against the account so the offer can be matched server side.
+function _roleLinkToAccount() {
+  try {
+    if (!_currentUser) return;
+    var r = localStorage.getItem('topo_role_done');
+    if (!r || r === 'skipped') return;
+    var k = 'topo_role_linked_' + _currentUser.id;
+    if (localStorage.getItem(k)) return;
+    localStorage.setItem(k, '1');
+    track('role_answered', { role: r, source: 'linked' });
+  } catch (e) {}
 }
 function _maybeAskRole(trigger) {
   if (_roleDone() || window._roleAsked) return;
   if (document.querySelector('.auth-overlay.show')) return;           // never stack on a popup
+  if (typeof _checkoutInFlight !== 'undefined' && _checkoutInFlight) return;   // not while heading to Stripe
   window._roleAsked = true;
+  window._roleTrigger = trigger || 'after_result';
+  var ov = document.createElement('div');
+  ov.id = 'role-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:8500;background:rgba(10,14,8,.5);display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.onclick = function(e) { if (e.target === ov) _roleSkip(); };
   var card = document.createElement('div');
   card.id = 'role-card';
   card.setAttribute('role', 'dialog');
+  card.setAttribute('aria-modal', 'true');
   card.setAttribute('aria-label', 'One quick question');
-  card.style.cssText = 'position:fixed;left:16px;bottom:16px;z-index:8000;width:min(340px,calc(100vw - 32px));background:var(--bg-card);border:1px solid var(--border-md);border-radius:10px;padding:14px;color:var(--text);box-shadow:0 8px 28px rgba(0,0,0,.3);';
+  card.style.cssText = 'width:min(440px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--bg-card);border:1px solid var(--border-md);border-radius:12px;padding:22px 22px 18px;color:var(--text);box-shadow:0 18px 60px rgba(0,0,0,.45);';
   var h = document.createElement('div');
-  h.textContent = 'One quick question: what do you do?';
-  h.style.cssText = 'font-size:13px;font-weight:600;margin-bottom:4px;';
+  h.textContent = 'What do you do?';
+  h.style.cssText = "font-family:'Syne',sans-serif;font-size:19px;font-weight:600;margin-bottom:6px;";
+  var offer = document.createElement('div');
+  offer.style.cssText = 'display:none;margin:0 0 10px;padding:8px 11px;border-radius:7px;background:var(--accent-dk);color:var(--accent);font-size:12px;line-height:1.5;';
   var sub = document.createElement('div');
-  sub.textContent = 'It helps me decide what to build next. Optional.';
-  sub.style.cssText = 'font-size:11px;color:var(--text-soft);margin-bottom:10px;line-height:1.5;';
+  sub.textContent = 'One click. It helps me decide what to build next.';
+  sub.style.cssText = 'font-size:12px;color:var(--text-soft);margin-bottom:14px;line-height:1.5;';
   var wrap = document.createElement('div');
-  wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;';
+  wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
   _ROLE_OPTIONS.forEach(function(o) {
     var b = document.createElement('button');
     b.type = 'button'; b.textContent = o[1];
-    b.style.cssText = "background:transparent;border:1px solid var(--border-md);color:var(--text);border-radius:14px;padding:6px 11px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;";
+    b.style.cssText = "background:transparent;border:1px solid var(--border-md);color:var(--text);border-radius:16px;padding:8px 14px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;";
+    b.onmouseover = function() { b.style.borderColor = 'var(--accent)'; };
+    b.onmouseout = function() { b.style.borderColor = 'var(--border-md)'; };
     b.onclick = function() { _roleAnswer(o[0], 'prompt'); };
     wrap.appendChild(b);
   });
   var skip = document.createElement('button');
-  skip.type = 'button'; skip.textContent = 'Skip';
-  skip.style.cssText = "margin-top:10px;background:transparent;border:none;color:var(--text-soft);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;padding:0;";
-  skip.onclick = function() { _roleMarkDone('skipped'); try { track('role_prompt_skipped', {}); } catch (e) {} _roleRemoveCard(); };
-  card.appendChild(h); card.appendChild(sub); card.appendChild(wrap); card.appendChild(skip);
-  document.body.appendChild(card);
+  skip.type = 'button'; skip.textContent = 'Not now';
+  skip.style.cssText = "margin-top:14px;background:transparent;border:none;color:var(--text-soft);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;padding:0;";
+  skip.onclick = _roleSkip;
+  card.appendChild(h); card.appendChild(offer); card.appendChild(sub); card.appendChild(wrap); card.appendChild(skip);
+  ov.appendChild(card);
+  document.body.appendChild(ov);
+  // The incentive line is shown only when Stripe really has the coupon (the worker checks).
+  _roleOfferLine(function(extra) {
+    if (!extra) return;
+    offer.textContent = 'Answer and get \u00a315 off your first month of Pro, applied automatically at checkout.';
+    offer.style.display = 'block';
+  });
+  var esc = function(e) { if (e.key === 'Escape' && document.getElementById('role-overlay')) { document.removeEventListener('keydown', esc); _roleSkip(); } };
+  document.addEventListener('keydown', esc);
   try { track('role_prompt_shown', { trigger: trigger || 'after_result' }); } catch (e) {}
+  setTimeout(function() { var f = card.querySelector('button'); if (f) f.focus(); }, 0);
 }
 // Email links look like https://topo-grapher.com/?role=student : log the answer, strip the parameter.
 function _roleFromUrl() {
@@ -5347,9 +5406,10 @@ function _roleFromUrl() {
     var n = document.createElement('div');
     n.setAttribute('role', 'status');
     n.textContent = 'Thanks, noted. That helps me decide what to build next.';
+    _roleOfferLine(function(extra) { if (extra) n.textContent = 'Thanks, noted.' + extra.replace('GBP 15', '\u00a315'); });
     n.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:8000;background:var(--bg-card);border:1px solid var(--accent);border-radius:8px;padding:11px 16px;font-size:13px;color:var(--text);box-shadow:0 8px 28px rgba(0,0,0,.3);';
     document.body.appendChild(n);
-    setTimeout(function() { n.remove(); }, 4500);
+    setTimeout(function() { n.remove(); }, 7000);
   } catch (e) {}
 }
 
@@ -5495,13 +5555,13 @@ function _checkoutErrMsg(err) {
 async function _createCheckoutSession(payload) {
   const res = await fetch(WEBHOOK_WORKER + '/create-checkout', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload), signal: AbortSignal.timeout(15000)
+    body: JSON.stringify(Object.assign({ anonId: getAnonId() }, payload)), signal: AbortSignal.timeout(15000)
   });
   const data = await res.json();
   if (!data.url) throw new Error(data.error || 'Failed to create checkout');
   // trial === false means this email already used its one free trial (worker-side check).
   // An older worker omits the field, which reads as "trial granted" (undefined !== false).
-  return { url: data.url, trial: data.trial };
+  return { url: data.url, trial: data.trial, discount: data.discount === true };
 }
 // The analytics insert is a plain fetch with no keepalive, so give it a beat to leave
 // the browser before the page navigates away to Stripe.
@@ -5555,7 +5615,7 @@ async function startCheckout(plan, opts) {
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
   try {
     const session = await _createCheckoutSession({ priceId, email, plan, successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com?checkout=cancelled#pricing' });
-    track('checkout_started', Object.assign(session.trial === false ? { plan, trial: false } : { plan }, _ctx ? { context: _ctx } : {}));
+    track('checkout_started', Object.assign(session.trial === false ? { plan, trial: false } : { plan }, _ctx ? { context: _ctx } : {}, session.discount ? { discount: 'survey_15' } : {}));
     if (session.trial === false) {
       track('trial_already_used', { plan });
       _showNoTrialConfirm(plan, session.url, function() { if (btn) { btn.textContent = 'Start 14-day free trial →'; btn.disabled = false; } });
