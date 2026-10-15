@@ -5274,6 +5274,85 @@ async function confirmCancelSubscription() {
   }
 }
 
+// ── Who is using this? One optional question, never blocking ──────────────────────────────
+// Asked once per browser after a result is on screen (the visitor has just seen value), or answered
+// straight from an email link (?role=student). Stored as events only: role_prompt_shown,
+// role_answered {role, source}, role_prompt_skipped. No SQL, no gate, nothing is required.
+var _ROLE_OPTIONS = [
+  ['student', 'Student'], ['architect', 'Architect'], ['engineer', 'Engineer'],
+  ['landscape_architect', 'Landscape architect'], ['surveyor', 'Surveyor'], ['contractor', 'Contractor or builder'],
+  ['planner', 'Planner or developer'], ['hobbyist', 'Hobby or personal'], ['other', 'Something else']
+];
+function _roleDone() { try { return !!localStorage.getItem('topo_role_done'); } catch (e) { return false; } }
+function _roleMarkDone(v) { try { localStorage.setItem('topo_role_done', v); } catch (e) {} }
+function _roleRemoveCard() { var c = document.getElementById('role-card'); if (c) c.remove(); }
+function _roleAnswer(role, source) {
+  _roleMarkDone(role);
+  try { track('role_answered', { role: role, source: source }); } catch (e) {}
+  var c = document.getElementById('role-card');
+  if (c) {
+    c.innerHTML = '';
+    var p = document.createElement('div');
+    p.textContent = 'Thanks, that helps me build the right thing.';
+    p.style.cssText = 'font-size:13px;line-height:1.5;padding:2px 0;';
+    c.appendChild(p);
+    setTimeout(_roleRemoveCard, 2600);
+  }
+}
+function _maybeAskRole(trigger) {
+  if (_roleDone() || window._roleAsked) return;
+  if (document.querySelector('.auth-overlay.show')) return;           // never stack on a popup
+  window._roleAsked = true;
+  var card = document.createElement('div');
+  card.id = 'role-card';
+  card.setAttribute('role', 'dialog');
+  card.setAttribute('aria-label', 'One quick question');
+  card.style.cssText = 'position:fixed;left:16px;bottom:16px;z-index:8000;width:min(340px,calc(100vw - 32px));background:var(--bg-card);border:1px solid var(--border-md);border-radius:10px;padding:14px;color:var(--text);box-shadow:0 8px 28px rgba(0,0,0,.3);';
+  var h = document.createElement('div');
+  h.textContent = 'One quick question: what do you do?';
+  h.style.cssText = 'font-size:13px;font-weight:600;margin-bottom:4px;';
+  var sub = document.createElement('div');
+  sub.textContent = 'It helps me decide what to build next. Optional.';
+  sub.style.cssText = 'font-size:11px;color:var(--text-soft);margin-bottom:10px;line-height:1.5;';
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;';
+  _ROLE_OPTIONS.forEach(function(o) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.textContent = o[1];
+    b.style.cssText = "background:transparent;border:1px solid var(--border-md);color:var(--text);border-radius:14px;padding:6px 11px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;";
+    b.onclick = function() { _roleAnswer(o[0], 'prompt'); };
+    wrap.appendChild(b);
+  });
+  var skip = document.createElement('button');
+  skip.type = 'button'; skip.textContent = 'Skip';
+  skip.style.cssText = "margin-top:10px;background:transparent;border:none;color:var(--text-soft);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;padding:0;";
+  skip.onclick = function() { _roleMarkDone('skipped'); try { track('role_prompt_skipped', {}); } catch (e) {} _roleRemoveCard(); };
+  card.appendChild(h); card.appendChild(sub); card.appendChild(wrap); card.appendChild(skip);
+  document.body.appendChild(card);
+  try { track('role_prompt_shown', { trigger: trigger || 'after_result' }); } catch (e) {}
+}
+// Email links look like https://topo-grapher.com/?role=student : log the answer, strip the parameter.
+function _roleFromUrl() {
+  try {
+    var qs = new URLSearchParams(window.location.search);
+    var r = qs.get('role');
+    if (!r) return;
+    var ok = _ROLE_OPTIONS.some(function(o) { return o[0] === r; });
+    qs.delete('role');
+    var rest = qs.toString();
+    history.replaceState(null, '', window.location.pathname + (rest ? '?' + rest : '') + window.location.hash);
+    if (!ok) return;
+    _roleMarkDone(r);
+    try { track('role_answered', { role: r, source: 'email' }); } catch (e) {}
+    var n = document.createElement('div');
+    n.setAttribute('role', 'status');
+    n.textContent = 'Thanks, noted. That helps me decide what to build next.';
+    n.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:8000;background:var(--bg-card);border:1px solid var(--accent);border-radius:8px;padding:11px 16px;font-size:13px;color:var(--text);box-shadow:0 8px 28px rgba(0,0,0,.3);';
+    document.body.appendChild(n);
+    setTimeout(function() { n.remove(); }, 4500);
+  } catch (e) {}
+}
+
 // ── Billing portal and failed-payment banner ────────────────────────────────────────
 async function openBillingPortal(source) {
   const msg = document.getElementById('settings-billing-msg');
@@ -7884,6 +7963,7 @@ function showWireframe(points, minZ, maxZ) {
   // The terrain is ready: reveal the "View in 3D" button on the result card.
   const _v3dBtn = document.getElementById('view-3d-btn');
   if (_v3dBtn) _v3dBtn.style.display = 'block';
+  try { setTimeout(function() { _maybeAskRole('after_result'); }, 6000); } catch (e) {}
   const _spBtn = document.getElementById('spacing-result-btn');
   // Offered only where the preview can show real detail: this result came from 3 m or finer data.
   // On 30 m sites the button would open a popup with nothing to look at, so it stays hidden.
@@ -9854,6 +9934,7 @@ document.addEventListener('DOMContentLoaded', function() {
       localStorage.removeItem('topo_checkout_out'); // paid: not an abandon
     }
   } catch (e) {}
+  _roleFromUrl();
   _showConfirmBanner(); // no-op unless a pay-before-confirm trial is still waiting on email confirmation
   _handleOAuthReturnError(); // Google sign-in cancelled/failed: reopen the modal with a message
   // Direct link into the upgrade modal (e.g. an email CTA) — ?openupgrade=<context>.
