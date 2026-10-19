@@ -2420,6 +2420,7 @@ function declineCookies() {
     </div>
     <p style="font-size:11px;color:var(--text-soft);line-height:1.6;">Elevation data is sourced from open public datasets under their respective licences; the best available source is selected automatically based on your drawn boundary. Building footprints are &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color:var(--text-mid);">OpenStreetMap</a> contributors, available under the Open Database Licence (ODbL).</p>
     <p style="font-size:10px;color:var(--text-soft);line-height:1.6;">Global fallback terrain: GEDTM30 by Ho, Y., Grohmann, C.H., Lindsay, J., Reuter, H.I., Parente, L., Witjes, M., Hengl, T. (OpenGeoHub, 2025), licensed <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" style="color:var(--text-soft);text-decoration:underline;">CC-BY 4.0</a>. <a href="https://doi.org/10.7717/peerj.19673" target="_blank" rel="noopener" style="color:var(--text-soft);text-decoration:underline;">doi.org/10.7717/peerj.19673</a></p>
+    <p style="font-size:10px;color:var(--text-soft);line-height:1.6;">Australia 5m terrain: Geoscience Australia, DEM of Australia derived from LiDAR 5 Metre Grid, licensed <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" style="color:var(--text-soft);text-decoration:underline;">CC BY 4.0</a>. <a href="https://doi.org/10.26186/89644" target="_blank" rel="noopener" style="color:var(--text-soft);text-decoration:underline;">doi.org/10.26186/89644</a></p>
     <a class="guide-cta" href="elevation-data-coverage.html">Full coverage &amp; resolution by country</a>
   </div>
   <div style="padding:14px 30px;border-top:1px solid var(--border);flex-shrink:0;display:flex;justify-content:flex-end;">
@@ -4375,10 +4376,8 @@ function _spDraw(cv, d, k, mode, interval) {
 function _spRange(d) {
   var mn = Infinity, mx = -Infinity;
   for (var q = 0; q < d.z.length; q++) { if (d.z[q] < mn) mn = d.z[q]; if (d.z[q] > mx) mx = d.z[q]; }
-  var rel = Math.max(mx - mn, 0.5);
-  // Lift gentle sites so the shape reads, never squash steep ones. Shown to the visitor as a note.
-  var ex = Math.max(1, Math.min(4, (d.size * 0.16) / rel));
-  return { min: mn, max: mx, mid: (mn + mx) / 2, ex: Math.round(ex * 10) / 10 };
+  // True scale (1x): the preview shows the real data, never a stretched version of it.
+  return { min: mn, max: mx, mid: (mn + mx) / 2, ex: 1 };
 }
 function _spStopLoop() { if (_spState.raf) { cancelAnimationFrame(_spState.raf); _spState.raf = 0; } }
 function _spDispose() {
@@ -6130,6 +6129,12 @@ async function tryWorkerProxy(pts, onProgress) {
       mixed = true;
       workerSource = batchSources[ranks.indexOf(worst)];
     }
+  }
+  // Same tier everywhere, but a batch said part of it is outside the 5 m survey (GA Australia
+  // fills those points with 30 m data): show that note rather than the first batch's clean label.
+  if (!mixed) {
+    const partlyBatch = batchSources.find(src => /partly 30m/i.test(src));
+    if (partlyBatch) workerSource = partlyBatch;
   }
   return { elevations: e, source: workerSource || 'worker (7-parallel GET)', degraded: workerDegraded, region: workerRegion, duration_ms: workerDurationMax || null, diag: workerDiag, mixed: mixed };
 }
@@ -7947,6 +7952,10 @@ function updateElevationSourceBanner(source, _pro, degraded, mixed) {
   title.style.color=colours.text;
   title.textContent=tier==='lidar'?'High-resolution LiDAR data':tier==='high'?'High-res satellite data (10m)':tier==='mid'?'Medium-resolution satellite data (30m)':'Low-resolution satellite data (90m)';
   detail.textContent=resText+' · source: '+_userFacingSource(source);
+  // CC BY 4.0 credit for Geoscience Australia results (the worker also sends it as `attribution`).
+  if(s.includes('ga-australia')||s.includes('ga-5m')) detail.textContent+=' · © Geoscience Australia, LiDAR 5 Metre Grid, CC BY 4.0';
+  // Part of the site lies outside GA's 5 m survey: those points use 30 m data (never 0 m holes).
+  if(/partly 30m/i.test(source||'')) detail.textContent+=' · Part of this site is outside the 5m LiDAR survey, so those points use 30m data.';
   if(upgrade){upgrade.style.display=upgradeMsg?'block':'none';if(upgradeMsg)upgrade.innerHTML='⚠ '+upgradeMsg+' <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial →</a>';}
   // Persistent note on the result card. The "source was busy" banner lives inside the progress card
   // and disappears about 400ms after the result appears, so a transient fallback used to read as
