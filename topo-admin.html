@@ -1018,7 +1018,8 @@ const SUPABASE_KEY = _CFG.SUPABASE_KEY || '';
 if (!SUPABASE_KEY) console.error('SUPABASE_KEY missing. Set it in config.local.js (copy config.example.js).');
 const _sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 // Health-cron worker base URL (public, no secret). Enables "Run all now" on Monitor > Data Accuracy.
-const HEALTH_WORKER_URL = (_CFG.HEALTH_WORKER_URL || '').replace(/\/$/, '');
+// Built-in default so the button works even when a cached config.local.js lacks the setting.
+const HEALTH_WORKER_URL = (_CFG.HEALTH_WORKER_URL || 'https://health-cron.svanur300.workers.dev').replace(/\/$/, '');
 
 // ── Constants ─────────────────────────────────────────────────
 const CN={DK:'Denmark',IS:'Iceland',NO:'Norway',SE:'Sweden',FI:'Finland',GB:'United Kingdom',IE:'Ireland',NL:'Netherlands',BE:'Belgium',FR:'France',CH:'Switzerland',AT:'Austria',DE:'Germany',ES:'Spain',PT:'Portugal',IT:'Italy',GR:'Greece',PL:'Poland',CZ:'Czechia',US:'United States',CA:'Canada',JP:'Japan',NZ:'New Zealand',AU:'Australia',HR:'Croatia',HU:'Hungary',RO:'Romania',SK:'Slovakia',LT:'Lithuania',LV:'Latvia',EE:'Estonia',MX:'Mexico',SA:'Saudi Arabia',AE:'UAE',IL:'Israel',FO:'Faroe Islands',LU:'Luxembourg',BG:'Bulgaria'};
@@ -4662,9 +4663,16 @@ async function executeSend() {
     const d = await res.json();
     if (d.error) throw new Error(d.error);
     statusEl.style.color='var(--accent)';
-    statusEl.textContent=`✓ Sent to ${d.sent} users${d.failed?' · '+d.failed+' failed':''}`;
-    renderFailedPanel(d);
-    if (!d.failed) setTimeout(closeBlast, 3000);
+    if (d.queued > 0) {
+      // Today's daily email quota is used up: the rest is queued and goes out by itself.
+      statusEl.textContent=`✓ ${d.sent} sent now · ${d.queued} queued, sending automatically over the next ${d.days_to_finish||1} day${(d.days_to_finish||1)>1?'s':''}`+(d.failed?' · '+d.failed+' failed':'');
+      sendBtn.disabled=false;
+      renderFailedPanel(d);
+    } else {
+      statusEl.textContent=`✓ Sent to ${d.sent} users${d.failed?' · '+d.failed+' failed':''}`;
+      renderFailedPanel(d);
+      if (!d.failed) setTimeout(closeBlast, 3000);
+    }
   } catch(e) {
     statusEl.style.color='var(--red)';
     statusEl.textContent='⚠ '+e.message;
