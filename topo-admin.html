@@ -1409,15 +1409,12 @@ async function loadKPIs(){
   // trial and are being billed. A 'trialing' status means £0 has ever been
   // charged, and never will be if it's also cancelling, so it isn't revenue
   // yet even though the account still shows plan='pro' while access lasts.
-  const PAYING_STATUSES=['active','active_cancelling'];
-  const{count:payingProCount}=await _sb.from('profiles').select('*',{count:'exact',head:true}).eq('plan','pro').eq('is_admin',false).in('subscription_status',PAYING_STATUSES);
-  const{data:compProf}=await _sb.from('profiles').select('seat_count,subscription_status').eq('plan','company').eq('is_company_admin',true).eq('is_admin',false);
-  const payingCompSeats=(compProf||[]).filter(p=>PAYING_STATUSES.includes(p.subscription_status)).reduce((s,p)=>s+(p.seat_count||0),0);
-  const mrr=(payingProCount||0)*39.99+payingCompSeats*29.99;
+  const _m=await _mrrBreakdown();
+  const payingProCount=_m.proCount, payingCompSeats=_m.seats, mrr=_m.billed;
 
   const kpiHost=document.getElementById('kpi-grid-host')||document.getElementById('body-kpis');
   kpiHost.innerHTML=`<div class="kpi-grid">
-    <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">MRR</div><div class="kpi-value" style="color:var(--accent)">£${mrr.toFixed(0)}</div><div class="kpi-delta">${payingProCount||0} paying Pro + ${payingCompSeats} seats</div></div>
+    <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">MRR</div><div class="kpi-value" style="color:var(--accent)">£${mrr.toFixed(0)}</div><div class="kpi-delta">${payingProCount||0} paying Pro + ${payingCompSeats} seats${_m.discounted?` · ${_m.discounted} on first-month discount`:''}</div></div>
     <div class="kpi" style="--kpi-color:var(--blue)"><div class="kpi-label">Gens / week</div><div class="kpi-value" style="color:var(--blue)">${weekGens||0}</div><div class="kpi-delta ${weekDelta>=0?'delta-up':'delta-down'}">${weekDelta>=0?'↑':'↓'} ${Math.abs(weekDelta)}% vs prev</div></div>
     <div class="kpi" style="--kpi-color:var(--accent)"><div class="kpi-label">Active users</div><div class="kpi-value">${activeUsers}</div><div class="kpi-delta">${totalUsers||0} total signups</div></div>
     <div class="kpi" style="--kpi-color:var(--purple)"><div class="kpi-label">Pro subs</div><div class="kpi-value" style="color:var(--purple)">${proCount||0}</div><div class="kpi-delta">incl. trials · ${totalUsers?Math.round((proCount||0)/totalUsers*100):0}% conversion</div></div>
@@ -1855,28 +1852,94 @@ function _renderScotlandOverlay(){
 }
 
 // ── Revenue ───────────────────────────────────────────────────
+// ── MRR from what Stripe actually charged ─────────────────────
+// subscription_billing (written by the payment worker from Stripe's invoice.paid webhook)
+// holds each subscription's latest PAID invoice. A first month bought with the Survey15
+// coupon (GBP 15 off, once) therefore counts as GBP 24.99, not 39.99. Rules:
+//  - paying = 'active'/'active_cancelling' (a 'trialing' row has never been charged);
+//  - a billing row whose period is still running counts at its real amount;
+//  - no row, or the period already ended (renewal not recorded yet): counted at full price,
+//    because the once-only discount never applies to a renewal;
+//  - ARR is projected at the full rate for the same reason.
+const PAYMENT_WORKER_URL='https://odd-king-7b02.svanur300.workers.dev';
+async function _mrrBreakdown(){
+  const PAYING=['active','active_cancelling'];
+  const {data:prof}=await _sb.from('profiles').select('plan,seat_count,subscription_status,stripe_subscription_id,is_company_admin').in('plan',['pro','company']).eq('is_admin',false).in('subscription_status',PAYING);
+  const paying=(prof||[]).filter(p=>p.plan==='pro'||(p.plan==='company'&&p.is_company_admin));
+  const {data:bill,error:billErr}=await _sb.from('subscription_billing').select('stripe_subscription_id,amount_paid_pence,discount_pence,period_end');
+  const bySub={}; (bill||[]).forEach(b=>{bySub[b.stripe_subscription_id]=b;});
+  const now=Date.now(), r={billed:0,full:0,proBilled:0,compBilled:0,proCount:0,seats:0,discounted:0,discountGbp:0,unsynced:0,tableMissing:!!billErr};
+  paying.forEach(p=>{
+    const fullP=p.plan==='pro'?39.99:(p.seat_count||0)*29.99;
+    r.full+=fullP; if(p.plan==='pro') r.proCount++; else r.seats+=(p.seat_count||0);
+    const b=bySub[p.stripe_subscription_id]; let amt=fullP;
+    if(b&&b.period_end&&new Date(b.period_end).getTime()>now){
+      amt=b.amount_paid_pence/100;
+      if(b.discount_pence>0){ r.discounted++; r.discountGbp+=b.discount_pence/100; }
+    } else r.unsynced++;
+    r.billed+=amt; if(p.plan==='pro') r.proBilled+=amt; else r.compBilled+=amt;
+  });
+  return r;
+}
+function _mrrNoteHtml(m){
+  const parts=[];
+  if(m.discounted) parts.push(`${m.discounted} subscriber${m.discounted>1?'s':''} on the first-month discount (−£${m.discountGbp.toFixed(2)} this month)`);
+  if(m.tableMissing) parts.push('billing table not set up yet (run Supabase/09-subscription-billing.sql), counting full price');
+  else if(m.unsynced) parts.push(`${m.unsynced} counted at full price (no billed amount recorded yet) <a href="#" onclick="syncBillingFromStripe(this);return false;" style="color:var(--accent);">Sync from Stripe</a>`);
+  return parts.length?`<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin:-6px 0 14px;line-height:1.6;">${parts.join(' · ')}</div>`:'';
+}
+async function syncBillingFromStripe(el){
+  const old=el.textContent; el.textContent='syncing…';
+  try{
+    const {data:{session}}=await _sb.auth.getSession();
+    const r=await fetch(PAYMENT_WORKER_URL+'/admin/sync-billing',{method:'POST',headers:{Authorization:'Bearer '+(session&&session.access_token)}});
+    const j=await r.json();
+    if(!r.ok) throw new Error(j.error||('HTTP '+r.status));
+    el.textContent=`synced ${j.synced} of ${j.subscriptions}`;
+    setTimeout(()=>{ try{ loadRevenue(); loadKPIs(); }catch(e){} },400);
+  }catch(e){ el.textContent=old; alert('Sync failed: '+(e.message||e)); }
+}
 async function loadRevenue(){
   // Same rule as the KPI tile: only 'active'/'active_cancelling' subscriptions
   // have actually been charged. A 'trialing' plan='pro' row is £0 of real
   // revenue, whether or not it's also scheduled to cancel.
-  const PAYING_STATUSES=['active','active_cancelling'];
-  const{count:proCount}=await _sb.from('profiles').select('*',{count:'exact',head:true}).eq('plan','pro').eq('is_admin',false).in('subscription_status',PAYING_STATUSES);
-  const{data:compProf}=await _sb.from('profiles').select('seat_count,subscription_status').eq('plan','company').eq('is_company_admin',true).eq('is_admin',false);
-  const compSeats=(compProf||[]).filter(p=>PAYING_STATUSES.includes(p.subscription_status)).reduce((s,p)=>s+(p.seat_count||0),0);
-  const proMRR=(proCount||0)*39.99,compMRR=compSeats*29.99,totalMRR=proMRR+compMRR;
+  const _m=await _mrrBreakdown();
+  const proMRR=_m.proBilled,compMRR=_m.compBilled,totalMRR=_m.billed;
   const{data:addons}=await _sb.from('generations').select('addon_charged_pence,project_name,area_km2,created_at').eq('is_test',false).gt('addon_charged_pence',0).order('created_at',{ascending:false}).limit(20);
   const totalAddon=(addons||[]).reduce((s,r)=>s+(r.addon_charged_pence||0),0);
+  // Subscription payment outcomes, logged by the payment worker from Stripe's invoice.paid and
+  // invoice.payment_failed webhooks (events payment_received / payment_failed), last 90 days.
+  const{data:payEv}=await _sb.from('events').select('event,user_id,properties,created_at').eq('is_test',false)
+    .in('event',['payment_received','payment_failed']).gte('created_at',new Date(Date.now()-90*864e5).toISOString())
+    .order('created_at',{ascending:false}).limit(30);
+  const payIds=[...new Set((payEv||[]).map(e=>e.user_id).filter(Boolean))];
+  const{data:payProf}=payIds.length?await _sb.from('profiles').select('id,email').in('id',payIds):{data:[]};
+  const payEmail={}; (payProf||[]).forEach(p=>{payEmail[p.id]=p.email;});
+  const gbp=p=>'£'+((p||0)/100).toFixed(2);
+  const payRows=(payEv||[]).map(e=>{
+    const pr=e.properties||{}, ok=e.event==='payment_received';
+    const who=esc(payEmail[e.user_id]||'unknown customer');
+    const when=new Date(e.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const note=ok?(pr.discount_pence>0?` (−${gbp(pr.discount_pence)} discount)`:'')
+      :` failed, attempt ${pr.attempt||'?'}${pr.next_attempt_at?', retry '+new Date(pr.next_attempt_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):', no more retries'}`;
+    return `<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px;"><span style="color:var(--text-mid);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${when} · ${who}</span><span style="color:${ok?'var(--accent)':'var(--red)'};white-space:nowrap;">${gbp(pr.amount_pence)}${esc(note)}</span></div>`;
+  }).join('');
 
   document.getElementById('badge-revenue').textContent='MRR + Add-ons';
   document.getElementById('body-revenue').innerHTML=`
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
-      <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">TOTAL MRR</div><div style="font-size:20px;font-weight:500;color:var(--accent);">£${totalMRR.toFixed(0)}</div></div>
+      <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">TOTAL MRR</div><div style="font-size:20px;font-weight:500;color:var(--accent);">£${totalMRR.toFixed(0)}</div>${Math.abs(_m.full-_m.billed)>=0.5?`<div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:2px;">full rate £${_m.full.toFixed(0)}</div>`:''}</div>
       <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">PRO</div><div style="font-size:20px;font-weight:500;color:var(--blue);">£${proMRR.toFixed(0)}</div></div>
       <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">COMPANY</div><div style="font-size:20px;font-weight:500;color:var(--amber);">£${compMRR.toFixed(0)}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
       <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">ADD-ONS</div><div style="font-size:20px;font-weight:500;color:var(--purple);">£${(totalAddon/100).toFixed(0)}</div></div>
-      <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">ARR (PROJ)</div><div style="font-size:20px;font-weight:500;color:var(--accent);">£${Math.round(totalMRR*12).toLocaleString()}</div></div>
+      <div style="text-align:center;"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px;">ARR (PROJ)</div><div style="font-size:20px;font-weight:500;color:var(--accent);">£${Math.round(_m.full*12).toLocaleString()}</div></div>
+    </div>
+    ${_mrrNoteHtml(_m)}
+    <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">Subscription payments (90 days)</div>
+    <div style="max-height:200px;overflow-y:auto;margin-bottom:16px;">
+      ${payRows||'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">No subscription payments recorded yet (starts once the updated payment worker is live)</div>'}
     </div>
     <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">Addon charges</div>
     <div style="max-height:200px;overflow-y:auto;">
