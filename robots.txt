@@ -61,3 +61,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://topo-grapher.com/sitemap.xml
+Sitemap: https://blog.topo-grapher.com/sitemap.xml
