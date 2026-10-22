@@ -805,6 +805,9 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 .auth-google { width:100%; display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; color:#1f1f1f; border:1px solid #dadce0; border-radius:5px; padding:11px 12px; font-family:'DM Mono',monospace; font-size:13px; cursor:pointer; transition:background .15s, box-shadow .15s; }
 .auth-google:hover { background:#f8f9fa; box-shadow:0 1px 3px rgba(0,0,0,.25); }
 .auth-google:disabled { opacity:.7; cursor:default; box-shadow:none; }
+.auth-providers { display:flex; gap:10px; }
+.auth-providers .auth-google { flex:1 1 0; width:auto; min-width:0; padding:11px 8px; gap:8px; }
+.auth-providers .auth-google svg { flex:none; }
 
 /* ── Library tabs ────────────────────────────────────────────────────────── */
 .lib-tab { background:var(--bg-input); border:none; color:var(--text-soft); padding:7px 16px; font-family:'DM Mono',monospace; font-size:11px; cursor:pointer; letter-spacing:.06em; transition:all .15s; }
@@ -1809,15 +1812,23 @@ function declineCookies() {
         <button class="auth-tab active" id="tab-signin" onclick="switchTab('signin')">Sign in</button>
         <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Create account</button>
       </div>
-      <button type="button" class="auth-google" id="auth-google-btn" onclick="signInWithGoogle()">
-        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-        </svg>
-        <span id="auth-google-label">Continue with Google</span>
-      </button>
+      <div class="auth-providers">
+        <button type="button" class="auth-google" id="auth-google-btn" onclick="signInWithProvider('google')" aria-label="Continue with Google">
+          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          <span id="auth-google-label">Google</span>
+        </button>
+        <button type="button" class="auth-google" id="auth-autodesk-btn" onclick="signInWithProvider('autodesk')" aria-label="Continue with Autodesk">
+          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+            <path fill="#1f1f1f" d="M2 40 30 8h13.5L26.8 27.6 41 40H27.3L19.8 33.4 13.2 40z"/>
+          </svg>
+          <span id="auth-autodesk-label">Autodesk</span>
+        </button>
+      </div>
       <div class="auth-divider">or use email</div>
       <div id="auth-form-signin">
         <div class="auth-field"><label>Email</label><input type="email" id="signin-email" placeholder="your@email.com"/></div>
@@ -4006,15 +4017,16 @@ async function handleSession(session) {
     track('download_resumed_after_auth', { format: resumeFmt, from_storage: restoredFromStorage });
     setTimeout(handleDownload, 400);
   }
-  // Returning from Google: record the completed sign-in once, and a sign-up if the account
+  // Returning from an OAuth provider: record the completed sign-in once, and a sign-up if the account
   // was created moments ago (this is the only place a Google signup becomes visible to the
   // funnel, since there is no form submit to hang signup_completed on).
   try {
-    if (sessionStorage.getItem('topo_oauth_google')) {
-      sessionStorage.removeItem('topo_oauth_google');
+    const _oaProv = _oauthPending();
+    if (_oaProv) {
+      _oauthClear();
       const createdMs = session.user && session.user.created_at ? new Date(session.user.created_at).getTime() : 0;
-      track('signin_completed', { method: 'google' });
-      if (createdMs && (Date.now() - createdMs) < 120000) track('signup_completed', Object.assign({ method: 'google' }, getFirstTouch()));
+      track('signin_completed', { method: _oaProv });
+      if (createdMs && (Date.now() - createdMs) < 120000) track('signup_completed', Object.assign({ method: _oaProv }, getFirstTouch()));
     }
   } catch(e) {}
   // A session exists, so the email is confirmed: retire the pay-before-confirm banner.
@@ -4779,51 +4791,72 @@ async function submitAuth(type) {
     } catch(e) { showErr(_authErrMsg(e.message || '')); }
   }
 }
-// ── Google sign-in ────────────────────────────────────────────────────────
+// ── OAuth sign-in (Google, Autodesk) ──────────────────────────────────────
 // Full-page OAuth redirect. Anything the user was in the middle of (a queued checkout in
 // localStorage, a pending download in localStorage) survives the round trip and is picked
 // up by handleSession() when they come back, exactly like the email-confirm flow.
-// Google returns verified emails, so there is no inbox step.
-async function signInWithGoogle() {
-  const btn = document.getElementById('auth-google-btn');
-  const label = document.getElementById('auth-google-label');
+// Google returns verified emails, so there is no inbox step. Autodesk is a Supabase custom
+// OIDC provider registered as "autodesk", so Supabase's provider id is "custom:autodesk".
+var _OAUTH_PROVIDERS = {
+  google:   { name: 'Google',   supabase: 'google',          labelId: 'auth-google-label',   btnId: 'auth-google-btn' },
+  autodesk: { name: 'Autodesk', supabase: 'custom:autodesk', labelId: 'auth-autodesk-label', btnId: 'auth-autodesk-btn' }
+};
+// The provider a sign-in round trip is in progress for ('' if none). The old Google-only
+// flag is still read so a redirect started just before a deploy completes cleanly.
+function _oauthPending() {
+  try {
+    const v = sessionStorage.getItem('topo_oauth_provider');
+    if (v) return v;
+    if (sessionStorage.getItem('topo_oauth_google')) return 'google';
+  } catch(e) {}
+  return '';
+}
+function _oauthClear() {
+  try { sessionStorage.removeItem('topo_oauth_provider'); sessionStorage.removeItem('topo_oauth_google'); } catch(e) {}
+}
+async function signInWithProvider(key) {
+  const prov = _OAUTH_PROVIDERS[key];
+  if (!prov) return;
+  const btn = document.getElementById(prov.btnId);
+  const label = document.getElementById(prov.labelId);
   const signupShown = document.getElementById('auth-form-signup').style.display !== 'none';
   const errEl = document.getElementById(signupShown ? 'signup-error' : 'signin-error');
   if (errEl) { errEl.textContent = ''; errEl.style.color = 'var(--danger,#e25555)'; }
   if (btn && btn.disabled) return;
-  track('oauth_started', { provider: 'google', context: _peekPendingCheckout() ? 'checkout' : 'auth' });
-  try { sessionStorage.setItem('topo_oauth_google', String(Date.now())); } catch(e) {}
+  track('oauth_started', { provider: key, context: _peekPendingCheckout() ? 'checkout' : 'auth' });
+  try { sessionStorage.setItem('topo_oauth_provider', key); } catch(e) {}
   if (btn) btn.disabled = true;
-  if (label) label.textContent = 'Opening Google…';
+  if (label) label.textContent = 'Opening…';
   try {
     const { error } = await _withTimeout(
-      _sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + window.location.pathname } }), 12000
+      _sb.auth.signInWithOAuth({ provider: prov.supabase, options: { redirectTo: window.location.origin + window.location.pathname } }), 12000
     );
     if (error) throw error;
-    // The browser is navigating to Google now; leave the button disabled.
+    // The browser is navigating to the provider now; leave the button disabled.
   } catch(e) {
-    try { sessionStorage.removeItem('topo_oauth_google'); } catch(e2) {}
-    track('oauth_failed', { provider: 'google', reason: ((e && e.message) || 'unknown').slice(0, 80) });
+    _oauthClear();
+    track('oauth_failed', { provider: key, reason: ((e && e.message) || 'unknown').slice(0, 80) });
     if (btn) btn.disabled = false;
-    if (label) label.textContent = 'Continue with Google';
-    if (errEl) errEl.textContent = 'Could not open Google sign-in. Please try again or use email.';
+    if (label) label.textContent = prov.name;
+    if (errEl) errEl.textContent = 'Could not open ' + prov.name + ' sign-in. Please try again or use email.';
   }
 }
-// Back from Google after the user cancelled or Google/Supabase refused: say so instead of
-// silently dropping them on the homepage. Supabase reports this in the hash or the query.
+function signInWithGoogle() { return signInWithProvider('google'); }
+// Back from a provider after the user cancelled or the provider/Supabase refused: say so
+// instead of silently dropping them on the homepage. Supabase reports this in the hash or the query.
 function _handleOAuthReturnError() {
-  let started = null;
-  try { started = sessionStorage.getItem('topo_oauth_google'); } catch(e) {}
+  const started = _oauthPending();
   const raw = (window.location.hash || '').replace(/^#/, '') + '&' + (window.location.search || '').replace(/^\?/, '');
   const params = new URLSearchParams(raw);
   const desc = params.get('error_description') || params.get('error');
   if (!desc || !started) return;
-  try { sessionStorage.removeItem('topo_oauth_google'); } catch(e) {}
-  track('oauth_failed', { provider: 'google', reason: String(desc).slice(0, 80), stage: 'return' });
+  _oauthClear();
+  const pname = (_OAUTH_PROVIDERS[started] || { name: 'Sign-in' }).name;
+  track('oauth_failed', { provider: started, reason: String(desc).slice(0, 80), stage: 'return' });
   history.replaceState(null, '', window.location.pathname);
   openAuth('signin');
   const se = document.getElementById('signin-error');
-  if (se) se.textContent = 'Google sign-in was cancelled or did not complete. Try again, or use email.';
+  if (se) se.textContent = pname + ' sign-in was cancelled or did not complete. Try again, or use email.';
 }
 // A checkout the signup/sign-in wall interrupted. Peek reads without consuming.
 function _peekPendingCheckout() {
