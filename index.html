@@ -2049,9 +2049,9 @@ function declineCookies() {
               </div>
               <div id="cancel-sub-form" style="display:none;margin-top:10px;">
                 <div class="auth-field">
-                  <label>Why are you cancelling? (optional)</label>
+                  <label>Why are you cancelling? (one quick answer, it helps us improve)</label>
                   <select id="cancel-reason-select" style="width:100%;background:var(--bg-card);border:1px solid var(--border-md);border-radius:5px;padding:9px 10px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text);outline:none;box-sizing:border-box;margin-bottom:8px;">
-                    <option value="">Prefer not to say</option>
+                    <option value="">Choose a reason…</option>
                     <option value="Project finished / no longer needed">Project finished / no longer needed</option>
                     <option value="Too expensive">Too expensive</option>
                     <option value="Missing a feature I need">Missing a feature I need</option>
@@ -5298,7 +5298,13 @@ async function confirmCancelSubscription() {
   if (!msgEl) return;
   const picked = (selectEl?.value || '').trim();
   const detail = (detailEl?.value || '').trim();
-  const reason = [picked, detail].filter(Boolean).join(' - ') || 'not given';
+  if (!picked) {
+    msgEl.style.color = 'var(--danger,#e25555)'; msgEl.textContent = 'Please choose a reason so we can improve.';
+    if (selectEl) selectEl.focus();
+    try { track('cancel_reason_missing', {}); } catch (e) {}
+    return;
+  }
+  const reason = [picked, detail].filter(Boolean).join(' - ');
   if (!confirm("Cancel your subscription? You'll keep Pro access until the end of your current billing period.")) return;
   msgEl.style.color = 'var(--text-mid)'; msgEl.textContent = 'Cancelling…';
   try {
