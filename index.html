@@ -296,7 +296,6 @@ nav.scrolled { background: color-mix(in srgb, var(--bg-card) 88%, transparent); 
 .tool-btn.active { background: var(--accent-dk); border-color: var(--accent-md); color: var(--accent); }
 .tool-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
 .tool-btn.coord-active { background: rgba(78,160,217,0.08); border-color: #4ea0d9 !important; color: #4ea0d9 !important; }
-.pro-badge { font-size: 9px; background: #4ea0d9; color: #111; padding: 2px 6px; border-radius: 3px; margin-left: 4px; font-weight: 600; letter-spacing: .03em; }
 
 /* ═══ COORDINATE DRAWER ═══ */
 .coord-drawer {
@@ -567,7 +566,7 @@ footer { background: var(--bg-card); border-top: 1px solid var(--border); paddin
 
 /* ═══ RESPONSIVE ═══ */
 @media (max-width: 860px) {
-  .tool-layout { grid-template-columns: 1fr; height: auto; min-height: auto; max-height: none; }
+  .tool-layout { grid-template-columns: minmax(0, 1fr); height: auto; min-height: auto; max-height: none; }
   .map-card { min-height: 350px; }
   .panel-right { overflow-y: visible; }
   .floating-ribbon { bottom: 16px; max-width: calc(100vw - 24px); overflow-x: auto; scrollbar-width: none; }
@@ -581,7 +580,10 @@ footer { background: var(--bg-card); border-top: 1px solid var(--border); paddin
   .tier-grid::-webkit-scrollbar { display: none; }
   .tier-grid .tier-card { min-width: min(84vw, 320px); flex-shrink: 0; scroll-snap-align: start; }
   .hero-compact h1 { font-size: clamp(20px, 5vw, 32px); }
-  .coord-drawer { display: none !important; }
+  .map-card { overflow: visible; }
+  .map-and-drawer { flex: 0 0 auto; flex-wrap: wrap; }
+  .map-and-drawer .view-wrap { flex: 1 0 100%; height: 320px; }
+  .coord-drawer { width: 100%; box-sizing: border-box; border-left: 1px solid var(--border); border-radius: 0 0 6px 6px; }
 }
 @media (max-width: 480px) {
   nav { padding: 0 14px; height: 50px; }
@@ -1163,7 +1165,7 @@ function declineCookies() {
       <div class="map-toolbar">
         <button class="tool-btn" id="btn-polygon" onclick="activateTool('polygon')">&#x270F; Draw polygon</button>
         <button class="tool-btn" id="btn-rect" onclick="activateTool('rect')">&#x2B1C; Rectangle</button>
-        <button class="tool-btn" id="btn-coords" onclick="toggleCoordDrawer()">&#x2295; Coordinates <span class="pro-badge">PRO</span></button>
+        <button class="tool-btn" id="btn-coords" onclick="toggleCoordDrawer()">&#x2295; Coordinates</button>
         <input type="text" id="map-search" placeholder="Search location&#x2026;" onkeydown="if(event.key==='Enter')doSearch()" style="flex:1;min-width:100px;max-width:200px;background:var(--bg-input);border:1px solid var(--accent-md);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:6px 10px;border-radius:4px;outline:none;">
         <button class="tool-btn" id="btn-search" onclick="doSearch()" style="border-color:var(--accent-md);color:var(--accent)">&#x2315; Search</button>
         <button class="tool-btn danger" onclick="clearArea()" style="margin-left:auto">&#x2715; Clear</button>
@@ -3382,10 +3384,6 @@ function toggleCoordDrawer() {
   if (drawer.classList.contains('open')) {
     closeCoordDrawer();
   } else {
-    if (!isPro()) {
-      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
-      return;
-    }
     openCoordDrawer();
   }
 }
@@ -3408,12 +3406,8 @@ function closeCoordDrawer() {
   if (drawer) drawer.classList.remove('open');
   document.getElementById('btn-coords')?.classList.remove('coord-active');
   window._activeCoordCRS = null;
-  if (_coordPolygonLayer) {
-    drawnItems.removeLayer(_coordPolygonLayer);
-    _coordPolygonLayer = null;
-    polygonLatLngs = null;
-    updatePtCounts(); updateHint(); updateConvertBtn();
-  }
+  // The site stays: Esc on a popup lands here too, and must not lose a site about to be paid for.
+  setTimeout(function() { if (map) map.invalidateSize(); }, 50);
 }
 
 function onCRSChange() {
@@ -8151,11 +8145,13 @@ function _buildingFromOsmEl(el) {
 // Standalone buildings fetch — used by both the sidebar button and _doFetchAndRender.
 // Stores result in window._lastBuildingData and returns the data object.
 const ROADS_WORKER = 'https://roads.svanur300.workers.dev';
-// Overpass answers 502 or 429 when it is at capacity, which happens often: one patient retry.
+// Overpass answers 502 or 429 when it is at capacity, which happens often. One retry, only after
+// a quick refusal: a worker that spent 30 s on every server has nothing left to try.
 async function _fetchRetry(url, opts) {
-  const go = () => fetch(url, Object.assign({}, opts, { signal: AbortSignal.timeout(28000) }));
+  const go = () => fetch(url, Object.assign({}, opts, { signal: AbortSignal.timeout(38000) }));
+  const t0 = Date.now();
   let r = await go();
-  if (r.status === 502 || r.status === 503 || r.status === 504 || r.status === 429) {
+  if ((r.status === 502 || r.status === 503 || r.status === 504 || r.status === 429) && Date.now() - t0 < 10000) {
     await new Promise(res => setTimeout(res, 4000));
     r = await go();
   }
@@ -10191,7 +10187,7 @@ async function openHistory() {
   var coContent = document.getElementById('lib-company-content');
   var isCompany = _currentProfile && _currentProfile.plan === 'company';
 
-  if (locked)    locked.style.display   = isPro() ? 'none' : '';
+  if (locked)    locked.style.display   = isPro() ? 'none' : 'flex';
   var cta = document.getElementById('history-locked-cta');
   if (cta) cta.textContent = _currentUser ? 'Go Pro →' : 'Sign up to save projects →';
   if (legend)    legend.style.display   = isPro() ? ''     : 'none';
