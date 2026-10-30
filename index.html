@@ -88,7 +88,7 @@
         "name": "Free",
         "price": "0",
         "priceCurrency": "GBP",
-        "description": "3 generations/day, up to 500m x 500m, 12m spacing, no account needed"
+        "description": "2 sites/day, up to 500m x 500m, 12m spacing, no account needed"
       },
       {
         "@type": "Offer",
@@ -421,6 +421,25 @@ nav.scrolled { background: color-mix(in srgb, var(--bg-card) 88%, transparent); 
 }
 .btn-generate:hover { background: var(--green-lt); }
 .btn-generate:disabled { opacity: .35; cursor: not-allowed; }
+.site-price { margin-bottom: 8px; font-size: 12px; color: var(--text-mid); }
+.site-price-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.site-price-row strong { color: var(--text); font-weight: 500; }
+.site-price-bar { height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--text-soft) 25%, transparent); overflow: hidden; }
+#site-price-fill { display: block; height: 100%; width: 0; background: var(--green-lt, #9aba6a); transition: width .2s ease; }
+#site-price-fill.over { background: var(--accent); }
+.site-price-note { margin-top: 4px; font-size: 11px; color: var(--text-soft); }
+.site-price-note a { color: var(--accent); }
+.credit-pack { width: 100%; cursor: pointer; font: inherit; }
+.credit-custom-label { display: block; font-size: 12px; color: var(--text-mid); margin: -6px 0 6px; }
+.credit-custom { display: flex; gap: 8px; }
+.credit-custom-input { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 0 12px; background: var(--bg-input); border: 1px solid var(--border-md); border-radius: 6px; color: var(--text); }
+.credit-custom-input input { flex: 1; min-width: 0; width: 100%; padding: 10px 0; background: transparent; border: none; outline: none; color: var(--text); font: inherit; font-size: 16px; }
+.credit-custom-input:focus-within { border-color: var(--accent); }
+.credit-custom .large-site-cta { width: auto; padding: 0 22px; }
+.credit-custom-hint { font-size: 11px; color: var(--text-soft); margin: 6px 0 14px; }
+.credit-error { font-size: 12px; color: var(--danger); margin-bottom: 8px; }
+.credit-toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 9999; width: min(92vw, 520px); background: var(--bg-card); border: 1px solid var(--accent); border-radius: 10px; padding: 12px 14px; display: flex; gap: 12px; align-items: center; font-size: 13px; color: var(--text); box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+.credit-toast button { background: transparent; border: none; color: var(--text-soft); font-size: 16px; cursor: pointer; }
 .limit-badge {
   display: flex; align-items: center; justify-content: center; gap: 6px;
   margin-top: 6px; flex-shrink: 0;
@@ -728,10 +747,6 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 .stat-n { font-family:'DM Mono',monospace; font-size:20px; font-weight:500; color:var(--accent); line-height:1; margin-bottom:4px; }
 .stat-l { font-size:12px; color:var(--text-mid); text-transform:uppercase; letter-spacing:var(--ls-looser); }
 .stat-s { font-size:12px; color:var(--text-mid); margin-top:3px; }
-.preview-table { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:16px; }
-.preview-table th { text-align:left; padding:8px 12px; background:var(--bg-input); color:var(--accent); font-size:11px; letter-spacing:.12em; text-transform:uppercase; border-bottom:1px solid var(--border); }
-.preview-table td { padding:7px 12px; border-bottom:1px solid var(--border); color:var(--text); font-size:13px; }
-.preview-table tr:last-child td { border-bottom:none; }
 .origin-box { background:var(--accent-dk); border:1px solid var(--accent-md); border-radius:6px; padding:13px 16px; font-size:13px; color:var(--text); margin-bottom:16px; line-height:1.9; }
 .btn-dl { background:var(--accent-md); color:#EFE3D8; border:1px solid var(--accent); padding:14px 24px; border-radius:6px; font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; transition:all .18s; width:100%; letter-spacing:.06em; text-transform:uppercase; }
 .btn-dl:hover { background:var(--accent); color:#1a1208; }
@@ -906,6 +921,7 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 .fp-card-note { color:#c8892f; }
 [data-theme="light"] .fp-card-note { color:#8f6216; }
 .fp-foot { flex:none; padding:12px 16px 14px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:8px; background:var(--bg-card); }
+.fp-context { display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-mid); cursor:pointer; }
 .fp-note { font-size:10.5px; color:var(--text-mid); line-height:1.45; }
 .fp-note:empty { display:none; }
 .fp-dl { width:100%; padding:11px; border-radius:7px; border:1px solid var(--green-lt); background:var(--green); color:#EFE3D8; font-family:'DM Mono',monospace; font-size:12px; letter-spacing:.05em; text-transform:uppercase; cursor:pointer; transition:opacity .13s; }
@@ -1112,7 +1128,8 @@ function declineCookies() {
       <div class="user-dropdown" id="user-dropdown">
         <span style="display:block;padding:12px 14px 10px;font-size:12px;color:var(--text-soft);border-bottom:1px solid var(--border);" id="user-email-display"></span>
         <button onclick="openSettings()">Account settings</button>
-        <a href="#pricing" id="nav-upgrade-link" onclick="document.getElementById('user-dropdown').classList.remove('show');track('pro_cta_clicked',{source:'nav_dropdown'});startCheckout('pro')">Start free trial &#x2192;</a>
+        <a href="#" id="nav-credits-link" onclick="event.preventDefault();document.getElementById('user-dropdown').classList.remove('show');openCreditModal('pricing');">Credits: &pound;0</a>
+        <a href="#pricing" id="nav-upgrade-link" onclick="document.getElementById('user-dropdown').classList.remove('show');track('pro_cta_clicked',{source:'nav_dropdown'});startCheckout('pro')">Go Pro &#x2192;</a>
         <button onclick="signOut()">Sign out</button>
       </div>
     </div>
@@ -1181,6 +1198,7 @@ function declineCookies() {
               <button id="free-btn-reset"    style="background:color-mix(in srgb,var(--bg-card) 75%,transparent);backdrop-filter:blur(8px);border:1px solid var(--border-md);color:var(--text-mid);padding:6px 12px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all .1s;letter-spacing:.05em;">Reset view</button>
               <span style="width:1px;height:18px;background:var(--border-md);flex-shrink:0;margin:0 2px;"></span>
               <button id="free-btn-buildings" style="background:color-mix(in srgb,var(--bg-card) 75%,transparent);backdrop-filter:blur(8px);border:1px solid var(--border-md);color:var(--text-mid);padding:6px 12px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all .1s;letter-spacing:.05em;">Buildings</button>
+              <button id="free-btn-roads" style="background:color-mix(in srgb,var(--bg-card) 75%,transparent);backdrop-filter:blur(8px);border:1px solid var(--border-md);color:var(--text-mid);padding:6px 12px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all .1s;letter-spacing:.05em;">Roads</button>
             </div>
             <!-- Interaction hint for free view -->
             <div style="position:absolute;bottom:8px;left:10px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text-soft);letter-spacing:.05em;z-index:10;pointer-events:none;">Drag to rotate · Scroll to zoom · Right-drag to pan</div>
@@ -1245,15 +1263,15 @@ function declineCookies() {
       <!-- Accuracy chips -->
       <div class="ctrl-label" style="margin-bottom:8px;">Point density</div>
       <div class="acc-row" style="margin-bottom:12px;">
-        <div class="acc-chip acc-btn" id="acc-3" onclick="setAccuracy(3);_spChipTap(3)" title="3m LiDAR - Pro">
+        <div class="acc-chip acc-btn" id="acc-3" onclick="setAccuracy(3);_spChipTap(3)" title="3m LiDAR - paid">
           <div class="acc-chip-val">3m</div>
           <div class="acc-chip-name">LiDAR</div>
-          <div class="acc-chip-tier">Pro</div>
+          <div class="acc-chip-tier">Paid</div>
         </div>
-        <div class="acc-chip acc-btn" id="acc-6" onclick="setAccuracy(6);_spChipTap(6)" title="6m Precise - Pro">
+        <div class="acc-chip acc-btn" id="acc-6" onclick="setAccuracy(6);_spChipTap(6)" title="6m Precise - paid">
           <div class="acc-chip-val">6m</div>
           <div class="acc-chip-name">Precise</div>
-          <div class="acc-chip-tier">Pro</div>
+          <div class="acc-chip-tier">Paid</div>
         </div>
         <div class="acc-chip acc-btn selected" id="acc-12" onclick="setAccuracy(12)" title="12m Site - Free">
           <div class="acc-chip-val">12m</div>
@@ -1398,6 +1416,11 @@ function declineCookies() {
     </div>
 
     <!-- Generate button -->
+    <div class="site-price" id="site-price" style="display:none;">
+      <div class="site-price-row"><span id="site-price-size"></span><strong id="site-price-cost"></strong></div>
+      <div class="site-price-bar"><span id="site-price-fill"></span></div>
+      <div class="site-price-note" id="site-price-note"></div>
+    </div>
     <button class="btn-generate" id="convert-btn" disabled>Generate Terrain</button>
     <div id="daily-limit-badge" class="limit-badge"></div>
     <div id="error-msg"></div>
@@ -1438,10 +1461,6 @@ function declineCookies() {
         <div id="esb-detail" style="font-size:11px;color:var(--text-soft);"></div>
         <div id="esb-upgrade" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-mid);"></div>
       </div>
-      <table class="preview-table" style="margin-bottom:12px;">
-        <thead><tr><th id="ph-x">X (m)</th><th id="ph-y">Y (m)</th><th id="ph-z">Z (m)</th></tr></thead>
-        <tbody id="preview-body"></tbody>
-      </table>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn-dl" id="download-btn" style="flex:1;">&#x2193; Download CSV</button>
         <button class="btn-dl" id="download-map-btn" style="flex:1;background:var(--bg-input);color:var(--text);border-color:var(--border-md);display:none;">&#x2193; Site map</button>
@@ -1493,6 +1512,7 @@ function declineCookies() {
       <button id="pro-btn-reset"    style="background:color-mix(in srgb,var(--bg-card) 75%,transparent);backdrop-filter:blur(8px);border:1px solid var(--border-md);color:var(--text-mid);padding:6px 12px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all var(--dur-micro) var(--ease-out);letter-spacing:var(--ls-loose);">Reset view</button>
       <span style="width:1px;height:18px;background:var(--border-md);flex-shrink:0;margin:0 2px;"></span>
       <button id="pro-btn-buildings" style="background:color-mix(in srgb,var(--bg-card) 75%,transparent);backdrop-filter:blur(8px);border:1px solid var(--border-md);color:var(--text-mid);padding:6px 12px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all var(--dur-micro) var(--ease-out);letter-spacing:var(--ls-loose);">Buildings</button>
+      <button id="pro-btn-roads" style="background:color-mix(in srgb,var(--bg-card) 75%,transparent);backdrop-filter:blur(8px);border:1px solid var(--border-md);color:var(--text-mid);padding:6px 12px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all var(--dur-micro) var(--ease-out);letter-spacing:var(--ls-loose);">Roads</button>
     </div>
 
     <!-- Mode badge -->
@@ -1531,7 +1551,7 @@ function declineCookies() {
         </div>
       </div>
       <ul class="tier-features">
-        <li class="feat-ok">3 generations per day</li>
+        <li class="feat-ok">2 free sites a day</li>
         <li class="feat-ok">Up to 500 &times; 500m per site</li>
         <li class="feat-ok">12&ndash;20m elevation precision</li>
         <li class="feat-ok">CSV export for Revit, SketchUp, Rhino &amp; more</li>
@@ -1556,7 +1576,7 @@ function declineCookies() {
         <div class="tier-hero-label">
           <div class="tier-name">Pro</div>
           <div class="tier-price">&pound;39.99<span class="tier-per"> /month</span></div>
-          <div class="tier-desc" style="opacity:.85;">14 days free, then billed monthly. Cancel anytime.</div>
+          <div class="tier-desc" style="opacity:.85;">Billed monthly. Cancel anytime.</div>
           <div class="tier-desc">For individual architects working on real projects.</div>
         </div>
       </div>
@@ -1568,9 +1588,9 @@ function declineCookies() {
         <li class="feat-ok">LiDAR elevation where available</li>
         <li class="feat-ok">3D terrain preview</li>
         <li class="feat-ok">Priority support</li>
-        <li class="feat-add">Large site add-on available</li>
+        <li class="feat-add">Very large sites from your credits</li>
       </ul>
-      <button class="tier-cta" id="checkout-btn-pro" onclick="track('pro_cta_clicked',{source:'pricing_card'});startCheckout('pro')">Start 14-day free trial &rarr;</button>
+      <button class="tier-cta" id="checkout-btn-pro" onclick="track('pro_cta_clicked',{source:'pricing_card'});startCheckout('pro')">Go Pro &rarr;</button>
     </div>
 
     <!-- Company -->
@@ -1586,7 +1606,7 @@ function declineCookies() {
         <div class="tier-hero-label">
           <div class="tier-name">Company</div>
           <div class="tier-price">&pound;29.99<span class="tier-per"> /seat/month</span></div>
-          <div class="tier-desc" style="opacity:.85;">14 days free, then billed monthly. Cancel anytime.</div>
+          <div class="tier-desc" style="opacity:.85;">Billed monthly. Cancel anytime.</div>
           <div class="tier-desc">For practices and studios. Scales with your team.</div>
         </div>
       </div>
@@ -1598,13 +1618,13 @@ function declineCookies() {
         <li class="feat-ok">Team admin panel</li>
         <li class="feat-ok">Usage dashboard</li>
         <li class="feat-ok">Invoiced billing available</li>
-        <li class="feat-add">Large site add-on available</li>
+        <li class="feat-add">Very large sites from your credits</li>
       </ul>
-      <button class="tier-cta" id="checkout-btn-company" onclick="if(!_currentUser){openAuth();return;}document.getElementById('seat-picker-overlay').classList.add('show');updateSeatTotal();">Start free trial &rarr;</button>
+      <button class="tier-cta" id="checkout-btn-company" onclick="if(!_currentUser){openAuth();return;}document.getElementById('seat-picker-overlay').classList.add('show');updateSeatTotal();">Choose Company &rarr;</button>
     </div>
 
   </div>
-  <div style="font-size:12px;color:var(--text-soft);text-align:center;margin:10px 0 0;">Cancel anytime. Full refund within 14 days if a paid feature isn't available for your site's location - see <a href="terms.html#refunds" style="color:var(--accent);">refund terms</a>.</div>
+  <div style="font-size:12px;color:var(--text-soft);text-align:center;margin:10px 0 0;">Cancel Pro or Company anytime. If a paid feature isn't available for your site's location, email us within 14 days and we'll put it right - see <a href="terms.html#refunds" style="color:var(--accent);">refund terms</a>.</div>
   <!-- Dot indicators — visible only on mobile -->
   <div class="tier-dots" id="tier-dots">
     <div class="tier-dot active"></div>
@@ -1612,12 +1632,31 @@ function declineCookies() {
     <div class="tier-dot"></div>
   </div>
 
-  <!-- Add-ons -->
-  <div class="addon-section-label">// Large Site Add-on - Pro &amp; Company</div>
-  <div style="font-size:13px;color:var(--text-mid);line-height:1.6;margin:-4px 0 14px;max-width:560px;">For masterplans, landscape architecture, and infrastructure projects beyond 10km&sup2;. Charged per generation - not per user.</div>
-  <div class="addon-grid" style="grid-template-columns:repeat(2,1fr);">
+  <!-- Pay per site -->
+  <div class="addon-section-label">// Pay per site</div>
+  <div style="font-size:13px;color:var(--text-mid);line-height:1.6;margin:-4px 0 14px;max-width:620px;">One-off project? Draw any site, generate it and see it in 3D for free. You only pay to download it. Every format, buildings and roads are included.</div>
+  <div class="addon-grid">
 
-    <!-- Large site: up to 5 km² -->
+    <div class="tier-card">
+      <div class="tier-hero tier-hero--addon tier-hero--addon-lidar">
+        <svg viewBox="0 0 500 70" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M-10,42 C48,28 100,40 155,26 C210,12 258,32 308,20 C358,8 404,26 450,16 C472,10 492,18 510,12 L510,75 L-10,75 Z" fill="rgba(14,30,46,.55)"/>
+          <path d="M-10,58 C52,46 106,56 162,44 C218,32 264,48 314,38 C364,28 410,44 456,34 C476,28 494,38 510,34 L510,75 L-10,75 Z" fill="rgba(5,12,20,.92)"/>
+        </svg>
+        <div class="tier-hero-sheen"></div>
+        <div class="tier-hero-fade"></div>
+        <div class="tier-hero-label">
+          <div class="tier-name">10 credits</div>
+          <div class="tier-price">&pound;10<span class="tier-per"> one payment</span></div>
+        </div>
+      </div>
+      <ul class="tier-features">
+        <li class="feat-ok">For a one-off site</li>
+        <li class="feat-ok">Credits last 12 months</li>
+      </ul>
+      <button class="tier-cta" onclick="track('credit_cta_clicked',{source:'pricing_pack',pack:'p10'});_buyCreditPack('p10')">Buy 10 credits &rarr;</button>
+    </div>
+
     <div class="tier-card">
       <div class="tier-hero tier-hero--addon tier-hero--addon-site-s">
         <svg viewBox="0 0 500 70" preserveAspectRatio="none" aria-hidden="true">
@@ -1627,19 +1666,17 @@ function declineCookies() {
         <div class="tier-hero-sheen"></div>
         <div class="tier-hero-fade"></div>
         <div class="tier-hero-label">
-          <div class="tier-name">Large Site</div>
-          <div class="tier-price">&pound;15<span class="tier-per"> / generation</span></div>
+          <div class="tier-name">27 credits</div>
+          <div class="tier-price">&pound;25<span class="tier-per"> one payment</span></div>
         </div>
       </div>
       <ul class="tier-features">
-        <li class="feat-ok">10 – 20 km²</li>
-        <li class="feat-ok">Pro &amp; Company only</li>
-        <li class="feat-ok">Charged at generation - not monthly</li>
+        <li class="feat-ok">Includes 2 free credits</li>
+        <li class="feat-ok">Credits last 12 months</li>
       </ul>
-      <button class="tier-cta" onclick="track('addon_info_clicked',{addon:'large-site-s'});document.getElementById('map').scrollIntoView({behavior:'smooth'});">Start generating &rarr;</button>
+      <button class="tier-cta" onclick="track('credit_cta_clicked',{source:'pricing_pack',pack:'p25'});_buyCreditPack('p25')">Buy 27 credits &rarr;</button>
     </div>
 
-    <!-- Extra large site: up to 20 km² -->
     <div class="tier-card">
       <div class="tier-hero tier-hero--addon tier-hero--addon-site-l">
         <svg viewBox="0 0 500 70" preserveAspectRatio="none" aria-hidden="true">
@@ -1649,19 +1686,19 @@ function declineCookies() {
         <div class="tier-hero-sheen"></div>
         <div class="tier-hero-fade"></div>
         <div class="tier-hero-label">
-          <div class="tier-name">Extra Large Site</div>
-          <div class="tier-price">&pound;15+<span class="tier-per"> / generation</span></div>
+          <div class="tier-name">55 credits</div>
+          <div class="tier-price">&pound;50<span class="tier-per"> one payment</span></div>
         </div>
       </div>
       <ul class="tier-features">
-        <li class="feat-ok">Above 20 km²</li>
-        <li class="feat-ok">Pro &amp; Company only</li>
-        <li class="feat-ok">Above 100 km² - <a href="mailto:hello@topo-grapher.com" style="color:var(--accent);">contact us</a></li>
+        <li class="feat-ok">Includes 5 free credits</li>
+        <li class="feat-ok">Credits last 12 months</li>
       </ul>
-      <button class="tier-cta" onclick="track('addon_info_clicked',{addon:'large-site-l'});document.getElementById('map').scrollIntoView({behavior:'smooth'});">Start generating &rarr;</button>
+      <button class="tier-cta" onclick="track('credit_cta_clicked',{source:'pricing_pack',pack:'p50'});_buyCreditPack('p50')">Buy 55 credits &rarr;</button>
     </div>
 
   </div>
+  <div style="font-size:12px;color:var(--text-soft);margin-top:10px;">Want a different amount? <a href="#" style="color:var(--accent);" onclick="event.preventDefault();openCreditModal('pricing');">Choose your own, from &pound;10</a>.</div>
 </div>
 
 <!-- ═══ FLOATING RIBBON ═══ -->
@@ -1865,7 +1902,7 @@ function declineCookies() {
       <div class="upgrade-hero-fade"></div>
       <!-- Label -->
       <div class="upgrade-hero-text">
-        <small id="upgrade-hero-kicker">Pro Feature</small>
+        <small id="upgrade-hero-kicker">Pay per site or go Pro</small>
         <h3 id="upgrade-hero-title">Unlock Buildings Export</h3>
         <p id="upgrade-hero-sub">IFC &nbsp;·&nbsp; DXF &nbsp;·&nbsp; Full 3D terrain viewer</p>
       </div>
@@ -1901,8 +1938,8 @@ function declineCookies() {
       <!-- Pro -->
       <div class="upgrade-plan">
         <div class="upgrade-plan-tier">Pro</div>
-        <div class="upgrade-plan-price">14 days free</div>
-        <div class="upgrade-plan-per">then £39.99/month · cancel anytime</div>
+        <div class="upgrade-plan-price">£39.99/month</div>
+        <div class="upgrade-plan-per">charged today · cancel anytime</div>
         <ul>
           <li>Unlimited generations</li>
           <li>Buildings IFC &amp; DXF export</li>
@@ -1911,25 +1948,25 @@ function declineCookies() {
         </ul>
         <button class="upgrade-plan-cta" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);"
           onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"
-          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings'}); try{_spSaveResume();}catch(e){} closeUpgrade(); startCheckout('pro', { context: window._upgradeCtx || 'buildings' });">Start free trial &rarr;</button>
-        <p class="upgrade-plan-assure">New trials need a card and are not charged for 14 days. Cancel anytime in Settings.</p>
+          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings'}); try{_spSaveResume();}catch(e){} closeUpgrade(); startCheckout('pro', { context: window._upgradeCtx || 'buildings' });">Go Pro &rarr;</button>
+        <p class="upgrade-plan-assure">For regular work. Cancel anytime in Settings.</p>
       </div>
 
-      <!-- Company -->
+      <!-- Pay per site -->
       <div class="upgrade-plan featured">
-        <div class="upgrade-plan-badge">Team</div>
-        <div class="upgrade-plan-tier">Company</div>
-        <div class="upgrade-plan-price">14 days free</div>
-        <div class="upgrade-plan-per">then £29.99/seat/month · cancel anytime</div>
+        <div class="upgrade-plan-badge">One-off project</div>
+        <div class="upgrade-plan-tier">Pay per site</div>
+        <div class="upgrade-plan-price" id="upgrade-site-price">Priced by size</div>
+        <div class="upgrade-plan-per">one payment · no subscription · see it in 3D first</div>
         <ul>
-          <li>Everything in Pro</li>
-          <li>Shared team workspace</li>
-          <li>Multi-seat billing</li>
-          <li>Invoiced billing available</li>
+          <li>Every format, DXF and IFC included</li>
+          <li>Buildings and roads</li>
+          <li>Finest spacing and all LiDAR sources</li>
+          <li>Free to generate and view first</li>
         </ul>
         <button class="upgrade-plan-cta" style="background:var(--accent);color:var(--bg-card);"
           onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"
-          onclick="track('pro_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings', plan:'company'}); window._companyCtx = window._upgradeCtx || 'buildings'; closeUpgrade(); if(!_currentUser){openAuth();} else {document.getElementById('seat-picker-overlay').classList.add('show');updateSeatTotal();}">Start free trial &rarr;</button>
+          onclick="track('credit_cta_clicked', {source:'upgrade_modal', context: window._upgradeCtx || 'buildings'}); closeUpgrade(); unlockSiteWithCredits(window._upgradeCtx || 'buildings');">Pay for this site &rarr;</button>
       </div>
 
     </div>
@@ -1995,6 +2032,7 @@ function declineCookies() {
       </div>
     </div>
     <div class="fp-foot">
+      <label class="fp-context" id="fp-context-wrap"><input type="checkbox" id="fp-context"> <span>Include site context (buildings, roads, footpaths)</span> <span class="fp-tag fp-tag-pro" id="fp-context-tag">Paid</span></label>
       <span class="fp-note" id="fp-note"></span>
       <button class="fp-dl" id="fp-dl" type="button">Download CSV</button>
       <span class="fp-seepro" id="fp-seepro"></span>
@@ -2022,6 +2060,10 @@ function declineCookies() {
             <span class="user-plan-badge" id="settings-plan">Free</span>
           </div>
         </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px;font-size:13px;color:var(--text-mid);">
+          <span>Credits: <strong id="settings-credits" style="color:var(--text);font-weight:500;">&pound;0</strong></span>
+          <button type="button" class="tier-cta" style="width:auto;padding:8px 16px;" onclick="closeSettings();openCreditModal('pricing');">Add credits</button>
+        </div>
 
         <!-- ── Two-column grid on wide modals ──────────── -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:22px;">
@@ -2039,8 +2081,8 @@ function declineCookies() {
           <div style="padding:16px;background:var(--bg-input);border-radius:6px;border:1px solid var(--border);">
             <div style="font-size:11px;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">Subscription</div>
             <div id="settings-free-cta" style="display:none;">
-              <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;line-height:1.65;">Start a 14-day free trial for 3m precision, LiDAR accuracy, and sites up to 1.6 × 1.6 km. Cancel anytime.</p>
-              <button class="tier-cta" onclick="closeSettings();track('pro_cta_clicked',{source:'settings'});startCheckout('pro')">Start 14-day free trial →</button>
+              <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;line-height:1.65;">Go Pro for 3m precision, LiDAR accuracy, and sites up to 1.6 × 1.6 km. Cancel anytime.</p>
+              <button class="tier-cta" onclick="closeSettings();track('pro_cta_clicked',{source:'settings'});startCheckout('pro')">Go Pro →</button>
             </div>
             <div id="settings-pro-info" style="display:none;">
               <p style="font-size:13px;color:var(--text-mid);line-height:1.65;margin-bottom:10px;">You have an active Pro subscription.</p>
@@ -2463,12 +2505,12 @@ function declineCookies() {
 
       <div style="border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:20px;">
         <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;">What's the biggest site I can generate?</div>
-        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Free: up to 500 &times; 500 m at 12m spacing. Pro: up to 1.6 &times; 1.6 km at 6m, or 800 &times; 800 m at full 3m detail. Bigger sites are available with a per-generation large-site add-on. Company plans: same as Pro with shared access across your team.</div>
+        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Free: up to 500 &times; 500 m at 12m spacing. Pro: up to 1.6 &times; 1.6 km at 6m, or 800 &times; 800 m at full 3m detail. Any size up to 100 km&sup2; can be generated and viewed for free. You pay per site, by size, to download it. Company plans: same as Pro with shared access across your team.</div>
       </div>
 
       <div style="border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:20px;">
         <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;">How many sites can I generate per day?</div>
-        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Free: 3 per day. Pro and Company: unlimited. Day limits reset at midnight UTC.</div>
+        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Free: 2 sites per day at any size. Up to 500 &times; 500 m you can download them free, larger sites you can view in 3D and buy. Pro and Company: unlimited. Day limits reset at midnight UTC.</div>
       </div>
 
       <div style="border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:20px;">
@@ -2538,7 +2580,7 @@ function declineCookies() {
   <div id="history-locked" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px;text-align:center;">
     <div style="font-size:36px;margin-bottom:20px;opacity:.4;">🔒</div>
     <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:500;color:var(--text);margin-bottom:10px;">Pro feature</div>
-    <div style="font-size:13px;color:var(--text-mid);line-height:1.75;max-width:300px;margin-bottom:24px;">Start a 14-day free trial to save your generated sites and return to them any time - re-view on the map, re-open 3D terrain, or re-download the CSV.</div>
+    <div style="font-size:13px;color:var(--text-mid);line-height:1.75;max-width:300px;margin-bottom:24px;">Go Pro to save your generated sites and return to them any time - re-view on the map, re-open 3D terrain, or re-download the CSV.</div>
     <button id="history-locked-cta" onclick="_libraryGateCta()" style="background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:11px 24px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:.06em;transition:all .15s;" onmouseover="this.style.background='var(--green-lt)'" onmouseout="this.style.background='var(--green)'">Sign up to save projects →</button>
   </div>
 
@@ -2567,7 +2609,8 @@ function declineCookies() {
 
 <footer>
   <div class="footer-logo">Topo<em>-grapher</em></div>
-  <div class="footer-sub" id="footer-sub">Terrain Intelligence for BIM &nbsp;·&nbsp; Free Beta</div>
+  <div class="footer-sub" id="footer-sub">Terrain Intelligence for BIM &nbsp;·&nbsp; Try for free</div>
+  <div class="footer-sub">Used by architects and engineers in over 60 countries</div>
   <div class="footer-guides">
     <a href="topography-for-revit.html">Revit guide</a>
     <a href="topography-for-sketchup.html">SketchUp guide</a>
@@ -2641,14 +2684,14 @@ var PREVIEW_PARTIAL_KM2 = 25;
     return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { attribution: '\u00a9 Esri', maxZoom: 19, opacity: 1.0, noWrap: true });
   };
   var baseSatellite = L.layerGroup([
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '\u00a9 Esri', maxZoom: 19, noWrap: true }),
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 19, noWrap: true }),
     labelsOverlay()
   ]);
-  var baseStreets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '\u00a9 OSM', maxZoom: 19, noWrap: true });
+  var baseStreets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '\u00a9 OpenStreetMap contributors', maxZoom: 19, noWrap: true });
   var baseLMI = L.layerGroup([
     L.tileLayer.wms('https://gis.lmi.is/mapcache/web-mercator/', {
       layers: 'LMI_Kort', format: 'image/png', version: '1.1.1',
-      transparent: true, attribution: '\u00a9 LMI', maxZoom: 19, noWrap: true
+      transparent: true, attribution: '\u00a9 Landm\u00e6lingar \u00cdslands', maxZoom: 19, noWrap: true
     }),
     labelsOverlay()
   ]);
@@ -3013,7 +3056,7 @@ function _showDataResFlag(poly) {
   // Never pitch a trial to someone who already has Pro (found 2026-09-29: a Pro user saw
   // "Start a free trial for best resolution" here). For 'lo' regions this was doubly wrong,
   // since no better source exists there at any plan, Pro included, so the CTA was a false promise.
-  var trialPitch = isPro() ? '' : (' Start a free trial for ' + (info.quality === 'lo' ? 'best' : 'full') + ' resolution.');
+  var trialPitch = isPro() ? '' : (' Pay per site or go Pro for ' + (info.quality === 'lo' ? 'best' : 'full') + ' resolution.');
   if (info.quality === 'lo' && info.res === 90) {
     flag.innerHTML = icon + ' Limited data in this region - only 90m Open-Meteo available. Expect \u00b116m vertical accuracy.';
   } else if (info.quality === 'lo') {
@@ -3047,7 +3090,7 @@ function updateHint() {
     var sW = (Math.max(...polygonLatLngs.map(p=>p.lng))-Math.min(...polygonLatLngs.map(p=>p.lng)))*mpd2.lon;
     var sH = (Math.max(...polygonLatLngs.map(p=>p.lat))-Math.min(...polygonLatLngs.map(p=>p.lat)))*mpd2.lat;
     if (sW > 500 || sH > 500) {
-      el.innerHTML = '\u26a0 Site is too large for the free tier (max 500 \xd7 500 m). Redraw a smaller area or <a href="#pricing" style="color:var(--accent)">start a 14-day free trial</a>.';
+      el.innerHTML = '\u26a0 Bigger than the free 500 \xd7 500 m. Generate it and see it in 3D for free, you only pay to download.';
       el.style.color = 'var(--danger)';
       _styleDrawnLayers(false); // polygon goes red
       return;
@@ -3173,16 +3216,9 @@ function updateConvertBtn() {
   var hasPoly = polygonLatLngs && polygonLatLngs.length > 0;
   var areaOk  = getBboxAreaKm2(polygonLatLngs) <= 100;
   btn.disabled = !(hasName && hasPoly && areaOk);
+  _updateSitePriceUI();
 }
 
-// Large Site Add-on price — the ONE place this formula lives, shared by the
-// warning banner, the modal, and the actual charge in convert() so the price
-// shown can never drift from the price charged.
-function _addonCostGBP(km) {
-  if (km > 20) return parseFloat((15 + (km - 20) * 0.90).toFixed(2));
-  if (km > 5) return 15;
-  return 5;
-}
 function checkDrawnAreaWarning() {
   if (!polygonLatLngs) { updateSpacingAvailability(0); return; }
   var areaKm2 = getBboxAreaKm2(polygonLatLngs);
@@ -3196,60 +3232,8 @@ function checkDrawnAreaWarning() {
   if (areaKm2 > 100) {
     el.innerHTML = '\u26a0 Site is ' + areaKm2.toFixed(1) + ' km\u00b2 - exceeds the 100 km\u00b2 maximum. Redraw a smaller area.';
     el.style.color = 'var(--danger)';
-  } else if (areaKm2 > 10) {
-    var genCost = '\u00a3' + _addonCostGBP(areaKm2).toFixed(2);
-    el.textContent = '\u26a0 ' + areaKm2.toFixed(1) + ' km\u00b2 - large site add-on applies (' + genCost + ' / generation).';
-    el.style.color = 'var(--warning,#e2a255)';
-    // Show addon prompt once per drawing session for Pro users
-    if (isPro() && !window._largeSitePromptShown) {
-      window._largeSitePromptShown = true;
-      openLargeSiteAddon(areaKm2);
-    }
-  } else {
-    // Reset prompt flag so it re-fires if they resize back above threshold
-    window._largeSitePromptShown = false;
   }
-}
-
-function openLargeSiteAddon(areaKm2) {
-  var el = document.getElementById('large-site-overlay');
-  if (!el) return;
-  var km = areaKm2 || getBboxAreaKm2(polygonLatLngs);
-
-  // Area display
-  var areaEl = document.getElementById('large-site-area-text');
-  if (areaEl) areaEl.textContent = km.toFixed(1) + ' km\u00b2';
-
-  // Compute the cost — shared with checkDrawnAreaWarning() and the actual charge in convert()
-  var cost = _addonCostGBP(km);
-
-  // Highlight the applicable tier row — nothing under 10 km² ever reaches this modal,
-  // so there are only two real brackets: 10–20 km² flat, and above 20 km² scaling.
-  var lg = document.getElementById('lsa-tier-lg');
-  var xl = document.getElementById('lsa-tier-xl');
-  if (lg) lg.classList.toggle('active', km <= 20);
-  if (xl) {
-    xl.style.display = km > 20 ? '' : 'none';
-    xl.classList.toggle('active', km > 20);
-    var xlPrice = document.getElementById('lsa-xl-price');
-    if (xlPrice) xlPrice.textContent = '\u00a3' + cost.toFixed(2) + ' / generation';
-  }
-
-  // Show the exact cost for this generation
-  var costEl = document.getElementById('lsa-this-gen-cost');
-  if (costEl) costEl.textContent = 'This generation: \u00a3' + cost.toFixed(2) + ' - charged at generation time via your saved payment method.';
-
-  el.style.display = 'flex';
-  el.style.background = 'rgba(0,0,0,0)';
-  requestAnimationFrame(function() { el.style.background = 'rgba(0,0,0,.55)'; });
-  track('upsell_popup_shown', { context: 'large_site', areaKm2: parseFloat(km.toFixed(2)), addonPrice: cost });
-}
-
-function closeLargeSiteAddon() {
-  var el = document.getElementById('large-site-overlay');
-  if (!el) return;
-  el.style.background = 'rgba(0,0,0,0)';
-  setTimeout(function() { el.style.display = 'none'; }, 200);
+  _updateSitePriceUI();
 }
 
 // Toggles
@@ -3312,7 +3296,7 @@ function updateDensityPreview() {
 // Grey out spacing chips that would exceed the applicable point cap for the drawn area —
 // stops the user from picking a combination that's guaranteed to be rejected (or, for
 // large sites, charged) at generate time. Mirrors the caps enforced in convert():
-// 75,000 points for a normal Pro site, 500,000 for the large-site add-on (>10 km²).
+// 75,000 points for a normal site, 500,000 for a very large one (>10 km²).
 function _maxAreaKm2ForSpacing(spacingM, capPoints) {
   return (capPoints * spacingM * spacingM) / 1e6;
 }
@@ -3345,6 +3329,7 @@ function setAccuracy(n) {
   updateDensityPreview();
   updatePtCounts();
   updateHint();
+  _updateSitePriceUI();
 }
 updateDensityPreview();
 
@@ -3656,7 +3641,7 @@ function _initSmallMinimap() {
   }
   // Init a new frozen minimap
   var mm = L.map(mmWrap, {
-    zoomControl: false, attributionControl: false,
+    zoomControl: false, attributionControl: true,
     dragging: false, scrollWheelZoom: false,
     doubleClickZoom: false, boxZoom: false,
     keyboard: false, touchZoom: false,
@@ -3982,6 +3967,9 @@ async function handleSession(session) {
   } catch(e) {}
   _flushSubscriptionCreated(); // user_id and test_mode are known now
   updateNavUI();
+  await _loadCredits();
+  _creditReturn();
+  _resumeCreditCheckout();
   if (_currentProfile && (_currentProfile.plan === 'pro' || _currentProfile.plan === 'company')) {
     applyProUI();
     setTimeout(restoreProMemory, 500);
@@ -4075,7 +4063,7 @@ function handleSignOut() {
   _currentUser = null; _currentProfile = null;
   updateNavUI();
   const footerSub = document.getElementById('footer-sub');
-  if (footerSub) footerSub.innerHTML = 'Terrain Intelligence for BIM &nbsp;·&nbsp; Free Beta';
+  if (footerSub) footerSub.innerHTML = 'Terrain Intelligence for BIM &nbsp;·&nbsp; Try for free';
   updatePresence();
   try { _syncDlBtn(); } catch(e) {} // re-lock the format dropdown labels now that plan is unknown/free again
 }
@@ -4117,9 +4105,13 @@ function openAuth(mode, context) {
     if (titleEl) titleEl.textContent = 'Sign up to finish your download';
     if (subEl) subEl.innerHTML = 'Your site is ready - create a free account to save it and download the file. No card, no charge.<br><span style="display:block;margin-top:10px;font-size:12px;color:var(--accent);">✓ Remember to confirm your email so your download can finish.</span>';
     switchTab('signup'); track('signup_prompt_shown', { context: 'download' });
+  } else if (context === 'credits') {
+    if (titleEl) titleEl.textContent = 'Create your account to pay for this site';
+    if (subEl) subEl.textContent = 'Your site stays on the map. Next you choose how to pay.';
+    switchTab('signup'); track('signup_prompt_shown', { context: 'credits' });
   } else if (context === 'checkout') {
-    if (titleEl) titleEl.textContent = 'Create your account to start your trial';
-    if (subEl) subEl.textContent = '14 days free. Next step is secure card entry on Stripe, and you can confirm your email afterwards.';
+    if (titleEl) titleEl.textContent = 'Create your account to continue';
+    if (subEl) subEl.textContent = 'Next step is secure payment on Stripe, and you can confirm your email afterwards.';
     switchTab('signup'); track('signup_prompt_shown', { context: 'checkout' });
   } else {
     if (titleEl) titleEl.textContent = 'Sign in';
@@ -4129,14 +4121,14 @@ function openAuth(mode, context) {
 }
 // Hero copy per trigger context. [kicker, title, subline]
 const UPGRADE_COPY = {
-  buildings:   ['14-day free trial', 'Unlock Buildings Export',        'IFC · DXF · Full 3D terrain viewer'],
-  size_limit:  ['14-day free trial', 'Go bigger than 500 m',           'Sites up to 1.6 × 1.6 km · all LiDAR sources'],
-  spacing:     ['14-day free trial', 'Tighter than 12 m spacing',      '3 m and 6 m spacing, rendered from your own site'],
-  spacing_chip:   ['14-day free trial', 'Tighter than 12 m spacing',   '3 m and 6 m spacing, rendered from your own site'],
-  spacing_result: ['14-day free trial', 'Tighter than 12 m spacing',   '3 m and 6 m spacing, rendered from your own site'],
-  points:      ['14-day free trial', 'More detail than the free cap',  'Up to 75,000 points per site'],
-  session:     ['14-day free trial', 'Go beyond the free tier',        'Bigger sites · all LiDAR · saved projects · every format'],
-  email:       ['14-day free trial', 'Go beyond the free tier',        'Bigger sites · all LiDAR · saved projects · every format']
+  buildings:   ['Pay per site or go Pro', 'Unlock Buildings Export',        'IFC · DXF · Full 3D terrain viewer'],
+  size_limit:  ['Pay per site or go Pro', 'Go bigger than 500 m',           'Sites up to 100 km² · all LiDAR sources'],
+  spacing:     ['Pay per site or go Pro', 'Tighter than 12 m spacing',      '3 m and 6 m spacing, rendered from your own site'],
+  spacing_chip:   ['Pay per site or go Pro', 'Tighter than 12 m spacing',   '3 m and 6 m spacing, rendered from your own site'],
+  spacing_result: ['Pay per site or go Pro', 'Tighter than 12 m spacing',   '3 m and 6 m spacing, rendered from your own site'],
+  points:      ['Pay per site or go Pro', 'More detail than the free cap',  'Up to 75,000 points per site'],
+  session:     ['Pay per site or go Pro', 'Go beyond the free tier',        'Bigger sites · all LiDAR · saved projects · every format'],
+  email:       ['Pay per site or go Pro', 'Go beyond the free tier',        'Bigger sites · all LiDAR · saved projects · every format']
 };
 function openUpgrade(context) {
   const ctx = UPGRADE_COPY[context] ? context : 'buildings';
@@ -4145,6 +4137,8 @@ function openUpgrade(context) {
   const k = document.getElementById('upgrade-hero-kicker'); if (k) k.textContent = c[0];
   const t = document.getElementById('upgrade-hero-title');  if (t) t.textContent = c[1];
   const s = document.getElementById('upgrade-hero-sub');    if (s) s.textContent = c[2];
+  const sp = document.getElementById('upgrade-site-price');
+  if (sp) sp.textContent = _siteBbox() ? _fmtGBP(_siteCostPence(_currentSiteAreaM2())) : 'Priced by size';
   document.getElementById('upgrade-overlay').classList.add('show');
   track('upsell_popup_shown', { context: ctx });
   try { _spOpen(ctx); } catch (e) { console.warn('spacing preview:', e); }
@@ -4554,7 +4548,7 @@ function _spShow(d, ctx, fromCache) {
   var iv = _spInterval(d);
   _spState.interval = iv;
   var view = d.size + ' m view';
-  e.hk.textContent = '14-day free trial';
+  e.hk.textContent = 'Pay per site or go Pro';
   var kR = (_spState.tapped === 6) ? 2 : 1;                 // open on the spacing they tapped
   var opts = variant === 'lidar' ? { wire: true } : { contours: true };
   var mx1 = (Math.ceil(diff4.max * 10) / 10).toFixed(1);
@@ -4705,7 +4699,7 @@ function _authErrMsg(raw) {
   if (m.includes('email not confirmed') || m.includes('not confirmed'))
     return 'Email not yet confirmed - check your inbox for the confirmation link.';
   if (m.includes('already registered') || m.includes('already exists') || m.includes('user already'))
-    return 'An account with this email already exists. Try signing in instead.';
+    return 'You already have an account with this email. Sign in instead.';
   if (m.includes('rate limit') || m.includes('too many request'))
     return 'Too many attempts. Please wait a moment and try again.';
   if (m.includes('timeout'))
@@ -4761,15 +4755,16 @@ async function submitAuth(type) {
       if (error) { showErr(_authErrMsg(error.message)); return; }
       const pendingPlan = _peekPendingCheckout();
       // With confirmation on, signUp for an already-registered email returns no error and a
-      // user with an empty identities list. Never open a checkout against someone else's
-      // account: send them to sign in instead (the pending checkout stays queued for that).
+      // user with an empty identities list. Say so instead of "check your email", and never open
+      // a checkout against someone else's account (a pending checkout stays queued for sign-in).
       const alreadyRegistered = !!(data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0);
-      if (pendingPlan && alreadyRegistered) {
+      if (alreadyRegistered) {
+        track('signup_existing_email', {});
         restore();
         switchTab('signin');
         const si = document.getElementById('signin-email'); if (si) si.value = email;
         const se = document.getElementById('signin-error');
-        if (se) { se.style.color = 'var(--accent)'; se.textContent = 'You already have an account with this email. Sign in to start your trial.'; }
+        if (se) { se.style.color = 'var(--accent)'; se.textContent = 'You already have an account with this email. Sign in below, or use Continue with Google if that is how you signed up.'; }
         return;
       }
       track('signup_completed', Object.assign({ method: 'email' }, getFirstTouch()));
@@ -4927,8 +4922,302 @@ async function signOut() {
 }
 
 // ── Pro tier ──────────────────────────────────────────────────────────────
-function isPro() {
+function _isSubscriber() {
   return !!(_currentProfile && (_currentProfile.plan === 'pro' || _currentProfile.plan === 'company'));
+}
+// Full features: a subscription, a site bought with credits, or a paid run in progress.
+function isPro() {
+  return _isSubscriber() || !!window._genPaidIntent || _siteOwned();
+}
+
+// ── Credits ───────────────────────────────────────────────────────────────
+// 100 pence = 1 credit = GBP 1. Balances and purchases live in credit_accounts and
+// site_purchases, which the browser can read but never write (Supabase/12-credits.sql).
+const CREDIT_PACKS = [
+  { id: 'p10', pricePence: 1000, creditPence: 1000 },
+  { id: 'p25', pricePence: 2500, creditPence: 2700 },
+  { id: 'p50', pricePence: 5000, creditPence: 5500 }
+];
+var _credits = { balance: 0, sites: {} };
+function _fmtGBP(pence) { return '\u00a3' + (pence / 100).toFixed(pence % 100 ? 2 : 0); }
+// Display only: MUST match siteCostPence() in stripe-worker-v6.js, which sets the real price.
+function _siteSideM(areaM2) { return Math.ceil(Math.sqrt(areaM2) / 50 - 1e-9) * 50; }
+function _siteCostPence(areaM2) { return 600 + Math.max(0, (_siteSideM(areaM2) - 550) / 50) * 75; }
+function _currentSiteAreaM2() { return getBboxAreaKm2(polygonLatLngs) * 1e6; }
+function _siteBbox() {
+  if (typeof polygonLatLngs === 'undefined' || !polygonLatLngs || polygonLatLngs.length < 3) return null;
+  var la = polygonLatLngs.map(function(p){ return p.lat; }), lo = polygonLatLngs.map(function(p){ return p.lng; });
+  return { south: Math.min.apply(null, la), west: Math.min.apply(null, lo), north: Math.max.apply(null, la), east: Math.max.apply(null, lo) };
+}
+// Same rounding as readSiteBbox() in the worker.
+function _creditSiteSig() {
+  var b = _siteBbox();
+  return b ? [b.south, b.west, b.north, b.east].map(function(n){ return n.toFixed(5); }).join(',') : null;
+}
+function _siteOwned() {
+  var sig = _creditSiteSig();
+  return !!(sig && _credits.sites[sig] && new Date(_credits.sites[sig]) > new Date());
+}
+// The result on screen is for the site on the map, not one drawn before it.
+function _resultIsCurrentSite() {
+  var c = window._lastTerrainContext, sig = _creditSiteSig();
+  if (!c || !sig || !(window._cleanOutMetric && window._cleanOutMetric.length)) return false;
+  return [c.south, c.west, c.north, c.east].map(function(n){ return n.toFixed(5); }).join(',') === sig;
+}
+// The result on screen is a free preview: it can be viewed but not downloaded until it is bought.
+function _sitePreviewLocked() {
+  var sig = window._previewSig;
+  return !!sig && sig === _creditSiteSig() && !_siteOwned() && _resultIsCurrentSite();
+}
+async function _loadCredits() {
+  if (!_currentUser) return;
+  try {
+    var acct = await _sb.from('credit_accounts').select('balance_pence,expires_at').eq('user_id', _currentUser.id).maybeSingle();
+    var a = acct.data;
+    _credits.balance = (a && (!a.expires_at || new Date(a.expires_at) > new Date())) ? a.balance_pence : 0;
+    var rows = await _sb.from('site_purchases').select('site_sig,expires_at').eq('user_id', _currentUser.id).gt('expires_at', new Date().toISOString());
+    _credits.sites = {};
+    (rows.data || []).forEach(function(r){ _credits.sites[r.site_sig] = r.expires_at; });
+  } catch (e) { console.warn('credits load failed:', e.message); }
+  _updateSitePriceUI();
+}
+async function _spendCredits() {
+  var res = await fetch(WEBHOOK_WORKER + '/spend-credits', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': await getAuthHeader() },
+    body: JSON.stringify(_siteBbox()), signal: AbortSignal.timeout(15000)
+  });
+  var data = await res.json().catch(function(){ return {}; });
+  if (res.status === 402) { var e402 = new Error('Your balance is too low for this site.'); e402._gateHit = true; e402._creditGate = true; throw e402; }
+  if (!res.ok || data.error) throw new Error(data.error || ('HTTP ' + res.status));
+  _credits.balance = data.balance_pence;
+  _credits.sites[data.sig] = data.expires_at;
+  return data;
+}
+function _afterSiteUnlock() {
+  var up = document.getElementById('buildings-upgrade-prompt'); if (up) up.style.display = 'none';
+  try { _syncDlBtn(); } catch (e) {}
+  try { updateExportFormatUI(); } catch (e) {}
+  try { checkDrawnAreaWarning(); } catch (e) {}
+  _updateSitePriceUI();
+}
+// A locked feature was clicked. With a result on screen, offer to buy it. Otherwise point the
+// visitor at Generate, which is free to view.
+async function unlockSiteWithCredits(context) {
+  if (!_siteBbox()) { document.getElementById('map')?.scrollIntoView({ behavior: 'smooth' }); return; }
+  _creditSaveResume();
+  if (!_currentUser && (_resultIsCurrentSite() || window._dailyLimitHit)) { openAuth('signup', 'credits'); return; }
+  await _loadCredits();
+  if (_resultIsCurrentSite() || window._dailyLimitHit) { openCreditModal(context); return; }
+  _creditToast('Press Generate first. It is free to see your site in 3D, and you only pay to download it.');
+}
+function closeCreditModal() { document.getElementById('credit-overlay').classList.remove('show'); }
+function openCreditModal(context) {
+  var hasSite = !!_siteBbox() && context !== 'pricing';
+  var cost = hasSite ? _siteCostPence(_currentSiteAreaM2()) : 0;
+  var hasResult = _resultIsCurrentSite() || !!window._dailyLimitHit;
+  var enough = hasSite && _credits.balance >= cost;
+  var gap = Math.max(30, cost - _credits.balance);
+  document.getElementById('credit-title').textContent = hasSite ? 'Download this site: ' + _fmtGBP(cost) : 'Add credits';
+  var sub = !_currentUser ? 'Sign in first, then choose how to pay.'
+    : 'Your balance is ' + _fmtGBP(_credits.balance) + '.' + (hasSite && !hasResult ? ' Generate the site first. It is free to view.' : '');
+  if (window._previewDegraded && hasResult) sub += ' This result used lower-quality data, so try generating again before you buy.';
+  document.getElementById('credit-sub').textContent = sub;
+  var unlock = document.getElementById('credit-unlock');
+  unlock.style.display = (hasSite && hasResult) ? '' : 'none';
+  unlock.textContent = enough ? 'Pay ' + _fmtGBP(cost) + ' from my balance'
+    : (_credits.balance > 0 ? 'Add ' + _fmtGBP(gap) + ' and get this site' : 'Buy this site for ' + _fmtGBP(cost));
+  unlock.onclick = enough ? _creditUnlockNow : _buyExactSite;
+  if (window._dailyLimitHit && !_resultIsCurrentSite()) unlock.style.display = enough ? 'none' : '';
+  document.getElementById('credit-error').textContent = '';
+  document.getElementById('credit-packs').innerHTML = CREDIT_PACKS.map(function(p) {
+    var bonus = p.creditPence > p.pricePence ? ' <span style="color:var(--accent);">+' + ((p.creditPence - p.pricePence) / 100) + ' free</span>' : '';
+    return '<button type="button" class="large-site-tier credit-pack" data-pack="' + p.id + '"><span>' + (p.creditPence / 100) + ' credits' + bonus + '</span><span class="tier-price-tag">' + _fmtGBP(p.pricePence) + '</span></button>';
+  }).join('');
+  document.querySelectorAll('#credit-packs .credit-pack').forEach(function(b) { b.onclick = function() { _buyCreditPack(b.getAttribute('data-pack')); }; });
+  var box = document.getElementById('credit-custom');
+  box.value = ''; box.oninput = _creditCustomHint; _creditCustomHint();
+  document.getElementById('credit-custom-buy').onclick = _buyCustomAmount;
+  document.getElementById('credit-overlay').classList.add('show');
+  track('credit_modal_shown', { context: context, cost_pence: cost, balance_pence: _credits.balance });
+}
+async function _creditUnlockNow() {
+  var btn = document.getElementById('credit-unlock'); btn.disabled = true;
+  try {
+    var r = await _spendCredits();
+    track('site_purchased', { cost_pence: r.cost_pence, status: r.status, balance_pence: r.balance_pence, via: 'unlock' });
+    closeCreditModal();
+    _afterSiteUnlock();
+    _creditToast('Paid ' + _fmtGBP(r.cost_pence) + '. Balance ' + _fmtGBP(r.balance_pence) + '. This site is unlocked for 30 days.');
+    openFormatPicker();
+  } catch (e) {
+    document.getElementById('credit-error').textContent = e.message;
+  }
+  btn.disabled = false;
+}
+async function _creditCheckout(body, label) {
+  if (!_currentUser) {
+    // Sign-in may leave the page (Google, email link), so the purchase waits in localStorage.
+    try { localStorage.setItem('topo_pending_credit', JSON.stringify({ body: body, label: label, ts: Date.now() })); } catch (e) {}
+    closeCreditModal();
+    openAuth('signup', 'credits');
+    return;
+  }
+  if (_checkoutInFlight) return;
+  _checkoutInFlight = true;
+  closeCreditModal();
+  _creditSaveResume();
+  track('credit_checkout_started', { pack: label });
+  window._lastCheckoutCtx = 'credits'; window._lastCheckoutPlan = label;
+  _showCheckoutOverlay();
+  try {
+    var res = await fetch(WEBHOOK_WORKER + '/create-credit-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': await getAuthHeader() },
+      body: JSON.stringify(body), signal: AbortSignal.timeout(15000)
+    });
+    var data = await res.json().catch(function(){ return {}; });
+    if (!data.url) throw new Error(data.error || ('HTTP ' + res.status));
+    _goToCheckout(data.url); // _checkoutInFlight stays true: the page is navigating away
+  } catch (e) {
+    track('credit_checkout_failed', { pack: label, message: e.message });
+    _checkoutInFlight = false;
+    _showCheckoutError(_checkoutErrMsg(e));
+  }
+}
+// Finish a purchase that the sign-in wall interrupted. Read then remove, so only one tab acts.
+function _resumeCreditCheckout() {
+  var p = null;
+  try { p = JSON.parse(localStorage.getItem('topo_pending_credit') || 'null'); localStorage.removeItem('topo_pending_credit'); } catch (e) {}
+  if (!p || !p.body || (Date.now() - (p.ts || 0)) > 3600000) return;
+  track('credit_checkout_resumed', { pack: p.label });
+  _creditCheckout(p.body, p.label);
+}
+// MUST match creditsForPence() in stripe-worker-v6.js, which sets the real amount.
+function _creditsForPence(p) { return p >= 5000 ? Math.round(p * 1.1) : (p >= 2500 ? Math.round(p * 1.08) : p); }
+function _creditCustomPence() { return Math.round((parseFloat(document.getElementById('credit-custom').value) || 0) * 100); }
+function _creditCustomHint() {
+  var p = _creditCustomPence(), hint = document.getElementById('credit-custom-hint'), btn = document.getElementById('credit-custom-buy');
+  var ok = p >= 1000 && p <= 99999999;
+  btn.disabled = !ok; btn.style.opacity = ok ? '1' : '.5';
+  if (!p) hint.textContent = 'Minimum \u00a310.';
+  else if (p < 1000) hint.textContent = 'The minimum is \u00a310.';
+  else if (p > 99999999) hint.textContent = 'For a payment this size, please email us.';
+  else {
+    var c = _creditsForPence(p), extra = c - p;
+    hint.textContent = 'You get ' + (c / 100).toFixed(c % 100 ? 2 : 0) + ' credits' + (extra ? ', including ' + (extra / 100).toFixed(extra % 100 ? 2 : 0) + ' free.' : '.');
+  }
+}
+function _buyCustomAmount() {
+  var p = _creditCustomPence();
+  if (p < 1000 || p > 99999999) return;
+  return _creditCheckout({ amountPence: p, successUrl: 'https://topo-grapher.com?credits=added', cancelUrl: 'https://topo-grapher.com?credits=cancelled' }, 'custom');
+}
+function _buyCreditPack(pack) {
+  return _creditCheckout({ pack: pack, successUrl: 'https://topo-grapher.com?credits=added', cancelUrl: 'https://topo-grapher.com?credits=cancelled' }, pack);
+}
+// Pays exactly what the site needs. The webhook buys the site, so coming back rebuilds it unlocked.
+function _buyExactSite() {
+  return _creditCheckout({ site: _siteBbox(), successUrl: 'https://topo-grapher.com?credits=site', cancelUrl: 'https://topo-grapher.com?credits=cancelled' }, 'exact_site');
+}
+function _creditSaveResume() {
+  if (!polygonLatLngs || polygonLatLngs.length < 3) return;
+  try {
+    localStorage.setItem('topo_credit_site', JSON.stringify({
+      poly: polygonLatLngs.map(function(p){ return [p.lat, p.lng]; }), spacing: selectedSpacing, name: (document.getElementById('project-name') || {}).value || '', ts: Date.now()
+    }));
+  } catch (e) {}
+}
+// Back from Stripe: put the site back on the map, then wait for the webhook to add the credits.
+async function _creditReturn() {
+  // Also covers a sign-in that left the page (Google) with a paid site waiting.
+  var q = new URLSearchParams(window.location.search).get('credits');
+  if (!q && polygonLatLngs && polygonLatLngs.length) return;
+  if (q) history.replaceState(null, '', window.location.pathname);
+  var r = null;
+  try { r = JSON.parse(localStorage.getItem('topo_credit_site') || 'null'); localStorage.removeItem('topo_credit_site'); } catch (e) {}
+  if (r && Array.isArray(r.poly) && r.poly.length >= 3 && (Date.now() - (r.ts || 0)) < 3 * 3600 * 1000) {
+    try {
+      drawnItems.clearLayers();
+      var poly = L.polygon(r.poly, { color: '#9aba6a', fillColor: '#9aba6a', fillOpacity: 0.12, weight: 2 });
+      drawnItems.addLayer(poly);
+      polygonLatLngs = r.poly.map(function(ll){ return { lat: ll[0], lng: ll[1] }; });
+      map.fitBounds(poly.getBounds(), { padding: [50, 50] });
+      updateMapHint();
+      if (r.spacing) setAccuracy(r.spacing);
+      if (r.name) document.getElementById('project-name').value = r.name;
+      checkDrawnAreaWarning();
+      updateConvertBtn();
+    } catch (e) { console.warn('credit site restore failed:', e); }
+  }
+  if (q === 'site') {
+    // Leaving for Stripe wiped the result, so build it again now that the site is owned.
+    track('credit_checkout_returned', { exact: true });
+    _creditToast('Payment received. Bringing your site back\u2026');
+    for (var t = 0; t < 12 && !_siteOwned(); t++) {
+      await new Promise(function(res){ setTimeout(res, 1500); });
+      await _loadCredits();
+    }
+    if (_siteOwned()) {
+      if (r && r.name) document.getElementById('project-name').value = r.name;   // the map restore auto-fills a name
+      updateConvertBtn(); document.getElementById('convert-btn').click();
+    }
+    else _creditToast('Payment received. Your site will unlock in a moment. Refresh the page, then press Generate.');
+    return;
+  }
+  if (q !== 'added') return;
+  track('credit_checkout_returned', {});
+  var before = _credits.balance;
+  for (var i = 0; i < 6 && _credits.balance <= before; i++) {
+    await new Promise(function(res){ setTimeout(res, 1500); });
+    await _loadCredits();
+  }
+  _creditToast(_credits.balance > before ? 'Credits added. Balance ' + _fmtGBP(_credits.balance) + '.' + (_siteBbox() ? ' Press Generate to bring your site back, then Download.' : '') : 'Payment received. Your credits will appear in a moment.');
+}
+function _creditToast(msg) {
+  var old = document.getElementById('credit-toast'); if (old) old.remove();
+  var bar = document.createElement('div');
+  bar.id = 'credit-toast';
+  bar.className = 'credit-toast';
+  bar.setAttribute('role', 'status');
+  bar.innerHTML = '<span style="flex:1;line-height:1.5;"></span><button type="button" aria-label="Dismiss">&#x2715;</button>';
+  bar.querySelector('span').textContent = msg;
+  bar.querySelector('button').onclick = function(){ bar.remove(); };
+  document.body.appendChild(bar);
+  setTimeout(function(){ bar.remove(); }, 12000);
+}
+// Live size bar and price next to Generate.
+function _updateSitePriceUI() {
+  var navC = document.getElementById('nav-credits-link');
+  if (navC) navC.textContent = 'Credits: ' + _fmtGBP(_credits.balance);
+  var setC = document.getElementById('settings-credits');
+  if (setC) setC.textContent = _fmtGBP(_credits.balance);
+  var wrap = document.getElementById('site-price'), btn = document.getElementById('convert-btn');
+  if (!wrap || !btn) return;
+  var b = _siteBbox();
+  if (!b) { wrap.style.display = 'none'; btn.textContent = 'Generate Terrain'; return; }
+  var mpd = metresPerDeg((b.south + b.north) / 2);
+  var w = (b.east - b.west) * mpd.lon, h = (b.north - b.south) * mpd.lat, area = w * h;
+  var fmtM = function(m){ return m >= 1000 ? (m / 1000).toFixed(2) + ' km' : Math.round(m) + ' m'; };
+  var overFree = w > 500 || h > 500 || selectedSpacing < 12;
+  var paid = !_siteOwned() && (_isSubscriber() ? area > 10e6 : overFree);
+  var cost = _siteCostPence(area);
+  wrap.style.display = '';
+  document.getElementById('site-price-size').textContent = fmtM(w) + ' \xd7 ' + fmtM(h);
+  var label = paid ? _fmtGBP(cost) : (_siteOwned() ? 'Unlocked' : (_isSubscriber() ? 'Included' : 'Free'));
+  document.getElementById('site-price-cost').textContent = label;
+  var fill = document.getElementById('site-price-fill');
+  fill.style.width = Math.min(100, Math.max(w, h) / 500 * 100) + '%';
+  fill.classList.toggle('over', paid);
+  var note = document.getElementById('site-price-note');
+  document.getElementById('site-price-cost').textContent = paid ? _fmtGBP(cost) + ' to download' : label;
+  if (_currentUser && (paid || _credits.balance > 0)) {
+    note.innerHTML = (paid ? 'Free to generate and view in 3D. ' : '') + 'Balance ' + _fmtGBP(_credits.balance) + ' \xb7 <a href="#" id="site-price-add">Add credits</a>';
+    document.getElementById('site-price-add').onclick = function(ev){ ev.preventDefault(); openCreditModal('pricing'); };
+  } else {
+    note.textContent = paid ? 'Free to generate and view in 3D. You only pay to download.' : '';
+  }
+  btn.textContent = 'Generate Terrain';
 }
 function applyProUI() {
   if (!isPro()) return;
@@ -5554,16 +5843,17 @@ function _closeCheckoutOverlay() {
   _hideCheckoutOverlay();
   _checkoutInFlight = false;
 }
-// What a subscription costs from day one, shown when the free trial has already been used.
+// There is no trial, so every subscription bills today. Never send someone to a page that
+// charges them without saying so first: show the price, including Survey15, and let them choose.
 const CHECKOUT_PRICE_TEXT = { pro: '£39.99 per month', company: '£29.99 per seat per month' };
-// The worker says this email already had its one free trial. Never send someone to a
-// page that bills them today without saying so first: show the price and let them choose.
-function _showNoTrialConfirm(plan, url, resetBtn) {
+function _showNoTrialConfirm(plan, url, resetBtn, discount) {
   const ov = document.getElementById('checkout-overlay'); if (!ov) { _goToCheckout(url); return; }
   document.getElementById('checkout-spinner').style.display = 'none';
-  document.getElementById('checkout-overlay-msg').textContent = 'Your free trial has already been used';
+  document.getElementById('checkout-overlay-msg').textContent = plan === 'company' ? 'Confirm your Company plan' : 'Confirm your Pro plan';
   const subEl = document.getElementById('checkout-overlay-sub');
-  subEl.textContent = 'Subscribing starts today at ' + (CHECKOUT_PRICE_TEXT[plan] || CHECKOUT_PRICE_TEXT.pro) + '. You can cancel any time.';
+  subEl.textContent = (discount && plan === 'pro')
+    ? 'You pay £24.99 today with your £15 discount, then £39.99 per month. You can cancel any time.'
+    : 'You pay ' + (CHECKOUT_PRICE_TEXT[plan] || CHECKOUT_PRICE_TEXT.pro) + ', starting today. You can cancel any time.';
   subEl.style.display = '';
   document.getElementById('checkout-overlay-err').style.display = 'none';
   const cont = document.getElementById('checkout-overlay-continue');
@@ -5598,8 +5888,7 @@ async function _createCheckoutSession(payload) {
   });
   const data = await res.json();
   if (!data.url) throw new Error(data.error || 'Failed to create checkout');
-  // trial === false means this email already used its one free trial (worker-side check).
-  // An older worker omits the field, which reads as "trial granted" (undefined !== false).
+  // trial === false: no trial, billed today. An older worker omits it (undefined !== false).
   return { url: data.url, trial: data.trial, discount: data.discount === true };
 }
 // The analytics insert is a plain fetch with no keepalive, so give it a beat to leave
@@ -5626,7 +5915,7 @@ window.addEventListener('pageshow', function(e) {
   _checkoutInFlight = false;
   _hideCheckoutOverlay();
   try { if (localStorage.getItem('topo_checkout_out')) _logCheckoutCancelled('browser_back'); } catch (x) {}
-  [['checkout-btn-pro', 'Start 14-day free trial →'], ['checkout-btn-company', 'Start free trial →']].forEach(function(p) {
+  [['checkout-btn-pro', 'Go Pro →'], ['checkout-btn-company', 'Choose Company →']].forEach(function(p) {
     const b = document.getElementById(p[0]);
     if (b && b.disabled) { b.disabled = false; b.textContent = p[1]; }
   });
@@ -5656,21 +5945,20 @@ async function startCheckout(plan, opts) {
     const session = await _createCheckoutSession({ priceId, email, plan, successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com?checkout=cancelled#pricing' });
     track('checkout_started', Object.assign(session.trial === false ? { plan, trial: false } : { plan }, _ctx ? { context: _ctx } : {}, session.discount ? { discount: 'survey_15' } : {}));
     if (session.trial === false) {
-      track('trial_already_used', { plan });
-      _showNoTrialConfirm(plan, session.url, function() { if (btn) { btn.textContent = 'Start 14-day free trial →'; btn.disabled = false; } });
+      _showNoTrialConfirm(plan, session.url, function() { if (btn) { btn.textContent = 'Go Pro →'; btn.disabled = false; } }, session.discount);
     } else {
       _goToCheckout(session.url, opts && opts.hold); // _checkoutInFlight stays true: the page is navigating away
     }
   } catch (err) {
     track('checkout_failed', { plan, message: err.name === 'TimeoutError' ? 'timeout' : err.message });
     _checkoutInFlight = false;
-    if (btn) { btn.textContent = 'Start 14-day free trial →'; btn.disabled = false; }
+    if (btn) { btn.textContent = 'Go Pro →'; btn.disabled = false; }
     let msg = _checkoutErrMsg(err);
     if (!_currentUser && opts && opts.email) {
       // Pay-before-confirm path: the account exists but Stripe never opened, so drop the
       // "trial started" marker and tell them what to do next.
       try { localStorage.removeItem('topo_confirm_pending'); } catch(e) {}
-      msg += (/[.!?]$/.test(msg) ? ' ' : '. ') + 'Your account was created: confirm the email we sent, then sign in and start your trial again.';
+      msg += (/[.!?]$/.test(msg) ? ' ' : '. ') + 'Your account was created: confirm the email we sent, then sign in and try again.';
     }
     _showCheckoutError(msg);
   }
@@ -5690,15 +5978,14 @@ async function confirmSeatCheckout() {
     const session = await _createCheckoutSession({ priceId: STRIPE_PRICE_COMPANY, email: _currentUser.email, plan: 'company', quantity: seats, companyName: (document.getElementById('seat-picker-company-name')?.value || '').trim(), successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com?checkout=cancelled#pricing' });
     track('checkout_started', Object.assign(session.trial === false ? { plan: 'company', seats, trial: false } : { plan: 'company', seats }, window._companyCtx ? { context: window._companyCtx } : {}));
     if (session.trial === false) {
-      track('trial_already_used', { plan: 'company', seats });
-      _showNoTrialConfirm('company', session.url, function() { if (btn) { btn.textContent = 'Start free trial →'; btn.disabled = false; } });
+      _showNoTrialConfirm('company', session.url, function() { if (btn) { btn.textContent = 'Choose Company →'; btn.disabled = false; } });
     } else {
       _goToCheckout(session.url);
     }
   } catch (err) {
     track('checkout_failed', { plan: 'company', seats, message: err.name === 'TimeoutError' ? 'timeout' : err.message });
     _checkoutInFlight = false;
-    if (btn) { btn.textContent = 'Start free trial →'; btn.disabled = false; }
+    if (btn) { btn.textContent = 'Choose Company →'; btn.disabled = false; }
     _showCheckoutError(_checkoutErrMsg(err));
   }
 }
@@ -5787,7 +6074,7 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
         spacing,
         area_m2:           areaM2,
         elevation_source:  elevSource,
-        csv_data:          isPro() ? (csvRaw || null) : null,
+        csv_data:          (_isSubscriber() || _siteOwned()) ? (csvRaw || null) : null,
         file_name:         safe + '_toposolid.csv',
         polygon_geojson:   polygonJson || null,
         resolution_m:      parseResolution(elevSource),
@@ -5810,7 +6097,7 @@ async function logGeneration(pName, pointCount, spacing, areaM2, elevSource, csv
       spacing,
       area_m2:           areaM2,
       elevation_source:  elevSource,
-      csv_data:          isPro() ? (csvRaw || null) : null,
+      csv_data:          (_isSubscriber() || _siteOwned()) ? (csvRaw || null) : null,
       file_name:         safe + '_toposolid.csv',
       polygon_geojson:   polygonJson || null,
       resolution_m:      parseResolution(elevSource),
@@ -5861,7 +6148,7 @@ async function blockGeneration() {
 }
 
 // ── Daily limits ──────────────────────────────────────────────────────────
-const FREE_DAILY_LIMIT = 3;
+const FREE_DAILY_LIMIT = 2;
 function getTodayKey() { return 'topo-gens-' + new Date().toISOString().slice(0, 10); }
 function getGenerationsToday() { return parseInt(localStorage.getItem(getTodayKey()) || '0', 10); }
 function incrementGenerationsToday() {
@@ -5870,7 +6157,7 @@ function incrementGenerationsToday() {
   Object.keys(localStorage).filter(k => k.startsWith('topo-gens-') && k !== key).forEach(k => localStorage.removeItem(k));
 }
 function updateLimitBadge() {
-  if (isPro()) return; // handled by applyProUI hiding the badge
+  if (_isSubscriber()) return; // handled by applyProUI hiding the badge
   const used = getGenerationsToday();
   const remaining = Math.max(0, FREE_DAILY_LIMIT - used);
   const el = document.getElementById('daily-limit-badge');
@@ -5911,8 +6198,11 @@ function incrementUserGenerationsToday() {
     Object.keys(localStorage).filter(k => k.startsWith('topo-ugens-') && k !== key).forEach(k => localStorage.removeItem(k));
   } catch (e) { /* storage blocked: the server count still applies */ }
 }
+// 2 free sites a day, at any size. Subscribers, sites already bought and anyone whose credits
+// cover the drawn site are not limited. A degraded result does not count.
 async function checkDailyLimit() {
-  if (isPro()) return;
+  if (_isSubscriber() || _siteOwned()) return;
+  if (_currentUser && _credits.balance >= _siteCostPence(_currentSiteAreaM2())) return;
   if (_currentUser) {
     const today = new Date().toISOString().slice(0, 10);
     // Fetch today's completed rows (at most a handful: the trigger bounds them) so degraded
@@ -5921,10 +6211,10 @@ async function checkDailyLimit() {
     const { data: _doneRows } = await _sb.from('generations').select('elevation_source').eq('user_id', _currentUser.id).eq('status', 'completed').gte('created_at', today + 'T00:00:00Z').limit(50);
     const serverUsed = (_doneRows || []).filter(function (r) { return !_isDegradedSourceLabel(r.elevation_source); }).length;
     const used = Math.max(serverUsed, getUserGenerationsToday());
-    if (used >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'server', used: used }); const _e = new Error('Free tier limit reached: ' + FREE_DAILY_LIMIT + ' generations per day. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for unlimited generations.'); _e._gateHit = true; throw _e; }
+    if (used >= FREE_DAILY_LIMIT) { window._dailyLimitHit = true; track('free_limit_hit', { type: 'daily', source: 'server', used: used }); const _e = new Error('Free tier limit reached: ' + FREE_DAILY_LIMIT + ' free sites per day. Buy this site or go Pro to keep going.'); _e._gateHit = true; _e._gateKind = 'session'; throw _e; }
   } else {
     const used = getGenerationsToday();
-    if (used >= FREE_DAILY_LIMIT) { track('free_limit_hit', { type: 'daily', source: 'local' }); const _e = new Error('Free tier limit reached. <a href="#" onclick="openAuth()" style="color:var(--accent)">Sign in</a> or <a href="#pricing" style="color:var(--accent)">start a free trial</a> for unlimited generations.'); _e._gateHit = true; throw _e; }
+    if (used >= FREE_DAILY_LIMIT) { window._dailyLimitHit = true; track('free_limit_hit', { type: 'daily', source: 'local' }); const _e = new Error('Free tier limit reached: ' + FREE_DAILY_LIMIT + ' free sites per day. Buy this site or go Pro to keep going.'); _e._gateHit = true; _e._gateKind = 'session'; throw _e; }
   }
 }
 
@@ -6005,8 +6295,6 @@ function refreshResultStats() {
   const imperial = exportUnits === 'imperial';
   const mult = imperial ? M_TO_FT : 1;
   const unit = imperial ? 'ft' : 'm';
-  const phX = document.getElementById('ph-x'), phY = document.getElementById('ph-y'), phZ = document.getElementById('ph-z');
-  if (phX) phX.textContent = 'X (' + unit + ')'; if (phY) phY.textContent = 'Y (' + unit + ')'; if (phZ) phZ.textContent = 'Z (' + unit + ')';
   const rangeLbl = document.getElementById('stat-range-label'), areaLbl = document.getElementById('stat-area-label');
   if (rangeLbl) rangeLbl.textContent = 'Elev. range (' + unit + ')'; if (areaLbl) areaLbl.textContent = imperial ? 'ft²' : 'm²';
   const alts = pts.map(p => p.z * mult).filter(z => z !== 0 && isFinite(z));
@@ -6018,11 +6306,6 @@ function refreshResultStats() {
   const areaM2 = (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
   const areaEl = document.getElementById('stat-area');
   if (areaEl) areaEl.textContent = imperial ? (areaM2 * 10.7639).toLocaleString('en-US', {maximumFractionDigits:0}) : Math.round(areaM2).toLocaleString();
-  const body = document.getElementById('preview-body');
-  if (body && pts.length) {
-    const decimals = imperial ? 2 : 3;
-    body.innerHTML = pts.slice(0,6).map(p => '<tr><td>' + (p.x*mult).toFixed(decimals) + '</td><td>' + (p.y*mult).toFixed(decimals) + '</td><td>' + (p.z*mult).toFixed(decimals) + '</td></tr>').join('') + '<tr><td colspan="3" style="color:var(--text-soft);font-size:11px;padding-top:6px">… ' + pts.length.toLocaleString() + ' total rows in CSV</td></tr>';
-  }
 }
 function updateScatterDesc() {
   const val = getToggleValue('scatter-toggle');
@@ -6321,30 +6604,8 @@ function _hideHighDemandBanner() {
   if (el) { el.style.display = 'none'; el.innerHTML = ''; }
 }
 
-// ── Convert ───────────────────────────────────────────────────────────────
-// ── "Try again" after a degraded result: billing and allowance rules ──────────────────────
-// A degraded (fallback) result is not what the user should have got, so re-running the same site
-// must never cost them anything extra:
-//   1. Large-site add-on. /charge-addon runs BEFORE the elevation fetch, so a re-run would charge
-//      again. A successful charge is remembered as a credit for that exact site (user + spacing +
-//      polygon) for ADDON_CREDIT_TTL_MS, and a re-run of the same site skips the charge until a
-//      full-resolution result is delivered. This also covers a run that failed or was cancelled
-//      after the user had already paid.
-//   2. Daily allowance. A degraded result does not count as one of the free generations (see
-//      checkDailyLimit and the success path of _convertImpl), so retrying is free there too.
-// The credit lives in this browser only; the add-on charge itself has always been initiated
-// client-side, so this adds no new trust assumption.
-const ADDON_CREDIT_TTL_MS = 30 * 60 * 1000;
-function _siteSignature(poly, spacing, userId) {
-  const pts = (poly || []).map(function (p) {
-    const lon = p.lng !== undefined ? p.lng : p.lon;
-    return Number(p.lat).toFixed(5) + ',' + Number(lon).toFixed(5);
-  }).join(';');
-  return (userId || 'anon') + '|' + spacing + '|' + pts;
-}
-function _addonCreditCovers(credit, sig, now) {
-  return !!(credit && credit.sig === sig && now >= credit.at && (now - credit.at) < ADDON_CREDIT_TTL_MS);
-}
+// A degraded result costs nothing twice over: a paid site is not charged (_chargeSiteAfterResult),
+// and it does not count as one of the free generations (checkDailyLimit), so retrying is free.
 // A source label that marks a degraded (fallback) result: the current wording, plus the older
 // "unavailable" / "sources failed" labels that rows logged before 2026-10-13 may carry.
 function _isDegradedSourceLabel(label) {
@@ -6380,7 +6641,7 @@ async function _convertImpl() {
   window._retryOfDegraded = false;
   track('generation_started', { spacing: selectedSpacing, plan: _currentProfile?.plan || 'anon', retry: _isRetry });
   await startGeneration();
-  window._isGenerating = true; window._cancelled = false; window._lastAddonChargePence = 0;
+  window._isGenerating = true; window._cancelled = false; window._lastAddonChargePence = 0; // holds the site price; column name kept
   const nEl = document.getElementById('project-name');
   projectName = nEl.value.trim();
   if (!projectName) {
@@ -6404,56 +6665,31 @@ async function _convertImpl() {
     const mpd = metresPerDeg((Math.min(...lats)+Math.max(...lats))/2);
     const siteW = (Math.max(...lons)-Math.min(...lons))*mpd.lon;
     const siteH = (Math.max(...lats)-Math.min(...lats))*mpd.lat;
-    const _isPro = isPro();
     const plan = _currentProfile?.plan || 'anon';
     const areaKm2 = (siteW * siteH) / 1e6;
-    const isLargeSite = _isPro && areaKm2 > 10; // matches the Large Site Add-on threshold shown in the modal
-    if (!_isPro) {
-      if (siteW>FREE_MAX_M||siteH>FREE_MAX_M) { track('size_limit_hit', { area_m2: Math.round(siteW*siteH), site_w_m: Math.round(siteW), site_h_m: Math.round(siteH), plan }); const _e = new Error('Free tier is limited to 500 × 500m sites. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for sites up to 1.6 × 1.6km.'); _e._gateHit = true; _e._gateKind = 'size_limit'; throw _e; }
-      if (selectedSpacing<FREE_MAX_SPACING) { track('spacing_gate_hit', { spacing: selectedSpacing, min: FREE_MAX_SPACING, plan }); const _e = new Error('Free tier supports 12m spacing only. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for 3m and 6m precision.'); _e._gateHit = true; _e._gateKind = 'spacing'; throw _e; }
+    // Anyone can generate any site Pro allows and see it in 3D: seeing your own site is the hook.
+    // Past the free tier the result is a preview, and every download needs the site to be bought.
+    // Very large sites work the same way on a subscription.
+    const _overFree = siteW > FREE_MAX_M || siteH > FREE_MAX_M || selectedSpacing < FREE_MAX_SPACING;
+    const _sub = _isSubscriber();
+    const _chargeSite = !_siteOwned() && (_sub ? areaKm2 > 10 : _overFree);
+    if (_chargeSite) {
+      track('site_quote_at_generate', { area_m2: Math.round(siteW * siteH), site_w_m: Math.round(siteW), site_h_m: Math.round(siteH), spacing: selectedSpacing, plan });
+      window._genPaidIntent = true;
     }
+    const _isPro = isPro();
+    const isLargeSite = _isPro && areaKm2 > 10;
     window._effectiveSpacing = selectedSpacing;
     await checkDailyLimit();
     const isNatural = getToggleValue('scatter-toggle') === 'natural';
     const effSpacing = window._effectiveSpacing || selectedSpacing;
     const grid = generateGrid(polygonLatLngs, effSpacing, isNatural);
     if (grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing - try a smaller spacing or draw a larger area.');
-    // Large-site add-on generations get a much higher point cap since they're paying per
-    // generation — but still a hard ceiling, not unlimited, to protect the browser (client-side
+    // Very large sites get a much higher point cap since they're paying per site — but still a hard ceiling, not unlimited, to protect the browser (client-side
     // mesh/IFC build) and the worker even when someone is willing to pay for more.
     const ADDON_POINT_CAP = 500000;
     const POINT_CAP = _isPro ? (isLargeSite ? ADDON_POINT_CAP : 75000) : 2000;
-    if (grid.length>POINT_CAP) { track('point_cap_hit', { point_count: grid.length, cap: POINT_CAP, plan, large_site: isLargeSite }); const _e = new Error(grid.length.toLocaleString()+' points exceeds the '+(_isPro?'limit of '+POINT_CAP.toLocaleString()+(isLargeSite?' for this generation. Try a larger spacing.':''):'free limit of 2,000. <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial</a> for larger areas.')); _e._gateHit = true; if (!_isPro) _e._gateKind = 'points'; throw _e; }
-    // Charge the large-site add-on now — grid size is already confirmed within the cap above,
-    // so this is the last checkpoint before the real (costly) work starts.
-    if (isLargeSite) {
-      const addonCost = _addonCostGBP(areaKm2);
-      const addonPence = Math.round(addonCost * 100);
-      const _addonSig = _siteSignature(polygonLatLngs, selectedSpacing, _currentUser && _currentUser.id);
-      const _alreadyPaid = _addonCreditCovers(window._addonCredit, _addonSig, Date.now());
-      if (_alreadyPaid) {
-        // This exact site was already paid for and has not yet produced a full-resolution result
-        // (an earlier run failed, was cancelled, or came back degraded). Re-running it is free.
-        track('addon_not_recharged', { areaKm2: parseFloat(areaKm2.toFixed(2)), amountPence: window._addonCredit.pence, plan, retry: _isRetry });
-      }
-      if (!_alreadyPaid) {
-      setProgress(0.05, 'Charging add-on…', '£' + addonCost.toFixed(2) + ' for this ' + areaKm2.toFixed(1) + ' km² generation');
-      try {
-        const chargeRes = await fetch(WEBHOOK_WORKER + '/charge-addon', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: _currentUser.email, amountPence: addonPence, description: 'Large site add-on: ' + areaKm2.toFixed(1) + ' km²' })
-        });
-        const chargeData = await chargeRes.json().catch(function(){ return {}; });
-        if (!chargeRes.ok || chargeData.error) throw new Error(chargeData.error || ('HTTP ' + chargeRes.status));
-      } catch (chargeErr) {
-        track('addon_charge_failed', { areaKm2: parseFloat(areaKm2.toFixed(2)), amountPence: addonPence, reason: chargeErr.message, plan });
-        const _e = new Error('Could not charge the large-site add-on (' + chargeErr.message + '). Check your payment method in Settings and try again.'); _e._gateHit = true; throw _e;
-      }
-      window._lastAddonChargePence = addonPence;
-      window._addonCredit = { sig: _addonSig, pence: addonPence, at: Date.now() };
-      track('addon_charged', { areaKm2: parseFloat(areaKm2.toFixed(2)), amountPence: addonPence, plan });
-      }
-    }
+    if (grid.length>POINT_CAP) { track('point_cap_hit', { point_count: grid.length, cap: POINT_CAP, plan, large_site: isLargeSite }); const _e = new Error(grid.length.toLocaleString()+' points exceeds the '+(_isPro?'limit of '+POINT_CAP.toLocaleString()+(isLargeSite?' for this generation. Try a larger spacing.':''):'free limit of 2,000. <a href="#pricing" style="color:var(--accent)">Pay per site or go Pro</a> for larger areas.')); _e._gateHit = true; if (!_isPro) _e._gateKind = 'points'; throw _e; }
     const estSecs = Math.ceil(grid.length/50*0.6);
     setProgress(0.1,'Extracting data…',grid.length.toLocaleString()+' points - est. '+estSecs+'s');
     _hideHighDemandBanner();
@@ -6609,7 +6845,7 @@ async function _convertImpl() {
     // Log + save
     const areaM2=(Math.max(...out.map(p=>p.x))-Math.min(...out.map(p=>p.x)))*(Math.max(...out.map(p=>p.y))-Math.min(...out.map(p=>p.y)));
     logGeneration(projectName,cleanOut.length,selectedSpacing,areaM2,source||'unknown',csvData,polygonLatLngs?JSON.stringify(polygonLatLngs):null);
-    saveProMemory(projectName,selectedSpacing,csvData,source||'unknown');
+    if (!_chargeSite) saveProMemory(projectName,selectedSpacing,csvData,source||'unknown');
     updateElevationSourceBanner(source||'unknown',_isPro,degraded,mixedTiers);
     // Stats
     const alts=cleanOut.map(p=>p.z).filter(z=>z!==0&&isFinite(z)&&!isNaN(z));
@@ -6623,13 +6859,10 @@ async function _convertImpl() {
     refreshResultStats();
     const oi=document.getElementById('origin-info');
     if(oi){oi.style.display='block';oi.innerHTML='<strong>Local origin (0,0) · '+projectName+'</strong><br>UTM Easting: '+oE.toFixed(2)+' &nbsp;|&nbsp; Northing: '+oN.toFixed(2)+' &nbsp;|&nbsp; Zone: '+utm[0].zone+'<br>Elevation source: '+_userFacingSource(source)+'<br><span style="opacity:.7;font-size:11px">Set Revit Survey Point to UTM coordinates above for georeferenced placement.</span>';}
-    const pb=document.getElementById('preview-body');
-    if(pb){pb.innerHTML=out.slice(0,6).map(p=>'<tr><td>'+p.x+'</td><td>'+p.y+'</td><td>'+p.z+'</td></tr>').join('')+'<tr><td colspan="3" style="color:var(--text-soft);font-size:11px;padding-top:6px">… '+out.length.toLocaleString()+' total rows in CSV</td></tr>';}
-    // A full-resolution result ends any add-on credit (the next run of this site is a new
-    // purchase). A degraded one keeps it, and does not use up a free generation, so "Try again"
-    // costs nothing either way.
-    if (!degraded) window._addonCredit = null;
-    if (!isPro() && !degraded){incrementGenerationsToday();incrementUserGenerationsToday();updateLimitBadge();}
+    window._previewSig = _chargeSite ? _creditSiteSig() : null;
+    window._previewDegraded = !!(_chargeSite && degraded);
+    if (_chargeSite) { track('site_previewed', { cost_pence: _siteCostPence(_currentSiteAreaM2()), degraded: !!degraded, plan }); }
+    if (!_isSubscriber() && !_siteOwned() && !degraded){incrementGenerationsToday();incrementUserGenerationsToday();updateLimitBadge();}
     setSiteContourData(out);
     setProgress(1,'Done - terrain data ready.','');
     // Store bbox + elevation source for the buildings layer in the 3D viewer
@@ -6690,7 +6923,9 @@ async function _convertImpl() {
     } else failGeneration('client_error', err.message);
   }finally{
     window._isGenerating=false;
+    window._genPaidIntent=false;
     document.getElementById('convert-btn').disabled=false;
+    _updateSitePriceUI();
   }
 }
 
@@ -6737,9 +6972,9 @@ function _zipBlob(files) {
   parts.push(cat([u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(centralSize), u32(centralStart), u16(0)]));
   return new Blob(parts, { type: 'application/zip' });
 }
-function downloadCSV(fmt) {
+function _csvFile(fmt) {
   const pts=_getTerrainExportPts(); // flattened copy if DSM + buildings; else original
-  if (!pts||!pts.length) return;
+  if (!pts||!pts.length) return null;
   const imperial=exportUnits==='imperial', mult=imperial?M_TO_FT:1, decimals=imperial?2:3;
   const suffix=imperial?'_ft':'_m';
   // XYZ = headerless, space-delimited point file. ArchiCAD's "Place Mesh from
@@ -6752,14 +6987,104 @@ function downloadCSV(fmt) {
   const rows=pts.map(p=>(p.x*mult).toFixed(decimals)+sep+(p.y*mult).toFixed(decimals)+sep+(p.z*mult).toFixed(decimals));
   const safe='Topo-grapher-terrain'+(projectName?'-'+projectName.replace(/[^a-zA-Z0-9_\-]/g,'_'):'');
   const body=(header?header+'\n':'')+rows.join('\n');
-  const fname=safe+'_toposolid'+suffix+ext;
+  return { safe, suffix, name: safe+'_toposolid'+suffix+ext, data: body, mime: isXyz?'text/plain':'text/csv' };
+}
+function downloadCSV(fmt) {
+  const f=_csvFile(fmt);
+  if (!f) return;
   if (window._siteColumns && window._siteColumns.length > 0) {
     try {
-      const ifc=_buildSiteColumnsIFC(window._siteColumns, safe);
-      if (ifc) { _saveBlob(_zipBlob([{name:fname,data:body},{name:safe+'_site_columns.ifc',data:ifc}]), safe+'_toposolid'+suffix+'.zip'); return; }
+      const ifc=_buildSiteColumnsIFC(window._siteColumns, f.safe);
+      if (ifc) {
+        const files=[{name:f.name,data:f.data},{name:f.safe+'_site_columns.ifc',data:ifc}];
+        files.push({name:'README.txt',data:_buildReadme(files.map(x=>x.name),{})});
+        _saveBlob(_zipBlob(files), f.safe+'_toposolid'+f.suffix+'.zip'); return;
+      }
     } catch(e) { console.warn('site columns bundle failed, terrain only:', e); }
   }
-  _saveBlob(new Blob([body],{type:isXyz?'text/plain':'text/csv'}), fname);
+  _saveBlob(new Blob([f.data],{type:f.mime}), f.name);
+}
+// Terrain plus site context in one zip. A failed or empty context never costs the terrain: it
+// still downloads, and the README says what happened.
+async function _downloadContextZip(fmt) {
+  const btn = document.getElementById('download-btn');
+  const label = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = 'Preparing site context\u2026'; btn.disabled = true; }
+  let failed = '';
+  try {
+    if (!window._lastBuildingData || !window._lastBuildingData.roads) await _fetchBuildingsData();
+  } catch (e) {
+    failed = e.message || 'unavailable';
+    try { track('context_fetch_failed', { detail: failed.slice(0, 120) }); } catch (x) {}
+  }
+  try {
+    const data = window._lastBuildingData || { buildings: [], roads: [] };
+    const roads = data.roads || [];
+    const nPaths = roads.filter(r => r.kind === 'path').length;
+    const nBld = (data.buildings || []).length;
+    let terrain;
+    const safe = 'Topo-grapher-terrain'+(projectName?'-'+projectName.replace(/[^a-zA-Z0-9_\-]/g,'_'):'');
+    if (fmt === 'ifc') terrain = { name: safe+'_toposolid.ifc', data: _generateTerrainIFC(_getTerrainExportPts(), projectName) };
+    else if (fmt === 'dxf') terrain = { name: safe+'_toposolid.dxf', data: _generateTerrainDXF(_getTerrainExportPts(), projectName) };
+    else terrain = _csvFile(fmt);
+    const files = [{ name: terrain.name, data: terrain.data }];
+    if (nBld || roads.length) {
+      const ifc = _generateBuildingsIFC(data, projectName), dxf = _generateBuildingsDXF(data, projectName);
+      if (ifc) files.push({ name: safe+'_site_context.ifc', data: ifc });
+      if (dxf) files.push({ name: safe+'_site_context.dxf', data: dxf });
+    }
+    if (window._siteColumns && window._siteColumns.length > 0) {
+      const col = _buildSiteColumnsIFC(window._siteColumns, safe);
+      if (col) files.push({ name: safe+'_site_columns.ifc', data: col });
+    }
+    files.push({ name: 'README.txt', data: _buildReadme(files.map(f => f.name), { failed, buildings: nBld, roads: roads.length - nPaths, paths: nPaths }) });
+    _saveBlob(_zipBlob(files), safe+'.zip');
+    try { track('context_included', { buildings: nBld, roads: roads.length - nPaths, paths: nPaths, fmt, failed: !!failed }); } catch (x) {}
+  } finally {
+    if (btn) { btn.innerHTML = label; btn.disabled = false; }
+  }
+}
+function _readmeElevCredit(src) {
+  const s = String(src || '');
+  if (/GEDTM/i.test(s)) return 'GEDTM30 by Ho, Y., Grohmann, C.H., Lindsay, J., Reuter, H.I., Parente, L., Witjes, M., Hengl, T. (OpenGeoHub, 2025), CC BY 4.0, doi.org/10.7717/peerj.19673';
+  if (/\bGA\b|Geoscience Australia/i.test(s)) return 'Geoscience Australia, DEM of Australia derived from LiDAR 5 Metre Grid, CC BY 4.0, doi.org/10.26186/89644';
+  return _userFacingSource(s) + '. Licence and credit for each source: topo-grapher.com/elevation-data-coverage.html';
+}
+function _buildReadme(fileNames, ctx) {
+  const tc = window._lastTerrainContext || {};
+  const o = tc.utmOrigin || {};
+  const zone = (function () { try { return latLonToUTM(tc.south, tc.west).zone; } catch (e) { return '?'; } })();
+  const lines = [
+    'Topo-grapher site model: ' + (projectName || 'site'),
+    'Made with Topo-grapher (topo-grapher.com) on ' + new Date().toISOString().slice(0, 10),
+    '',
+    'Files'
+  ].concat(fileNames.map(n => '  ' + n), [
+    '',
+    'Placement',
+    '  Link or import with Origin to Origin. All files share one origin, so they overlay.',
+    '  Coordinates are ' + (exportUnits === 'imperial' ? 'feet' : 'metres') + ' from UTM zone ' + zone + ', origin E ' + Number(o.easting || 0).toFixed(2) + ', N ' + Number(o.northing || 0).toFixed(2) + '.',
+    '  Revit: subdivide a toposolid by picking layer TG-ROAD-EDGE-2D in the linked DXF.',
+    ''
+  ]);
+  if (ctx && (ctx.failed || ctx.buildings != null)) {
+    lines.push('Site context');
+    if (ctx.failed) lines.push('  Could not be fetched for this download (' + ctx.failed.slice(0, 100) + '). Terrain is complete. Try the download again in a few minutes.');
+    else lines.push('  ' + ctx.buildings + ' buildings, ' + ctx.roads + ' roads, ' + ctx.paths + ' footpaths.');
+    lines.push('');
+  }
+  lines.push(
+    'Data sources',
+    '  Topo-grapher extracted the data below from these public sources and converted it into',
+    '  CAD/BIM-ready files.',
+    '  Terrain: ' + _readmeElevCredit(tc.elevSource),
+    '  Buildings, roads and footpaths: \u00a9 OpenStreetMap contributors. The OSM-derived parts of',
+    '  these files are available under the Open Database License (opendatacommons.org/licenses/odbl).',
+    '  Heights, widths and roof shapes are partly estimated by Topo-grapher where the source',
+    '  data has none. Road widths marked "estimated" are not surveyed.',
+    ''
+  );
+  return lines.join('\r\n');
 }
 function handleDownload() {
   if (!window._cleanOutMetric?.length) return;
@@ -6776,10 +7101,10 @@ function handleDownload() {
   // Checked BEFORE download_attempted fires (and returns before it, same as
   // the picker's own locked path) so the admin dashboard's "Downloaded, by
   // format" chart doesn't count blocked attempts as real downloads.
-  if ((fmt === 'dxf' || fmt === 'ifc') && _fpLocked(fmt)) {
+  if (_fpLocked(fmt)) {
     try { track('format_locked_clicked', { format: fmt, plan: _currentProfile?.plan || 'anon', via: 'direct' }); } catch (e) {}
-    try { track('pro_cta_clicked', { source: 'download_direct' }); } catch (e) {}
-    startCheckout('pro');
+    try { track('credit_cta_clicked', { source: 'download_direct', format: fmt }); } catch (e) {}
+    unlockSiteWithCredits('format');
     return;
   }
   track('download_attempted', { format: fmt });
@@ -6798,6 +7123,7 @@ function handleDownload() {
     openAuth('signup', 'download');
     return;
   }
+  if (_contextOn()) { _downloadContextZip(fmt); return; }
   const safe = 'Topo-grapher-terrain'+(projectName?'-'+projectName.replace(/[^a-zA-Z0-9_\-]/g,'_'):'');
   let content, fname, mime;
   if (fmt === 'ifc') {
@@ -6812,7 +7138,11 @@ function handleDownload() {
   if (window._siteColumns && window._siteColumns.length > 0) {
     try {
       const ifc = _buildSiteColumnsIFC(window._siteColumns, safe);
-      if (ifc) { _saveBlob(_zipBlob([{name:fname,data:content},{name:safe+'_site_columns.ifc',data:ifc}]), safe+'_toposolid.zip'); return; }
+      if (ifc) {
+        const files=[{name:fname,data:content},{name:safe+'_site_columns.ifc',data:ifc}];
+        files.push({name:'README.txt',data:_buildReadme(files.map(x=>x.name),{})});
+        _saveBlob(_zipBlob(files), safe+'_toposolid.zip'); return;
+      }
     } catch(e) { console.warn('site columns bundle failed, terrain only:', e); }
   }
   _saveBlob(new Blob([content],{type:mime}), fname);
@@ -6830,7 +7160,7 @@ function _syncDlBtn() {
   if (sel && typeof _fpLocked === 'function') {
     ['ifc', 'dxf'].forEach(function (v) {
       const opt = sel.querySelector('option[value="' + v + '"]');
-      if (opt) opt.textContent = v.toUpperCase() + (_fpLocked(v) ? ' 🔒 Pro' : '');
+      if (opt) opt.textContent = v.toUpperCase() + (_fpLocked(v) ? ' 🔒' : '');
     });
   }
   // With the picker on, the button opens the format chooser, so keep its label neutral.
@@ -6845,7 +7175,7 @@ function _syncDlBtn() {
     const hasData = !!(window._lastBuildingData?.buildings?.length);
     if (!isPro()) {
       // Free users: show lock — clicking reveals upgrade prompt
-      bBtn.innerHTML = '&#x1F512; Buildings <span style="font-size:10px;opacity:.75;">('+fmtLbl+' · Pro)</span>';
+      bBtn.innerHTML = '&#x1F512; Buildings <span style="font-size:10px;opacity:.75;">('+fmtLbl+' · paid)</span>';
     } else {
       bBtn.innerHTML = hasData
         ? '&#x2193; Download Buildings <span style="font-size:10px;opacity:.75;">('+fmtLbl+')</span>'
@@ -6882,13 +7212,21 @@ function _fpCountdown() {
   return Math.ceil(hrs / 24) + ' days left free';
 }
 function _fpLocked(fmt) {
+  if (_sitePreviewLocked()) return true;      // a preview locks every format, CSV included
   return (fmt === 'dxf' || fmt === 'ifc') && !isPro() && _fpCountdown() === null;
 }
 // Per-card tags / notes on the two Pro cards (Free-now countdown vs Included vs locked).
+function _contextOn() {
+  try { return isPro() && localStorage.getItem('topo_site_context') === '1'; } catch (e) { return false; }
+}
 function _fpApplyState() {
   const ov = document.getElementById('fp-overlay');
   if (!ov) return;
-  const pro = isPro();
+  const pro = isPro() && !_sitePreviewLocked();
+  ov.querySelectorAll('.fp-card:not(.fp-card-pro) .fp-tag').forEach(function (t) { t.textContent = _sitePreviewLocked() ? 'Paid' : 'Free'; });
+  const ctxBox = document.getElementById('fp-context'), ctxTag = document.getElementById('fp-context-tag');
+  if (ctxBox) ctxBox.checked = _contextOn();
+  if (ctxTag) ctxTag.style.display = pro ? 'none' : '';
   const cd = _fpCountdown();
   const locked = !pro && cd === null;
   ov.querySelectorAll('.fp-card-pro').forEach(function (card) {
@@ -6899,8 +7237,8 @@ function _fpApplyState() {
       if (tag) { tag.textContent = 'Included'; tag.className = 'fp-tag fp-tag-inc'; }
       if (note) note.textContent = '';
     } else if (locked) {
-      if (tag) { tag.textContent = 'Pro'; tag.className = 'fp-tag fp-tag-pro'; }
-      if (note) note.textContent = '\uD83D\uDD12 Upgrade to unlock';
+      if (tag) { tag.textContent = 'Paid'; tag.className = 'fp-tag fp-tag-pro'; }
+      if (note) note.textContent = '\uD83D\uDD12 Pay for this site to unlock';
     } else {
       if (tag) { tag.textContent = 'Free now'; tag.className = 'fp-tag fp-tag-free'; }
       if (note) note.textContent = cd;
@@ -6918,19 +7256,19 @@ function _fpRender() {
   const locked = _fpLocked(_fpSel);
   const L = _FP_LABEL[_fpSel] || 'file';
   if (locked) {
-    btn.innerHTML = 'Start free trial for ' + L + ' &rarr;';
+    btn.innerHTML = 'Get ' + L + ' for ' + _fmtGBP(_siteCostPence(_currentSiteAreaM2())) + ' &rarr;';
   } else {
     btn.innerHTML = '&#x2193; Download ' + L;
   }
   if (note) {
     if (pro) note.textContent = '';
-    else if (locked) note.textContent = 'DXF and IFC are Pro. Start a 14-day free trial for every format, unlimited generations and all data sources.';
-    else if ((_fpSel === 'dxf' || _fpSel === 'ifc') && cd) note.textContent = L + ' is free right now - ' + cd + '. Start a free trial to keep it after that.';
+    else if (locked) note.textContent = _sitePreviewLocked() ? 'This site is bigger or finer than the free tier. Buy it once to download, or go Pro for regular work.' : 'DXF and IFC are paid. Pay once for this site, or go Pro for regular work.';
+    else if ((_fpSel === 'dxf' || _fpSel === 'ifc') && cd) note.textContent = L + ' is free right now - ' + cd + '.';
     else if (cd) note.textContent = 'DXF and IFC are free for everyone - ' + cd + '.';
     else note.textContent = '';
   }
   if (seepro) {
-    seepro.innerHTML = (!pro && !locked) ? 'or <a id="fp-seepro-link">start a free trial</a> for every format, always' : '';
+    seepro.innerHTML = (!pro && !locked) ? 'or <a id="fp-seepro-link">go Pro</a> for every format, always' : '';
   }
 }
 function _fpSelect(fmt) {
@@ -7008,9 +7346,9 @@ function _fpDl() {
   const fmt = _fpSel;
   if (_fpLocked(fmt)) {
     try { track('format_locked_clicked', { format: fmt, plan: _currentProfile?.plan || 'anon' }); } catch (e) {}
-    try { track('pro_cta_clicked', { source: 'format_picker' }); } catch (e) {}
+    try { track('credit_cta_clicked', { source: 'format_picker', format: fmt }); } catch (e) {}
     closeFormatPicker();
-    startCheckout('pro');
+    unlockSiteWithCredits('format');
     return;
   }
   try { track('format_selected', { format: fmt, via: 'picker', plan: _currentProfile?.plan || 'anon', locked: false }); } catch (e) {}
@@ -7040,6 +7378,18 @@ function _fpDl() {
   });
   const soft = document.getElementById('fp-software');
   if (soft) soft.addEventListener('change', function () { _fpRecommend(true); });
+  const ctxBox = document.getElementById('fp-context');
+  if (ctxBox) ctxBox.addEventListener('change', function () {
+    if (!isPro()) {
+      ctxBox.checked = false;
+      try { track('format_card_clicked', { format: 'context', locked: true, plan: _currentProfile?.plan || 'anon' }); } catch (e) {}
+      closeFormatPicker();
+      unlockSiteWithCredits('context');
+      return;
+    }
+    try { localStorage.setItem('topo_site_context', ctxBox.checked ? '1' : '0'); } catch (e) {}
+    try { track('context_toggle_changed', { on: ctxBox.checked }); } catch (e) {}
+  });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && ov.classList.contains('show')) _fpDismiss('escape');
   });
@@ -7580,12 +7930,42 @@ function _generateBuildingsIFC(data, name) {
     e('IFCRELDEFINESBYPROPERTIES('+g()+',#'+iOwn+',$,$,(#'+iProxy+'),#'+_ps+')');
   }
 
+  // Roads and footpaths: one proxy per clipped segment, a surface that follows the terrain.
+  const ifcStr = t => String(t||'').replace(/\\/g,'\\\\').replace(/'/g,"''").replace(/[^\x20-\x7e]/g, c => '\\X2\\'+c.charCodeAt(0).toString(16).toUpperCase().padStart(4,'0')+'\\X0\\');
+  for(const rb of _roadRibbons(data)){
+    if(rb.road.tunnel || rb.left.length<2) continue;
+    const r=rb.road, kindLbl=r.kind==='road'?'Road':'Footpath';
+    const _pc={};
+    const CP=p=>{const k=N(p.x)+'|'+N(p.y)+'|'+N(p.z);return _pc[k]||(_pc[k]=e('IFCCARTESIANPOINT(('+N(p.x)+','+N(p.y)+','+N(p.z)+'))'));};
+    const face=(a,b,c)=>e('IFCFACE((#'+e('IFCFACEOUTERBOUND(#'+e('IFCPOLYLOOP((#'+CP(a)+',#'+CP(b)+',#'+CP(c)+'))')+',.T.)')+'))');
+    const fIds=[];
+    for(let i=0;i<rb.left.length-1;i++){
+      fIds.push(face(rb.left[i],rb.right[i],rb.right[i+1]));
+      fIds.push(face(rb.left[i],rb.right[i+1],rb.left[i+1]));
+    }
+    const iCfs=e('IFCCONNECTEDFACESET(('+fIds.map(f=>'#'+f).join(',')+'))');
+    const iFbs=e('IFCFACEBASEDSURFACEMODEL((#'+iCfs+'))');
+    const iRep=e('IFCSHAPEREPRESENTATION(#'+iCtx+",'Body','SurfaceModel',(#"+iFbs+'))');
+    const iRpd=e('IFCPRODUCTDEFINITIONSHAPE($,$,(#'+iRep+'))');
+    const iRlp=e('IFCLOCALPLACEMENT(#'+iStLP+',#'+iSolAP+')');
+    const iRp=e('IFCBUILDINGELEMENTPROXY('+g()+',#'+iOwn+",'"+ifcStr(r.name||r.id)+"',$,'"+kindLbl+"',#"+iRlp+',#'+iRpd+',$,.ELEMENT.)');
+    elemIds.push(iRp);
+    const _rv=[
+      e("IFCPROPERTYSINGLEVALUE('Kind',$,IFCLABEL('"+kindLbl+"'),$)"),
+      e("IFCPROPERTYSINGLEVALUE('Name',$,IFCLABEL('"+ifcStr(r.name||'')+"'),$)"),
+      e("IFCPROPERTYSINGLEVALUE('Width',$,IFCLENGTHMEASURE("+N(r.width)+"),$)"),
+      e("IFCPROPERTYSINGLEVALUE('WidthSource',$,IFCLABEL('"+r.widthSource+"'),$)")
+    ];
+    const _rs=e("IFCPROPERTYSET("+g()+",#"+iOwn+",'Pset_TopoGrapher_Road',$,("+_rv.map(f=>'#'+f).join(',')+"))");
+    e('IFCRELDEFINESBYPROPERTIES('+g()+',#'+iOwn+',$,$,(#'+iRp+'),#'+_rs+')');
+  }
+
   if(elemIds.length)
     e('IFCRELCONTAINEDINSPATIALSTRUCTURE('+g()+',#'+iOwn+',$,$,('+
       elemIds.map(f=>'#'+f).join(',')+')'+ ',#'+iStorey+')');
 
   return "ISO-10303-21;\nHEADER;\n"+
-    "FILE_DESCRIPTION(('Topo-grapher buildings export'),'2;1');\n"+
+    "FILE_DESCRIPTION(('Topo-grapher site context. See README.txt for data sources.'),'2;1');\n"+
     "FILE_NAME('"+safe+"_buildings.ifc','"+now+"',(''),(''),'',' ','');\n"+
     "FILE_SCHEMA(('IFC2X3'));\nENDSEC;\nDATA;\n"+
     L.join('\n')+
@@ -7602,6 +7982,9 @@ function _generateBuildingsDXF(data, name) {
   const iu=imp?'2':'6';
   const N=n=>parseFloat((n*mult).toFixed(4)).toString();
   const LYR_FP='TG-BLDG-FOOTPRINT', LYR_HT='TG-BLDG-HEIGHT', LYR_REF='TG-BLDG-MASS-REF';
+  const ROAD_LAYERS=[['TG-ROAD-CL',1],['TG-ROAD-EDGE',8],['TG-ROAD-EDGE-2D',2],['TG-ROAD-SURFACE-REF',9],['TG-PATH-CL',3],['TG-PATH-EDGE-2D',4]];
+  const ribbons=_roadRibbons(data);
+  const hasRoads=ribbons.length>0;
   const txtH = imp ? 6 : 2;   // height-label text size, in export units
   const L=[
     '999','Topo-grapher buildings - footprint linework for editable masses',
@@ -7611,11 +7994,12 @@ function _generateBuildingsDXF(data, name) {
     '9','$ACADVER','1','AC1009',
     '0','ENDSEC',
     '0','SECTION','2','TABLES',
-    '0','TABLE','2','LAYER','70','4',
+    '0','TABLE','2','LAYER','70',String(hasRoads?10:4),
     '0','LAYER','2','0','70','0','62','7','6','Continuous',
     '0','LAYER','2',LYR_FP,'70','0','62','5','6','Continuous',
     '0','LAYER','2',LYR_HT,'70','0','62','3','6','Continuous',
     '0','LAYER','2',LYR_REF,'70','0','62','8','6','Continuous',
+    ...(hasRoads?ROAD_LAYERS.flatMap(([n,c])=>['0','LAYER','2',n,'70','0','62',String(c),'6','Continuous']):[]),
     '0','ENDTAB',
     '0','ENDSEC',
     '0','SECTION','2','ENTITIES',
@@ -7697,6 +8081,28 @@ function _generateBuildingsDXF(data, name) {
       }
     }
   }
+  const poly3d=(pts,lyr,flat)=>{
+    L.push('0','POLYLINE','8',lyr,'66','1','10','0','20','0','30','0','70','8');
+    for(const p of pts) L.push('0','VERTEX','8',lyr,'10',N(p.x),'20',N(p.y),'30',flat?'0':N(p.z),'70','32');
+    L.push('0','SEQEND','8',lyr);
+  };
+  for(const rb of ribbons){
+    const isRoad=rb.road.kind==='road';
+    poly3d(rb.center,isRoad?'TG-ROAD-CL':'TG-PATH-CL',false);
+    if(rb.road.tunnel) continue;           // tunnels: centreline only, no surface
+    if(isRoad){
+      poly3d(rb.left,'TG-ROAD-EDGE',false); poly3d(rb.right,'TG-ROAD-EDGE',false);
+      poly3d(rb.left,'TG-ROAD-EDGE-2D',true); poly3d(rb.right,'TG-ROAD-EDGE-2D',true);
+      for(let i=0;i<rb.left.length-1;i++){
+        const a=rb.left[i],b2=rb.right[i],c=rb.right[i+1],d=rb.left[i+1];
+        L.push('0','3DFACE','8','TG-ROAD-SURFACE-REF',
+          '10',N(a.x),'20',N(a.y),'30',N(a.z),'11',N(b2.x),'21',N(b2.y),'31',N(b2.z),
+          '12',N(c.x),'22',N(c.y),'32',N(c.z),'13',N(d.x),'23',N(d.y),'33',N(d.z),'70','0');
+      }
+    } else {
+      poly3d(rb.left,'TG-PATH-EDGE-2D',true); poly3d(rb.right,'TG-PATH-EDGE-2D',true);
+    }
+  }
   L.push('0','ENDSEC','0','EOF');
   return L.join('\r\n');
 }
@@ -7744,6 +8150,164 @@ function _buildingFromOsmEl(el) {
 
 // Standalone buildings fetch — used by both the sidebar button and _doFetchAndRender.
 // Stores result in window._lastBuildingData and returns the data object.
+const ROADS_WORKER = 'https://roads.svanur300.workers.dev';
+// Overpass answers 502 or 429 when it is at capacity, which happens often: one patient retry.
+async function _fetchRetry(url, opts) {
+  const go = () => fetch(url, Object.assign({}, opts, { signal: AbortSignal.timeout(28000) }));
+  let r = await go();
+  if (r.status === 502 || r.status === 503 || r.status === 504 || r.status === 429) {
+    await new Promise(res => setTimeout(res, 4000));
+    r = await go();
+  }
+  return r;
+}
+function _overpassUrl(south, west, north, east) {
+  const box = '(' + south + ',' + west + ',' + north + ',' + east + ')';
+  return 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent('[out:json][timeout:25];(way["building"]' + box + ';way["highway"]' + box + ';);out body geom;');
+}
+function _contextFromOsm(elements, source) {
+  const buildings = [], roads = [];
+  for (const el of elements) {
+    const t = el.tags || {};
+    if (t.building) { const b = _buildingFromOsmEl(el); if (b) buildings.push(b); }
+    else if (t.highway) { const r = _roadFromOsmEl(el); if (r) roads.push(r); }
+  }
+  return { buildings, roads, meta: { count: buildings.length, road_count: roads.length, source, source_note: 'Overpass' } };
+}
+// Mirrors parseRoads() in buildings-worker.js.
+const _ROAD_W = { motorway:14,motorway_link:6,trunk:12,trunk_link:6,primary:7.5,primary_link:5,secondary:7,secondary_link:5,tertiary:6.5,tertiary_link:4.5,unclassified:5,residential:5.5,living_street:4.5,service:3.5,pedestrian:4,track:3 };
+const _PATH_W = { footway:2,cycleway:2.5,path:1.5,steps:1.5,bridleway:2 };
+function _roadFromOsmEl(el) {
+  const t = el.tags || {}, cls = t.highway;
+  if (el.type !== 'way' || !el.geometry || el.geometry.length < 2) return null;
+  const kind = cls in _ROAD_W ? 'road' : (cls in _PATH_W ? 'path' : null);
+  if (!kind) return null;
+  let width = _osmNum(t.width), widthSource = 'tagged';
+  if (!(width > 0 && width < 80)) {
+    const lanes = parseInt(t.lanes, 10);
+    widthSource = 'estimated';
+    width = (kind === 'road' && lanes > 0 && lanes < 13) ? lanes * 3.5 : (_ROAD_W[cls] || _PATH_W[cls] || 3);
+  }
+  return { id: 'way/' + el.id, kind, cls, name: t.name || null, line: el.geometry.map(pt => [pt.lat, pt.lon]), width, widthSource,
+    bridge: !!t.bridge && t.bridge !== 'no', tunnel: !!t.tunnel && t.tunnel !== 'no' };
+}
+
+// ── Road geometry ─────────────────────────────────────────────────────────
+// Everything is in the terrain's local metres (_lastTerrainContext.utmOrigin), so roads overlay
+// the terrain and buildings in every file. Scanning all points per sample, as
+// _sampleOrigTerrainZ does, is far too slow here, so this hashes them into cells first.
+function _terrainZSampler() {
+  const pts = _getTerrainExportPts() || [];
+  const sp = window._effectiveSpacing || 12, cell = sp * 2;
+  const grid = new Map();
+  pts.forEach(p => {
+    const k = Math.floor(p.x / cell) + ':' + Math.floor(p.y / cell);
+    if (!grid.has(k)) grid.set(k, []);
+    grid.get(k).push(p);
+  });
+  return function (x, y) {
+    const cx = Math.floor(x / cell), cy = Math.floor(y / cell);
+    let wSum = 0, zSum = 0, near = null, nearD = Infinity;
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      const c = grid.get((cx + i) + ':' + (cy + j));
+      if (!c) continue;
+      for (const p of c) {
+        const d2 = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y);
+        if (d2 < nearD) { nearD = d2; near = p; }
+        if (d2 < 0.01) return p.z;
+        if (d2 < sp * sp * 2.25) { const w = 1 / d2; wSum += w; zSum += w * p.z; }
+      }
+    }
+    return wSum ? zSum / wSum : (near ? near.z : NaN);
+  };
+}
+// The inside parts of a polyline, cut exactly at the polygon edge.
+function _clipLineToRing(pts, ring) {
+  const inside = p => _pip(p.x, p.y, ring);
+  const out = []; let cur = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1], ts = [0, 1];
+    for (let j = 0; j < ring.length; j++) {
+      const c = ring[j], d = ring[(j + 1) % ring.length];
+      const rx = b.x - a.x, ry = b.y - a.y, sx = d.x - c.x, sy = d.y - c.y;
+      const den = rx * sy - ry * sx;
+      if (Math.abs(den) < 1e-12) continue;
+      const t = ((c.x - a.x) * sy - (c.y - a.y) * sx) / den, u = ((c.x - a.x) * ry - (c.y - a.y) * rx) / den;
+      if (t > 0 && t < 1 && u >= 0 && u <= 1) ts.push(t);
+    }
+    ts.sort((m, n) => m - n);
+    for (let k = 0; k < ts.length - 1; k++) {
+      const t0 = ts[k], t1 = ts[k + 1];
+      const at = t => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+      if (inside(at((t0 + t1) / 2))) {
+        if (!cur.length) cur.push(at(t0));
+        cur.push(at(t1));
+      } else if (cur.length) { out.push(cur); cur = []; }
+    }
+  }
+  if (cur.length > 1) out.push(cur);
+  return out.filter(l => l.length > 1);
+}
+function _resampleLine(pts, step) {
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i], d = Math.hypot(b.x - a.x, b.y - a.y), n = Math.max(1, Math.ceil(d / step));
+    for (let k = 1; k <= n; k++) out.push({ x: a.x + (b.x - a.x) * k / n, y: a.y + (b.y - a.y) * k / n });
+  }
+  return out;
+}
+// Centreline and both edges with Z. A bridge runs straight between its ends instead of following
+// the valley. Edges use averaged normals with a capped miter, so sharp bends cannot spike.
+function _roadRibbon(line, road, zAt, step) {
+  const c = _resampleLine(line, step), n = c.length, half = road.width / 2, LIFT = 0.08;
+  const z0 = zAt(c[0].x, c[0].y), z1 = zAt(c[n - 1].x, c[n - 1].y);
+  let run = 0;
+  const lens = c.map((p, i) => (i ? (run += Math.hypot(p.x - c[i - 1].x, p.y - c[i - 1].y)) : 0));
+  const zFor = (p, i) => {
+    if (road.bridge && !isNaN(z0) && !isNaN(z1)) return z0 + (z1 - z0) * (lens[i] / (run || 1)) + LIFT;
+    const z = zAt(p.x, p.y);
+    return (isNaN(z) ? (isNaN(z0) ? 0 : z0) : z) + LIFT;
+  };
+  const center = [], left = [], right = [];
+  for (let i = 0; i < n; i++) {
+    const a = c[Math.max(0, i - 1)], b = c[i], d = c[Math.min(n - 1, i + 1)];
+    let d1x = b.x - a.x, d1y = b.y - a.y, d2x = d.x - b.x, d2y = d.y - b.y;
+    const l1 = Math.hypot(d1x, d1y) || 1, l2 = Math.hypot(d2x, d2y) || 1;
+    d1x /= l1; d1y /= l1; d2x /= l2; d2y /= l2;
+    if (i === 0) { d1x = d2x; d1y = d2y; }
+    if (i === n - 1) { d2x = d1x; d2y = d1y; }
+    let nx = -(d1y + d2y), ny = d1x + d2x;
+    const nl = Math.hypot(nx, ny);
+    if (nl < 1e-6) { nx = -d2y; ny = d2x; } else { nx /= nl; ny /= nl; }
+    const cos = nx * (-d2y) + ny * d2x;
+    const m = Math.min(1.5, 1 / Math.max(0.2, Math.abs(cos)));
+    const z = zFor(b, i);
+    center.push({ x: b.x, y: b.y, z });
+    left.push({ x: b.x + nx * half * m, y: b.y + ny * half * m, z });
+    right.push({ x: b.x - nx * half * m, y: b.y - ny * half * m, z });
+  }
+  return { center, left, right };
+}
+// Every road clipped to the drawn site, as ribbons, in local metres.
+function _roadRibbons(data) {
+  const tc = window._lastTerrainContext;
+  if (!tc || !tc.utmOrigin || !data.roads || !data.roads.length) return [];
+  const oE = tc.utmOrigin.easting, oN = tc.utmOrigin.northing;
+  const toL = (lat, lon) => { const u = latLonToUTM(lat, lon); return { x: u.easting - oE, y: u.northing - oN }; };
+  const ring = (polygonLatLngs && polygonLatLngs.length >= 3) ? polygonLatLngs.map(p => toL(p.lat, p.lng)) : null;
+  const zAt = _terrainZSampler();
+  const areaKm2 = (typeof getBboxAreaKm2 === 'function' && polygonLatLngs) ? getBboxAreaKm2(polygonLatLngs) : 0;
+  const step = areaKm2 > 4 ? 10 : Math.min((window._effectiveSpacing || 12) / 2, 5);
+  const out = [];
+  for (const r of data.roads) {
+    const pts = r.line.map(([lat, lon]) => toL(lat, lon));
+    for (const part of (ring ? _clipLineToRing(pts, ring) : [pts])) {
+      out.push(Object.assign({ road: r }, _roadRibbon(part, r, zAt, step)));
+    }
+  }
+  return out;
+}
+
 async function _fetchBuildingsData() {
   const tc = window._lastTerrainContext;
   if (!tc || !tc.utmOrigin) throw new Error('Generate terrain first');
@@ -7753,23 +8317,30 @@ async function _fetchBuildingsData() {
                 location.hostname === '127.0.0.1';
   let data;
   if (isDev) {
-    const q='[out:json][timeout:30];(way["building"]('+south+','+west+','+north+','+east+'););out body geom;';
-    const resp = await fetch('https://overpass-api.de/api/interpreter?data='+encodeURIComponent(q));
+    const resp = await _fetchRetry(_overpassUrl(south,west,north,east));
     if (!resp.ok) throw new Error('Overpass returned HTTP '+resp.status);
     const raw = await resp.json();
-    const buildings=[];
-    for(const el of raw.elements){ const b=_buildingFromOsmEl(el); if(b) buildings.push(b); }
-    data={buildings,meta:{count:buildings.length,source:'osm (dev)',source_note:'Overpass API - dev mode'}};
+    data=_contextFromOsm(raw.elements,'osm (dev)');
   } else {
     const token = await getAuthHeader();
-    const url='https://buildings.svanur300.workers.dev/?south='+south+'&west='+west+'&north='+north+'&east='+east;
-    const resp = await fetch(url,{headers:{'Authorization':token}, signal: AbortSignal.timeout(25000)});
-    if(!resp.ok){
-      let msg=''; try{const j=await resp.json();msg=j.error||'';} catch{try{msg=await resp.text();}catch{}}
-      try { track('buildings_fetch_failed', { status: resp.status, detail: msg.slice(0,120), plan: _currentProfile?.plan || 'anon' }); } catch(_){}
-      throw new Error('Buildings worker HTTP '+resp.status+(msg?' - '+msg.slice(0,120):''));
-    }
-    data = await resp.json();
+    const box='?south='+south+'&west='+west+'&north='+north+'&east='+east;
+    const hdr={headers:{'Authorization':token}};
+    // Two workers, fetched side by side: either layer can fail without losing the other.
+    const [bRes,rRes]=await Promise.allSettled([
+      _fetchRetry('https://buildings.svanur300.workers.dev/'+box,hdr),
+      _fetchRetry(ROADS_WORKER+'/'+box,hdr)
+    ]);
+    let roads;
+    if(rRes.status==='fulfilled'&&rRes.value.ok) roads=(await rRes.value.json()).roads;
+    else { try { track('roads_fetch_failed', { status: rRes.value?.status || 0, plan: _currentProfile?.plan || 'anon' }); } catch(_){} }
+    const resp=bRes.status==='fulfilled'?bRes.value:null;
+    if(!resp||!resp.ok){
+      let msg=resp?'':(bRes.reason?.message||''); if(resp){try{const j=await resp.json();msg=j.error||'';} catch{try{msg=await resp.text();}catch{}}}
+      try { track('buildings_fetch_failed', { status: resp?.status || 0, detail: msg.slice(0,120), plan: _currentProfile?.plan || 'anon' }); } catch(_){}
+      if(!roads) throw new Error('Buildings worker HTTP '+(resp?.status||0)+(msg?' - '+msg.slice(0,120):''));
+      data={buildings:[],meta:{count:0,source:'osm',source_note:'Buildings unavailable'}};
+    } else data = await resp.json();
+    data.roads = roads;
   }
   window._lastBuildingData = data;
   return data;
@@ -7875,19 +8446,15 @@ function _showBuildingsUpgradePrompt() {
     if (wrap) wrap.appendChild(uPrompt);
   }
   const isLoggedIn = !!window._currentUser;
-  uPrompt.innerHTML = '🔒 <strong style="color:var(--text)">Buildings download</strong> is a Pro feature - view in the 3D viewer for free, or start a 14-day free trial to export IFC / DXF.<br>'
+  uPrompt.innerHTML = '🔒 <strong style="color:var(--text)">Buildings download</strong> is paid - view in the 3D viewer for free, or pay for this site to export IFC / DXF.<br>'
     + '<button onclick="_buildingsUpgradeCta()" style="margin-top:8px;background:var(--green);color:#EFE3D8;border:1px solid var(--green-lt);padding:7px 0;border-radius:5px;font-family:\'DM Mono\',monospace;font-size:11px;cursor:pointer;letter-spacing:.06em;width:100%;text-align:center;">'
-    + (isLoggedIn ? 'Start 14-day free trial →' : 'Sign in to start free trial →')
+    + 'Pay for this site →'
     + '</button>';
   uPrompt.style.display = 'block';
 }
 function _buildingsUpgradeCta() {
-  if (_currentUser) {
-    track('pro_cta_clicked', { source: 'buildings_gate' });
-    startCheckout('pro');
-  } else {
-    openAuth('signup');
-  }
+  track('credit_cta_clicked', { source: 'buildings_gate' });
+  unlockSiteWithCredits('buildings');
 }
 function _libraryGateCta() {
   if (_currentUser) {
@@ -7901,7 +8468,7 @@ function _libraryGateCta() {
 }
 
 async function downloadBuildings() {
-  if (!isPro()) { _showBuildingsUpgradePrompt(); return; }
+  if (!isPro() || _sitePreviewLocked()) { _showBuildingsUpgradePrompt(); return; }
   const btn = document.getElementById('download-buildings-btn');
 
   // No data yet → fetch first, then download
@@ -7925,11 +8492,11 @@ async function downloadBuildings() {
   const safe = 'Topo-grapher-terrain'+(projectName?'-'+projectName.replace(/[^a-zA-Z0-9_\-]/g,'_'):'');
   let content, mime, ext;
   if (fmt === 'dxf') {
-    content = _generateBuildingsDXF(data, projectName);
+    content = _generateBuildingsDXF({ buildings: data.buildings }, projectName);
     if (!content) return;
     mime = 'image/vnd.dxf'; ext = '_buildings.dxf';
   } else {
-    content = _generateBuildingsIFC(data, projectName);
+    content = _generateBuildingsIFC({ buildings: data.buildings }, projectName);
     if (!content) return;
     mime = 'application/x-step'; ext = '_buildings.ifc';
   }
@@ -7942,11 +8509,10 @@ async function downloadBuildings() {
 // `source`; this is the safety net for a response from a worker that has not been updated yet, so
 // users only ever see that a higher-resolution source was unavailable.
 function _userFacingSource(s) {
-  s = String(s || '');
+  s = String(s || '').replace(/\s*\[thinned[^\]]*\]\s*$/, '');
   const m = s.match(/^(.*?)\s*\((?:[^()]*?)failed[:)]/);
   if (!m) return s;
-  const thin = s.match(/\[thinned[^\]]*\]\s*$/);
-  return m[1] + ' (temporarily degraded data)' + (thin ? ' ' + thin[0].trim() : '');
+  return m[1] + ' (temporarily degraded data)';
 }
 function updateElevationSourceBanner(source, _pro, degraded, mixed) {
   window._lastElevSource = { source: source, degraded: !!degraded };   // read by the result-card 3 m preview button
@@ -7996,7 +8562,7 @@ function updateElevationSourceBanner(source, _pro, degraded, mixed) {
   if(s.includes('ga-australia')||s.includes('ga-5m')) detail.textContent+=' · © Geoscience Australia, LiDAR 5 Metre Grid, CC BY 4.0';
   // Part of the site lies outside GA's 5 m survey: those points use 30 m data (never 0 m holes).
   if(/partly 30m/i.test(source||'')) detail.textContent+=' · Part of this site is outside the 5m LiDAR survey, so those points use 30m data.';
-  if(upgrade){upgrade.style.display=upgradeMsg?'block':'none';if(upgradeMsg)upgrade.innerHTML='⚠ '+upgradeMsg+' <a href="#pricing" style="color:var(--accent)">Start a 14-day free trial →</a>';}
+  if(upgrade){upgrade.style.display=upgradeMsg?'block':'none';if(upgradeMsg)upgrade.innerHTML='⚠ '+upgradeMsg+' <a href="#pricing" style="color:var(--accent)">Pay per site or go Pro →</a>';}
   // Persistent note on the result card. The "source was busy" banner lives inside the progress card
   // and disappears about 400ms after the result appears, so a transient fallback used to read as
   // "this is just the data here" (a US user cancelled citing poor coverage after one blip dropped a
@@ -8021,10 +8587,10 @@ function updateElevationSourceBanner(source, _pro, degraded, mixed) {
       const noteBody = mixed
         ? '⚠ Temporarily degraded data: the '+expLabel+' source did not respond for part of this site, so part of this result uses '+gotM+'m data.'
         : '⚠ Temporarily degraded data: the '+expLabel+' source for this site did not respond, so this result uses '+gotM+'m data.';
-      // Say what a retry costs, so nobody hesitates: an add-on already paid for is not charged again,
-      // and a degraded result does not use up one of the free generations (see _addonCreditCovers).
-      const costNote = (window._addonCredit && window._addonCredit.pence > 0)
-        ? ' You will not be charged again for this site.'
+      // Say what a retry costs, so nobody hesitates: a paid site is not charged for a degraded
+      // result, and a degraded result does not use up one of the free generations.
+      const costNote = window._genPaidIntent
+        ? ' Nothing has been charged, so try again before you buy.'
         : (!_pro ? ' This does not use one of your free generations.' : '');
       note.textContent = '';
       note.appendChild(document.createTextNode(noteBody + costNote + ' '));
@@ -8621,6 +9187,9 @@ const meshMat = new THREE.MeshBasicMaterial({
         await _fetchAndRenderBuildings();
         buildingsBtn.textContent = 'Buildings';
         buildingsBtn.disabled    = false;
+        // A failed fetch must stay retryable: it used to count as loaded, so a second click
+        // showed nothing until the terrain was regenerated.
+        if (!window._lastBuildingData) { _creditToast('Building data is busy right now. Try again in a minute.'); return; }
         buildingsLoaded = true;
       }
       buildingsOn = !buildingsOn;
@@ -8628,6 +9197,75 @@ const meshMat = new THREE.MeshBasicMaterial({
       buildingEdgeGroup.visible = buildingsOn;
       buildingsOn ? btnOn(buildingsBtn) : btnOff(buildingsBtn);
     };
+  }
+
+  const roadGroup = new THREE.Group();
+  roadGroup.renderOrder = 1; roadGroup.visible = false; scene.add(roadGroup);
+  let roadsOn = false, roadsLoaded = false;
+  const roadsBtn = document.getElementById(bp + '-btn-roads');
+  if (roadsBtn) {
+    roadsBtn.onclick = async () => {
+      if (!roadsOn && !roadsLoaded) {
+        roadsBtn.textContent = 'Loading\u2026';
+        roadsBtn.disabled    = true;
+        if (window._lastBuildingData && window._lastBuildingData.roads) _renderRoads(window._lastBuildingData.roads);
+        else await _fetchAndRenderBuildings();
+        roadsBtn.textContent = 'Roads';
+        roadsBtn.disabled    = false;
+        if (!window._lastBuildingData || !window._lastBuildingData.roads) { _creditToast('Road data is busy right now. Try again in a minute.'); return; }
+        buildingsLoaded = true;
+        roadsLoaded = true;
+        try { track('roads_viewer_toggled', { on: true, count: (window._lastBuildingData.roads || []).length }); } catch (e) {}
+      }
+      roadsOn = !roadsOn;
+      roadGroup.visible = roadsOn;
+      roadsOn ? btnOn(roadsBtn) : btnOff(roadsBtn);
+    };
+  }
+  // Flat ribbons merged per kind, so a dense city stays one draw call. Height comes from the
+  // rendered terrain mesh (hashed by XZ) so roads sit on what is on screen.
+  function _renderRoads(roads) {
+    while (roadGroup.children.length) { const c = roadGroup.children.pop(); c.geometry.dispose(); }
+    if (!roads || !roads.length) return;
+    // Cells a bit wider than the vertex spacing, so a 3 x 3 search always finds neighbours.
+    const pa = geo.attributes.position.array, cell = Math.max(gRangeX, gRangeZ) / Math.max(2, Math.sqrt(pa.length / 3) / 1.5) || 1, hash = new Map();
+    for (let i = 0; i < pa.length; i += 3) {
+      const k = Math.floor(pa[i] / cell) + ':' + Math.floor(pa[i + 2] / cell);
+      if (!hash.has(k)) hash.set(k, []);
+      hash.get(k).push(i);
+    }
+    const yAt = (x, z) => {
+      const cx = Math.floor(x / cell), cz = Math.floor(z / cell);
+      let wSum = 0, ySum = 0;
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+        const c = hash.get((cx + a) + ':' + (cz + b));
+        if (!c) continue;
+        for (const i of c) { const w = 1 / ((pa[i] - x) * (pa[i] - x) + (pa[i + 2] - z) * (pa[i + 2] - z) + 1e-6); wSum += w * w; ySum += w * w * pa[i + 1]; }
+      }
+      return wSum ? ySum / wSum : null;
+    };
+    const uOrig = window._lastTerrainContext.utmOrigin;
+    const toS = p => ({ x: (p.x - cxP) * scale, z: -(p.y - cyP) * scale });
+    const lift = scale * 0.25, roadV = [], pathV = [];
+    for (const rb of _roadRibbons({ roads })) {
+      if (rb.road.tunnel) continue;
+      const out = rb.road.kind === 'road' ? roadV : pathV;
+      for (let i = 0; i < rb.left.length - 1; i++) {
+        const q = [rb.left[i], rb.right[i], rb.right[i + 1], rb.left[i + 1]].map(toS);
+        const y = q.map(v => { const h = yAt(v.x, v.z); return h == null ? null : h + lift; });
+        if (y.some(v => v == null)) continue;
+        out.push(q[0].x, y[0], q[0].z, q[1].x, y[1], q[1].z, q[2].x, y[2], q[2].z,
+                 q[0].x, y[0], q[0].z, q[2].x, y[2], q[2].z, q[3].x, y[3], q[3].z);
+      }
+    }
+    const add = (v, col) => {
+      if (!v.length) return;
+      const g2 = new THREE.BufferGeometry();
+      g2.setAttribute('position', new THREE.BufferAttribute(new Float32Array(v), 3));
+      roadGroup.add(new THREE.Mesh(g2, new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })));
+    };
+    add(roadV, 0xd9d4c7);
+    add(pathV, 0xd8a24a);
   }
 
   async function _fetchAndRenderBuildings() {
@@ -8883,46 +9521,39 @@ const meshMat = new THREE.MeshBasicMaterial({
 
     if (isDev) {
       try {
-        const q   = '[out:json][timeout:30];(way["building"](' + south + ',' + west + ',' + north + ',' + east + '););out body geom;';
-        const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q);
         console.log('[Buildings] Dev mode - querying Overpass directly');
-        const resp = await fetch(url);
+        const resp = await _fetchRetry(_overpassUrl(south, west, north, east));
         if (!resp.ok) { console.warn('[Buildings] Overpass returned', resp.status); return; }
         const raw = await resp.json();
-        const buildings = [];
-        for (const el of raw.elements) { const b = _buildingFromOsmEl(el); if (b) buildings.push(b); }
-        data = { buildings, meta: { count: buildings.length, source: 'osm (dev)', source_note: 'Direct Overpass - dev mode' } };
+        data = _contextFromOsm(raw.elements, 'osm (dev)');
+        const buildings = data.buildings;
         console.log('[Buildings] Overpass returned', buildings.length, 'buildings');
       } catch(e) { console.error('[Buildings] Overpass error:', e); return; }
     } else if (isPro()) {
       // Production Pro: go through the authenticated buildings worker
-      let token;
-      try { token = await getAuthHeader(); } catch(e) { console.warn('[Buildings] Auth error:', e); return; }
-      const bUrl = 'https://buildings.svanur300.workers.dev/?south=' + south +
-                   '&west=' + west + '&north=' + north + '&east=' + east;
       try {
-        const resp = await fetch(bUrl, { headers: { 'Authorization': token }, signal: AbortSignal.timeout(25000) });
-        if (!resp.ok) { console.warn('[Buildings] Worker returned', resp.status, await resp.text()); return; }
-        data = await resp.json();
-        console.log('[Buildings] Worker returned', data.meta?.count, 'buildings');
+        data = await _fetchBuildingsData();
+        console.log('[Buildings] Workers returned', data.meta?.count, 'buildings,', (data.roads || []).length, 'roads');
       } catch(e) { console.error('[Buildings] Worker error:', e); return; }
     } else {
       // Production free: query Overpass directly — view-only (download gated at UI level)
       try {
-        const q   = '[out:json][timeout:30];(way["building"](' + south + ',' + west + ',' + north + ',' + east + '););out body geom;';
-        const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q);
         console.log('[Buildings] Free tier - querying Overpass directly (view only)');
-        const resp = await fetch(url, { signal: AbortSignal.timeout(20000) });
+        const resp = await _fetchRetry(_overpassUrl(south, west, north, east));
         if (!resp.ok) { console.warn('[Buildings] Overpass returned', resp.status); return; }
         const raw = await resp.json();
-        const buildings = [];
-        for (const el of raw.elements) { const b = _buildingFromOsmEl(el); if (b) buildings.push(b); }
-        data = { buildings, meta: { count: buildings.length, source: 'osm (free)', source_note: 'Overpass - view only' } };
+        data = _contextFromOsm(raw.elements, 'osm (free)');
+        const buildings = data.buildings;
         console.log('[Buildings] Overpass returned', buildings.length, 'buildings');
       } catch(e) { console.error('[Buildings] Overpass error:', e); return; }
     }
 
-    if (!data.buildings || !data.buildings.length) { console.warn('[Buildings] Empty buildings array'); return; }
+    if (!data.buildings || !data.buildings.length) {
+      console.warn('[Buildings] Empty buildings array');
+      window._lastBuildingData = data;          // a site can have roads and no buildings
+      _renderRoads(data.roads);
+      return;
+    }
     const srcType = buildingSourceType(elevSource);
     console.log('[Buildings] Terrain scene bounds - X:', gMinX.toFixed(1), '→', gMaxX.toFixed(1), '| Z:', gMinZc.toFixed(1), '→', gMaxZc.toFixed(1), '| yScale:', (scale * zExag / (span / rangeZ || 1)).toFixed(4));
 
@@ -9063,6 +9694,8 @@ const meshMat = new THREE.MeshBasicMaterial({
 
     const lbl = document.getElementById('pro-terrain-label');
     if (lbl && data.meta) lbl.textContent += ' · ' + data.meta.count + ' buildings';
+
+    _renderRoads(data.roads);
 
     // Stash data globally so the sidebar Download Buildings button can access it
     window._lastBuildingData = data;
@@ -9560,7 +10193,7 @@ async function openHistory() {
 
   if (locked)    locked.style.display   = isPro() ? 'none' : '';
   var cta = document.getElementById('history-locked-cta');
-  if (cta) cta.textContent = _currentUser ? 'Start 14-day free trial →' : 'Sign up to save projects →';
+  if (cta) cta.textContent = _currentUser ? 'Go Pro →' : 'Sign up to save projects →';
   if (legend)    legend.style.display   = isPro() ? ''     : 'none';
   // Show scope toggle only for company plan
   if (scopeBar)  scopeBar.style.display = isCompany ? '' : 'none';
@@ -10043,6 +10676,7 @@ document.addEventListener('DOMContentLoaded', function() {
       localStorage.removeItem('topo_checkout_out'); // paid: not an abandon
     }
   } catch (e) {}
+  if (window.location.search.includes('credits=') && !_currentUser) setTimeout(_creditReturn, 2500);
   _roleFromUrl();
   _showConfirmBanner(); // no-op unless a pay-before-confirm trial is still waiting on email confirmation
   _handleOAuthReturnError(); // Google sign-in cancelled/failed: reopen the modal with a message
@@ -10118,7 +10752,7 @@ function initProViewerDemo() {
 
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
   renderer.setSize(W, H);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(1);
   renderer.setClearColor(0x000000, 0);
 
   var scene  = new THREE.Scene();
@@ -10175,6 +10809,7 @@ function initProViewerDemo() {
     afId = requestAnimationFrame(animate);
     tick++;
     rotY += 0.0008;
+    if (tick % 3) return;   // a slow drift looks the same at a third of the frames, for a third of the work
     pivot.rotation.y = rotY;
     camera.position.y = 62 + Math.sin(tick * 0.003) * 1.5;
     renderer.render(scene, camera);
@@ -10234,7 +10869,7 @@ function initDemoTerrain3D() {
 
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
   renderer.setSize(W, H);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(1);
   renderer.setClearColor(0x000000, 0);
 
   var scene = new THREE.Scene();
@@ -10310,6 +10945,7 @@ function initDemoTerrain3D() {
     afId = requestAnimationFrame(animate);
     tick++;
     rotY += 0.0008;
+    if (tick % 3) return;   // a slow drift looks the same at a third of the frames, for a third of the work
     pivot.rotation.y = rotY;
     camera.position.y = 62 + Math.sin(tick * 0.003) * 1.5;
     renderer.render(scene, camera);
@@ -10627,7 +11263,7 @@ document.addEventListener('keydown', function(e) {
   closeAuth();
   closeSettings();
   _upgradeDismiss('escape');
-  closeLargeSiteAddon();
+  closeCreditModal();
 closeCoordDrawer();
   closeSiteColumnsInfo();
 });
@@ -10726,28 +11362,23 @@ closeCoordDrawer();
   </div>
 </div>
 
-<!-- ═══ LARGE-SITE ADD-ON MODAL ═══ -->
-<div class="auth-overlay" id="large-site-overlay" style="display:none;" onclick="if(event.target===this)closeLargeSiteAddon();">
-  <div class="large-site-modal">
-    <button class="upgrade-hero-close" onclick="closeLargeSiteAddon(); track('upsell_popup_dismissed', {context:'large_site'});" style="position:absolute;top:14px;right:14px;">&#x2715;</button>
-    <div class="large-site-badge">Large Site Add-on</div>
-    <h3 id="large-site-area-text">- km²</h3>
-    <p>This site exceeds 10km&sup2; - a per-generation charge applies. Charged at generation time, not monthly.</p>
-    <div class="large-site-tiers">
-      <div class="large-site-tier" id="lsa-tier-lg">
-        <span>10 – 20 km²</span>
-        <span class="tier-price-tag">&pound;15 / generation</span>
-      </div>
-      <div class="large-site-tier" id="lsa-tier-xl" style="display:none;">
-        <span id="lsa-xl-label">Above 20 km²</span>
-        <span class="tier-price-tag" id="lsa-xl-price">&pound;15 + &pound;0.90/km² over 20</span>
-      </div>
+<!-- ═══ CREDITS MODAL ═══ -->
+<div class="auth-overlay" id="credit-overlay" onclick="if(event.target===this)closeCreditModal();">
+  <div class="large-site-modal" style="position:relative;">
+    <button class="upgrade-hero-close" onclick="closeCreditModal();" aria-label="Close" style="position:absolute;top:14px;right:14px;">&#x2715;</button>
+    <div class="large-site-badge">Pay per site</div>
+    <h3 id="credit-title">Add credits</h3>
+    <p id="credit-sub"></p>
+    <button class="large-site-cta" id="credit-unlock" style="display:none;width:100%;margin-bottom:14px;"></button>
+    <div class="large-site-tiers" id="credit-packs"></div>
+    <label class="credit-custom-label" for="credit-custom">Or choose your amount</label>
+    <div class="credit-custom">
+      <span class="credit-custom-input"><span>&pound;</span><input id="credit-custom" type="number" min="10" step="1" inputmode="decimal" placeholder="10 or more"></span>
+      <button type="button" class="large-site-cta" id="credit-custom-buy">Buy</button>
     </div>
-    <div style="font-size:11px;color:var(--text-soft);margin:-8px 0 16px;line-height:1.5;" id="lsa-this-gen-cost"></div>
-    <div class="large-site-actions">
-      <button onclick="closeLargeSiteAddon(); track('upsell_popup_dismissed', {context:'large_site'});">Cancel</button>
-      <button class="large-site-cta" onclick="closeLargeSiteAddon(); track('upsell_upgrade_clicked', {context:'large_site'});">Continue to generate &rarr;</button>
-    </div>
+    <div class="credit-custom-hint" id="credit-custom-hint">Minimum &pound;10.</div>
+    <div class="credit-error" id="credit-error"></div>
+    <div style="font-size:11px;color:var(--text-soft);line-height:1.5;">1 credit = &pound;1. Credits last 12 months from your latest top-up. Exports are delivered straight away, see <a href="terms.html#credits" style="color:var(--accent);">terms</a>. Doing this every week? <a href="#pricing" style="color:var(--accent);" onclick="closeCreditModal();">Pro</a> may suit you better.</div>
   </div>
 </div>
 </body>

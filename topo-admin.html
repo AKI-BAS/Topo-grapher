@@ -1894,6 +1894,11 @@ async function _revenueModel(){
     if(!cancelling&&(rawSt==='trialing'||rawSt==='active')) r.runRate+=(hasNext&&b.next_full_pence)?b.next_full_pence:fullP;
     r.rows.push({email:p.email||'unknown', status:rawSt, cancelling, next, nextAt, disc, synced:hasNext});
   });
+  // Credit packs are one-off cash, so they count as collected but never as MRR.
+  const {data:cred}=await _sb.from('events').select('properties,created_at').eq('is_test',false).eq('event','credits_purchased');
+  r.creditsAll=0; r.creditsMonth=0;
+  (cred||[]).forEach(e=>{ const p=(e.properties||{}).paid_pence||0, t=new Date(e.created_at).getTime(); r.creditsAll+=p; if(t>=mStart&&t<mEnd) r.creditsMonth+=p; });
+  r.collected+=r.creditsMonth;
   r.expected+=r.collected;
   r.rows.sort((a,b)=>(a.nextAt?a.nextAt.getTime():9e15)-(b.nextAt?b.nextAt.getTime():9e15));
   return r;
@@ -1913,8 +1918,13 @@ async function loadRevenue(){
   const _m=await _revenueModel();
   const gbp=p=>'£'+((p||0)/100).toFixed(2), gbp0=p=>'£'+Math.round((p||0)/100).toLocaleString();
   const day=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-  const{data:addons}=await _sb.from('generations').select('addon_charged_pence,project_name,area_km2,created_at').eq('is_test',false).gt('addon_charged_pence',0).order('created_at',{ascending:false}).limit(20);
-  const totalAddon=(addons||[]).reduce((s,r)=>s+(r.addon_charged_pence||0),0);
+  // Sites bought with credits, and credits sold but not yet spent. Needs Supabase/12-credits.sql.
+  const{data:sites}=await _sb.from('site_purchases').select('user_id,cost_pence,area_m2,side_m,created_at').order('created_at',{ascending:false}).limit(20);
+  const{data:accts}=await _sb.from('credit_accounts').select('balance_pence');
+  const unspent=(accts||[]).reduce((s,a)=>s+(a.balance_pence||0),0);
+  const siteIds=[...new Set((sites||[]).map(s=>s.user_id))];
+  const{data:siteProf}=siteIds.length?await _sb.from('profiles').select('id,email').in('id',siteIds):{data:[]};
+  const siteEmail={}; (siteProf||[]).forEach(p=>{siteEmail[p.id]=p.email;});
   // Subscription payment outcomes, logged by the payment worker from Stripe's invoice.paid and
   // invoice.payment_failed webhooks (events payment_received / payment_failed), last 90 days.
   const{data:payEv}=await _sb.from('events').select('event,user_id,properties,created_at').eq('is_test',false)
@@ -1954,7 +1964,7 @@ async function loadRevenue(){
       ${tile('MRR AFTER TRIALS',gbp0(_m.runRate),'var(--amber)','full price')}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
-      ${tile('ADD-ONS',gbp0(totalAddon),'var(--purple)')}
+      ${tile('CREDITS SOLD',gbp0(_m.creditsAll),'var(--purple)',gbp(unspent)+' unspent')}
       ${tile('ARR (PROJ)',gbp0(_m.runRate*12),'var(--accent)')}
     </div>
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin:-6px 0 14px;line-height:1.6;">${counts.join(' · ')}${warn?` · ${esc(warn)}`:''} · <a href="#" onclick="syncBillingFromStripe(this);return false;" style="color:var(--accent);">Sync from Stripe</a></div>
@@ -1966,9 +1976,9 @@ async function loadRevenue(){
     <div style="max-height:200px;overflow-y:auto;margin-bottom:16px;">
       ${payRows||'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">No subscription payments recorded yet (starts once the updated payment worker is live)</div>'}
     </div>
-    <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">Addon charges</div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">Sites bought with credits</div>
     <div style="max-height:200px;overflow-y:auto;">
-      ${(addons||[]).length?addons.map(r=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px;"><span style="color:var(--text-mid);">${esc(r.project_name||'-')} · ${r.area_km2?r.area_km2.toFixed(1)+'km²':'-'}</span><span style="color:var(--purple);">£${(r.addon_charged_pence/100).toFixed(2)}</span></div>`).join(''):'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">No addon charges yet</div>'}
+      ${(sites||[]).length?sites.map(r=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px;"><span style="color:var(--text-mid);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${day(new Date(r.created_at))} · ${esc(siteEmail[r.user_id]||'unknown')} · ${(r.area_m2/1e6).toFixed(2)}km²</span><span style="color:var(--purple);white-space:nowrap;">${gbp(r.cost_pence)}</span></div>`).join(''):'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">No sites bought yet</div>'}
     </div>`;
 }
 
