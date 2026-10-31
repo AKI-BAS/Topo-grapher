@@ -814,6 +814,9 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 .auth-submit { width:100%; background:var(--green); color:#EFE3D8; border:1px solid var(--green-lt); padding:12px; border-radius:5px; font-family:'DM Mono',monospace; font-size:13px; cursor:pointer; letter-spacing:.06em; text-transform:uppercase; margin-top:4px; transition:background .18s; }
 .auth-submit:hover { background:var(--green-lt); }
 .auth-error { font-size:12px; color:var(--danger); margin-top:10px; min-height:16px; }
+.auth-link { display:block; background:none; border:none; padding:0; margin:-6px 0 14px auto; font-family:'DM Mono',monospace; font-size:12px; color:var(--text-soft); cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+.auth-link:hover { color:var(--accent); }
+.auth-link.below { margin:14px auto 0; }
 .auth-close { position:absolute; top:16px; right:20px; background:none; border:1px solid var(--border-md); border-radius:5px; color:var(--text-soft); font-size:13px; cursor:pointer; width:26px; height:26px; display:flex; align-items:center; justify-content:center; transition:background .15s,color .15s; }
 .auth-close:hover { background:var(--bg-input); color:var(--text); }
 .auth-divider { display:flex; align-items:center; gap:10px; font-size:11px; color:var(--text-soft); margin:16px 0; letter-spacing:.06em; text-transform:uppercase; }
@@ -1844,9 +1847,10 @@ function declineCookies() {
 <div class="auth-overlay" id="auth-overlay">
   <div class="auth-modal-wrap">
     <div class="auth-modal" id="auth-modal">
-      <button class="auth-close" onclick="closeAuth()">✕</button>
+      <button class="auth-close" onclick="if(_recoveryPending)_finishRecovery('skipped');else closeAuth();">✕</button>
       <h2 id="auth-title">Sign in</h2>
       <p id="auth-subtitle">Access your projects and Pro features.</p>
+      <div id="auth-choices">
       <div class="auth-tabs">
         <button class="auth-tab active" id="tab-signin" onclick="switchTab('signin')">Sign in</button>
         <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Create account</button>
@@ -1870,9 +1874,11 @@ function declineCookies() {
         </button>
       </div>
       <div class="auth-divider">or use email</div>
+      </div>
       <div id="auth-form-signin">
         <div class="auth-field"><label>Email</label><input type="email" id="signin-email" placeholder="your@email.com"/></div>
         <div class="auth-field"><label>Password</label><input type="password" id="signin-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitAuth('signin')"/></div>
+        <button type="button" class="auth-link" id="auth-forgot-link" onclick="showForgotPassword()">Forgot password?</button>
         <button class="auth-submit" onclick="submitAuth('signin')">Sign in →</button>
         <div class="auth-error" id="signin-error"></div>
       </div>
@@ -1881,6 +1887,19 @@ function declineCookies() {
         <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="Min. 8 characters" onkeydown="if(event.key==='Enter')submitAuth('signup')"/></div>
         <button class="auth-submit" onclick="submitAuth('signup')">Create account →</button>
         <div class="auth-error" id="signup-error"></div>
+      </div>
+      <div id="auth-form-forgot" style="display:none">
+        <div class="auth-field"><label>Email</label><input type="email" id="forgot-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')submitForgotPassword()"/></div>
+        <button class="auth-submit" id="forgot-submit" onclick="submitForgotPassword()">Email me a reset link →</button>
+        <div class="auth-error" id="forgot-error"></div>
+        <button type="button" class="auth-link below" onclick="backToSignIn()">Back to sign in</button>
+      </div>
+      <div id="auth-form-newpass" style="display:none">
+        <div class="auth-field"><label>New password</label><input type="password" id="newpass-password" placeholder="Min. 8 characters" autocomplete="new-password"/></div>
+        <div class="auth-field"><label>Repeat new password</label><input type="password" id="newpass-confirm" placeholder="Min. 8 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitNewPassword()"/></div>
+        <button class="auth-submit" id="newpass-submit" onclick="submitNewPassword()">Save new password →</button>
+        <div class="auth-error" id="newpass-error"></div>
+        <button type="button" class="auth-link below" onclick="_finishRecovery('skipped')">Skip for now</button>
       </div>
     </div>
   </div>
@@ -3743,6 +3762,12 @@ function closeDataQuality() {
 // ── Supabase client ────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://lkhdwgltwzaxslspxgcx.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxraGR3Z2x0d3pheHNsc3B4Z2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMDk1OTYsImV4cCI6MjA5MTU4NTU5Nn0.nDy7pWgYkr-NFNh5wpIFmfu4tXsLPoPqrdtvzY3__4Q';
+// Read the email link's hash before createClient consumes it. PASSWORD_RECOVERY can fire before
+// the auth listener is registered, so that event alone is not a reliable signal.
+const _authLinkParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+// True from a password reset link until the user saves a new password or skips.
+let _recoveryPending = _authLinkParams.get('type') === 'recovery' && !!_authLinkParams.get('access_token');
+let _recoverySession = null;
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let _currentUser = null;
 let _currentProfile = null;
@@ -3923,6 +3948,7 @@ async function initAuth() {
   // if the initial getSession() call fails or times out.
   _sb.auth.onAuthStateChange(async (event, session) => {
     try {
+      if (event === 'PASSWORD_RECOVERY') _recoveryPending = true;
       if (session) await handleSession(session);
       else handleSignOut();
     } catch(e) { console.warn('Auth state change error:', e.message); }
@@ -3947,6 +3973,9 @@ async function initAuth() {
 
 async function handleSession(session) {
   _currentUser = session.user;
+  // A reset link signs the user in. Ask for the new password first: everything below can resume
+  // a checkout or download and leave the page. _finishRecovery() runs it afterwards.
+  if (_recoveryPending) { _recoverySession = session; _showNewPassword(); return; }
   // Wrap profile fetch — a missing table or RLS block shouldn't break auth.
   try {
     const { data, error } = await _sb.from('profiles').select('*').eq('id', _currentUser.id).single();
@@ -4673,16 +4702,98 @@ function _spResumeAfterPayment() {
 }
 
 function closeAuth() {
+  if (_recoveryPending) return; // Esc and backdrop must not lose the reset; ✕ and Skip call _finishRecovery
   document.getElementById('auth-overlay').classList.remove('show');
   const se = document.getElementById('signin-error');
   const sue = document.getElementById('signup-error');
-  if (se) se.textContent = ''; if (sue) sue.textContent = '';
+  const fe = document.getElementById('forgot-error');
+  if (se) se.textContent = ''; if (sue) sue.textContent = ''; if (fe) fe.textContent = '';
 }
 function switchTab(tab) {
   document.getElementById('auth-form-signin').style.display = tab === 'signin' ? 'block' : 'none';
   document.getElementById('auth-form-signup').style.display = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('auth-form-forgot').style.display = tab === 'forgot' ? 'block' : 'none';
+  document.getElementById('auth-form-newpass').style.display = tab === 'newpass' ? 'block' : 'none';
+  document.getElementById('auth-choices').style.display = (tab === 'signin' || tab === 'signup') ? 'block' : 'none';
   document.getElementById('tab-signin').classList.toggle('active', tab === 'signin');
   document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+}
+// ── Password reset ────────────────────────────────────────────────────────
+function showForgotPassword(message) {
+  const typed = document.getElementById('signin-email').value.trim();
+  document.getElementById('forgot-email').value = typed;
+  document.getElementById('auth-title').textContent = 'Reset your password';
+  document.getElementById('auth-subtitle').textContent = 'Enter your account email and we will send you a link to choose a new password.';
+  const fe = document.getElementById('forgot-error');
+  fe.style.color = 'var(--danger,#e25555)'; fe.textContent = message || '';
+  switchTab('forgot');
+  document.getElementById('auth-overlay').classList.add('show');
+  track('password_reset_opened', {});
+}
+function backToSignIn() {
+  const typed = document.getElementById('forgot-email').value.trim();
+  if (typed) document.getElementById('signin-email').value = typed;
+  openAuth('signin');
+}
+async function submitForgotPassword() {
+  const email = document.getElementById('forgot-email').value.trim();
+  const errEl = document.getElementById('forgot-error');
+  const btn = document.getElementById('forgot-submit');
+  errEl.style.color = 'var(--danger,#e25555)'; errEl.textContent = '';
+  if (!email || !email.includes('@')) { errEl.textContent = 'Please enter your email address.'; return; }
+  const origLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const { error } = await _withTimeout(
+      _sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname }), 12000
+    );
+    if (error) { errEl.textContent = _authErrMsg(error.message); return; }
+    track('password_reset_requested', {});
+    // Same wording whether or not the account exists, so this cannot be used to probe for emails.
+    errEl.style.color = 'var(--accent)';
+    errEl.textContent = 'If that email has an account, a reset link is on its way. Check your inbox and spam folder.';
+  } catch(e) { errEl.textContent = _authErrMsg(e.message || ''); }
+  finally { btn.disabled = false; btn.textContent = origLabel; }
+}
+function _showNewPassword() {
+  document.getElementById('auth-title').textContent = 'Choose a new password';
+  document.getElementById('auth-subtitle').textContent = 'You are signed in. Set a new password for next time.';
+  switchTab('newpass');
+  document.getElementById('auth-overlay').classList.add('show');
+}
+async function submitNewPassword() {
+  const pwd = document.getElementById('newpass-password').value;
+  const confirmPwd = document.getElementById('newpass-confirm').value;
+  const errEl = document.getElementById('newpass-error');
+  const btn = document.getElementById('newpass-submit');
+  errEl.style.color = 'var(--danger,#e25555)'; errEl.textContent = '';
+  if (pwd.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+  if (pwd !== confirmPwd) { errEl.textContent = 'Passwords do not match.'; return; }
+  const origLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const { error } = await _withTimeout(_sb.auth.updateUser({ password: pwd }), 12000);
+    if (error) { errEl.textContent = _authErrMsg(error.message); return; }
+    _finishRecovery('completed');
+  } catch(e) { errEl.textContent = _authErrMsg(e.message || ''); }
+  finally { btn.disabled = false; btn.textContent = origLabel; }
+}
+// Leaves the reset view and runs the sign-in work handleSession held back.
+function _finishRecovery(outcome) {
+  _recoveryPending = false;
+  track('password_reset_' + outcome, {});
+  document.getElementById('newpass-password').value = '';
+  document.getElementById('newpass-confirm').value = '';
+  document.getElementById('newpass-error').textContent = '';
+  closeAuth();
+  if (_recoverySession) handleSession(_recoverySession).catch(e => console.warn('Auth resume error:', e.message));
+}
+// A reset or confirmation link that expired or was already used comes back with an error in the hash.
+function _handleExpiredAuthLink() {
+  if (_authLinkParams.get('error_code') !== 'otp_expired') return;
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+  track('password_reset_link_expired', {});
+  showForgotPassword('That email link has expired or was already used. Enter your email for a new one.');
 }
 // Map raw Supabase/network error strings → readable UI copy
 function _authErrMsg(raw) {
@@ -7006,9 +7117,10 @@ async function _downloadContextZip(fmt) {
   if (btn) { btn.innerHTML = 'Preparing site context\u2026'; btn.disabled = true; }
   let failed = '';
   try {
-    if (!window._lastBuildingData || !window._lastBuildingData.roads) await _fetchBuildingsData();
+    // A reduced-detail result asks again: the full answer has often landed in the cache by now.
+    if (!window._lastBuildingData || !window._lastBuildingData.roads || window._lastBuildingData.reduced) await _fetchBuildingsData();
   } catch (e) {
-    failed = e.message || 'unavailable';
+    if (!(window._lastBuildingData && window._lastBuildingData.roads)) failed = e.message || 'unavailable';
     try { track('context_fetch_failed', { detail: failed.slice(0, 120) }); } catch (x) {}
   }
   try {
@@ -7031,7 +7143,7 @@ async function _downloadContextZip(fmt) {
       const col = _buildSiteColumnsIFC(window._siteColumns, safe);
       if (col) files.push({ name: safe+'_site_columns.ifc', data: col });
     }
-    files.push({ name: 'README.txt', data: _buildReadme(files.map(f => f.name), { failed, buildings: nBld, roads: roads.length - nPaths, paths: nPaths }) });
+    files.push({ name: 'README.txt', data: _buildReadme(files.map(f => f.name), { failed, buildings: nBld, roads: roads.length - nPaths, paths: nPaths, reduced: !!data.reduced }) });
     _saveBlob(_zipBlob(files), safe+'.zip');
     try { track('context_included', { buildings: nBld, roads: roads.length - nPaths, paths: nPaths, fmt, failed: !!failed }); } catch (x) {}
   } finally {
@@ -7065,6 +7177,7 @@ function _buildReadme(fileNames, ctx) {
     lines.push('Site context');
     if (ctx.failed) lines.push('  Could not be fetched for this download (' + ctx.failed.slice(0, 100) + '). Terrain is complete. Try the download again in a few minutes.');
     else lines.push('  ' + ctx.buildings + ' buildings, ' + ctx.roads + ' roads, ' + ctx.paths + ' footpaths.');
+    if (ctx.reduced) lines.push('  Reduced detail: the detailed map service was busy. Buildings are footprints with rounded', '  heights and flat roofs. Road widths are defaults for the road class, with no road names.', '  Download again in a few minutes for full detail.', '  Reduced-detail data served by OpenFreeMap, schema © OpenMapTiles, data © OpenStreetMap contributors.');
     lines.push('');
   }
   lines.push(
@@ -8327,7 +8440,8 @@ async function _fetchBuildingsData() {
       _fetchRetry(ROADS_WORKER+'/'+box,hdr)
     ]);
     let roads;
-    if(rRes.status==='fulfilled'&&rRes.value.ok) roads=(await rRes.value.json()).roads;
+    let roadsReduced=false;
+    if(rRes.status==='fulfilled'&&rRes.value.ok){ const rj=await rRes.value.json(); roads=rj.roads; roadsReduced=rj.meta?.detail==='reduced'; }
     else { try { track('roads_fetch_failed', { status: rRes.value?.status || 0, plan: _currentProfile?.plan || 'anon' }); } catch(_){} }
     const resp=bRes.status==='fulfilled'?bRes.value:null;
     if(!resp||!resp.ok){
@@ -8337,6 +8451,8 @@ async function _fetchBuildingsData() {
       data={buildings:[],meta:{count:0,source:'osm',source_note:'Buildings unavailable'}};
     } else data = await resp.json();
     data.roads = roads;
+    data.reduced = data.meta?.detail==='reduced' || roadsReduced;
+    if(data.reduced){ try { track('context_reduced_detail', { buildings: data.meta?.detail==='reduced', roads: roadsReduced }); } catch(_){} }
   }
   window._lastBuildingData = data;
   return data;
@@ -9689,7 +9805,7 @@ const meshMat = new THREE.MeshBasicMaterial({
     _updateMemoryWithFlattenedCsv();
 
     const lbl = document.getElementById('pro-terrain-label');
-    if (lbl && data.meta) lbl.textContent += ' · ' + data.meta.count + ' buildings';
+    if (lbl && data.meta) lbl.textContent += ' · ' + data.meta.count + ' buildings' + (data.reduced ? ' (reduced detail)' : '');
 
     _renderRoads(data.roads);
 
@@ -10676,6 +10792,7 @@ document.addEventListener('DOMContentLoaded', function() {
   _roleFromUrl();
   _showConfirmBanner(); // no-op unless a pay-before-confirm trial is still waiting on email confirmation
   _handleOAuthReturnError(); // Google sign-in cancelled/failed: reopen the modal with a message
+  _handleExpiredAuthLink(); // dead reset or confirmation link: offer a new one
   // Direct link into the upgrade modal (e.g. an email CTA) — ?openupgrade=<context>.
   // Attribution (utm_* etc.) is already captured above via captureFirstTouch()
   // before this strips the query string, so nothing is lost by dropping it here.
