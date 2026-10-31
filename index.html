@@ -7200,6 +7200,8 @@ function _buildReadme(fileNames, ctx) {
     '  Terrain: ' + _readmeElevCredit(tc.elevSource),
     '  Buildings, roads and footpaths: \u00a9 OpenStreetMap contributors. The OSM-derived parts of',
     '  these files are available under the Open Database License (opendatacommons.org/licenses/odbl).',
+    '  Buildings and roads are served by Overture Maps Foundation (overturemaps.org). Its other',
+    '  building sources are under CDLA Permissive 2.0.',
     '  Heights, widths and roof shapes are partly estimated by Topo-grapher where the source',
     '  data has none. Road widths marked "estimated" are not surveyed.',
     ''
@@ -8270,7 +8272,7 @@ function _buildingFromOsmEl(el) {
 
 // Standalone buildings fetch — used by both the sidebar button and _doFetchAndRender.
 // Stores result in window._lastBuildingData and returns the data object.
-const ROADS_WORKER = 'https://roads.svanur300.workers.dev';
+const ROADS_WORKER = 'https://road-worker.svanur300.workers.dev';
 // Overpass answers 502 or 429 when it is at capacity, which happens often. One retry, only after
 // a quick refusal: a worker that spent 30 s on every server has nothing left to try.
 async function _fetchRetry(url, opts) {
