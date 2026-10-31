@@ -2999,6 +2999,9 @@ function pointInPoly(lat, lon, poly) {
   }
   return inside;
 }
+var MIN_GRID_POINTS = 16; // below this generateGrid narrows its edge buffer
+var MIN_SITE_POINTS = 3;  // a surface needs at least three points
+var SITE_TOO_SMALL_MSG = 'This site is too small to build a surface at this spacing. Draw a slightly larger area or pick a finer spacing.';
 function generateGrid(poly, spacing, scatter) {
   var lats = poly.map(function(p){ return p.lat; });
   var lons = poly.map(function(p){ return p.lng; });
@@ -3011,16 +3014,23 @@ function generateGrid(poly, spacing, scatter) {
   // block of inflated samples right at the tile edge, not just isolated
   // shards, and the neighbour-median outlier filter can't catch a block
   // where every neighbour is equally wrong. Two steps peels the strip.
-  var buffM = spacing * 2.0;
+  // On a small plot that buffer eats nearly the whole site, so it narrows
+  // until the grid is usable: an 80 m plot at 12 m kept a single point.
+  var buffSteps = [2, 1, 0];
   var pts = [];
-  for (var lat = minLat; lat <= maxLat + dLat*0.5; lat += dLat) {
-    for (var lon = minLon; lon <= maxLon + dLon*0.5; lon += dLon) {
-      var jLat = lat + (scatter ? (Math.random()-.5)*dLat*.8 : 0);
-      var jLon = lon + (scatter ? (Math.random()-.5)*dLon*.8 : 0);
-      if (!pointInPoly(jLat, jLon, poly)) continue;
-      if (buffM > 0 && _distToPolyEdgeM(jLat, jLon, poly, mpd) < buffM) continue;
-      pts.push({ lat: jLat, lon: jLon });
+  for (var b = 0; b < buffSteps.length; b++) {
+    var buffM = spacing * buffSteps[b];
+    pts = [];
+    for (var lat = minLat; lat <= maxLat + dLat*0.5; lat += dLat) {
+      for (var lon = minLon; lon <= maxLon + dLon*0.5; lon += dLon) {
+        var jLat = lat + (scatter ? (Math.random()-.5)*dLat*.8 : 0);
+        var jLon = lon + (scatter ? (Math.random()-.5)*dLon*.8 : 0);
+        if (!pointInPoly(jLat, jLon, poly)) continue;
+        if (buffM > 0 && _distToPolyEdgeM(jLat, jLon, poly, mpd) < buffM) continue;
+        pts.push({ lat: jLat, lon: jLon });
+      }
     }
+    if (pts.length >= MIN_GRID_POINTS) break;
   }
   return pts;
 }
@@ -6789,7 +6799,7 @@ async function _convertImpl() {
     const isNatural = getToggleValue('scatter-toggle') === 'natural';
     const effSpacing = window._effectiveSpacing || selectedSpacing;
     const grid = generateGrid(polygonLatLngs, effSpacing, isNatural);
-    if (grid.length===0) throw new Error('No points generated. The area may be too small for the selected spacing - try a smaller spacing or draw a larger area.');
+    if (grid.length < MIN_SITE_POINTS) throw new Error(SITE_TOO_SMALL_MSG);
     // Very large sites get a much higher point cap since they're paying per site — but still a hard ceiling, not unlimited, to protect the browser (client-side
     // mesh/IFC build) and the worker even when someone is willing to pay for more.
     const ADDON_POINT_CAP = 500000;
@@ -6912,6 +6922,7 @@ async function _convertImpl() {
       const _absDev = _allZ.map(z => Math.abs(z - _siteMed)).sort((a,b) => a-b);
       const _siteMad = _absDev.length ? _absDev[Math.floor(_absDev.length/2)] : 0;
       const _globalTol = Math.max(15, 5 * _siteMad);
+      const _smallSite = cleanOut.length < MIN_GRID_POINTS;
       const _kept = [];
       for (const p of cleanOut) {
         const kx = Math.round(p.x/_sp), ky = Math.round(p.y/_sp);
@@ -6921,7 +6932,8 @@ async function _convertImpl() {
           const ni = _idx.get((kx+dx)+','+(ky+dy));
           if (ni != null) nbrZs.push(cleanOut[ni].z);
         }
-        if (nbrZs.length < 3) continue; // isolated boundary point → drop
+        // Isolated boundary point → drop, unless the site is so small that few points have neighbours.
+        if (nbrZs.length < 3) { if (_smallSite && Math.abs(p.z - _siteMed) <= _globalTol) _kept.push(p); continue; }
         nbrZs.sort((a,b) => a-b);
         const med = nbrZs[Math.floor(nbrZs.length/2)];
         const q1  = nbrZs[Math.floor(nbrZs.length*0.25)];
@@ -6938,6 +6950,7 @@ async function _convertImpl() {
         try { track('outlier_samples_dropped', { dropped: _outliersDropped, kept: cleanOut.length, source: source, site_mad: Math.round(_siteMad*10)/10 }); } catch(_){}
       }
     }
+    if (cleanOut.length < MIN_SITE_POINTS) throw new Error(SITE_TOO_SMALL_MSG);
     window._cleanOutMetric=cleanOut;
     window._origTerrainZ=cleanOut.map(p=>p.z); // snapshot for building base-Z calcs - saved before any DSM flatten
     csvData='X,Y,Z\n'+cleanOut.map(p=>p.x+','+p.y+','+p.z).join('\n');
