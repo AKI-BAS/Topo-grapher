@@ -1,6 +1,6 @@
 # Topo-grapher
 
-> Topo-grapher generates accurate 3D site terrain and elevation point clouds for architects, BIM managers, and landscape architects — no GIS expertise required. Draw a polygon on a map, and it returns ready-to-import terrain in formats compatible with Revit, SketchUp, Rhino, and ArchiCAD.
+> Topo-grapher generates accurate 3D site terrain and elevation point clouds for architects, BIM managers, and landscape architects, with no GIS expertise required. Draw a polygon on a map, and it returns ready-to-import terrain in formats compatible with Revit, SketchUp, Rhino, and ArchiCAD.
 
 Topo-grapher is a browser-based tool. It sources high-resolution government elevation data (down to 0.4m in Denmark and 0.5–1m across much of Europe, the US and Canada) and converts it into XYZ CSV, IFC, and DXF files that drop straight into BIM and CAD software. There is no software to install and no coordinate-system wrangling.
 
@@ -9,9 +9,11 @@ Topo-grapher is a browser-based tool. It sources high-resolution government elev
 - Output formats: XYZ CSV (point cloud), IFC (for Revit Toposolid / ArchiCAD mesh), DXF (3D faces and points)
 - Compatible software: Autodesk Revit, Trimble SketchUp, Rhino/Grasshopper, ArchiCAD, and any tool that reads XYZ point data
 - Resolution by country: Denmark 0.4m (DHM/Terræn); Scotland 0.5m (SRSP), Netherlands 0.5m (AHN), Luxembourg 0.5m (ACT LiDAR), Switzerland 0.5m (swissALTI3D); England 1m (EA LiDAR Composite), Norway 1m (Kartverket DTM1), Estonia 1m (Maa-amet), France 1m (IGN RGE ALTI), Germany 1m (state DGM1, NRW/BW/Hessen), Canada 1m (NRCan HRDEM), USA 1–10m (USGS 3DEP); Finland 2m (NLS KM2); Czech Republic 5m (ČÚZK DMR4G), Spain 5m (IGN MDT / PNOA-LiDAR), Australia 5m (Geoscience Australia DEM_LiDAR, populated areas); Italy 10m (TINITALY), Iceland 10m (ArcticDEM); rest of Europe 30m (EU-DTM / Copernicus GLO-30); global fallback 90m (SRTM). Japan (GSI DEM, 5–10m) is coming soon
-- Free tier: 3 site generations per day, up to 500m × 500m, 12m point spacing, no account required
-- Pro tier: GBP 39.99/month — larger sites, finer spacing, building footprints, all formats
-- Company tier: GBP 29.99/seat/month (2+ seats)
+- Free to try, no trial or card needed: generate and view any site in 3D for free, and download sites up to 500 × 500 m free
+- Free: 2 sites per day, no account required. Sites up to 500m × 500m at 12m spacing download free as CSV. Any larger site, up to 100 km², can still be generated and viewed in 3D for free
+- Pay per site (no subscription): generate and preview any site free, then pay only to download it. Price depends on site size and includes every format, buildings and roads. Credit packs: GBP 10, GBP 25 (27 credits) or GBP 50 (55 credits), valid for 12 months
+- Pro: GBP 39.99/month, cancel anytime. Unlimited sites, up to 1.6 × 1.6 km at 6m spacing or 800 × 800 m at 3m, LiDAR where available, saved project history
+- Company: GBP 29.99/seat/month (2+ seats). Everything in Pro plus a shared project library and team admin
 
 ## Pages
 
