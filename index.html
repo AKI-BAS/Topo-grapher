@@ -3178,6 +3178,8 @@ function updatePtCounts() {
     el.textContent = '~' + c.toLocaleString() + ' pts';
     el.style.color = c > 2000 ? 'var(--danger)' : '';
   });
+  // Keep the density panel in step with drawing and clearing (it used to refresh only on a spacing change).
+  if (typeof updateDensityPreview === 'function') { try { updateDensityPreview(); } catch (e) {} }
 }
 
 // Auto-generated site name defaults (topography puns)
@@ -3340,8 +3342,24 @@ function updateDensityPreview() {
     d.className = 'dot ' + (cfg.hi ? 'hi' : 'lo');
     dotsEl.appendChild(d);
   }
-  document.getElementById('density-pts').textContent = cfg.pts;
-  document.getElementById('density-detail').innerHTML = cfg.detail;
+  // cfg.pts / cfg.detail are fixed demo values (always "Danish DHM LiDAR"), which every
+  // visitor saw before drawing anything, even for US sites. Show the real estimate for
+  // the drawn site instead; the data source is only known once Generate has run.
+  var ptsEl = document.getElementById('density-pts');
+  var detEl = document.getElementById('density-detail');
+  if (!polygonLatLngs) {
+    ptsEl.textContent = '- pts';
+    detEl.textContent = 'Draw a site area to see estimate';
+  } else {
+    var s = _currentAccuracy;
+    var areaKm2 = getBboxAreaKm2(polygonLatLngs);
+    var tooLarge = areaKm2 > PREVIEW_PARTIAL_KM2 || (areaKm2 > PREVIEW_FULL_KM2 && (s === 3 || s === 6));
+    // Large sites: skip the full grid build and estimate from the bounding box.
+    var c = tooLarge ? Math.round(areaKm2 * 1e6 / (s * s)) : generateGrid(polygonLatLngs, s).length;
+    ptsEl.textContent = '~' + c.toLocaleString() + ' pts';
+    detEl.textContent = (areaKm2 < 1 ? Math.round(areaKm2 * 1e6).toLocaleString() + ' m²' : areaKm2.toFixed(2) + ' km²')
+      + ' · best local source picked at Generate';
+  }
   var labelEl = document.getElementById('density-label');
   labelEl.textContent = cfg.label;
   labelEl.style.color = cfg.hi ? 'var(--accent)' : 'var(--text-soft)';
