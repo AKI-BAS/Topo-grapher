@@ -2750,7 +2750,18 @@ var PREVIEW_PARTIAL_KM2 = 25;
     updateHint();
     updateConvertBtn();
     checkDrawnAreaWarning();
+    try {
+      _engage('site_drawn', {
+        tool: ev.layerType === 'rectangle' ? 'rect' : 'polygon',
+        vertices: ll.length,
+        bbox_km2: Math.round(getBboxAreaKm2(ll) * 1000) / 1000
+      });
+    } catch (e) {}
   });
+  // First time the visitor moves the map themselves (drag or wheel/pinch zoom).
+  // fitBounds from search also zooms, so zoom is caught on the DOM, not 'zoomstart'.
+  map.once('dragstart', function() { _engage('map_moved', { how: 'drag' }); });
+  map.getContainer().addEventListener('wheel', function() { _engage('map_moved', { how: 'wheel' }); }, { passive: true, once: true });
   map.on(L.Draw.Event.DRAWSTART, function() {
     document.getElementById('map-hint').textContent = 'Click to place points. Double-click to finish the polygon.';
   });
@@ -2805,6 +2816,7 @@ function activateTool(t) {
   };
   currentTool = t === 'polygon' ? new L.Draw.Polygon(map, opts) : new L.Draw.Rectangle(map, opts);
   currentTool.enable();
+  _engage('draw_tool_selected', { tool: t });
   document.getElementById('btn-polygon').classList.toggle('active', t === 'polygon');
   document.getElementById('btn-rect').classList.toggle('active', t === 'rect');
 }
@@ -2830,16 +2842,25 @@ async function doSearch() {
   var orig = btn.textContent;
   btn.textContent = '\u2026';
   btn.style.pointerEvents = 'none';
+  var _sT0 = Date.now();
+  // Every search is logged (not just the first): Nominatim is slow at times and
+  // a visitor who gives up on a slow search otherwise leaves no trace.
+  function _logSearch(outcome) {
+    track('search_used', { outcome: outcome, ms: Date.now() - _sT0, secs_on_page: Math.round((_sT0 - _pageT0) / 1000) });
+    _engaged.search_used = _engaged.search_used || Math.round((_sT0 - _pageT0) / 1000);
+  }
   try {
     var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q);
     var r = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-    if (!r.ok) throw new Error('fail');
+    if (!r.ok) { _logSearch('http_' + r.status); throw new Error('fail'); }
     var results = await r.json();
     if (!results || !results.length) {
+      _logSearch('no_result');
       document.getElementById('map-search').style.borderColor = 'var(--danger)';
       setTimeout(function() { document.getElementById('map-search').style.borderColor = ''; }, 1500);
       return;
     }
+    _logSearch('found');
     var place = results[0];
     if (place.boundingbox) {
       var bb = place.boundingbox.map(Number);
@@ -2848,6 +2869,7 @@ async function doSearch() {
       map.setView([parseFloat(place.lat), parseFloat(place.lon)], 15);
     }
   } catch(e) {
+    if (!(e && e.message === 'fail')) _logSearch('network_error');
     document.getElementById('map-search').style.borderColor = 'var(--danger)';
     setTimeout(function() { document.getElementById('map-search').style.borderColor = ''; }, 1500);
   } finally {
@@ -3413,6 +3435,7 @@ function toggleCoordDrawer() {
   if (drawer.classList.contains('open')) {
     closeCoordDrawer();
   } else {
+    _engage('coords_opened');
     openCoordDrawer();
   }
 }
@@ -3851,6 +3874,58 @@ function track(event, props) {
   try { if (typeof window.gtag === 'function') window.gtag('event', event, props || {}); } catch(e) {}
   try { logEvent(event, props); } catch(e) {}
 }
+
+// -- Early engagement (2026-11-05) ------------------------------------------
+// Visitors who leave before generating used to log only page_open, so a bounce
+// could not be told apart from a slow search or a confused first look.
+// _engage() records the FIRST time each step happens (search, map move, draw
+// tool, site drawn, coordinates), and page_exit says how long they stayed and
+// which of those steps they reached.
+var _pageT0 = Date.now();
+var _engaged = {};
+function _engage(step, props) {
+  if (_engaged[step]) return;
+  _engaged[step] = Math.round((Date.now() - _pageT0) / 1000);
+  track(step, Object.assign({ secs_on_page: _engaged[step] }, props || {}));
+}
+(function initPageExit() {
+  var sent = false;
+  function sendExit() {
+    if (sent) return;
+    sent = true;
+    try {
+      if (navigator.webdriver === true || _BOT_UA_RE.test(navigator.userAgent || '')) return;
+      var props = {
+        secs_on_page: Math.round((Date.now() - _pageT0) / 1000),
+        reached: Object.keys(_engaged),
+        scroll_pct: Math.round(100 * (window.scrollY + window.innerHeight) / Math.max(document.body.scrollHeight, 1)),
+        signed_in: !!_currentUser
+      };
+      // keepalive fetch survives the tab closing; the Supabase client's insert may not.
+      fetch(SUPABASE_URL + '/rest/v1/events', {
+        method: 'POST',
+        keepalive: true,
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ user_id: null, anon_id: getAnonId(), event: 'page_exit', properties: props, is_test: _isTestSession() })
+      }).catch(function() {});
+    } catch (e) { /* analytics must never break the app */ }
+  }
+  window.addEventListener('pagehide', sendExit);
+  document.addEventListener('visibilitychange', function() {
+    // Hidden for 30 s counts as gone; coming back first cancels it.
+    if (document.visibilityState === 'hidden') {
+      window._exitTimer = setTimeout(sendExit, 30000);
+    } else if (window._exitTimer) {
+      clearTimeout(window._exitTimer);
+      window._exitTimer = null;
+    }
+  });
+})();
 
 // ── Global error capture ───────────────────────────────────────────────────
 // Fires `js_error` to GA4 + Supabase so topo-admin's Monitor can flag issues
