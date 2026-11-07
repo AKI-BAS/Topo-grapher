@@ -3531,7 +3531,7 @@ async function loadFeed(){
   const{data:buys}=_sigs.length?await _sb.from('site_purchases').select('user_id,site_sig,cost_pence,created_at').in('site_sig',_sigs):{data:[]};
   const _paidRow=new Map(); // generation row -> cost_pence
   (buys||[]).forEach(p=>{
-    const hit=(gens||[]).find(r=>_genSig.get(r)===p.site_sig&&(!r.user_id||r.user_id===p.user_id)&&new Date(r.created_at)<=new Date(p.created_at));
+    const hit=(gens||[]).find(r=>_genSig.get(r)===p.site_sig&&(r.status==='completed'||r.status==null)&&(!r.user_id||r.user_id===p.user_id)&&new Date(r.created_at)<=new Date(p.created_at));
     if(hit&&!_paidRow.has(hit)) _paidRow.set(hit,p.cost_pence);
   });
   const{data:signups}=await _sb.from('profiles').select('email,plan,created_at').order('created_at',{ascending:false}).limit(10);
