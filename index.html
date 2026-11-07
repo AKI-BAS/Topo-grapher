@@ -5279,6 +5279,18 @@ function openCreditModal(context) {
     : (_credits.balance > 0 ? 'Add ' + _fmtGBP(gap) + ' and get this site' : 'Buy this site for ' + _fmtGBP(cost));
   unlock.onclick = enough ? _creditUnlockNow : _buyExactSite;
   if (window._dailyLimitHit && !_resultIsCurrentSite()) unlock.style.display = enough ? 'none' : '';
+  // A result that fell back to 30m (or 90m) can never be bought: the Pay button becomes a retry.
+  if (_degradedPreviewBlocksBuy()) {
+    var _exp = window._degradedExpLabel || 'full resolution';
+    sub = sub.replace(' This result used lower-quality data, so try generating again before you buy.', '')
+      + ' This result fell back to ' + (window._degradedGotM ? window._degradedGotM + 'm' : 'lower-resolution') + ' data, so it cannot be bought. Retry for ' + _exp + ' first. Nothing has been charged.';
+    document.getElementById('credit-sub').textContent = sub;
+    document.getElementById('credit-title').textContent = 'Retry for ' + _exp + ' before you buy';
+    unlock.style.display = '';
+    unlock.textContent = 'Retry for ' + _exp;
+    unlock.onclick = function () { closeCreditModal(); retryDegraded(); };
+    track('degraded_buy_blocked', { cost_pence: cost, got_m: window._degradedGotM || null });
+  }
   document.getElementById('credit-error').textContent = '';
   document.getElementById('credit-packs').innerHTML = CREDIT_PACKS.map(function(p) {
     var bonus = p.creditPence > p.pricePence ? ' <span style="color:var(--accent);">+' + ((p.creditPence - p.pricePence) / 100) + ' free</span>' : '';
@@ -5291,7 +5303,12 @@ function openCreditModal(context) {
   document.getElementById('credit-overlay').classList.add('show');
   track('credit_modal_shown', { context: context, cost_pence: cost, balance_pence: _credits.balance });
 }
+// The result on screen fell back to a coarser tier (a degraded preview). It must never be sold.
+function _degradedPreviewBlocksBuy() {
+  return !!window._previewDegraded && _resultIsCurrentSite();
+}
 async function _creditUnlockNow() {
+  if (_degradedPreviewBlocksBuy()) { openCreditModal('degraded'); return; }
   var btn = document.getElementById('credit-unlock'); btn.disabled = true;
   try {
     var r = await _spendCredits();
@@ -5368,6 +5385,7 @@ function _buyCreditPack(pack) {
 }
 // Pays exactly what the site needs. The webhook buys the site, so coming back rebuilds it unlocked.
 function _buyExactSite() {
+  if (_degradedPreviewBlocksBuy()) { openCreditModal('degraded'); return Promise.resolve(); }
   return _creditCheckout({ site: _siteBbox(), successUrl: 'https://topo-grapher.com?credits=site', cancelUrl: 'https://topo-grapher.com?credits=cancelled' }, 'exact_site');
 }
 function _creditSaveResume() {
@@ -6632,14 +6650,16 @@ function isInCanada(lat, lon) { return lat >= 41.7 && lat <= 83.1 && lon >= -141
 function allPointsInFrance(pts) { return pts.length > 0 && pts.every(p => isInFrance(p.lat, p.lon)); }
 function allPointsInCanada(pts) { return pts.length > 0 && pts.every(p => isInCanada(p.lat, p.lon)); }
 
+// Worker calls abort at 40s (was 25s until 2026-11-07): the worker now gives USGS 3DEP up to three
+// attempts before its 30m fallback, about 30s worst case, and the page must not abort first.
 async function tryWorkerSingle(pts, onProgress) {
   const workerBase = nextWorker();
   if (onProgress) onProgress(0.1, pts.length + ' points');
   const body = { lats: pts.map(p => parseFloat(p.lat.toFixed(6))), lons: pts.map(p => parseFloat(p.lon.toFixed(6))), pro: isPro() };
   let r;
-  try { r = await fetch(workerBase, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body), signal:AbortSignal.timeout(25000) }); }
+  try { r = await fetch(workerBase, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body), signal:AbortSignal.timeout(40000) }); }
   catch(fetchErr) { throw new Error('worker-post-network: ' + fetchErr.message); }
-  if (r.status === 429 || r.status === 500) { await sleep(2000); r = await fetch(workerBase, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body), signal:AbortSignal.timeout(25000) }); }
+  if (r.status === 429 || r.status === 500) { await sleep(2000); r = await fetch(workerBase, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body), signal:AbortSignal.timeout(40000) }); }
   if (!r.ok) { const txt = await r.text().catch(()=>''); throw new Error('worker-post-' + r.status + ': ' + txt.slice(0,160)); }
   const d = await r.json();
   if (d.error) throw new Error('worker-post-error: ' + (d.reason||JSON.stringify(d).slice(0,80)));
@@ -6667,8 +6687,8 @@ async function tryWorkerProxy(pts, onProgress) {
     const promises = wave.map((batch, idx) => {
       const workerBase = WORKER_URLS[(w+idx)%WORKER_URLS.length];
       const workerUrl = workerBase + '?latitude=' + encodeURIComponent(batch.lats) + '&longitude=' + encodeURIComponent(batch.lons) + (isPro() ? '&pro=true' : '');
-      return fetch(workerUrl, {signal:AbortSignal.timeout(25000)}).then(async r => {
-        if (r.status===429||r.status===500) { await sleep(2000); r=await fetch(workerUrl, {signal:AbortSignal.timeout(25000)}); }
+      return fetch(workerUrl, {signal:AbortSignal.timeout(40000)}).then(async r => {
+        if (r.status===429||r.status===500) { await sleep(2000); r=await fetch(workerUrl, {signal:AbortSignal.timeout(40000)}); }
         if (!r.ok) { const txt=await r.text().catch(()=>''); throw new Error('proxy-'+r.status+': '+txt.slice(0,120)); }
         const d = await r.json();
         if (d.error) throw new Error('proxy-error: '+(d.reason||JSON.stringify(d).slice(0,80)));
@@ -8833,6 +8853,7 @@ function updateElevationSourceBanner(source, _pro, degraded, mixed) {
   const note=document.getElementById('degraded-note');
   if(note){
     let showNote=false, gotM=0, expM=0;
+    window._degradedGotM = 0; window._degradedExpLabel = '';
     if(degraded && typeof polygonLatLngs!=='undefined' && polygonLatLngs){
       const info=getRegionInfo(polygonLatLngs);
       gotM = tier==='low' ? 90 : tier==='mid' ? 30 : 0;
@@ -8846,25 +8867,28 @@ function updateElevationSourceBanner(source, _pro, degraded, mixed) {
     if(showNote){
       const expLabel = expM > 0 && expM < 1 ? Math.round(expM*100)+'cm' : expM+'m';
       // `mixed`: only some batches fell back, so say "part of" instead of claiming the whole site.
+      // Say plainly which tier this is and which one it should have been (2026-11-07: "say clearly
+      // it's 30m"). Read by the credit modal, which will not sell a degraded result.
+      window._degradedGotM = gotM; window._degradedExpLabel = expLabel;
       const noteBody = mixed
-        ? '⚠ Temporarily degraded data: the '+expLabel+' source did not respond for part of this site, so part of this result uses '+gotM+'m data.'
-        : '⚠ Temporarily degraded data: the '+expLabel+' source for this site did not respond, so this result uses '+gotM+'m data.';
+        ? '⚠ Part of this result is '+gotM+'m data, not '+expLabel+': the '+expLabel+' source did not respond for part of this site.'
+        : '⚠ This result is '+gotM+'m data, not '+expLabel+': the '+expLabel+' source for this site did not respond.';
       // Say what a retry costs, so nobody hesitates: a paid site is not charged for a degraded
-      // result, and a degraded result does not use up one of the free generations.
+      // result (it cannot be bought at all), and a degraded result does not use a free generation.
       const costNote = window._genPaidIntent
-        ? ' Nothing has been charged, so try again before you buy.'
+        ? ' Nothing has been charged, and it can only be bought once it comes back at '+expLabel+'.'
         : (!_pro ? ' This does not use one of your free generations.' : '');
       note.textContent = '';
       note.appendChild(document.createTextNode(noteBody + costNote + ' '));
       const retryBtn = document.createElement('button');
       retryBtn.id = 'degraded-retry-btn';
       retryBtn.type = 'button';
-      retryBtn.textContent = 'Try again for full resolution';
+      retryBtn.textContent = 'Retry for '+expLabel;
       retryBtn.style.cssText = "margin-top:6px;padding:5px 12px;border-radius:4px;border:1px solid #e0a050;background:transparent;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;";
       retryBtn.onclick = retryDegraded;
       note.appendChild(retryBtn);
       note.style.display='block';
-      title.textContent='Temporarily degraded data ('+gotM+'m)';
+      title.textContent='Fell back to '+gotM+'m data (not '+expLabel+')';
     }
     else { note.style.display='none'; note.textContent=''; }
   }

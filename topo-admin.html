@@ -231,6 +231,8 @@ body::before{content:'';position:fixed;inset:0;background-image:
 .badge-good{background:var(--accent-dk);color:var(--accent);border:1px solid rgba(154,186,106,.3);}
 .badge-mid{background:var(--amber-dk);color:var(--amber);border:1px solid rgba(224,160,80,.3);}
 .badge-low{background:var(--red-dk);color:var(--orange);border:1px solid rgba(216,90,48,.3);}
+/* Feed: a site that was actually bought (site_purchases). Solid fill so it reads apart from the outlined tier badges. */
+.badge-paid{background:var(--accent);color:var(--accent-dk);border:1px solid var(--accent);font-weight:500;}
 
 /* ── Bar chart ─────────────────────────────────────────────── */
 .bar-chart-h{display:flex;flex-direction:column;gap:5px;}
@@ -3509,8 +3511,29 @@ async function loadCountryBars(){
 // ── Live feed ─────────────────────────────────────────────────
 async function loadFeed(){
   const ps=periodStart();
-  const qf=_sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,created_at,status,error_stage,error_detail,user_id,anon_id,centroid_lat,centroid_lon').eq('is_test',false).order('created_at',{ascending:false}).limit(30);
+  const qf=_sb.from('generations').select('project_name,country_code,resolution_m,user_plan,point_count,spacing,area_km2,file_name,created_at,status,error_stage,error_detail,user_id,anon_id,centroid_lat,centroid_lon,polygon_geojson').eq('is_test',false).order('created_at',{ascending:false}).limit(30);
   const{data:gens}=await (ps?qf.gte('created_at',ps):qf);
+  // Paid sites: site_purchases has no generation id, so match on site_sig (the drawn bbox,
+  // rounded to 5 dp, as in _creditSiteSig() on the site). A guest who signs up to buy has a
+  // generation with no user_id, so the sig alone is the key; users must agree when both are set.
+  // The badge goes on the latest feed row at or before the purchase (the preview that was bought),
+  // never on later re-runs of the owned site. Read-only: nothing here writes.
+  const _sigOf=r=>{
+    let pts; try{pts=typeof r.polygon_geojson==='string'?JSON.parse(r.polygon_geojson):r.polygon_geojson;}catch(e){return null;}
+    if(pts&&!Array.isArray(pts)&&pts.coordinates) pts=(pts.coordinates[0]||[]).map(c=>({lat:c[1],lng:c[0]}));
+    if(!Array.isArray(pts)||pts.length<3) return null;
+    const la=pts.map(p=>Array.isArray(p)?+p[0]:+p.lat), lo=pts.map(p=>Array.isArray(p)?+p[1]:+(p.lng!=null?p.lng:p.lon));
+    if(!la.concat(lo).every(Number.isFinite)) return null;
+    return [Math.min(...la),Math.min(...lo),Math.max(...la),Math.max(...lo)].map(n=>n.toFixed(5)).join(',');
+  };
+  const _genSig=new Map((gens||[]).map(r=>[r,_sigOf(r)]));
+  const _sigs=[...new Set([..._genSig.values()].filter(Boolean))];
+  const{data:buys}=_sigs.length?await _sb.from('site_purchases').select('user_id,site_sig,cost_pence,created_at').in('site_sig',_sigs):{data:[]};
+  const _paidRow=new Map(); // generation row -> cost_pence
+  (buys||[]).forEach(p=>{
+    const hit=(gens||[]).find(r=>_genSig.get(r)===p.site_sig&&(!r.user_id||r.user_id===p.user_id)&&new Date(r.created_at)<=new Date(p.created_at));
+    if(hit&&!_paidRow.has(hit)) _paidRow.set(hit,p.cost_pence);
+  });
   const{data:signups}=await _sb.from('profiles').select('email,plan,created_at').order('created_at',{ascending:false}).limit(10);
   const items=[];
   (gens||[]).forEach(r=>{
@@ -3540,7 +3563,9 @@ async function loadFeed(){
     const centroidKey=(r.centroid_lat!=null&&r.centroid_lon!=null)?(+r.centroid_lat).toFixed(4)+','+(+r.centroid_lon).toFixed(4):null;
     const groupKey=(identity&&centroidKey)?'g|'+identity+'|'+centroidKey:null;
     const isFriction=type==='fail'||type==='started'||type==='blocked';
-    items.push({type,time:r.created_at,dl:type==='fail'||type==='started'||type==='blocked'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,badge:whoBadge,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?': '+esc(r.error_detail):''}`:null,loc,groupKey,isFriction,count:1});
+    const paidP=_paidRow.get(r);
+    const paidBadge=paidP!=null?`<span class="badge badge-sm badge-paid" title="Bought with credits (site_purchases)">Paid £${(paidP/100).toFixed(2)}</span>`:'';
+    items.push({type,time:r.created_at,dl:type==='fail'||type==='started'||type==='blocked'?null:!!r.file_name,main:`${CF[r.country_code]||'🌍'} ${label}`,meta,badge:paidBadge+whoBadge,fail_detail:type==='fail'?`⚠ ${esc(r.error_stage||'unknown')}${r.error_detail?': '+esc(r.error_detail):''}`:null,loc,groupKey,isFriction,count:1});
   });
   (signups||[]).forEach(r=>items.push({type:r.plan!=='free'?'upgrade':'signup',time:r.created_at,dl:null,main:`New ${r.plan!=='free'?r.plan+' subscriber':'signup'} · ${esc((r.email||'').split('@')[0])}`,meta:r.plan!=='free'?r.plan+' tier':'free tier',count:1}));
   items.sort((a,b)=>new Date(b.time)-new Date(a.time));
@@ -3562,6 +3587,7 @@ async function loadFeed(){
     const frictionPresent=it.isFriction||(last&&last.hasFriction);
     if(sameGroup && frictionPresent){
       last.count++;
+      if(it.badge&&it.badge.indexOf('badge-paid')!==-1&&(last.badge||'').indexOf('badge-paid')===-1) last.badge=it.badge; // the bought row may be an older retry
       last.hasFriction=last.hasFriction||it.isFriction;
       last.oldestTime=it.time; // extend the window from the oldest item we've absorbed
     } else {
