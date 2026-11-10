@@ -1189,7 +1189,7 @@ function declineCookies() {
         <button class="tool-btn" id="btn-polygon" onclick="activateTool('polygon')">&#x270F; Draw polygon</button>
         <button class="tool-btn" id="btn-rect" onclick="activateTool('rect')">&#x2B1C; Rectangle</button>
         <button class="tool-btn" id="btn-coords" onclick="toggleCoordDrawer()">&#x2295; Coordinates</button>
-        <input type="text" id="map-search" placeholder="Search location&#x2026;" onkeydown="if(event.key==='Enter')doSearch()" style="flex:1;min-width:100px;max-width:200px;background:var(--bg-input);border:1px solid var(--accent-md);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:6px 10px;border-radius:4px;outline:none;">
+        <input type="text" id="map-search" placeholder="Your site address&#x2026;" onkeydown="if(event.key==='Enter')doSearch()" style="flex:1;min-width:100px;max-width:200px;background:var(--bg-input);border:1px solid var(--accent-md);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:6px 10px;border-radius:4px;outline:none;">
         <button class="tool-btn" id="btn-search" onclick="doSearch()" style="border-color:var(--accent-md);color:var(--accent)">&#x2315; Search</button>
         <button class="tool-btn danger" onclick="clearArea()" style="margin-left:auto">&#x2715; Clear</button>
       </div>
@@ -2706,9 +2706,77 @@ var selectedSpacing = 12;
 var PREVIEW_FULL_KM2    = 4;
 var PREVIEW_PARTIAL_KM2 = 25;
 
+// Starting view near the visitor's part of the world, from the browser's time zone only
+// (no IP lookup, no location prompt). Deliberately coarse: zoom 4 to 6 shows a region or
+// a country, never a city. Restored sites and searches still move the map afterwards.
+// Falls back to the UK view we always had.
+function _startViewFromTimezone() {
+  var tz = '';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+  var exact = {
+    // United States
+    'America/New_York': [39.5, -78.5, 5], 'America/Detroit': [42.5, -84.5, 5],
+    'America/Chicago': [35.5, -94, 5], 'America/Denver': [40, -107, 5], 'America/Boise': [43.6, -115, 5],
+    'America/Phoenix': [34, -111.5, 6], 'America/Los_Angeles': [38, -120, 5],
+    'America/Anchorage': [62, -150, 4], 'Pacific/Honolulu': [20.5, -157, 6],
+    // Canada
+    'America/Toronto': [45, -78, 5], 'America/Montreal': [46, -73, 5], 'America/Halifax': [45.5, -63.5, 6],
+    'America/Winnipeg': [50, -97, 5], 'America/Edmonton': [53, -114, 5], 'America/Vancouver': [50, -122, 5],
+    // Latin America
+    'America/Mexico_City': [20, -100, 5], 'America/Bogota': [5, -74, 5], 'America/Lima': [-10, -76, 5],
+    'America/Sao_Paulo': [-20, -46, 5], 'America/Argentina/Buenos_Aires': [-34.6, -60, 5], 'America/Santiago': [-33.5, -70.7, 5],
+    // Europe
+    'Europe/London': [54.5, -2, 6], 'Europe/Dublin': [53.3, -7.8, 6], 'Atlantic/Reykjavik': [64.9, -18.5, 6],
+    'Europe/Paris': [46.6, 2.5, 6], 'Europe/Berlin': [51, 10.4, 6], 'Europe/Madrid': [40.2, -3.7, 6],
+    'Europe/Lisbon': [39.6, -8, 6], 'Europe/Rome': [42.5, 12.5, 6], 'Europe/Amsterdam': [52.2, 5.3, 6],
+    'Europe/Brussels': [50.6, 4.6, 6], 'Europe/Luxembourg': [49.7, 6.1, 6], 'Europe/Zurich': [46.8, 8.2, 6],
+    'Europe/Vienna': [47.6, 13.8, 6], 'Europe/Prague': [49.8, 15.5, 6], 'Europe/Warsaw': [52, 19.4, 6],
+    'Europe/Copenhagen': [56, 10.5, 6], 'Europe/Oslo': [62, 10, 5], 'Europe/Stockholm': [62, 15, 5],
+    'Europe/Helsinki': [63, 26, 5], 'Europe/Tallinn': [58.7, 25.5, 6], 'Europe/Athens': [38.5, 23.5, 6],
+    'Europe/Istanbul': [39, 35, 5],
+    // Asia, Oceania, Africa
+    'Asia/Dubai': [24.3, 54.3, 6], 'Asia/Kolkata': [22, 79, 4], 'Asia/Calcutta': [22, 79, 4],
+    'Asia/Singapore': [1.35, 103.8, 6], 'Asia/Shanghai': [33, 108, 4], 'Asia/Tokyo': [36.2, 138.3, 5],
+    'Asia/Seoul': [36.5, 127.8, 6], 'Australia/Sydney': [-32, 148, 5], 'Australia/Melbourne': [-37, 144.5, 6],
+    'Australia/Brisbane': [-25, 150, 5], 'Australia/Adelaide': [-34.5, 138.5, 6], 'Australia/Perth': [-31.5, 116.5, 6],
+    'Pacific/Auckland': [-41, 174, 5], 'Africa/Johannesburg': [-29, 25, 5], 'Africa/Lagos': [9, 8, 5],
+    'Africa/Cairo': [27, 30, 5], 'Africa/Nairobi': [0, 37.9, 5]
+  };
+  if (exact[tz]) return { tz: tz, view: exact[tz] };
+  // Unlisted zones: US sub-zones first, then the continent.
+  var prefixes = [
+    ['America/Indiana/', [39.8, -86.2, 5]], ['America/Kentucky/', [37.8, -85.7, 5]],
+    ['America/North_Dakota/', [47, -100, 5]], ['America/Argentina/', [-34.6, -60, 4]],
+    ['America/Juneau', [62, -150, 4]], ['America/Sitka', [62, -150, 4]], ['America/Nome', [62, -150, 4]],
+    ['America/Yakutat', [62, -150, 4]], ['America/Metlakatla', [62, -150, 4]], ['America/Adak', [62, -150, 4]],
+    ['America/Menominee', [35.5, -94, 5]], ['America/Puerto_Rico', [18.2, -66.5, 7]],
+    // Other America/ zones are mostly Latin America and the Caribbean: show both continents.
+    ['Europe/', [50, 10, 4]], ['America/', [10, -80, 3]], ['US/', [37, -96, 4]], ['Canada/', [50, -97, 4]],
+    ['Australia/', [-27, 134, 4]], ['Asia/', [30, 90, 3]], ['Africa/', [5, 20, 3]], ['Pacific/', [-20, 170, 3]]
+  ];
+  for (var i = 0; i < prefixes.length; i++) {
+    if (tz.indexOf(prefixes[i][0]) === 0) return { tz: tz, view: prefixes[i][1] };
+  }
+  return { tz: tz, view: [54.5, -2, 6] };
+}
+window._startView = _startViewFromTimezone();
+// Put the cursor in the address box so the first step is obvious. Desktop only (a phone
+// keyboard popping up is unwelcome) and only if the visitor has not focused anything yet.
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    try {
+      var s = document.getElementById('map-search');
+      if (!s || window.innerWidth < 1024) return;
+      if (document.activeElement && document.activeElement !== document.body) return;
+      s.focus({ preventScroll: true });
+    } catch (e) {}
+  }, 300);
+});
+
 (function initMap() {
+  var _sv = window._startView.view;
   map = L.map('map', {
-    center: [54.5, -2], zoom: 6,
+    center: [_sv[0], _sv[1]], zoom: _sv[2],
     worldCopyJump: false,
     maxBounds: [[-85,-180],[85,180]],
     maxBoundsViscosity: 1.0, minZoom: 3
@@ -3937,7 +4005,8 @@ function _engage(step, props) {
         secs_on_page: Math.round((Date.now() - _pageT0) / 1000),
         reached: Object.keys(_engaged),
         scroll_pct: Math.round(100 * (window.scrollY + window.innerHeight) / Math.max(document.body.scrollHeight, 1)),
-        signed_in: !!_currentUser
+        signed_in: !!_currentUser,
+        start_tz: (window._startView && window._startView.tz) || ''
       };
       // keepalive fetch survives the tab closing; the Supabase client's insert may not.
       fetch(SUPABASE_URL + '/rest/v1/events', {
