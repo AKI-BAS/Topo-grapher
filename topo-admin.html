@@ -1935,13 +1935,24 @@ async function loadRevenue(){
   const payIds=[...new Set((payEv||[]).map(e=>e.user_id).filter(Boolean))];
   const{data:payProf}=payIds.length?await _sb.from('profiles').select('id,email').in('id',payIds):{data:[]};
   const payEmail={}; (payProf||[]).forEach(p=>{payEmail[p.id]=p.email;});
-  const payRows=(payEv||[]).map(e=>{
-    const pr=e.properties||{}, ok=e.event==='payment_received';
+  // One row per failed invoice: Stripe sends a payment_failed on every retry, so keep only the
+  // newest failure per invoice_id (events are newest first), and drop failures for invoices later paid.
+  const paidInv=new Set((payEv||[]).filter(e=>e.event==='payment_received').map(e=>(e.properties||{}).invoice_id).filter(Boolean));
+  const seenInv=new Set();
+  const payRows=(payEv||[]).filter(e=>{
+    if(e.event!=='payment_failed') return true;
+    const inv=(e.properties||{}).invoice_id;
+    if(!inv) return true;
+    if(paidInv.has(inv)||seenInv.has(inv)) return false;
+    seenInv.add(inv); return true;
+  }).map(e=>{
+    const pr=e.properties||{}, ok=e.event==='payment_received', dead=!ok&&!pr.next_attempt_at;
     const who=esc(payEmail[e.user_id]||'unknown customer');
     const when=new Date(e.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
     const note=ok?(pr.discount_pence>0?` (−${gbp(pr.discount_pence)} discount)`:'')
-      :` failed, attempt ${pr.attempt||'?'}${pr.next_attempt_at?', retry '+new Date(pr.next_attempt_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):', no more retries'}`;
-    return `<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px;"><span style="color:var(--text-mid);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${when} · ${who}</span><span style="color:${ok?'var(--accent)':'var(--red)'};white-space:nowrap;">${gbp(pr.amount_pence)}${esc(note)}</span></div>`;
+      :dead?` failed completely (${pr.attempt||'?'} attempts)`
+      :` failed ${pr.attempt||'?'}x, retry ${new Date(pr.next_attempt_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}`;
+    return `<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px;"><span style="color:var(--text-mid);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${when} · ${who}</span><span style="color:${ok?'var(--accent)':dead?'var(--muted)':'var(--red)'};white-space:nowrap;">${gbp(pr.amount_pence)}${esc(note)}</span></div>`;
   }).join('');
   // Upcoming charges, soonest first: what each subscriber will be charged next and when.
   const upRows=_m.rows.map(x=>{
