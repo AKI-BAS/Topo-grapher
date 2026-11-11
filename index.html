@@ -8989,6 +8989,11 @@ function showWireframe(points, minZ, maxZ) {
     if (dc) { dc.style.transition = 'opacity .5s'; dc.style.opacity = '0'; }
   }
   // Stop the Pro viewer demo if it was running before first generation
+  // ...and retire it for the rest of the page's life: the demo and the real viewer share
+  // pro-terrain-canvas, and applyProUI() (run on every Supabase auth event, e.g. the hourly token
+  // refresh or returning to the tab) used to start it again on top of the real terrain. Two
+  // render loops on one canvas alternated frames: the viewer "blinked like crazy" (2026-11-11).
+  window._proViewerDemoRetired = true;
   if (window._proViewerDemoDispose) { window._proViewerDemoDispose(); }
   // The terrain is ready: reveal the "View in 3D" button on the result card.
   const _v3dBtn = document.getElementById('view-3d-btn');
@@ -11097,7 +11102,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Rotating terrain shown in the full-width Pro viewer before first generation.
 // Disposed automatically when real terrain data is rendered.
 function initProViewerDemo() {
-  if (window._proViewerDemoDispose || !window.THREE) return;
+  if (window._proViewerDemoDispose || window._proViewerDemoRetired || !window.THREE) return;
   var canvas = document.getElementById('pro-terrain-canvas');
   var wrap   = document.getElementById('pro-terrain-wrap');
   if (!canvas || !wrap) return;
