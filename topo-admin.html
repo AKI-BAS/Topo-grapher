@@ -1025,7 +1025,10 @@ const HEALTH_WORKER_URL = (_CFG.HEALTH_WORKER_URL || 'https://health-cron.svanur
 
 // ── Constants ─────────────────────────────────────────────────
 const CN={DK:'Denmark',IS:'Iceland',NO:'Norway',SE:'Sweden',FI:'Finland',GB:'United Kingdom',IE:'Ireland',NL:'Netherlands',BE:'Belgium',FR:'France',CH:'Switzerland',AT:'Austria',DE:'Germany',ES:'Spain',PT:'Portugal',IT:'Italy',GR:'Greece',PL:'Poland',CZ:'Czechia',US:'United States',CA:'Canada',JP:'Japan',NZ:'New Zealand',AU:'Australia',HR:'Croatia',HU:'Hungary',RO:'Romania',SK:'Slovakia',LT:'Lithuania',LV:'Latvia',EE:'Estonia',MX:'Mexico',SA:'Saudi Arabia',AE:'UAE',IL:'Israel',FO:'Faroe Islands',LU:'Luxembourg',BG:'Bulgaria'};
-const CF={};
+// CF[code] gives a flag for ANY two-letter code, not only the countries named in CN: a site in
+// Turkey, Serbia, South Africa etc. used to show the globe even with a country_code (2026-11-13).
+// Codes are made on first use; anything that is not two letters still reads as undefined.
+const CF=new Proxy({}, { get:(t,k)=>(typeof k==='string'&&/^[A-Z]{2}$/.test(k))?(t[k]||(t[k]=flag(k))):t[k] });
 // Flag helper, returns inline <img> from flagcdn (works on Windows where emoji flags don't render)
 function flag(code){return code?`<img src="https://flagcdn.com/16x12/${code.toLowerCase()}.png" srcset="https://flagcdn.com/32x24/${code.toLowerCase()}.png 2x" width="16" height="12" alt="${code}" style="vertical-align:middle;border-radius:1px;" onerror="this.replaceWith(document.createTextNode('${code}'))">`:'';}
 // Populate CF with img tags for all known codes
