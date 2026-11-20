@@ -1679,6 +1679,96 @@ function declineCookies() {
 <!-- ═══ PRICING ═══ -->
 <div class="pricing-section" id="pricing">
   <div class="pricing-label">Plans &amp; pricing</div>
+  <!-- ===== Black Friday 2026 pricing block START (safe to delete after 1 Dec 2026) ===== -->
+  <!-- Always shown in pricing between 23 and 30 Nov (or with ?bf_preview=1), even if the top banner
+       was closed. Prices MUST match the top banner and BF26_PRO / BF26_CREDIT_PACK in stripe-worker-v6.js. -->
+  <style>
+    #bf-pricing{display:none;margin:0 0 22px;padding:16px 18px;border-radius:10px;background:#1c4d33;color:#efe3d8;
+      font-family:"DM Mono",monospace;border:1px solid rgba(239,227,216,.18)}
+    #bf-pricing.bf-show{display:block}
+    #bf-pricing .bfp-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+    #bf-pricing .bfp-tag{font-size:11px;letter-spacing:.12em;text-transform:uppercase;background:#efe3d8;color:#1c4d33;
+      padding:3px 7px;border-radius:3px;font-weight:600}
+    #bf-pricing .bfp-head{font-size:15px;color:#fff;font-weight:600}
+    #bf-pricing .bfp-timer{margin-left:auto;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+    #bf-pricing .bfp-deals{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+    #bf-pricing .bfp-deal{background:rgba(0,0,0,.18);border:1px solid rgba(239,227,216,.16);border-radius:8px;padding:12px 14px;
+      display:flex;flex-direction:column;gap:6px}
+    #bf-pricing .bfp-name{font-size:13px;color:#fff}
+    #bf-pricing .bfp-price{font-size:20px;color:#fff;font-weight:600}
+    #bf-pricing .bfp-was{font-size:12px;opacity:.75}
+    #bf-pricing .bfp-was s{opacity:.9}
+    #bf-pricing .bfp-btn{margin-top:auto;align-self:flex-start;color:#1c4d33;background:#efe3d8;border:0;font:inherit;font-size:12px;
+      cursor:pointer;padding:6px 12px;border-radius:4px;transition:background 160ms}
+    #bf-pricing .bfp-btn:hover{background:#fff}
+    #bf-pricing .bfp-note{margin-top:10px;font-size:11px;opacity:.75;line-height:1.5}
+  </style>
+  <div id="bf-pricing" role="region" aria-label="Black Friday offers">
+    <div class="bfp-top">
+      <span class="bfp-tag">Black Friday</span>
+      <span class="bfp-head">Pro up to 33% off, buildings and roads included</span>
+      <span class="bfp-timer" id="bfp-timer">Ends in --</span>
+    </div>
+    <div class="bfp-deals">
+      <div class="bfp-deal bfp-pro">
+        <span class="bfp-name">Pro, 6 months prepaid</span>
+        <span class="bfp-price">&pound;159</span>
+        <span class="bfp-was"><s>&pound;239.94</s> &middot; save &pound;80.94 (33%)</span>
+        <button class="bfp-btn" type="button" data-bf="bf26_6m">Get 6 months</button>
+      </div>
+      <div class="bfp-deal bfp-pro">
+        <span class="bfp-name">Pro, 3 months prepaid</span>
+        <span class="bfp-price">&pound;89</span>
+        <span class="bfp-was"><s>&pound;119.97</s> &middot; save &pound;30.97 (25%)</span>
+        <button class="bfp-btn" type="button" data-bf="bf26_3m">Get 3 months</button>
+      </div>
+      <div class="bfp-deal">
+        <span class="bfp-name">70 credits</span>
+        <span class="bfp-price">&pound;50</span>
+        <span class="bfp-was">40% extra credits (normally 55 for &pound;50)</span>
+        <button class="bfp-btn" type="button" data-bf="bf26_credits">Get 70 credits</button>
+      </div>
+    </div>
+    <div class="bfp-note">Prepaid Pro is one payment today, then &pound;39.99 per month once the prepaid months end, until you cancel. No account needed to buy: we email you a link to set your password.</div>
+  </div>
+  <script>
+  (function () {
+    var BF_START = Date.parse('2026-11-23T00:00:00Z'), BF_END = Date.parse('2026-11-30T23:59:00Z');
+    var el = document.getElementById('bf-pricing');
+    if (!el) return;
+    var force = /[?&]bf_preview=1/.test(location.search), now = Date.now();
+    if (!force && (now < BF_START || now >= BF_END)) return;
+    function fire(ev, p) { try { if (typeof track === 'function') track(ev, p || {}); } catch (e) {} }
+    function hasPlan() {
+      try { return typeof _currentProfile !== 'undefined' && !!_currentProfile && (_currentProfile.plan === 'pro' || _currentProfile.plan === 'company'); } catch (e) { return false; }
+    }
+    // Same checkouts as the top banner: startCheckout() for prepaid Pro, _creditCheckout() for credits.
+    el.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-bf]'); if (!b) return;
+      var offer = b.getAttribute('data-bf');
+      fire('bf26_pricing_click', { plan: offer });
+      if (offer === 'bf26_credits') {
+        if (typeof _creditCheckout === 'function') _creditCheckout({ pack: 'bf26', successUrl: 'https://topo-grapher.com?credits=added', cancelUrl: 'https://topo-grapher.com?credits=cancelled' }, 'bf26');
+      } else if (!hasPlan() && typeof startCheckout === 'function') {
+        startCheckout('pro', { context: offer + '_pricing', offer: offer });
+      }
+    });
+    var t = document.getElementById('bfp-timer'), pros = el.querySelectorAll('.bfp-pro');
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    function tick() {
+      var ms = BF_END - Date.now();
+      if (ms <= 0 && !force) { el.classList.remove('bf-show'); clearInterval(iv); return; }
+      var s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400);
+      t.textContent = 'Ends in ' + (d > 0 ? d + 'd ' : '') + pad(Math.floor(s % 86400 / 3600)) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60);
+      var pro = hasPlan();   // Pro and Company accounts already have Pro: credits only
+      for (var i = 0; i < pros.length; i++) pros[i].style.display = pro ? 'none' : '';
+    }
+    tick();
+    var iv = setInterval(tick, 1000);
+    el.classList.add('bf-show');
+  })();
+  </script>
+  <!-- ===== Black Friday 2026 pricing block END ===== -->
   <div class="tier-grid" id="tier-grid">
 
     <!-- Free -->
@@ -6413,12 +6503,28 @@ function _showNoTrialConfirm(plan, url, resetBtn, discount, offer) {
   document.getElementById('checkout-overlay-msg').textContent = plan === 'company' ? 'Confirm your Company plan' : 'Confirm your Pro plan';
   const subEl = document.getElementById('checkout-overlay-sub');
   // Black Friday 2026 prepaid Pro. Prices MUST match BF26_PRO in stripe-worker-v6.js.
-  const bfTxt = offer === 'bf26_6m' ? 'You pay £159 today for 6 months of Pro. After that it renews at £39.99 per month until you cancel.'
-    : offer === 'bf26_3m' ? 'You pay £89 today for 3 months of Pro. After that it renews at £39.99 per month until you cancel.' : '';
+  const bfo = { bf26_3m: { p: 89, m: 3 }, bf26_6m: { p: 159, m: 6 } }[offer];
+  const bfTxt = bfo ? 'Black Friday: ' + bfo.m + ' months of Pro for £' + bfo.p + ' today, normally £' + (bfo.m * 39.99).toFixed(2)
+    + '. You save £' + (bfo.m * 39.99 - bfo.p).toFixed(2) + ' (' + Math.floor((bfo.m * 39.99 - bfo.p) * 100 / (bfo.m * 39.99)) + '%). After that it renews at £39.99 per month until you cancel.' : '';
   subEl.textContent = bfTxt ? bfTxt : (discount && plan === 'pro')
     ? 'You pay £24.99 today with your £15 discount, then £39.99 per month. You can cancel any time.'
     : 'You pay ' + (CHECKOUT_PRICE_TEXT[plan] || CHECKOUT_PRICE_TEXT.pro) + ', starting today. You can cancel any time.';
   subEl.style.display = '';
+  // Black Friday: live countdown under the saving while this confirm step is open.
+  clearInterval(window._bfConfirmTimer);
+  if (bfTxt) {
+    const bfEnd = Date.parse('2026-11-30T23:59:00Z'), pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+    const bfTick = function () {
+      const s = Math.max(0, Math.floor((bfEnd - Date.now()) / 1000)), d = Math.floor(s / 86400);
+      subEl.textContent = bfTxt + ' Offer ends in ' + (d > 0 ? d + 'd ' : '') + pad(Math.floor(s % 86400 / 3600)) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60) + '.';
+    };
+    bfTick();
+    window._bfConfirmTimer = setInterval(function () {
+      // Stop once the step is closed or Continue was pressed (the button hides).
+      if (!ov.classList.contains('show') || document.getElementById('checkout-overlay-continue').style.display === 'none') { clearInterval(window._bfConfirmTimer); return; }
+      bfTick();
+    }, 1000);
+  }
   document.getElementById('checkout-overlay-err').style.display = 'none';
   const cont = document.getElementById('checkout-overlay-continue');
   cont.style.display = '';
