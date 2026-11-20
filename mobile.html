@@ -218,6 +218,75 @@
 </style>
 </head>
 <body>
+<!-- ===== Black Friday 2026 banner START (safe to delete after 1 Dec 2026) ===== -->
+<!-- Phone version. This page has no checkout, so each button opens the full site with
+     ?desktop=1&bf_buy=..., and the banner script in index.html starts that checkout (pay first,
+     no signup). Prices MUST match index.html and BF26_PRO / BF26_CREDIT_PACK in stripe-worker-v6.js. -->
+<style>
+  #bf-banner{display:none;position:relative;z-index:60;background:#1c4d33;color:#efe3d8;
+    font-family:var(--mono,monospace);font-size:12px;letter-spacing:.02em;line-height:1.4;
+    border-bottom:1px solid rgba(239,227,216,.14)}
+  #bf-banner.bf-show{display:block}
+  #bf-banner .bf-in{padding:9px 36px 10px 12px;display:flex;align-items:center;justify-content:center;
+    gap:8px;flex-wrap:wrap;text-align:center}
+  #bf-banner .bf-tag{font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    background:#efe3d8;color:#1c4d33;padding:3px 7px;border-radius:3px;font-weight:600}
+  #bf-banner .bf-msg b{color:#fff;font-weight:600}
+  #bf-banner .bf-timer{font-variant-numeric:tabular-nums;opacity:.9;white-space:nowrap}
+  #bf-banner .bf-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+  #bf-banner a.bf-btn{color:#1c4d33;background:#efe3d8;text-decoration:none;padding:6px 10px;
+    border-radius:4px;font-size:12px;white-space:nowrap}
+  #bf-banner a.bf-btn.bf-ghost{background:transparent;color:#efe3d8;box-shadow:inset 0 0 0 1px rgba(239,227,216,.5)}
+  #bf-banner .bf-x{position:absolute;right:6px;top:8px;background:none;border:0;color:#efe3d8;
+    opacity:.7;font:inherit;font-size:18px;cursor:pointer;padding:4px 6px}
+</style>
+<div id="bf-banner" role="region" aria-label="Black Friday offer">
+  <div class="bf-in">
+    <span class="bf-tag">Black Friday</span>
+    <span class="bf-msg">Pro <b>up to 33% off</b>, buildings and roads included</span>
+    <span class="bf-timer" id="bf-timer">Ends in --</span>
+    <span class="bf-btns">
+      <a class="bf-btn" id="bf-6m" href="/?desktop=1&amp;bf_buy=bf26_6m">6 months &pound;159</a>
+      <a class="bf-btn bf-ghost" id="bf-3m" href="/?desktop=1&amp;bf_buy=bf26_3m">3 months &pound;89</a>
+      <a class="bf-btn bf-ghost" id="bf-cr" href="/?desktop=1&amp;bf_buy=bf26_credits">70 credits for &pound;50</a>
+    </span>
+  </div>
+  <button class="bf-x" id="bf-x" type="button" aria-label="Close offer banner">&times;</button>
+</div>
+<script>
+(function () {
+  var BF_START = Date.parse('2026-11-23T00:00:00Z');
+  var BF_END   = Date.parse('2026-11-30T23:59:00Z');
+  var el = document.getElementById('bf-banner');
+  if (!el) return;
+  var force = /[?&]bf_preview=1/.test(location.search);
+  var now = Date.now();
+  if (!force && (now < BF_START || now >= BF_END)) return;
+  try { if (!force && localStorage.getItem('topo_bf26_closed') === '1') return; } catch (e) {}
+  if (force) {
+    // Keep the preview flag on the way to the full site, so its checkout also shows before 23 Nov.
+    ['bf-6m', 'bf-3m', 'bf-cr'].forEach(function (id) { var a = document.getElementById(id); a.href += '&bf_preview=1'; });
+  }
+  document.getElementById('bf-x').addEventListener('click', function () {
+    el.classList.remove('bf-show');
+    try { localStorage.setItem('topo_bf26_closed', '1'); } catch (e) {}
+  });
+  var t = document.getElementById('bf-timer');
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function tick() {
+    var ms = BF_END - Date.now();
+    if (ms <= 0 && !force) { el.classList.remove('bf-show'); clearInterval(iv); return; }
+    if (ms < 0) ms = 0;
+    var s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600),
+        m = Math.floor(s % 3600 / 60), sec = s % 60;
+    t.textContent = 'Ends in ' + (d > 0 ? d + 'd ' : '') + pad(h) + ':' + pad(m) + ':' + pad(sec);
+  }
+  tick();
+  var iv = setInterval(tick, 1000);
+  el.classList.add('bf-show');
+})();
+</script>
+<!-- ===== Black Friday 2026 banner END ===== -->
 
   <!-- Background crossfade: four real hero shots, WebP-encoded, 800x1200 -->
   <div class="stage" aria-hidden="true">

@@ -1087,6 +1087,128 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
 </style>
 </head>
 <body>
+<!-- ===== Black Friday 2026 banner START (safe to delete after 1 Dec 2026) ===== -->
+<!-- Shows only between BF_START and BF_END (or with ?bf_preview=1). Buys through the site's own
+     checkouts: startCheckout() for prepaid Pro, _creditCheckout() for the credit pack. Prices MUST
+     match BF26_PRO and BF26_CREDIT_PACK in stripe-worker-v6.js. -->
+<style>
+  #bf-banner{display:none;position:relative;z-index:60;background:#1c4d33;color:#efe3d8;
+    font-family:"DM Mono",monospace;font-size:13px;letter-spacing:.02em;line-height:1.4;
+    border-bottom:1px solid rgba(239,227,216,.14)}
+  #bf-banner.bf-show{display:block}
+  #bf-banner .bf-in{max-width:1200px;margin:0 auto;padding:9px 44px 9px 16px;display:flex;
+    align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}
+  #bf-banner .bf-tag{font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    background:#efe3d8;color:#1c4d33;padding:3px 7px;border-radius:3px;font-weight:600}
+  #bf-banner .bf-msg b{color:#fff;font-weight:600}
+  #bf-banner .bf-timer{font-variant-numeric:tabular-nums;opacity:.9;white-space:nowrap}
+  #bf-banner .bf-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  #bf-banner .bf-btn{color:#1c4d33;background:#efe3d8;border:0;font:inherit;cursor:pointer;padding:5px 11px;
+    border-radius:4px;font-size:12px;white-space:nowrap;transition:background 160ms}
+  #bf-banner .bf-btn:hover{background:#fff}
+  #bf-banner .bf-btn.bf-ghost{background:transparent;color:#efe3d8;
+    box-shadow:inset 0 0 0 1px rgba(239,227,216,.5)}
+  #bf-banner .bf-btn.bf-ghost:hover{background:rgba(239,227,216,.12)}
+  #bf-banner .bf-x{position:absolute;right:10px;top:50%;transform:translateY(-50%);
+    background:none;border:0;color:#efe3d8;opacity:.6;font:inherit;font-size:16px;cursor:pointer;padding:4px 6px}
+  #bf-banner .bf-x:hover{opacity:1}
+  @media (max-width:640px){
+    #bf-banner .bf-in{gap:8px;padding:8px 36px 9px 12px;font-size:12px}
+    #bf-banner .bf-hide-sm{display:none}
+  }
+</style>
+<div id="bf-banner" role="region" aria-label="Black Friday offer">
+  <div class="bf-in">
+    <span class="bf-tag">Black Friday</span>
+    <span class="bf-msg">Pro <b>up to 33% off</b>, buildings and roads included<span class="bf-hide-sm">. Prepay 3 or 6 months, or get 40% extra credits</span></span>
+    <span class="bf-timer" id="bf-timer">Ends in --</span>
+    <span class="bf-btns">
+      <button class="bf-btn" id="bf-6m" type="button">6 months &pound;159</button>
+      <button class="bf-btn bf-ghost" id="bf-3m" type="button">3 months &pound;89</button>
+      <button class="bf-btn bf-ghost" id="bf-cr" type="button">70 credits for &pound;50</button>
+    </span>
+  </div>
+  <button class="bf-x" id="bf-x" type="button" aria-label="Close offer banner">&times;</button>
+</div>
+<script>
+(function () {
+  var BF_START = Date.parse('2026-11-23T00:00:00Z');
+  var BF_END   = Date.parse('2026-11-30T23:59:00Z');
+  var el = document.getElementById('bf-banner');
+  if (!el) return;
+  var qs = new URLSearchParams(location.search);
+  // Back from a pay-first checkout (no account when they paid): say what happens next.
+  var paid = qs.get('bf_paid');
+  if (paid) {
+    try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+    el.querySelector('.bf-in').innerHTML = '<span class="bf-tag">Thank you</span><span class="bf-msg">Payment received. New to Topo-grapher? We have emailed you a link to set your password'
+      + (paid === 'credits' ? ' and use your credits' : ' and start using Pro') + '. Check your inbox and spam folder. Already have an account? Sign in with the email you paid with.</span>';
+    document.getElementById('bf-x').addEventListener('click', function () { el.classList.remove('bf-show'); });
+    el.classList.add('bf-show');
+    return;
+  }
+  var force = /[?&]bf_preview=1/.test(location.search);
+  var now = Date.now();
+  if (!force && (now < BF_START || now >= BF_END)) return;
+  try { if (!force && localStorage.getItem('topo_bf26_closed') === '1') return; } catch (e) {}
+
+  // track() and the checkout functions are defined further down the page, so look them up at call time.
+  function fire(ev, p) { try { if (typeof track === 'function') track(ev, p || {}); } catch (e) {} }
+  // Pro and Company accounts already have Pro: they only see the credits deal.
+  function hasPlan() {
+    try { return typeof _currentProfile !== 'undefined' && !!_currentProfile && (_currentProfile.plan === 'pro' || _currentProfile.plan === 'company'); } catch (e) { return false; }
+  }
+  var a3 = document.getElementById('bf-3m'), a6 = document.getElementById('bf-6m'), cr = document.getElementById('bf-cr');
+  function buyPro(offer) {
+    fire('bf26_banner_click', { plan: offer });
+    if (hasPlan() || typeof startCheckout !== 'function') return;
+    startCheckout('pro', { context: offer, offer: offer });
+  }
+  a3.addEventListener('click', function () { buyPro('bf26_3m'); });
+  a6.addEventListener('click', function () { buyPro('bf26_6m'); });
+  cr.addEventListener('click', function () {
+    fire('bf26_banner_click', { plan: 'bf26_credits' });
+    if (typeof _creditCheckout !== 'function') return;
+    _creditCheckout({ pack: 'bf26', successUrl: 'https://topo-grapher.com?credits=added', cancelUrl: 'https://topo-grapher.com?credits=cancelled' }, 'bf26');
+  });
+
+  // From the mobile page's banner: ?bf_buy=bf26_3m|bf26_6m|bf26_credits starts that checkout once the page is up.
+  var buy = qs.get('bf_buy');
+  if (buy) {
+    try { qs.delete('bf_buy'); history.replaceState(null, '', location.pathname + (qs.toString() ? '?' + qs.toString() : '') + location.hash); } catch (e) {}
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        if (buy === 'bf26_3m') a3.click(); else if (buy === 'bf26_6m') a6.click(); else if (buy === 'bf26_credits') cr.click();
+      }, 1500);
+    });
+  }
+
+  document.getElementById('bf-x').addEventListener('click', function () {
+    el.classList.remove('bf-show');
+    try { localStorage.setItem('topo_bf26_closed', '1'); } catch (e) {}
+    fire('bf26_banner_closed');
+  });
+
+  var t = document.getElementById('bf-timer');
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function tick() {
+    var ms = BF_END - Date.now();
+    if (ms <= 0 && !force) { el.classList.remove('bf-show'); clearInterval(iv); return; }
+    if (ms < 0) ms = 0;
+    var s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600),
+        m = Math.floor(s % 3600 / 60), sec = s % 60;
+    t.textContent = 'Ends in ' + (d > 0 ? d + 'd ' : '') + pad(h) + ':' + pad(m) + ':' + pad(sec);
+    var pro = hasPlan();
+    a3.style.display = a6.style.display = pro ? 'none' : '';
+  }
+  tick();
+  var iv = setInterval(tick, 1000);
+  el.classList.add('bf-show');
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { fire('bf26_banner_shown'); });
+  else fire('bf26_banner_shown');
+})();
+</script>
+<!-- ===== Black Friday 2026 banner END ===== -->
 
 <!-- Cookie consent banner -->
 <div id="cookie-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:99999;background:var(--bg-card);border-top:1px solid var(--border-md);padding:14px 24px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text-mid);line-height:1.6;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
@@ -4265,13 +4387,13 @@ async function handleSession(session) {
   // handleSession() runs. Before this, the in-memory plan let the original tab AND the
   // email-confirm tab both resume, firing two Stripe sessions.
   if (!window._checkoutResumeDone) {
-    let resumePlan = null, lsFailed = false, resumeCtx = null;
+    let resumePlan = null, lsFailed = false, resumeCtx = null, resumeOffer = null;
     try {
       const raw = localStorage.getItem('topo_pending_checkout');
       if (raw) {
         localStorage.removeItem('topo_pending_checkout');
         const p = JSON.parse(raw);
-        if (p && p.plan && (Date.now() - (p.ts || 0)) < 3600000) { resumePlan = p.plan; resumeCtx = p.ctx || null; }
+        if (p && p.plan && (Date.now() - (p.ts || 0)) < 3600000) { resumePlan = p.plan; resumeCtx = p.ctx || null; resumeOffer = p.offer || null; }
       }
     } catch(e) { lsFailed = true; }
     if (!resumePlan && lsFailed) resumePlan = window._pendingCheckoutPlan || null;
@@ -4281,7 +4403,7 @@ async function handleSession(session) {
       track('checkout_resumed_after_auth', { plan: resumePlan });
       const _msg = 'Account ready. Taking you to secure checkout…';
       _showCheckoutOverlay(_msg);
-      setTimeout(() => startCheckout(resumePlan, { message: _msg, context: resumeCtx }), 500);
+      setTimeout(() => startCheckout(resumePlan, { message: _msg, context: resumeCtx, offer: resumeOffer || undefined }), 500);
     }
   }
 }
@@ -5003,7 +5125,9 @@ function _finishRecovery(outcome) {
 function _handleTokenHashLink() {
   if (!_tokenHashLink) return;
   const type = _tokenHashLink.type;
-  document.getElementById('auth-title').textContent = type === 'recovery' ? 'Reset your password' : 'Confirm your email';
+  // welcome=1: the set-password email a pay-first Black Friday buyer gets (stripe-worker-v6.js).
+  const welcome = new URLSearchParams(window.location.search).get('welcome') === '1';
+  document.getElementById('auth-title').textContent = type === 'recovery' ? (welcome ? 'Set your password' : 'Reset your password') : 'Confirm your email';
   document.getElementById('auth-subtitle').textContent = type === 'recovery'
     ? 'Press Continue to choose a new password.'
     : 'Press Continue to finish confirming your email and sign in.';
@@ -5490,7 +5614,9 @@ async function _creditUnlockNow() {
   btn.disabled = false;
 }
 async function _creditCheckout(body, label) {
-  if (!_currentUser) {
+  // Black Friday pack: pay first with no account; the worker makes it and emails a set-password link.
+  var bfGuest = !_currentUser && !!body && body.pack === 'bf26';
+  if (!_currentUser && !bfGuest) {
     // Sign-in may leave the page (Google, email link), so the purchase waits in localStorage.
     try { localStorage.setItem('topo_pending_credit', JSON.stringify({ body: body, label: label, ts: Date.now() })); } catch (e) {}
     closeCreditModal();
@@ -5507,8 +5633,8 @@ async function _creditCheckout(body, label) {
   try {
     var res = await fetch(WEBHOOK_WORKER + '/create-credit-checkout', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': await getAuthHeader() },
-      body: JSON.stringify(body), signal: AbortSignal.timeout(15000)
+      headers: bfGuest ? { 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json', 'Authorization': await getAuthHeader() },
+      body: JSON.stringify(bfGuest ? Object.assign({}, body, { guest: true, successUrl: 'https://topo-grapher.com?bf_paid=credits' }) : body), signal: AbortSignal.timeout(15000)
     });
     var data = await res.json().catch(function(){ return {}; });
     if (!data.url) throw new Error(data.error || ('HTTP ' + res.status));
@@ -6281,12 +6407,15 @@ function _closeCheckoutOverlay() {
 // There is no trial, so every subscription bills today. Never send someone to a page that
 // charges them without saying so first: show the price, including Survey15, and let them choose.
 const CHECKOUT_PRICE_TEXT = { pro: '£39.99 per month', company: '£29.99 per seat per month' };
-function _showNoTrialConfirm(plan, url, resetBtn, discount) {
+function _showNoTrialConfirm(plan, url, resetBtn, discount, offer) {
   const ov = document.getElementById('checkout-overlay'); if (!ov) { _goToCheckout(url); return; }
   document.getElementById('checkout-spinner').style.display = 'none';
   document.getElementById('checkout-overlay-msg').textContent = plan === 'company' ? 'Confirm your Company plan' : 'Confirm your Pro plan';
   const subEl = document.getElementById('checkout-overlay-sub');
-  subEl.textContent = (discount && plan === 'pro')
+  // Black Friday 2026 prepaid Pro. Prices MUST match BF26_PRO in stripe-worker-v6.js.
+  const bfTxt = offer === 'bf26_6m' ? 'You pay £159 today for 6 months of Pro. After that it renews at £39.99 per month until you cancel.'
+    : offer === 'bf26_3m' ? 'You pay £89 today for 3 months of Pro. After that it renews at £39.99 per month until you cancel.' : '';
+  subEl.textContent = bfTxt ? bfTxt : (discount && plan === 'pro')
     ? 'You pay £24.99 today with your £15 discount, then £39.99 per month. You can cancel any time.'
     : 'You pay ' + (CHECKOUT_PRICE_TEXT[plan] || CHECKOUT_PRICE_TEXT.pro) + ', starting today. You can cancel any time.';
   subEl.style.display = '';
@@ -6323,8 +6452,10 @@ async function _createCheckoutSession(payload) {
   });
   const data = await res.json();
   if (!data.url) throw new Error(data.error || 'Failed to create checkout');
+  // A worker without the Black Friday code would sell normal Pro at the full price: never go on.
+  if (payload.offer && data.offer !== payload.offer) throw new Error('This Black Friday offer is not available right now');
   // trial === false: no trial, billed today. An older worker omits it (undefined !== false).
-  return { url: data.url, trial: data.trial, discount: data.discount === true };
+  return { url: data.url, trial: data.trial, discount: data.discount === true, offer: data.offer || null };
 }
 // The analytics insert is a plain fetch with no keepalive, so give it a beat to leave
 // the browser before the page navigates away to Stripe.
@@ -6362,10 +6493,11 @@ async function startCheckout(plan, opts) {
   const email = _currentUser ? _currentUser.email : ((opts && opts.email) || null);
   const _ctx = (opts && opts.context) || null;   // which popup or button started this checkout
   window._lastCheckoutCtx = _ctx; window._lastCheckoutPlan = plan;
-  if (!email) {
+  // Black Friday offers are pay-first: no signup, Stripe asks for the email and the worker makes the account.
+  if (!email && !(opts && opts.offer)) {
     track('checkout_gated', _ctx ? { plan, context: _ctx } : { plan });
     window._pendingCheckoutPlan = plan;
-    try { localStorage.setItem('topo_pending_checkout', JSON.stringify({ plan, ts: Date.now(), ctx: _ctx })); } catch(e) {}
+    try { localStorage.setItem('topo_pending_checkout', JSON.stringify({ plan, ts: Date.now(), ctx: _ctx, offer: (opts && opts.offer) || null })); } catch(e) {}
     openAuth('signup', 'checkout');
     return;
   }
@@ -6377,10 +6509,10 @@ async function startCheckout(plan, opts) {
   const btn = document.getElementById('checkout-btn-' + plan);
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
   try {
-    const session = await _createCheckoutSession({ priceId, email, plan, successUrl: 'https://topo-grapher.com?upgraded=true', cancelUrl: 'https://topo-grapher.com?checkout=cancelled#pricing' });
+    const session = await _createCheckoutSession({ priceId, email, plan, offer: (opts && opts.offer) || undefined, guest: !email, successUrl: email ? 'https://topo-grapher.com?upgraded=true' : 'https://topo-grapher.com?bf_paid=pro', cancelUrl: 'https://topo-grapher.com?checkout=cancelled#pricing' });
     track('checkout_started', Object.assign(session.trial === false ? { plan, trial: false } : { plan }, _ctx ? { context: _ctx } : {}, session.discount ? { discount: 'survey_15' } : {}));
     if (session.trial === false) {
-      _showNoTrialConfirm(plan, session.url, function() { if (btn) { btn.textContent = 'Go Pro →'; btn.disabled = false; } }, session.discount);
+      _showNoTrialConfirm(plan, session.url, function() { if (btn) { btn.textContent = 'Go Pro →'; btn.disabled = false; } }, session.discount, session.offer);
     } else {
       _goToCheckout(session.url, opts && opts.hold); // _checkoutInFlight stays true: the page is navigating away
     }
