@@ -1921,6 +1921,10 @@ function declineCookies() {
         <div class="auth-error" id="newpass-error"></div>
         <button type="button" class="auth-link below" onclick="_finishRecovery('skipped')">Skip for now</button>
       </div>
+      <div id="auth-form-confirmlink" style="display:none">
+        <button class="auth-submit" id="confirmlink-submit" onclick="_continueTokenHashLink()">Continue</button>
+        <div class="auth-error" id="confirmlink-error"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -3907,6 +3911,14 @@ const _authLinkParams = new URLSearchParams((window.location.hash || '').replace
 // True from a password reset link until the user saves a new password or skips.
 let _recoveryPending = _authLinkParams.get('type') === 'recovery' && !!_authLinkParams.get('access_token');
 let _recoverySession = null;
+// A token_hash email link (?token_hash=...&type=email|recovery), the scanner-proof format the Supabase
+// email templates use. supabase-js ignores it (it only reacts to access_token, error or code), and
+// nothing is verified until the person presses Continue: see _handleTokenHashLink().
+const _tokenHashLink = (function () {
+  const q = new URLSearchParams(window.location.search);
+  const th = q.get('token_hash'), ty = q.get('type');
+  return th && ty ? { token_hash: th, type: ty } : null;
+})();
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let _currentUser = null;
 let _currentProfile = null;
@@ -4908,6 +4920,7 @@ function switchTab(tab) {
   document.getElementById('auth-form-signup').style.display = tab === 'signup' ? 'block' : 'none';
   document.getElementById('auth-form-forgot').style.display = tab === 'forgot' ? 'block' : 'none';
   document.getElementById('auth-form-newpass').style.display = tab === 'newpass' ? 'block' : 'none';
+  document.getElementById('auth-form-confirmlink').style.display = tab === 'confirmlink' ? 'block' : 'none';
   document.getElementById('auth-choices').style.display = (tab === 'signin' || tab === 'signup') ? 'block' : 'none';
   document.getElementById('tab-signin').classList.toggle('active', tab === 'signin');
   document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
@@ -4943,6 +4956,7 @@ async function submitForgotPassword() {
     );
     if (error) { errEl.textContent = _authErrMsg(error.message); return; }
     track('password_reset_requested', {});
+    try { localStorage.setItem('topo_reset_requested_at', String(Date.now())); } catch (e) {} // read by _authLinkKind()
     // Same wording whether or not the account exists, so this cannot be used to probe for emails.
     errEl.style.color = 'var(--accent)';
     errEl.textContent = 'If that email has an account, a reset link is on its way. Check your inbox and spam folder.';
@@ -4982,12 +4996,95 @@ function _finishRecovery(outcome) {
   closeAuth();
   if (_recoverySession) handleSession(_recoverySession).catch(e => console.warn('Auth resume error:', e.message));
 }
-// A reset or confirmation link that expired or was already used comes back with an error in the hash.
-function _handleExpiredAuthLink() {
-  if (_authLinkParams.get('error_code') !== 'otp_expired') return;
-  history.replaceState(null, '', window.location.pathname + window.location.search);
-  track('password_reset_link_expired', {});
-  showForgotPassword('That email link has expired or was already used. Enter your email for a new one.');
+// Scanner-proof email links. Mail scanners (Outlook Safe Links and similar) open every link in an
+// email about a second after delivery. An old-style link verified on that visit, so the scanner used
+// the one-time token and the person's own click failed. A token_hash link only loads this page: the
+// token is spent when the person presses Continue, which a scanner never does.
+function _handleTokenHashLink() {
+  if (!_tokenHashLink) return;
+  const type = _tokenHashLink.type;
+  document.getElementById('auth-title').textContent = type === 'recovery' ? 'Reset your password' : 'Confirm your email';
+  document.getElementById('auth-subtitle').textContent = type === 'recovery'
+    ? 'Press Continue to choose a new password.'
+    : 'Press Continue to finish confirming your email and sign in.';
+  document.getElementById('confirmlink-error').textContent = '';
+  switchTab('confirmlink');
+  document.getElementById('auth-overlay').classList.add('show');
+  track('auth_link_confirm_shown', { type: type });
+}
+function _stripTokenHashFromUrl() {
+  const u = new URL(window.location.href);
+  u.searchParams.delete('token_hash'); u.searchParams.delete('type');
+  history.replaceState(null, '', u.pathname + u.search + u.hash);
+}
+async function _continueTokenHashLink() {
+  if (!_tokenHashLink) return;
+  const btn = document.getElementById('confirmlink-submit');
+  if (btn.disabled) return;
+  const type = _tokenHashLink.type;
+  btn.disabled = true; btn.textContent = 'Checking...';
+  // verifyOtp signs the person in and fires PASSWORD_RECOVERY (recovery) or SIGNED_IN to the
+  // onAuthStateChange listener in initAuth(). Its handleSession() then shows "Choose a new password"
+  // for a reset, or runs the normal sign-in work (credits, a pending download) for a confirmation.
+  // Set the reset flag first so that work waits for the new password, as with old-style reset links.
+  if (type === 'recovery') _recoveryPending = true;
+  let error = null;
+  try {
+    const res = await _withTimeout(_sb.auth.verifyOtp({ token_hash: _tokenHashLink.token_hash, type: type }), 15000);
+    error = res && res.error;
+  } catch (e) { error = e; }
+  _stripTokenHashFromUrl();
+  btn.disabled = false; btn.textContent = 'Continue';
+  if (error) {
+    // Used, expired or broken: the same friendly prompt as an expired old-style link.
+    _recoveryPending = false;
+    document.getElementById('auth-overlay').classList.remove('show');
+    _handleExpiredAuthLink('verify_otp', type === 'recovery' ? 'recovery' : 'signup');
+    return;
+  }
+  track('auth_link_confirmed', { type: type });
+  // For a reset, handleSession() has moved the modal on to the new-password form. For a
+  // confirmation, close the modal if it is still on this screen.
+  if (type !== 'recovery' && document.getElementById('auth-form-confirmlink').style.display === 'block') closeAuth();
+}
+// Which kind of email link this was. Supabase's error redirect does not say, but a signup or a
+// reset started in this browser in the last 24 hours does (both stamps are set below).
+function _authLinkKind() {
+  try {
+    const r = +localStorage.getItem('topo_reset_requested_at') || 0, s = +localStorage.getItem('topo_signup_at') || 0;
+    const fresh = t => t > 0 && (Date.now() - t) < 86400000;
+    if (fresh(r) && r >= s) return 'recovery';
+    if (fresh(s)) return 'signup';
+  } catch (e) {}
+  return 'unknown';
+}
+// A confirmation or reset link that was already used, or that really expired, comes back with an
+// error in the URL (hash or query): "otp_expired", "Email link is invalid or has expired". Most are
+// signup links that a mail scanner (Outlook Safe Links on work and .edu inboxes) opened a second
+// before the person did: the scanner's visit already confirmed the account, so this must not be a
+// dead end. Signup (or unknown): open sign-in. Reset: open the reset form for a fresh link.
+// `source` and `kindHint` are passed when a token_hash link fails to verify; otherwise the URL decides.
+function _handleExpiredAuthLink(source, kindHint) {
+  if (!source) {
+    const p = new URLSearchParams((window.location.hash || '').replace(/^#/, '') + '&' + (window.location.search || '').replace(/^\?/, ''));
+    const desc = (p.get('error_description') || '').toLowerCase();
+    if (p.get('error_code') !== 'otp_expired' && !/email link|one-time token|otp/.test(desc)) return;
+    // Drop only the auth error parameters, so a refresh does not show this again.
+    const u = new URL(window.location.href);
+    ['error', 'error_code', 'error_description', 'sb'].forEach(k => u.searchParams.delete(k));
+    if (/(^|&)(error|error_code|error_description)=/.test((u.hash || '').replace(/^#/, ''))) u.hash = '';
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+  }
+  const type = kindHint || _authLinkKind();
+  track('auth_link_expired', { type: type, source: source || 'url_error' });
+  if (type === 'recovery') {
+    showForgotPassword("That reset link has already been used. Enter your email and we'll send a new one.");
+    return;
+  }
+  openAuth('signin');
+  const titleEl = document.getElementById('auth-title'), subEl = document.getElementById('auth-subtitle');
+  if (titleEl) titleEl.textContent = 'Sign in';
+  if (subEl) subEl.textContent = 'Your email is confirmed. Sign in to continue.';
 }
 // Map raw Supabase/network error strings → readable UI copy
 function _authErrMsg(raw) {
@@ -5067,6 +5164,7 @@ async function submitAuth(type) {
         return;
       }
       track('signup_completed', Object.assign({ method: 'email' }, getFirstTouch()));
+      try { localStorage.setItem('topo_signup_at', String(Date.now())); } catch (e) {} // read by _authLinkKind()
       // Signed up from a "Start free trial" click and still waiting on email confirmation:
       // don't strand them in the inbox. Go straight to Stripe with the typed email and let
       // them confirm afterwards. The profile row already exists (created at signUp), so the
@@ -11040,6 +11138,7 @@ document.addEventListener('DOMContentLoaded', function() {
   _roleFromUrl();
   _showConfirmBanner(); // no-op unless a pay-before-confirm trial is still waiting on email confirmation
   _handleOAuthReturnError(); // Google sign-in cancelled/failed: reopen the modal with a message
+  _handleTokenHashLink(); // ?token_hash= email link: verify only when the person presses Continue
   _handleExpiredAuthLink(); // dead reset or confirmation link: offer a new one
   // Direct link into the upgrade modal (e.g. an email CTA) — ?openupgrade=<context>.
   // Attribution (utm_* etc.) is already captured above via captureFirstTouch()
