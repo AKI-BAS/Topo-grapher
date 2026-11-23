@@ -14,6 +14,9 @@
       return;
     }
     if (/(?:^|; )tg_prefers=desktop(?:;|$)/.test(document.cookie)) return;
+    // Black Friday 2026 email links (?utm_campaign=bf26_... or ?bf=...) open the offer popup on this
+    // page, so phones stay here instead of losing the link on /mobile.html. Delete after 1 Dec 2026.
+    if (/[?&](utm_campaign=bf26_|bf=)/.test(q)) return;
     // Phone UA sniff — deliberately excludes iPad (reports desktop UA on iPadOS 13+).
     if (/Mobi|iPhone|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
       location.replace('/mobile.html');
@@ -1156,6 +1159,8 @@ html.theme-switching *:not(.tg__thumb) { transition: none !important; }
   var clock = document.getElementById('bf-clock');
   clock.addEventListener('click', function () {
     fire('bf26_banner_click', {});
+    // Opens the Black Friday popup (defined with the pricing block); the pricing block is the fallback.
+    if (typeof window._bf26OpenPopup === 'function') { window._bf26OpenPopup('banner'); return; }
     var p = document.getElementById('bf-pricing');
     if (p) p.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
@@ -1679,14 +1684,45 @@ function declineCookies() {
       cursor:pointer;padding:6px 12px;border-radius:4px;transition:background 160ms}
     .bfp-wrap .bfp-btn:hover{background:#fff}
     .bfp-wrap .bfp-note{margin-top:10px;font-size:11px;opacity:.75;line-height:1.5}
-    #bf-pop{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
-    #bf-pop .bfp-pop-card{position:relative;width:100%;max-width:760px;max-height:90vh;overflow:auto;padding:22px 22px 18px}
-    #bf-pop .bfp-clock{font-family:'Syne',sans-serif;font-weight:800;font-size:34px;line-height:1.1;letter-spacing:-.01em;color:#fff;margin:2px 0 14px}
-    #bf-pop .bfp-clock .bf-n{display:inline-block;min-width:1.4em;text-align:center}
-    #bf-pop .bfp-clock em{font-style:normal;color:#9aba6a}
-    #bf-pop .bfp-pop-x{position:absolute;right:10px;top:8px;background:none;border:0;color:#efe3d8;opacity:.7;font-size:22px;cursor:pointer;padding:4px 8px}
-    #bf-pop .bfp-pop-x:hover{opacity:1}
-    @media (max-width:640px){ #bf-pop .bfp-clock{font-size:26px} }
+    /* Black Friday popup, styled to bf26-popup-mockup.png. Always dark, whatever the site theme. */
+    #bf-pop{position:fixed;inset:0;z-index:100000;background:rgba(8,8,7,.72);display:flex;align-items:center;justify-content:center;padding:16px}
+    #bf-pop .bfx-card{position:relative;width:100%;max-width:540px;max-height:calc(100vh - 32px);overflow:auto;background:#161614;color:#f0ede8;
+      border:1px solid rgba(240,237,232,.1);border-radius:12px;padding:30px 30px 22px;font-family:"DM Mono",monospace;box-shadow:0 24px 80px rgba(0,0,0,.55)}
+    #bf-pop .bfx-x{position:absolute;right:12px;top:10px;background:none;border:0;color:#a09890;font-size:24px;line-height:1;cursor:pointer;padding:6px 10px;touch-action:manipulation}
+    #bf-pop .bfx-x:hover{color:#f0ede8}
+    #bf-pop .bfx-tag{display:inline-block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;background:#efe3d8;color:#161614;padding:4px 8px;border-radius:3px}
+    #bf-pop .bfx-h{font-family:'Syne',sans-serif;font-weight:800;font-size:38px;line-height:1.02;letter-spacing:-.01em;margin:14px 0 8px;color:#f0ede8}
+    #bf-pop .bfx-h span{display:block;color:#9aba6a}
+    #bf-pop .bfx-sub{font-size:13px;color:#c9c3bb;line-height:1.5;margin:0 0 18px}
+    #bf-pop .bfx-clock{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
+    #bf-pop .bfx-box{background:#1f1e1b;border-radius:6px;padding:10px 4px 8px;text-align:center}
+    #bf-pop .bfx-num{display:block;font-family:'Syne',sans-serif;font-weight:800;font-size:30px;line-height:1.05;color:#f0ede8}
+    #bf-pop .bfx-lab{display:block;font-size:10px;letter-spacing:.14em;color:#8a837b;margin-top:4px}
+    #bf-pop .bfx-plans{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+    #bf-pop .bfx-plan{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:transparent;color:inherit;font:inherit;cursor:pointer;
+      border:1px solid #3a3935;border-radius:8px;padding:14px 16px;transition:border-color 160ms,background 160ms;
+      -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+    #bf-pop .bfx-plan[aria-checked="true"]{border-color:#c7d89a;background:#1c1e17}
+    #bf-pop .bfx-radio{flex:none;width:18px;height:18px;border-radius:50%;border:1.5px solid #8a837b;box-sizing:border-box}
+    #bf-pop .bfx-plan[aria-checked="true"] .bfx-radio{width:24px;height:24px;border:6px solid #9aba6a}
+    #bf-pop .bfx-mid{flex:1;min-width:0}
+    #bf-pop .bfx-name{font-size:14px;color:#f0ede8}
+    #bf-pop .bfx-badge{display:inline-block;margin-left:8px;font-size:10px;letter-spacing:.1em;background:#9aba6a;color:#161614;padding:2px 6px;border-radius:2px;vertical-align:1px}
+    #bf-pop .bfx-per{display:block;font-size:11px;color:#8a837b;margin-top:3px}
+    #bf-pop .bfx-price{flex:none;text-align:right;white-space:nowrap}
+    #bf-pop .bfx-price s{font-size:12px;color:#7a746c;margin-right:6px}
+    #bf-pop .bfx-price b{font-size:18px;font-weight:500;color:#f0ede8}
+    #bf-pop .bfx-cta{display:block;width:100%;border:0;border-radius:6px;background:#1f4d33;color:#efe3d8;font:inherit;font-size:14px;padding:14px;
+      cursor:pointer;transition:background 160ms;touch-action:manipulation}
+    #bf-pop .bfx-cta:hover{background:#25603f}
+    #bf-pop .bfx-fine{font-size:11px;color:#8a837b;line-height:1.6;text-align:center;margin:12px 0 0}
+    @media (max-width:640px){
+      #bf-pop{align-items:flex-end;padding:0}
+      #bf-pop .bfx-card{max-width:none;border-radius:14px 14px 0 0;border-bottom:0;padding:24px 18px calc(18px + env(safe-area-inset-bottom));max-height:92vh}
+      #bf-pop .bfx-h{font-size:30px}
+      #bf-pop .bfx-num{font-size:24px}
+      #bf-pop .bfx-plan{padding:12px;gap:12px}
+    }
   </style>
   <div id="bf-pricing" class="bfp-wrap" role="region" aria-label="Black Friday offers">
     <div class="bfp-top">
@@ -1744,49 +1780,115 @@ function declineCookies() {
 
     function pad(n) { return n < 10 ? '0' + n : '' + n; }
     function left() { return Math.max(0, Math.floor((BF_END - Date.now()) / 1000)); }
-    function clockHtml(s) {
-      var d = Math.floor(s / 86400);
-      return (d > 0 ? '<span class="bf-n">' + d + '</span><em>d</em> ' : '')
-        + '<span class="bf-n">' + pad(Math.floor(s % 86400 / 3600)) + '</span><em>:</em>'
-        + '<span class="bf-n">' + pad(Math.floor(s % 3600 / 60)) + '</span><em>:</em>'
-        + '<span class="bf-n">' + pad(s % 60) + '</span>';
-    }
 
-    // One-time popup after the visitor's first successful generation in the sale (not for Pro or Company).
-    var pop = null;
-    function closePop() { if (pop) { pop.remove(); pop = null; document.removeEventListener('keydown', onKey); } }
+    // The Black Friday popup (restyled 2026-11-23 to bf26-popup-mockup.png). Opens from:
+    //  - an email link: ?utm_campaign=bf26_6m|bf26_3m|bf26_credits or ?bf=6m|3m|credits, straight away on
+    //    load with that deal chosen, on every visit until it is closed in that visit;
+    //  - the slim banner, always (Pro and Company accounts only get the credits deal there);
+    //  - otherwise once per browser for the whole offer: after the first terrain result or 45 s on the
+    //    page, whichever comes first. Never for Pro or Company.
+    var PLANS = {
+      bf26_6m: { name: '6 months', badge: 'BEST VALUE', per: '£26.50 a month', was: '£240', price: '£159', cta: 'Get 6 months for £159', pro: true },
+      bf26_3m: { name: '3 months', per: '£29.67 a month', was: '£120', price: '£89', cta: 'Get 3 months for £89', pro: true },
+      bf26_credits: { name: '70 credits', per: '40% extra, no subscription', price: '£50', cta: 'Get 70 credits for £50' }
+    };
+    var FINE_PRO = 'One payment today. Then £39.99/month after the prepaid months. Cancel any time. Offer ends Mon 30 Nov, 23:59 GMT.';
+    var FINE_CREDITS = 'One payment today, no subscription. Normally 55 credits for £50. Offer ends Mon 30 Nov, 23:59 GMT.';
+    var pop = null, popSel = 'bf26_6m', popTrigger = null;
+    function closePop(silent) {
+      if (!pop) return;
+      pop.remove(); pop = null; document.removeEventListener('keydown', onKey);
+      try { localStorage.setItem('topo_bf26_pop', '1'); } catch (e) {}   // no more automatic opening in this browser
+      if (popTrigger === 'deeplink') { try { sessionStorage.setItem('topo_bf26_dl_closed', '1'); } catch (e) {} }
+      if (!silent) fire('bf26_popup_closed', { trigger: popTrigger });
+    }
     function onKey(e) { if (e.key === 'Escape') closePop(); }
-    function showPop() {
-      if (pop || hasPlan()) return;
+    function selectPlan(plan, byUser) {
+      if (!pop || !PLANS[plan]) return;
+      popSel = plan;
+      var rows = pop.querySelectorAll('.bfx-plan');
+      for (var i = 0; i < rows.length; i++) rows[i].setAttribute('aria-checked', rows[i].getAttribute('data-plan') === plan ? 'true' : 'false');
+      pop.querySelector('.bfx-cta').textContent = PLANS[plan].cta;
+      pop.querySelector('.bfx-fine').textContent = PLANS[plan].pro ? FINE_PRO : FINE_CREDITS;
+      if (byUser) fire('bf26_popup_plan_selected', { plan: plan });
+    }
+    function updatePopClock(s) {
+      if (!pop) return;
+      var n = pop.querySelectorAll('.bfx-num'), v = [Math.floor(s / 86400), Math.floor(s % 86400 / 3600), Math.floor(s % 3600 / 60), s % 60];
+      for (var i = 0; i < 4; i++) n[i].textContent = i === 0 ? String(v[0]) : pad(v[i]);
+    }
+    window._bf26OpenPopup = function (trigger, plan) {
+      if (pop) { if (plan) selectPlan(plan); return; }
+      var pro = hasPlan();
+      if (pro && trigger !== 'banner') return;
+      popTrigger = trigger;
+      var keys = pro ? ['bf26_credits'] : ['bf26_6m', 'bf26_3m', 'bf26_credits'];
+      var rows = keys.map(function (k) {
+        var p = PLANS[k];
+        return '<button type="button" class="bfx-plan" role="radio" aria-checked="false" data-plan="' + k + '">'
+          + '<span class="bfx-radio" aria-hidden="true"></span>'
+          + '<span class="bfx-mid"><span class="bfx-name">' + p.name + (p.badge ? '<span class="bfx-badge">' + p.badge + '</span>' : '') + '</span>'
+          + '<span class="bfx-per">' + p.per + '</span></span>'
+          + '<span class="bfx-price">' + (p.was ? '<s>' + p.was + '</s>' : '') + '<b>' + p.price + '</b></span></button>';
+      }).join('');
       pop = document.createElement('div');
       pop.id = 'bf-pop';
-      pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-modal', 'true'); pop.setAttribute('aria-label', 'Black Friday offers');
-      pop.innerHTML = '<div class="bfp-wrap bfp-pop-card"><button class="bfp-pop-x" type="button" aria-label="Close">&times;</button>'
-        + '<div class="bfp-top"><span class="bfp-tag">Black Friday</span><span class="bfp-head">Your site is ready. Pro is up to 33% off this week, buildings and roads included.</span></div>'
-        + '<div class="bfp-clock" id="bfp-pop-clock">' + clockHtml(left()) + '</div>'
-        + el.querySelector('.bfp-deals').outerHTML + el.querySelector('.bfp-note').outerHTML + '</div>';
+      pop.innerHTML = '<div class="bfx-card" role="dialog" aria-modal="true" aria-labelledby="bfx-h">'
+        + '<button type="button" class="bfx-x" aria-label="Close">&times;</button>'
+        + '<span class="bfx-tag">Black Friday</span>'
+        + '<h2 class="bfx-h" id="bfx-h">' + (pro ? 'Black Friday credits,<span>40% extra.</span>' : 'Your next site,<span>33% cheaper.</span>') + '</h2>'
+        + '<p class="bfx-sub">' + (pro ? 'A one-off credits pack at the Black Friday price.' : 'Prepaid Pro. More sites, DXF and IFC export, saved projects.') + '</p>'
+        + '<div class="bfx-clock" role="timer" aria-label="Time left in the offer">' + ['DAYS', 'HRS', 'MIN', 'SEC'].map(function (l) {
+            return '<div class="bfx-box"><span class="bfx-num">--</span><span class="bfx-lab">' + l + '</span></div>';
+          }).join('') + '</div>'
+        + '<div class="bfx-plans" role="radiogroup" aria-label="Choose a deal">' + rows + '</div>'
+        + '<button type="button" class="bfx-cta"></button>'
+        + '<p class="bfx-fine"></p></div>';
       pop.addEventListener('click', function (e) {
-        if (e.target === pop || e.target.closest('.bfp-pop-x')) { fire('bf26_popup_closed'); closePop(); return; }
-        var b = e.target.closest('[data-bf]');
-        if (b) { var offer = b.getAttribute('data-bf'); closePop(); window._bf26Buy(offer, 'popup'); }
+        if (e.target === pop || e.target.closest('.bfx-x')) { closePop(); return; }
+        var row = e.target.closest('.bfx-plan');
+        if (row) { selectPlan(row.getAttribute('data-plan'), true); return; }
+        if (e.target.closest('.bfx-cta')) {
+          var chosen = popSel;
+          fire('bf26_popup_cta', { plan: chosen });
+          closePop(true);
+          window._bf26Buy(chosen, 'popup');
+        }
       });
       document.addEventListener('keydown', onKey);
       document.body.appendChild(pop);
-      fire('bf26_popup_shown');
-    }
-    window._bf26AfterGeneration = function () {
-      if (hasPlan()) return;
-      try { if (localStorage.getItem('topo_bf26_pop') === '1') return; localStorage.setItem('topo_bf26_pop', '1'); } catch (e) { return; }
-      setTimeout(showPop, 3000);   // let them see their result first
+      selectPlan(plan && keys.indexOf(plan) >= 0 ? plan : keys[0]);
+      updatePopClock(left());
+      fire('bf26_popup_shown', { trigger: trigger });
     };
+
+    // Automatic opening: once per browser, never on first paint, never over another dialog.
+    function autoOpen(trigger) {
+      if (pop || hasPlan()) return;
+      try { if (localStorage.getItem('topo_bf26_pop') === '1') return; } catch (e) { return; }
+      if (document.querySelector('.auth-overlay.show, #checkout-overlay.show')) { setTimeout(function () { autoOpen(trigger); }, 15000); return; }
+      try { localStorage.setItem('topo_bf26_pop', '1'); } catch (e) { return; }
+      window._bf26OpenPopup(trigger);
+    }
+    window._bf26AfterGeneration = function () { setTimeout(function () { autoOpen('generation'); }, 3000); };   // let them see their result first
+    setTimeout(function () { autoOpen('timer'); }, 45000);
+
+    // Email links: open straight away with that deal chosen, unless it was closed earlier in this visit.
+    var bfq = new URLSearchParams(location.search), camp = bfq.get('utm_campaign') || '', short = bfq.get('bf') || '';
+    var dl = /^bf26_(6m|3m|credits)$/.test(camp) ? camp : (/^(6m|3m|credits)$/.test(short) ? 'bf26_' + short : null);
+    var dlClosed = false;
+    try { dlClosed = sessionStorage.getItem('topo_bf26_dl_closed') === '1'; } catch (e) {}
+    if (dl && !dlClosed) {
+      var openDl = function () { fire('bf26_deeplink_opened', { plan: dl }); window._bf26OpenPopup('deeplink', dl); };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', openDl); else openDl();
+    }
 
     var t = document.getElementById('bfp-timer'), pros = el.querySelectorAll('.bfp-pro');
     function tick() {
       if (BF_END - Date.now() <= 0 && !force) { el.classList.remove('bf-show'); closePop(); clearInterval(iv); return; }
       var s = left(), d = Math.floor(s / 86400);
       t.textContent = 'Ends in ' + (d > 0 ? d + 'd ' : '') + pad(Math.floor(s % 86400 / 3600)) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60);
-      var pc = pop && document.getElementById('bfp-pop-clock');
-      if (pc) pc.innerHTML = clockHtml(s);
+      updatePopClock(s);
       var pro = hasPlan();   // Pro and Company accounts already have Pro: credits only
       for (var i = 0; i < pros.length; i++) pros[i].style.display = pro ? 'none' : '';
     }
