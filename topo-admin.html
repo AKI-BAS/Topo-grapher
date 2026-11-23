@@ -927,7 +927,7 @@ body::before{content:'';position:fixed;inset:0;background-image:
         </div>
         <!-- Body -->
         <div>
-          <div class="blast-label">Email body: plain text. Aki's voice. Paragraphs separated by blank lines. Use **text** for bold, paste a bare URL (https://…) for a plain link, [[link text]](https://…) for a text link, or [Button text](https://…) for a styled button.</div>
+          <div class="blast-label">Email body: plain text. Aki's voice. Paragraphs separated by blank lines. Use **text** for bold, paste a bare URL (https://…) for a plain link, [[link text]](https://…) for a text link, or [Button text](https://…) for a styled button. For an image, put ![description](https://…) on its own line (text width), or ![wide: description](https://…) for a full-width image under the logo. Images must be on a public https address, for example topo-grapher.com/email/.</div>
           <textarea class="blast-textarea" id="blast-body" placeholder="Hey,&#10;&#10;Write your message here…"></textarea>
         </div>
         <!-- Dry-run recipient preview -->
@@ -4525,12 +4525,36 @@ function blastEscapeAndLinkify(p) {
     .replace(/\u0001LNK(\d+)\u0001/g, (_, i) => textLinks[Number(i)]);
 }
 
+// Images. A paragraph that is only ![description](https://...) becomes an image at the text width
+// (460 px). ![wide: description](https://...) becomes a full-width image under the logo: it is sent
+// as a marker that the notify worker (buildBlastHtml) and blastTakeWideImage() below turn into a row.
+// Images must be on a public https address, for example https://topo-grapher.com/email/name.png.
+function blastAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function blastParagraphHtml(p) {
+  const m = p.trim().match(/^!\[([^\]]*)\]\((https:\/\/[^\s)]+)\)$/);
+  // An image written inside a sentence cannot be laid out in an email, so it becomes a text link.
+  if (!m) return `<p style="margin:0 0 18px 0;font-size:14px;line-height:1.85;color:#2a2a28;">${blastEscapeAndLinkify(p.replace(/!\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g, (_, alt, href) => `[[${alt.replace(/^wide:\s*/i, "")}]](${href})`))}</p>`;
+  const wide = /^wide:\s*/i.test(m[1]);
+  const alt = blastAttr(m[1].replace(/^wide:\s*/i, '').trim()), src = blastAttr(m[2]);
+  if (wide) return `<!--TG_WIDE_IMG src="${src}" alt="${alt}"-->`;
+  return `<div style="margin:4px 0 22px 0;"><img src="${src}" width="460" alt="${alt}" style="display:block;width:100%;max-width:460px;height:auto;border:0;border-radius:4px;"></div>`;
+}
+// Same rule as the worker: the first wide marker becomes the image row under the logo, the rest are dropped.
+function blastTakeWideImage(html) {
+  let wideRow = '';
+  const body = html.replace(/<!--TG_WIDE_IMG src="([^"]*)" alt="([^"]*)"-->/g, (_, src, alt) => {
+    if (!wideRow && /^https:\/\//.test(src)) wideRow = `<tr><td style="padding:0 0 8px 0;line-height:0;font-size:0;background-color:#ffffff;" bgcolor="#ffffff"><img src="${src}" width="540" alt="${alt}" style="display:block;width:100%;max-width:540px;height:auto;border:0;"></td></tr>`;
+    return '';
+  });
+  return { body, wideRow };
+}
+
 // Build the full email HTML exactly as the worker does
 function buildBlastPreviewHtml(subject, bodyText) {
-  const bodyHtml = bodyText
+  const { body: bodyHtml, wideRow } = blastTakeWideImage(bodyText
     .split(/\n\n+/)
-    .map(p => `<p style="margin:0 0 18px 0;font-size:14px;line-height:1.85;color:#2a2a28;">${blastEscapeAndLinkify(p)}</p>`)
-    .join('');
+    .map(p => blastParagraphHtml(p))
+    .join(''));
 
   return `<!DOCTYPE html>
 <html>
@@ -4557,6 +4581,7 @@ function buildBlastPreviewHtml(subject, bodyText) {
         </table>
         <div style="height:1px;background:#b8d48a;margin-top:24px;"></div>
       </td></tr>
+      ${wideRow}
       <tr><td style="padding:8px 40px 36px 40px;background-color:#ffffff;" bgcolor="#ffffff">
         ${bodyHtml}
         <p style="margin:28px 0 4px 0;font-size:14px;line-height:1.85;color:#2a2a28;">Have a great day!</p>
@@ -4784,7 +4809,7 @@ async function executeSend() {
   statusEl.textContent = 'Sending…';
   const bodyHtml = bodyText
     .split(/\n\n+/)
-    .map(p=>`<p style="margin:0 0 18px 0;font-size:14px;line-height:1.85;color:#2a2a28;">${blastEscapeAndLinkify(p)}</p>`).join('');
+    .map(p => blastParagraphHtml(p)).join('');   // a wide image stays a marker here; the worker places it
   const payload = { subject, bodyHtml, bodyText, dryRun:false, template:_blastTemplate };
   if (_blastRecipients.length) {
     payload.recipients = _blastRecipients;
