@@ -1588,6 +1588,14 @@ function declineCookies() {
         <div id="esb-detail" style="font-size:11px;color:var(--text-soft);"></div>
         <div id="esb-upgrade" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-mid);"></div>
       </div>
+      <!-- Result offer (2026-11-23): the price of this exact site, shown next to the download, for every
+           non-subscriber. Filled by _showResultOffer() after each generation. -->
+      <div id="result-offer" role="region" aria-label="Get this site at full detail" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:6px;border:1px solid var(--accent-md);background:var(--bg-input);">
+        <div id="ro-title" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;"></div>
+        <div id="ro-text" style="font-size:11px;line-height:1.6;color:var(--text-mid);margin-bottom:10px;"></div>
+        <button type="button" class="btn-dl" id="ro-site-btn" style="width:100%;margin:0 0 8px;background:var(--accent);color:var(--bg-card);border-color:var(--accent);"></button>
+        <button type="button" id="ro-pro-btn" style="width:100%;padding:8px 12px;border-radius:6px;border:1px solid var(--border-md);background:transparent;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.02em;cursor:pointer;"></button>
+      </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn-dl" id="download-btn" style="flex:1;">&#x2193; Download CSV</button>
         <button class="btn-dl" id="download-map-btn" style="flex:1;background:var(--bg-input);color:var(--text);border-color:var(--border-md);display:none;">&#x2193; Site map</button>
@@ -5756,6 +5764,7 @@ async function _spendCredits() {
 }
 function _afterSiteUnlock() {
   var up = document.getElementById('buildings-upgrade-prompt'); if (up) up.style.display = 'none';
+  try { _hideResultOffer(); } catch (e) {}
   try { _syncDlBtn(); } catch (e) {}
   try { updateExportFormatUI(); } catch (e) {}
   try { checkDrawnAreaWarning(); } catch (e) {}
@@ -5997,7 +6006,48 @@ function _updateSitePriceUI() {
   } else {
     note.textContent = paid ? 'Free to generate and view in 3D. You only pay to download.' : '';
   }
-  btn.textContent = 'Generate Terrain';
+  // Say up front that a paid-size site is a free preview, so the price is no surprise at download.
+  btn.textContent = paid ? 'Generate free 3D preview' : 'Generate Terrain';
+}
+// ── Result offer (2026-11-23) ─────────────────────────────────────────────
+// Since the 31 Oct credits launch nobody met a price before downloading: free-size sites (about 90%
+// of drawn sites) went straight to a free CSV. This card puts the price of this exact site next to
+// the download button for every non-subscriber, with Pro as the alternative.
+function _hideResultOffer() {
+  var el = document.getElementById('result-offer'); if (el) el.style.display = 'none';
+}
+function _showResultOffer(paidSite, degraded) {
+  var el = document.getElementById('result-offer');
+  if (!el) return;
+  if (_isSubscriber() || _siteOwned() || !_siteBbox()) { el.style.display = 'none'; return; }
+  var cost = _siteCostPence(_currentSiteAreaM2()), price = _fmtGBP(cost);
+  var bfLive = Date.now() < Date.parse('2026-11-30T23:59:00Z') && typeof window._bf26OpenPopup === 'function';
+  var title = document.getElementById('ro-title'), text = document.getElementById('ro-text');
+  var siteBtn = document.getElementById('ro-site-btn'), proBtn = document.getElementById('ro-pro-btn');
+  if (paidSite) {
+    title.textContent = 'Preview ready. Download this site for ' + price;
+    text.textContent = 'One payment, no subscription. Every format (CSV, IFC, DXF), finest spacing, buildings and roads. Nothing is charged until you choose.';
+    siteBtn.textContent = 'Get this site for ' + price;
+  } else {
+    title.textContent = 'Your free download is CSV at 12 m spacing';
+    text.textContent = 'Want it as a solid in Revit or ArchiCAD? Get IFC and DXF for this site, plus buildings, for ' + price + '. One payment, no subscription.';
+    siteBtn.textContent = 'Get IFC and DXF for ' + price;
+  }
+  // A degraded result cannot be bought (the degraded note above offers a retry), so only show Pro.
+  siteBtn.style.display = (paidSite && degraded) ? 'none' : '';
+  proBtn.textContent = bfLive ? 'Black Friday: 3 months of Pro for £89, every site' : 'Or go Pro, £39.99/month for every site';
+  siteBtn.onclick = function () {
+    track('result_offer_clicked', { choice: 'site', paid_site: !!paidSite, cost_pence: cost });
+    unlockSiteWithCredits('result_offer');
+  };
+  proBtn.onclick = function () {
+    track('result_offer_clicked', { choice: bfLive ? 'bf26' : 'pro', paid_site: !!paidSite, cost_pence: cost });
+    if (bfLive) { window._bf26OpenPopup('result_offer', 'bf26_3m'); return; }
+    track('pro_cta_clicked', { source: 'result_offer', context: paidSite ? 'paid_site' : 'free_site' });
+    startCheckout('pro', { context: 'result_offer' });
+  };
+  el.style.display = '';
+  track('result_offer_shown', { paid_site: !!paidSite, cost_pence: cost, degraded: !!degraded, bf: bfLive });
 }
 function applyProUI() {
   if (!isPro()) return;
@@ -7463,6 +7513,7 @@ async function _convertImpl() {
   if (!_proceed) { document.getElementById('convert-btn').disabled = false; return; }
   document.getElementById('convert-btn').disabled = true;
   showProgress(true); setProgress(0.02,'Preparing…','Setting up coordinate grid');
+  try { _hideResultOffer(); } catch (e) {}
   try {
     const FREE_MAX_M = 500, FREE_MAX_SPACING = 12;
     const lats = polygonLatLngs.map(p=>p.lat), lons = polygonLatLngs.map(p=>p.lng);
@@ -7670,6 +7721,7 @@ async function _convertImpl() {
     window._previewSig = _chargeSite ? _creditSiteSig() : null;
     window._previewDegraded = !!(_chargeSite && degraded);
     if (_chargeSite) { track('site_previewed', { cost_pence: _siteCostPence(_currentSiteAreaM2()), degraded: !!degraded, plan }); }
+    try { _showResultOffer(_chargeSite, degraded); } catch (e) { console.warn('result offer:', e); }
     if (!_isSubscriber() && !_siteOwned() && !degraded){incrementGenerationsToday();incrementUserGenerationsToday();updateLimitBadge();}
     setSiteContourData(out);
     setProgress(1,'Done - terrain data ready.','');
